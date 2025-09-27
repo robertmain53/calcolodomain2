@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APR Calculator - Calculate True Annual Percentage Rate</title>
+    <meta name="description" content="Professional APR calculator for personal loans. Compute effective APR including origination and other fees, monthly payment, total finance charge, and net amount disbursed.">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css/v2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .prose { max-width: 65ch; margin-left: auto; margin-right: auto; }
+        .prose h2 { font-size: 1.5rem; font-weight: 600; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem;}
+        .prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 2rem; margin-bottom: 0.5rem; }
+        .prose p, .prose ul, .prose ol { margin-bottom: 1rem; line-height: 1.6; color: #374151; }
+        .prose ul, .prose ol { list-style-position: outside; padding-left: 1.25rem; }
+        .prose li { margin-bottom: 0.5rem; }
+        .formula-box { background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; padding: 1rem; overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+        details > summary { cursor: pointer; font-weight: 600; }
+        .toggle-input { appearance: none; width: 0; height: 0; }
+        .toggle-label { cursor: pointer; user-select: none; }
+        .toggle-input:checked + .toggle-label { background-color: #3b82f6; color: white; }
+        .table-container { max-height: 400px; overflow-y: auto; border: 1px solid #d1d5db; border-radius: 8px; }
+        .table-container table { width: 100%; }
+        .table-container th, .table-container td { padding: 0.75rem; text-align: right; }
+        .table-container th { background: #f9fafb; position: sticky; top: 0; }
+    </style>
+    <script type="application/ld+json">{ "@context": "https://schema.org", "@type": "HowTo", "name": "How to Calculate APR with Fees", "description": "Step-by-step guide to calculating the true Annual Percentage Rate (APR) including origination and other fees.", "step": [ {"@type": "HowToStep", "name": "Enter Loan Details", "text": "Input the loan amount, nominal interest rate, and term length."}, {"@type": "HowToStep", "name": "Add Fees", "text": "Include origination fees and other finance charges."}, {"@type": "HowToStep", "name": "Review Results", "text": "Analyze the effective APR, payment, finance charges, and see a full amortization schedule."} ] }</script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <nav class="container mx-auto px-4 lg:px-6 py-4 flex justify-between items-center">
+            <a href="index.html" class="text-2xl font-bold text-blue-600">CalcDomain</a>
+        </nav>
+    </header>
+
+    <div class="container mx-auto px-4 py-8">
+        <div class="flex flex-col lg:flex-row gap-8">
+            <main class="w-full lg:w-2/3">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h1 class="text-3xl font-bold mb-2">Advanced APR Calculator</h1>
+                    <p class="text-gray-600 mb-6">Calculate the true APR of a loan, or work backwards to find hidden fees from a quoted APR.</p>
+                    <div id="calculator-ui" class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Calculator Mode</label>
+                            <div class="mt-1 grid grid-cols-2 gap-1 rounded-md bg-gray-200 p-1">
+                                <button id="modeAPR" class="px-3 py-1 text-sm font-medium rounded-md bg-white text-blue-600 shadow-sm">Calculate APR</button>
+                                <button id="modeReverse" class="px-3 py-1 text-sm font-medium rounded-md text-gray-500">Find Fees (Reverse)</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="currency" class="block text-sm font-medium text-gray-700">Currency</label>
+                            <select id="currency" class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="USD" selected>USD ($)</option> <option value="EUR">EUR (€)</option> <option value="GBP">GBP (£)</option> <option value="JPY">JPY (¥)</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="loanAmount" class="block text-sm font-medium text-gray-700">Loan Amount *</label>
+                                <input type="number" id="loanAmount" value="10000" step="100" min="0" class="mt-1 block w-full px-3 py-2 border rounded-md" required>
+                                <input type="range" id="loanAmountSlider" value="10000" min="500" max="100000" step="100" class="w-full h-2 bg-gray-200 rounded-lg cursor-pointer mt-2">
+                            </div>
+                            <div>
+                                <label for="interestRate" id="interestRateLabel" class="block text-sm font-medium text-gray-700">Nominal Interest Rate (%) *</label>
+                                <label for="apr" id="aprLabel" class="block text-sm font-medium text-gray-700 hidden">Advertised APR (%) *</label>
+                                <input type="number" id="interestRate" value="12" step="0.01" min="0" class="mt-1 block w-full px-3 py-2 border rounded-md" required>
+                                <input type="number" id="apr" value="15" step="0.01" min="0" class="mt-1 block w-full px-3 py-2 border rounded-md hidden" required>
+                                <input type="range" id="interestRateSlider" value="12" min="0" max="30" step="0.1" class="w-full h-2 bg-gray-200 rounded-lg cursor-pointer mt-2">
+                            </div>
+                        </div>
+                        <div>
+                             <label class="block text-sm font-medium text-gray-700">Loan Term *</label>
+                            <div class="mt-1 grid grid-cols-2 gap-4">
+                                <input type="number" id="termValue" value="36" min="1" step="1" class="block w-full px-3 py-2 border rounded-md" required>
+                                <div class="flex border rounded-md"><input type="radio" id="termMonths" name="termUnit" value="months" checked class="toggle-input"><label for="termMonths" class="toggle-label flex-1 text-center py-2 border-r">Months</label><input type="radio" id="termYears" name="termUnit" value="years" class="toggle-input"><label for="termYears" class="toggle-label flex-1 text-center py-2">Years</label></div>
+                            </div>
+                        </div>
+                        <div id="feesSection" class="space-y-4 border-t pt-4">
+                             <h3 class="text-base font-medium text-gray-800">Loan Fees</h3>
+                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div><label for="originationPct" class="block text-sm font-medium">Origination Fee (%)</label><input type="number" id="originationPct" value="5" step="0.01" min="0" class="mt-1 block w-full px-3 py-2 border rounded-md"></div>
+                                <div><label for="otherFees" class="block text-sm font-medium">Other Fees</label><input type="number" id="otherFees" value="100" step="1" min="0" class="mt-1 block w-full px-3 py-2 border rounded-md"></div>
+                             </div>
+                             <label class="flex items-center"><input type="checkbox" id="feesFinanced" class="rounded"><span class="ml-2 text-sm text-gray-600">Finance all fees (add to loan)</span></label>
+                        </div>
+                        <div id="monthlyPaymentSection" class="hidden">
+                            <label for="monthlyPayment" class="block text-sm font-medium text-gray-700">Monthly Payment *</label>
+                            <input type="number" id="monthlyPayment" value="350" step="1" min="0" class="mt-1 block w-full px-3 py-2 border rounded-md" required>
+                        </div>
+                    </div>
+                    <div id="results" class="mt-8 bg-blue-50 p-6 rounded-lg">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold text-gray-800">Loan Analysis</h3>
+                            <button id="compareButton" class="text-sm bg-gray-200 px-3 py-1 rounded-md hover:bg-gray-300">Compare</button>
+                        </div>
+                        <div id="comparison-display" class="text-xs text-gray-600 mb-4 h-4"></div>
+                        <div class="flex flex-col md:flex-row gap-6">
+                            <div class="w-full md:w-2/3 grid grid-cols-2 gap-4">
+                                <div id="apr-result-box" class="bg-white p-3 rounded-lg text-center"><p class="text-sm">Effective APR</p><p class="text-2xl font-bold text-blue-600" id="aprOut">—</p></div>
+                                <div id="fees-result-box" class="bg-white p-3 rounded-lg text-center hidden"><p class="text-sm">Calculated Fees</p><p class="text-2xl font-bold text-blue-600" id="feesOut">—</p></div>
+                                <div class="bg-white p-3 rounded-lg text-center"><p class="text-sm">Monthly Payment</p><p class="text-2xl font-bold" id="paymentOut">—</p></div>
+                                <div class="bg-white p-3 rounded-lg text-center"><p class="text-sm">Net Disbursed</p><p class="text-2xl font-bold text-green-600" id="netOut">—</p></div>
+                                <div class="bg-white p-3 rounded-lg text-center"><p class="text-sm">Finance Charge</p><p class="text-2xl font-bold text-red-600" id="financeChargeOut">—</p></div>
+                            </div>
+                            <div class="w-full md:w-1/3 h-40"><canvas id="pieChart"></canvas></div>
+                        </div>
+                        <details class="mt-6 bg-white rounded-lg p-4"><summary>View Amortization Schedule</summary>
+                            <div class="mt-4 table-container">
+                                <table class="w-full text-sm">
+                                    <thead><tr><th class="text-left p-2">#</th><th class="text-right p-2">Payment</th><th class="text-right p-2">Interest</th><th class="text-right p-2">Principal</th><th class="text-right p-2">Balance</th></tr></thead>
+                                    <tbody id="scheduleBody"></tbody>
+                                </table>
+                            </div>
+                        </details>
+                    </div>
+                </div>
+                
+                <article class="bg-white p-6 rounded-lg shadow-md mt-8 prose">
+                    <h2>Understanding the Annual Percentage Rate (APR)</h2>
+                    <p>The Annual Percentage Rate (APR) provides a more complete picture of your borrowing costs than the nominal interest rate alone. While the interest rate reflects the cost of borrowing the principal amount, the APR incorporates the interest rate plus most of the additional fees and charges associated with the loan. This makes it a comprehensive, standardized metric for comparing different loan offers.</p>
+                    <p>In many countries, including the US under the Truth in Lending Act (TILA), lenders are legally required to disclose the APR to consumers. This ensures transparency and helps borrowers make informed financial decisions.</p>
+
+                    <h3>Why APR is the Best Comparison Tool</h3>
+                    <p>When comparing loan offers, focusing solely on the interest rate can be misleading. A loan with a lower interest rate might have high fees, making it more expensive overall. By comparing the APR of different loans, you are comparing their true costs on an apples-to-apples basis.</p>
+                    <ul>
+                        <li><strong>It includes fees:</strong> Origination fees, processing fees, and other charges are factored into the APR.</li>
+                        <li><strong>It standardizes costs:</strong> APR expresses the total cost of credit as an annual percentage, making it easy to compare loans with different rates and fee structures.</li>
+                        <li><strong>It reveals the true price:</strong> Even a small origination fee can cause the APR to be significantly higher than the advertised interest rate.</li>
+                    </ul>
+
+                    <h2>How APR is Calculated</h2>
+                    <p>Calculating APR is more complex than simply adding fees to the interest rate. It involves finding the effective interest rate that accounts for the fact that you may receive less cash than the total loan amount due to upfront fees. This calculator uses the industry-standard Internal Rate of Return (IRR) method to solve for the true rate.</p>
+                    <div class="formula-box">
+                        <p><strong>1. Determine Net Amount Disbursed:</strong> This is the loan amount minus any fees paid upfront (prepaid finance charges).</p>
+                        <p><strong>2. Calculate Monthly Payment:</strong> The payment is calculated based on the full principal, including any financed fees, using the nominal interest rate.</p>
+                        <p><strong>3. Solve for the Rate (IRR):</strong> The calculator finds the monthly interest rate (i) at which the present value of all monthly payments equals the net amount disbursed.</p>
+                        <p><strong>4. Annualize the Rate:</strong> The resulting monthly rate is annualized to find the APR.</p>
+                    </div>
+
+                    <h3>APR for Different Loan Types</h3>
+                    <p>While this calculator is optimized for personal loans, the concept of APR applies to most forms of credit:</p>
+                    <ul>
+                        <li><strong>Mortgages:</strong> APR calculations for mortgages are more complex and can include points, private mortgage insurance (PMI), and other closing costs.</li>
+                        <li><strong>Credit Cards:</strong> Credit card APRs can be variable and often differ for purchases, balance transfers, and cash advances.</li>
+                        <li><strong>Auto Loans:</strong> APR for auto loans includes interest and any lender-specific fees.</li>
+                    </ul>
+
+                    <h2>Frequently Asked Questions (FAQ)</h2>
+                    <details class="border-t py-2">
+                        <summary>Why is my APR higher than my interest rate?</summary>
+                        <p class="mt-2 text-gray-700">APR includes fees and finance charges beyond just interest. Origination fees, points, and other lender charges increase the total cost of borrowing, resulting in a higher APR than the nominal interest rate. The only time APR equals the interest rate is when there are no fees whatsoever.</p>
+                    </details>
+                    <details class="border-t py-2">
+                        <summary>Is APR the same as APY?</summary>
+                        <p class="mt-2 text-gray-700">No. APR (Annual Percentage Rate) measures the cost of borrowing money. APY (Annual Percentage Yield) measures the return earned on savings or investments. They are two different metrics for opposite financial activities.</p>
+                    </details>
+                    <details class="border-t py-2">
+                        <summary>What is a good APR for a personal loan?</summary>
+                        <p class="mt-2 text-gray-700">A "good" APR depends heavily on the central bank's current interest rates and your creditworthiness. Generally, borrowers with excellent credit scores receive the lowest APRs. Comparing offers from multiple lenders is the best way to find a competitive rate for your situation.</p>
+                    </details>
+                </article>
+            </main>
+            <aside class="w-full lg:w-1/3"><div class="sticky top-24"><div class="bg-gray-200 h-96 rounded-lg flex items-center justify-center"><p class="text-gray-500">Ad Unit</p></div></div></aside>
+        </div>
+    </div>
+    
+    <footer class="bg-white border-t mt-12"><div class="container mx-auto p-8 text-center text-gray-600"><p>&copy; 2025 CalcDomain. All Rights Reserved.</p></div></footer>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const elements = {
+            modeAPR: document.getElementById('modeAPR'), modeReverse: document.getElementById('modeReverse'),
+            currency: document.getElementById('currency'), loanAmount: document.getElementById('loanAmount'),
+            loanAmountSlider: document.getElementById('loanAmountSlider'), interestRate: document.getElementById('interestRate'),
+            interestRateSlider: document.getElementById('interestRateSlider'), apr: document.getElementById('apr'),
+            termValue: document.getElementById('termValue'), termMonths: document.getElementById('termMonths'), termYears: document.getElementById('termYears'),
+            originationPct: document.getElementById('originationPct'), otherFees: document.getElementById('otherFees'),
+            feesFinanced: document.getElementById('feesFinanced'), monthlyPayment: document.getElementById('monthlyPayment'),
+            feesSection: document.getElementById('feesSection'), monthlyPaymentSection: document.getElementById('monthlyPaymentSection'),
+            interestRateLabel: document.getElementById('interestRateLabel'), aprLabel: document.getElementById('aprLabel'),
+            aprOut: document.getElementById('aprOut'), feesOut: document.getElementById('feesOut'), paymentOut: document.getElementById('paymentOut'),
+            netOut: document.getElementById('netOut'), financeChargeOut: document.getElementById('financeChargeOut'),
+            aprResultBox: document.getElementById('apr-result-box'), feesResultBox: document.getElementById('fees-result-box'),
+            scheduleBody: document.getElementById('scheduleBody'), pieChart: document.getElementById('pieChart').getContext('2d'),
+            compareButton: document.getElementById('compareButton'), comparisonDisplay: document.getElementById('comparison-display')
+        };
+
+        let currentMode = 'apr';
+        let currencyConfig = { style: 'currency', currency: 'USD', locale: 'en-US' };
+        let chartInstance = null;
+        let comparisonData = null;
+        const currencyMap = {
+            USD: { locale: 'en-US', code: 'USD' }, EUR: { locale: 'de-DE', code: 'EUR' },
+            GBP: { locale: 'en-GB', code: 'GBP' }, JPY: { locale: 'ja-JP', code: 'JPY' }
+        };
+
+        const fmtCurrency = (val) => new Intl.NumberFormat(currencyConfig.locale, { style: 'currency', currency: currencyConfig.code }).format(val || 0);
+        const fmtPercent = (val) => new Intl.NumberFormat(currencyConfig.locale, { style: 'percent', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val || 0);
+
+        function setMode(mode) {
+            currentMode = mode;
+            const isAPRMode = mode === 'apr';
+            elements.modeAPR.classList.toggle('bg-white', isAPRMode); elements.modeAPR.classList.toggle('text-blue-600', isAPRMode);
+            elements.modeReverse.classList.toggle('bg-white', !isAPRMode); elements.modeReverse.classList.toggle('text-blue-600', !isAPRMode);
+            
+            elements.feesSection.classList.toggle('hidden', !isAPRMode);
+            elements.monthlyPaymentSection.classList.toggle('hidden', isAPRMode);
+            elements.interestRate.classList.toggle('hidden', !isAPRMode);
+            elements.interestRateSlider.classList.toggle('hidden', !isAPRMode);
+            elements.apr.classList.toggle('hidden', isAPRMode);
+            elements.interestRateLabel.classList.toggle('hidden', !isAPRMode);
+            elements.aprLabel.classList.toggle('hidden', isAPRMode);
+            elements.aprResultBox.classList.toggle('hidden', !isAPRMode);
+            elements.feesResultBox.classList.toggle('hidden', isAPRMode);
+            calculate();
+        }
+
+        function calculate() {
+            if (currentMode === 'apr') calculateAPR(); else calculateReverse();
+            if (comparisonData) displayComparison();
+        }
+
+        function calculateAPR() {
+            const loanAmount = parseFloat(elements.loanAmount.value) || 0;
+            const annualRate = parseFloat(elements.interestRate.value) || 0;
+            const termMonths = elements.termYears.checked ? (parseFloat(elements.termValue.value) || 0) * 12 : (parseFloat(elements.termValue.value) || 0);
+            if (loanAmount <= 0 || termMonths <= 0) return resetUI();
+
+            const origPct = parseFloat(elements.originationPct.value) || 0;
+            const otherFees = parseFloat(elements.otherFees.value) || 0;
+            const feesFinanced = elements.feesFinanced.checked;
+
+            const origFee = loanAmount * (origPct / 100);
+            const totalFees = origFee + otherFees;
+            
+            const principal = feesFinanced ? loanAmount + totalFees : loanAmount;
+            const netDisbursed = loanAmount - (feesFinanced ? 0 : totalFees);
+
+            const monthlyRate = annualRate / 100 / 12;
+            const payment = monthlyRate > 0 ? (principal * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -termMonths)) : principal / termMonths;
+            
+            let monthlyIRR = monthlyRate;
+            if (totalFees > 0 && netDisbursed > 0) {
+                monthlyIRR = solveForIRR(payment, termMonths, netDisbursed);
+            }
+            const apr = Math.pow(1 + monthlyIRR, 12) - 1;
+
+            const financeCharge = (payment * termMonths) - loanAmount;
+            
+            updateResults({ apr, payment, netDisbursed, financeCharge, loanAmount, principal });
+        }
+
+        function calculateReverse() {
+            const loanAmount = parseFloat(elements.loanAmount.value) || 0;
+            const apr = parseFloat(elements.apr.value) || 0;
+            const termMonths = elements.termYears.checked ? (parseFloat(elements.termValue.value) || 0) * 12 : (parseFloat(elements.termValue.value) || 0);
+            const payment = parseFloat(elements.monthlyPayment.value) || 0;
+            if (loanAmount <= 0 || termMonths <= 0 || payment <= 0) return resetUI();
+
+            const monthlyAPR = Math.pow(1 + (apr / 100), 1/12) - 1;
+            const netDisbursed = monthlyAPR > 0 ? payment * (1 - Math.pow(1 + monthlyAPR, -termMonths)) / monthlyAPR : payment * termMonths;
+            const totalFees = loanAmount - netDisbursed;
+            const financeCharge = (payment * termMonths) - loanAmount;
+
+            elements.feesOut.textContent = fmtCurrency(totalFees);
+            elements.paymentOut.textContent = fmtCurrency(payment);
+            elements.netOut.textContent = fmtCurrency(netDisbursed);
+            elements.financeChargeOut.textContent = fmtCurrency(financeCharge);
+            elements.scheduleBody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">Schedule not applicable in Reverse mode.</td></tr>';
+            updatePieChart(loanAmount, financeCharge - totalFees, totalFees);
+        }
+        
+        function solveForIRR(payment, numPayments, netDisbursed) {
+            let rate = 0.01; // Initial guess
+            for (let i = 0; i < 50; i++) {
+                const presentValue = payment * (1 - Math.pow(1 + rate, -numPayments)) / rate;
+                if (Math.abs(presentValue - netDisbursed) < 0.01) return rate;
+                const derivative = -payment * numPayments * Math.pow(1 + rate, -numPayments - 1); // Simplified derivative
+                const derivative2 = (presentValue - payment * (1 - Math.pow(1+rate, -numPayments))) / rate;
+                rate -= (presentValue - netDisbursed) / ((derivative2 - presentValue)/rate); // Newton-Raphson
+            }
+            return Math.max(0, rate);
+        }
+
+        function updateResults({ apr, payment, netDisbursed, financeCharge, loanAmount, principal }) {
+            elements.aprOut.textContent = fmtPercent(apr);
+            elements.paymentOut.textContent = fmtCurrency(payment);
+            elements.netOut.textContent = fmtCurrency(netDisbursed);
+            elements.financeChargeOut.textContent = fmtCurrency(financeCharge);
+            
+            const termMonths = elements.termYears.checked ? (parseFloat(elements.termValue.value) || 0) * 12 : (parseFloat(elements.termValue.value) || 0);
+            const annualRate = parseFloat(elements.interestRate.value) || 0;
+            const monthlyRate = annualRate / 100 / 12;
+            let balance = principal;
+            let scheduleHTML = '';
+            for (let i = 1; i <= termMonths && i <= 360; i++) {
+                const interest = balance * monthlyRate;
+                const principalPaid = payment - interest;
+                balance -= principalPaid;
+                scheduleHTML += `<tr><td class="text-left p-2">${i}</td><td class="text-right p-2">${fmtCurrency(payment)}</td><td class="text-right p-2">${fmtCurrency(interest)}</td><td class="text-right p-2">${fmtCurrency(principalPaid)}</td><td class="text-right p-2">${fmtCurrency(Math.max(0, balance))}</td></tr>`;
+            }
+            elements.scheduleBody.innerHTML = scheduleHTML;
+
+            const totalInterest = (payment * termMonths) - principal;
+            const totalFees = financeCharge - totalInterest;
+            updatePieChart(loanAmount, totalInterest + (principal - loanAmount), totalFees);
+        }
+
+        function resetUI() {
+            ['aprOut', 'feesOut', 'paymentOut', 'netOut', 'financeChargeOut'].forEach(id => document.getElementById(id).textContent = '—');
+            elements.scheduleBody.innerHTML = '';
+            if (chartInstance) chartInstance.destroy();
+        }
+
+        function updatePieChart(principal, interest, fees) {
+            if (chartInstance) chartInstance.destroy();
+            chartInstance = new Chart(elements.pieChart, {
+                type: 'pie',
+                data: { labels: ['Principal', 'Interest', 'Fees'], datasets: [{ data: [principal, interest, fees], backgroundColor: ['#3b82f6', '#ef4444', '#f97316'], borderWidth: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+        }
+        
+        function syncInputs(source, target) { target.value = source.value; calculate(); }
+
+        function displayComparison() {
+            const currentAPR = currentMode === 'apr' ? elements.aprOut.textContent : fmtPercent((parseFloat(elements.apr.value) || 0) / 100);
+            const currentPayment = currentMode === 'apr' ? elements.paymentOut.textContent : fmtCurrency(elements.monthlyPayment.value);
+            elements.comparisonDisplay.textContent = `vs. Saved: ${comparisonData.apr} APR | ${comparisonData.payment} / mo`;
+        }
+
+        elements.modeAPR.addEventListener('click', () => setMode('apr'));
+        elements.modeReverse.addEventListener('click', () => setMode('reverse'));
+        elements.loanAmount.addEventListener('input', () => syncInputs(elements.loanAmount, elements.loanAmountSlider));
+        elements.loanAmountSlider.addEventListener('input', () => syncInputs(elements.loanAmountSlider, elements.loanAmount));
+        elements.interestRate.addEventListener('input', () => syncInputs(elements.interestRate, elements.interestRateSlider));
+        elements.interestRateSlider.addEventListener('input', () => syncInputs(elements.interestRateSlider, elements.interestRate));
+        elements.compareButton.addEventListener('click', () => {
+            comparisonData = { 
+                apr: currentMode === 'apr' ? elements.aprOut.textContent : fmtPercent((parseFloat(elements.apr.value) || 0) / 100),
+                payment: currentMode === 'apr' ? elements.paymentOut.textContent : fmtCurrency(elements.monthlyPayment.value)
+            };
+            displayComparison();
+        });
+
+        const allInputs = Object.values(elements);
+        allInputs.forEach(el => el.addEventListener && el.addEventListener('input', calculate));
+        allInputs.forEach(el => el.addEventListener && el.addEventListener('change', calculate));
+        
+        setMode('apr');
+    });
+    </script>
+</body>
+</html>

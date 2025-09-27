@@ -1,0 +1,406 @@
+// CalcDomain Search System
+// Sistema di ricerca client-side per tutti i calcolatori
+
+class CalcDomainSearch {
+    constructor() {
+        this.calculators = [];
+        this.searchInput = null;
+        this.searchResults = null;
+        this.isInitialized = false;
+        
+        this.init();
+    }
+
+    async init() {
+        try {
+            // Carica i dati dei calcolatori
+            await this.loadCalculators();
+            this.setupSearchElements();
+            this.bindEvents();
+            this.isInitialized = true;
+        } catch (error) {
+            console.error('Errore nell\'inizializzazione della ricerca:', error);
+        }
+    }
+
+    async loadCalculators() {
+        try {
+            // Prova a caricare da file JSON esterno
+            const response = await fetch('/calculators-data.json');
+            if (response.ok) {
+                this.calculators = await response.json();
+            } else {
+                // Fallback ai dati embedded
+                this.calculators = this.getEmbeddedCalculators();
+            }
+        } catch (error) {
+            // Fallback ai dati embedded
+            this.calculators = this.getEmbeddedCalculators();
+        }
+    }
+
+    getEmbeddedCalculators() {
+        // Database embedded dei calcolatori
+        return [
+            // Finance - Loans & Debt
+            { slug: "simple-loan-calculator", title: "Simple Loan Calculator", category: "Finance", subcategory: "Loans & Debt", description: "Calculate monthly payments and total cost for any loan" },
+            { slug: "loan-amortization-calculator", title: "Loan Amortization Schedule Calculator", category: "Finance", subcategory: "Loans & Debt", description: "Generate detailed payment schedules for loans" },
+            { slug: "loan-payoff-calculator", title: "Loan Payoff Calculator", category: "Finance", subcategory: "Loans & Debt", description: "Find out how to pay off loans faster" },
+            { slug: "dti-ratio-calculator", title: "Debt-to-Income (DTI) Ratio Calculator", category: "Finance", subcategory: "Loans & Debt", description: "Calculate your debt-to-income ratio for loan applications" },
+            { slug: "personal-loan-calculator", title: "Personal Loan Calculator", category: "Finance", subcategory: "Loans & Debt", description: "Calculate payments for personal loans" },
+            { slug: "apr-calculator", title: "APR Calculator", category: "Finance", subcategory: "Loans & Debt", description: "Calculate the Annual Percentage Rate for loans" },
+            { slug: "debt-consolidation-calculator", title: "Debt Consolidation Calculator", category: "Finance", subcategory: "Loans & Debt", description: "Compare consolidation options for multiple debts" },
+            { slug: "student-loan-calculator", title: "Student Loan Calculator", category: "Finance", subcategory: "Loans & Debt", description: "Calculate student loan payments and payoff strategies" },
+            { slug: "auto-loan-calculator", title: "Auto Loan Calculator", category: "Finance", subcategory: "Loans & Debt", description: "Calculate car loan payments and total costs" },
+            { slug: "credit-card-payoff-calculator", title: "Credit Card Payoff Calculator", category: "Finance", subcategory: "Loans & Debt", description: "Plan your credit card debt payoff strategy" },
+
+            // Finance - Mortgage & Real Estate
+            { slug: "mortgage-payment-calculator", title: "Mortgage Payment Calculator", category: "Finance", subcategory: "Mortgage & Real Estate", description: "Calculate monthly mortgage payments" },
+            { slug: "house-affordability-calculator", title: "House Affordability Calculator", category: "Finance", subcategory: "Mortgage & Real Estate", description: "Determine how much house you can afford" },
+            { slug: "down-payment-calculator", title: "Down Payment Calculator", category: "Finance", subcategory: "Mortgage & Real Estate", description: "Calculate required down payment for home purchase" },
+            { slug: "closing-cost-calculator", title: "Closing Cost Calculator", category: "Finance", subcategory: "Mortgage & Real Estate", description: "Estimate closing costs for home purchase" },
+            { slug: "pmi-calculator", title: "PMI Calculator", category: "Finance", subcategory: "Mortgage & Real Estate", description: "Calculate Private Mortgage Insurance costs" },
+            { slug: "rent-vs-buy-calculator", title: "Rent vs Buy Calculator", category: "Finance", subcategory: "Mortgage & Real Estate", description: "Compare renting vs buying a home" },
+            { slug: "refinance-calculator", title: "Refinance Calculator", category: "Finance", subcategory: "Mortgage & Real Estate", description: "Determine if refinancing makes sense" },
+
+            // Finance - Investment
+            { slug: "compound-interest-calculator", title: "Compound Interest Calculator", category: "Finance", subcategory: "Investment", description: "Calculate compound interest for investments" },
+            { slug: "investment-return-calculator", title: "Investment Return Calculator", category: "Finance", subcategory: "Investment", description: "Calculate returns on investments" },
+            { slug: "roi-calculator", title: "ROI Calculator", category: "Finance", subcategory: "Investment", description: "Calculate Return on Investment" },
+            { slug: "stock-profit-calculator", title: "Stock Profit Calculator", category: "Finance", subcategory: "Investment", description: "Calculate profits from stock investments" },
+            { slug: "dividend-calculator", title: "Dividend Calculator", category: "Finance", subcategory: "Investment", description: "Calculate dividend income and yields" },
+            { slug: "savings-calculator", title: "Savings Calculator", category: "Finance", subcategory: "Investment", description: "Calculate savings growth over time" },
+
+            // Finance - Retirement
+            { slug: "retirement-savings-calculator", title: "Retirement Savings Calculator", category: "Finance", subcategory: "Retirement", description: "Plan your retirement savings strategy" },
+            { slug: "401k-calculator", title: "401k Calculator", category: "Finance", subcategory: "Retirement", description: "Calculate 401k contributions and growth" },
+            { slug: "roth-ira-calculator", title: "Roth IRA Calculator", category: "Finance", subcategory: "Retirement", description: "Calculate Roth IRA benefits and contributions" },
+            { slug: "social-security-calculator", title: "Social Security Calculator", category: "Finance", subcategory: "Retirement", description: "Estimate Social Security benefits" },
+
+            // Health & Fitness - Health Metrics
+            { slug: "bmi-calculator", title: "BMI Calculator", category: "Health & Fitness", subcategory: "Health Metrics", description: "Calculate Body Mass Index" },
+            { slug: "body-fat-calculator", title: "Body Fat Calculator", category: "Health & Fitness", subcategory: "Health Metrics", description: "Calculate body fat percentage" },
+            { slug: "bmr-calculator", title: "BMR Calculator", category: "Health & Fitness", subcategory: "Health Metrics", description: "Calculate Basal Metabolic Rate" },
+            { slug: "heart-rate-calculator", title: "Heart Rate Calculator", category: "Health & Fitness", subcategory: "Health Metrics", description: "Calculate target heart rate zones" },
+            { slug: "ideal-weight-calculator", title: "Ideal Weight Calculator", category: "Health & Fitness", subcategory: "Health Metrics", description: "Calculate your ideal body weight" },
+
+            // Health & Fitness - Diet & Nutrition
+            { slug: "calorie-calculator", title: "Calorie Calculator", category: "Health & Fitness", subcategory: "Diet & Nutrition", description: "Calculate daily calorie needs" },
+            { slug: "macro-calculator", title: "Macro Calculator", category: "Health & Fitness", subcategory: "Diet & Nutrition", description: "Calculate macronutrient needs" },
+            { slug: "protein-calculator", title: "Protein Calculator", category: "Health & Fitness", subcategory: "Diet & Nutrition", description: "Calculate daily protein requirements" },
+            { slug: "water-intake-calculator", title: "Water Intake Calculator", category: "Health & Fitness", subcategory: "Diet & Nutrition", description: "Calculate daily water intake needs" },
+
+            // Math & Conversions - Core Math
+            { slug: "percentage-calculator", title: "Percentage Calculator", category: "Math & Conversions", subcategory: "Core Math & Algebra", description: "Calculate percentages, increases, and decreases" },
+            { slug: "fraction-calculator", title: "Fraction Calculator", category: "Math & Conversions", subcategory: "Core Math & Algebra", description: "Add, subtract, multiply, and divide fractions" },
+            { slug: "scientific-calculator", title: "Scientific Calculator", category: "Math & Conversions", subcategory: "Core Math & Algebra", description: "Advanced scientific calculator" },
+            { slug: "square-root-calculator", title: "Square Root Calculator", category: "Math & Conversions", subcategory: "Core Math & Algebra", description: "Calculate square roots and other roots" },
+            { slug: "ratio-calculator", title: "Ratio Calculator", category: "Math & Conversions", subcategory: "Core Math & Algebra", description: "Calculate and simplify ratios" },
+
+            // Math & Conversions - Geometry
+            { slug: "area-calculator", title: "Area Calculator", category: "Math & Conversions", subcategory: "Geometry", description: "Calculate area of various shapes" },
+            { slug: "volume-calculator", title: "Volume Calculator", category: "Math & Conversions", subcategory: "Geometry", description: "Calculate volume of 3D shapes" },
+            { slug: "circle-calculator", title: "Circle Calculator", category: "Math & Conversions", subcategory: "Geometry", description: "Calculate circle area, circumference, and more" },
+            { slug: "triangle-calculator", title: "Triangle Calculator", category: "Math & Conversions", subcategory: "Geometry", description: "Calculate triangle properties" },
+
+            // Math & Conversions - Unit Conversions
+            { slug: "length-converter", title: "Length Converter", category: "Math & Conversions", subcategory: "Measurement Unit Conversions", description: "Convert between length units" },
+            { slug: "weight-converter", title: "Weight Converter", category: "Math & Conversions", subcategory: "Measurement Unit Conversions", description: "Convert between weight units" },
+            { slug: "temperature-converter", title: "Temperature Converter", category: "Math & Conversions", subcategory: "Measurement Unit Conversions", description: "Convert between temperature units" },
+            { slug: "volume-converter", title: "Volume Converter", category: "Math & Conversions", subcategory: "Measurement Unit Conversions", description: "Convert between volume units" },
+
+            // Lifestyle & Everyday - Time & Date
+            { slug: "age-calculator", title: "Age Calculator", category: "Lifestyle & Everyday", subcategory: "Time & Date", description: "Calculate age in years, months, and days" },
+            { slug: "date-calculator", title: "Date Calculator", category: "Lifestyle & Everyday", subcategory: "Time & Date", description: "Calculate date differences and add/subtract dates" },
+            { slug: "time-calculator", title: "Time Calculator", category: "Lifestyle & Everyday", subcategory: "Time & Date", description: "Add, subtract, and convert time" },
+            { slug: "countdown-calculator", title: "Countdown Calculator", category: "Lifestyle & Everyday", subcategory: "Time & Date", description: "Count down to specific dates and events" },
+
+            // Lifestyle & Everyday - Miscellaneous
+            { slug: "tip-calculator", title: "Tip Calculator", category: "Lifestyle & Everyday", subcategory: "Miscellaneous", description: "Calculate tips and split bills" },
+            { slug: "grade-calculator", title: "Grade Calculator", category: "Lifestyle & Everyday", subcategory: "Miscellaneous", description: "Calculate grades and GPA" },
+            { slug: "discount-calculator", title: "Discount Calculator", category: "Lifestyle & Everyday", subcategory: "Miscellaneous", description: "Calculate discounts and sale prices" },
+
+            // Construction & DIY
+            { slug: "concrete-calculator", title: "Concrete Calculator", category: "Construction & DIY", subcategory: "Materials Estimation", description: "Calculate concrete needed for projects" },
+            { slug: "paint-calculator", title: "Paint Calculator", category: "Construction & DIY", subcategory: "Materials Estimation", description: "Calculate paint needed for rooms" },
+            { slug: "flooring-calculator", title: "Flooring Calculator", category: "Construction & DIY", subcategory: "Materials Estimation", description: "Calculate flooring materials needed" },
+            { slug: "lumber-calculator", title: "Lumber Calculator", category: "Construction & DIY", subcategory: "Materials Estimation", description: "Calculate lumber needed for projects" }
+        ];
+    }
+
+    setupSearchElements() {
+        // Setup search input
+        this.searchInput = document.getElementById('search-input') || document.querySelector('input[type="search"]');
+        
+        // Setup results container
+        this.searchResults = document.getElementById('search-results');
+        
+        // Se non esiste il container dei risultati, crealo
+        if (!this.searchResults) {
+            this.createSearchResultsContainer();
+        }
+    }
+
+    createSearchResultsContainer() {
+        const container = document.createElement('div');
+        container.id = 'search-results';
+        container.className = 'absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden';
+        
+        // Inserisci dopo l'input di ricerca
+        if (this.searchInput) {
+            const parent = this.searchInput.closest('.relative') || this.searchInput.parentElement;
+            parent.style.position = 'relative';
+            parent.appendChild(container);
+            this.searchResults = container;
+        }
+    }
+
+    bindEvents() {
+        if (!this.searchInput) return;
+
+        // Event listener per input in tempo reale
+        this.searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            this.handleSearch(query);
+        });
+
+        // Event listener per focus/blur
+        this.searchInput.addEventListener('focus', (e) => {
+            const query = e.target.value.trim();
+            if (query.length >= 2) {
+                this.showResults();
+            }
+        });
+
+        // Nascondi risultati quando si clicca fuori
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#search-results') && !e.target.closest('input[type="search"]')) {
+                this.hideResults();
+            }
+        });
+
+        // Gestione navigazione con tastiera
+        this.searchInput.addEventListener('keydown', (e) => {
+            this.handleKeyboardNavigation(e);
+        });
+    }
+
+    handleSearch(query) {
+        if (query.length < 2) {
+            this.hideResults();
+            return;
+        }
+
+        const results = this.searchCalculators(query);
+        this.displayResults(results, query);
+        this.showResults();
+    }
+
+    searchCalculators(query) {
+        const normalizedQuery = query.toLowerCase().trim();
+        const words = normalizedQuery.split(/\s+/);
+
+        return this.calculators
+            .map(calc => {
+                let score = 0;
+                const titleLower = calc.title.toLowerCase();
+                const descLower = calc.description.toLowerCase();
+                const categoryLower = calc.category.toLowerCase();
+                const subcategoryLower = calc.subcategory.toLowerCase();
+
+                // Exact title match gets highest score
+                if (titleLower === normalizedQuery) {
+                    score += 100;
+                } else if (titleLower.includes(normalizedQuery)) {
+                    score += 50;
+                }
+
+                // Word matches in title
+                words.forEach(word => {
+                    if (titleLower.includes(word)) {
+                        score += 20;
+                    }
+                });
+
+                // Description matches
+                if (descLower.includes(normalizedQuery)) {
+                    score += 30;
+                }
+                words.forEach(word => {
+                    if (descLower.includes(word)) {
+                        score += 10;
+                    }
+                });
+
+                // Category matches
+                if (categoryLower.includes(normalizedQuery)) {
+                    score += 15;
+                }
+                if (subcategoryLower.includes(normalizedQuery)) {
+                    score += 15;
+                }
+
+                // Bonus for title starting with query
+                if (titleLower.startsWith(normalizedQuery)) {
+                    score += 25;
+                }
+
+                return { ...calc, score };
+            })
+            .filter(calc => calc.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 10); // Limita a 10 risultati
+    }
+
+    displayResults(results, query) {
+        if (!this.searchResults) return;
+
+        if (results.length === 0) {
+            this.searchResults.innerHTML = `
+                <div class="p-4 text-center text-gray-500">
+                    <p>No calculators found for "${query}"</p>
+                    <p class="text-sm mt-1">Try a different search term</p>
+                </div>
+            `;
+            return;
+        }
+
+        const html = results.map(calc => {
+            const highlightedTitle = this.highlightMatches(calc.title, query);
+            const highlightedDesc = this.highlightMatches(calc.description, query);
+            
+            return `
+                <a href="${calc.slug}.html" class="block p-4 hover:bg-gray-50 border-b border-gray-100 last:border-b-0">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-gray-900 mb-1">${highlightedTitle}</h3>
+                            <p class="text-sm text-gray-600 mb-1">${highlightedDesc}</p>
+                            <div class="flex items-center text-xs text-gray-500">
+                                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded">${calc.category}</span>
+                                <span class="mx-2">•</span>
+                                <span>${calc.subcategory}</span>
+                            </div>
+                        </div>
+                        <div class="ml-3">
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </a>
+            `;
+        }).join('');
+
+        this.searchResults.innerHTML = html;
+    }
+
+    highlightMatches(text, query) {
+        if (!query) return text;
+        
+        const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        return text.replace(regex, '<mark class="bg-yellow-200 text-yellow-900">$1</mark>');
+    }
+
+    showResults() {
+        if (this.searchResults) {
+            this.searchResults.classList.remove('hidden');
+        }
+    }
+
+    hideResults() {
+        if (this.searchResults) {
+            this.searchResults.classList.add('hidden');
+        }
+    }
+
+    handleKeyboardNavigation(e) {
+        const results = this.searchResults?.querySelectorAll('a');
+        if (!results || results.length === 0) return;
+
+        const currentFocus = document.activeElement;
+        let currentIndex = -1;
+
+        // Trova l'indice corrente
+        results.forEach((result, index) => {
+            if (result === currentFocus) {
+                currentIndex = index;
+            }
+        });
+
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                const nextIndex = currentIndex < results.length - 1 ? currentIndex + 1 : 0;
+                results[nextIndex].focus();
+                break;
+            
+            case 'ArrowUp':
+                e.preventDefault();
+                const prevIndex = currentIndex > 0 ? currentIndex - 1 : results.length - 1;
+                results[prevIndex].focus();
+                break;
+            
+            case 'Escape':
+                this.hideResults();
+                this.searchInput.blur();
+                break;
+            
+            case 'Enter':
+                if (currentIndex >= 0) {
+                    e.preventDefault();
+                    results[currentIndex].click();
+                }
+                break;
+        }
+    }
+
+    // Metodo pubblico per ricerca programmatica
+    performSearch(query) {
+        if (this.searchInput) {
+            this.searchInput.value = query;
+            this.handleSearch(query);
+        }
+    }
+
+    // Metodo per aggiungere calcolatori dinamicamente
+    addCalculator(calculator) {
+        this.calculators.push(calculator);
+    }
+
+    // Metodo per ottenere suggerimenti
+    getSuggestions(partialQuery) {
+        if (partialQuery.length < 2) return [];
+        
+        const query = partialQuery.toLowerCase();
+        const suggestions = new Set();
+        
+        this.calculators.forEach(calc => {
+            const title = calc.title.toLowerCase();
+            const words = title.split(/\s+/);
+            
+            words.forEach(word => {
+                if (word.startsWith(query) && word.length > query.length) {
+                    suggestions.add(word);
+                }
+            });
+            
+            if (title.includes(query)) {
+                suggestions.add(calc.title);
+            }
+        });
+        
+        return Array.from(suggestions).slice(0, 5);
+    }
+}
+
+// Inizializza la ricerca quando il DOM è pronto
+document.addEventListener('DOMContentLoaded', () => {
+    window.calcSearch = new CalcDomainSearch();
+});
+
+// Funzione di utilità per search globale
+window.searchCalculators = function(query) {
+    if (window.calcSearch && window.calcSearch.isInitialized) {
+        window.calcSearch.performSearch(query);
+    }
+};

@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debt Consolidation Calculator - Compare Loans & Save Money</title>
+    <meta name="description" content="Compare your current debts vs. a new consolidation loan. Calculate monthly payment changes, time-to-debt-free, and total interest savings with our professional debt consolidation calculator.">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .prose { max-width: 65ch; margin-left: auto; margin-right: auto; }
+        .prose h2 { font-size: 1.5rem; font-weight: 600; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem;}
+        .prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 2rem; margin-bottom: 0.5rem; }
+        .prose p, .prose ul, .prose ol { margin-bottom: 1rem; line-height: 1.6; color: #374151; }
+        .prose ul, .prose ol { list-style-position: outside; padding-left: 1.25rem; }
+        .prose li { margin-bottom: 0.5rem; }
+        .debt-row { border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: #f9fafb; }
+        .remove-btn { background: #ef4444; color: white; border: none; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem; cursor: pointer; }
+        .add-debt-btn { background: #10b981; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-weight: 500; cursor: pointer; }
+    </style>
+    <script type="application/ld+json">{ "@context": "https://schema.org", "@type": "HowTo", "name": "How to Use the Debt Consolidation Calculator", "description": "Step-by-step guide to comparing your current debts against a consolidation loan to find the best financial strategy.", "step": [ {"@type": "HowToStep", "name": "Add Current Debts", "text": "Enter each debt with its balance, APR, and payment. Choose a payoff strategy like Avalanche or Snowball."}, {"@type": "HowToStep", "name": "Set Consolidation Terms", "text": "Input the new loan's APR, term, and any fees."}, {"@type": "HowToStep", "name": "Compare Visual Results", "text": "Review charts comparing payments, interest savings, and your debt-free date to make an informed decision."} ] }</script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <nav class="container mx-auto px-4 lg:px-6 py-4 flex justify-between items-center"><a href="index.html" class="text-2xl font-bold text-blue-600">CalcDomain</a></nav>
+    </header>
+
+    <div class="container mx-auto px-4 py-8">
+        <div class="flex flex-col lg:flex-row gap-8">
+            <main class="w-full lg:w-2/3">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h1 class="text-3xl font-bold mb-2">Debt Consolidation & Payoff Strategy Calculator</h1>
+                    <p class="text-gray-600 mb-6">Compare a consolidation loan against your current debts using powerful payoff strategies like the Avalanche and Snowball methods.</p>
+
+                    <div id="calculator-ui" class="space-y-6">
+                        <div>
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-semibold text-gray-800">Your Current Debts</h3>
+                                <button type="button" id="addDebtBtn" class="add-debt-btn">+ Add Debt</button>
+                            </div>
+                            <div id="debtsContainer" class="space-y-4"></div>
+                             <div class="mt-4" id="payoffStrategySection">
+                                <label for="payoffStrategy" class="block text-sm font-medium text-gray-700">Payoff Strategy for "Current" Scenario</label>
+                                <select id="payoffStrategy" class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm">
+                                    <option value="current">Keep current payments</option>
+                                    <option value="avalanche">Debt Avalanche (Pay highest interest first)</option>
+                                    <option value="snowball">Debt Snowball (Pay lowest balance first)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <hr class="border-gray-300">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4">New Consolidation Loan</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label for="loanApr" class="block text-sm font-medium text-gray-700">Loan APR (%) *</label>
+                                    <input type="number" id="loanApr" value="9.99" step="0.01" min="0" class="mt-1 block w-full p-2 border rounded-md">
+                                </div>
+                                <div id="loanTermInput">
+                                    <label for="loanTerm" class="block text-sm font-medium text-gray-700">Term (months) *</label>
+                                    <input type="number" id="loanTerm" value="60" step="1" min="1" class="mt-1 block w-full p-2 border rounded-md">
+                                </div>
+                                 <div id="targetPaymentInput" class="hidden">
+                                    <label for="targetPayment" class="block text-sm font-medium text-gray-700">Target Payment ($) *</label>
+                                    <input type="number" id="targetPayment" value="500" step="1" min="1" class="mt-1 block w-full p-2 border rounded-md">
+                                </div>
+                            </div>
+                            <div class="mt-2 text-xs"><label class="inline-flex items-center"><input type="checkbox" id="calculateByPaymentToggle" class="form-checkbox"> <span class="ml-2">Calculate by payment instead of term</span></label></div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                                <div>
+                                    <label for="origFee" class="block text-sm font-medium text-gray-700">Origination Fee (%)</label>
+                                    <input type="number" id="origFee" value="3" step="0.01" min="0" class="mt-1 block w-full p-2 border rounded-md">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Fee Handling</label>
+                                    <div class="mt-2 space-x-4"><label class="inline-flex items-center"><input type="radio" name="feeMode" value="financed" checked class="form-radio"> <span class="ml-2">Finance fee</span></label><label class="inline-flex items-center"><input type="radio" name="feeMode" value="upfront" class="form-radio"> <span class="ml-2">Pay upfront</span></label></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="results" class="mt-8 bg-blue-50 p-6 rounded-lg">
+                        <div class="flex justify-between items-center mb-4">
+                             <h3 class="text-lg font-semibold text-gray-800">Comparison Results</h3>
+                             <div><button id="exportBtn" class="text-sm bg-gray-600 text-white px-3 py-1 rounded-md hover:bg-gray-700">Export CSV</button></div>
+                        </div>
+                        <div id="resultNote" class="mb-4 p-3 bg-yellow-100 border border-yellow-300 rounded-md text-yellow-800 text-sm hidden"></div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div><h4 class="font-semibold mb-2 text-center">Monthly Payments</h4><div class="h-40"><canvas id="monthlyPaymentChart"></canvas></div></div>
+                            <div><h4 class="font-semibold mb-2 text-center">Total Interest Paid</h4><div class="h-40"><canvas id="totalInterestChart"></canvas></div></div>
+                        </div>
+                        <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-center">
+                            <div class="bg-white p-3 rounded-lg"><p class="text-sm">Current Payoff</p><p class="text-xl font-bold" id="currentMonths">0 mo</p></div>
+                            <div class="bg-white p-3 rounded-lg"><p class="text-sm">New Payoff</p><p class="text-xl font-bold text-blue-600" id="newMonths">0 mo</p></div>
+                            <div class="bg-white p-3 rounded-lg"><p class="text-sm">Interest Savings</p><p class="text-xl font-bold text-green-600" id="interestSavings">$0.00</p></div>
+                        </div>
+                         <details class="mt-6 bg-white rounded-lg p-4"><summary>View Current Debts Summary</summary>
+                            <div class="overflow-x-auto mt-4"><table class="w-full text-sm">
+                                <thead><tr class="bg-gray-50"><th class="p-2 text-left">Debt</th><th class="p-2 text-right">Payoff Time</th><th class="p-2 text-right">Total Interest</th></tr></thead>
+                                <tbody id="currentDebtsSummary"></tbody>
+                            </table></div>
+                        </details>
+                    </div>
+                </div>
+
+                <article class="bg-white p-6 rounded-lg shadow-md mt-8 prose">
+                    <h2>What Is Debt Consolidation?</h2>
+                    <p>Debt consolidation is a financial strategy that involves taking out a single new loan to pay off multiple existing debts. The goal is typically to secure a lower overall interest rate, simplify finances with a single monthly payment, and create a clear path to becoming debt-free. This calculator helps you compare this strategy against other powerful payoff methods.</p>
+
+                    <h3>Debt Avalanche vs. Debt Snowball: Which is Better?</h3>
+                    <p>Besides consolidation, there are two popular strategies for paying off existing debts, both of which this calculator can model for you:</p>
+                    <ul>
+                        <li><strong>Debt Avalanche (Highest Interest First):</strong> With this method, you make minimum payments on all debts, but put any extra money towards the debt with the highest APR. This is the most efficient method mathematically, as it minimizes the total interest you pay over time.</li>
+                        <li><strong>Debt Snowball (Lowest Balance First):</strong> Here, you focus on paying off the debt with the smallest balance first, regardless of the interest rate. This method can provide powerful psychological wins, as you see individual debts disappear faster, which can build momentum and motivation.</li>
+                    </ul>
+                    <p>This calculator allows you to compare a consolidation loan against both of these powerful strategies to find the best fit for your financial situation and personal style.</p>
+
+                    <h2>When Debt Consolidation Makes Sense</h2>
+                    <p>Consolidation can be an excellent choice under the right circumstances. A key benefit is simplifying multiple payment dates into one, which can reduce stress and the chance of missed payments. It is most beneficial when:</p>
+                    <ul>
+                        <li><strong>You get a lower interest rate:</strong> The new loan's APR should be significantly lower than the weighted average APR of your current debts.</li>
+                        <li><strong>You need lower monthly payments:</strong> A longer loan term can reduce your total monthly outlay, improving cash flow. However, be aware this can sometimes lead to paying more interest over time.</li>
+                        <li><strong>You want a fixed payoff date:</strong> Unlike the open-ended nature of credit card debt, a consolidation loan has a set term, so you know exactly when you'll be debt-free.</li>
+                    </ul>
+
+                    <h3>The Risks of Debt Consolidation</h3>
+                    <p>While powerful, consolidation is not without risks and isn't a cure-all for debt problems. It's crucial to consider the potential downsides:</p>
+                    <ul>
+                        <li><strong>Doesn't fix spending habits:</strong> If the underlying behaviors that led to debt aren't addressed, you may end up with a consolidation loan *and* new balances on your now-empty credit cards.</li>
+                        <li><strong>Fees can offset savings:</strong> Origination fees can be substantial. This calculator helps you see if the interest savings are still worth it after accounting for fees.</li>
+                        <li><strong>Longer terms can increase total cost:</strong> A lower monthly payment over a much longer term might mean you pay more in total interest. Always check the "Interest Savings" result in the calculator.</li>
+                    </ul>
+
+                    <h2>Frequently Asked Questions (FAQ)</h2>
+                    <details class="border-t py-2">
+                        <summary>Will debt consolidation hurt my credit score?</summary>
+                        <p class="mt-2 text-gray-700">There can be a small, temporary dip in your credit score when you apply for the new loan due to a hard inquiry. However, in the long run, it can improve your score by lowering your credit utilization ratio and building a history of consistent, on-time payments on the new loan.</p>
+                    </details>
+                    <details class="border-t py-2">
+                        <summary>What types of debt can I consolidate?</summary>
+                        <p class="mt-2 text-gray-700">Typically, you can consolidate unsecured debts, such as credit cards, personal loans, and medical bills. It is generally not used for secured debts like mortgages or auto loans, as those are backed by collateral.</p>
+                    </details>
+                </article>
+            </main>
+            <aside class="w-full lg:w-1/3"><div class="sticky top-24"><div class="bg-gray-200 h-96 rounded-lg"></div></div></aside>
+        </div>
+    </div>
+    
+    <footer class="bg-white border-t mt-12"><div class="container mx-auto p-8 text-center"><p>&copy; 2025 CalcDomain</p></div></footer>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const elements = {
+            addDebtBtn: document.getElementById('addDebtBtn'), debtsContainer: document.getElementById('debtsContainer'),
+            payoffStrategy: document.getElementById('payoffStrategy'), loanApr: document.getElementById('loanApr'),
+            loanTerm: document.getElementById('loanTerm'), targetPayment: document.getElementById('targetPayment'),
+            calculateByPaymentToggle: document.getElementById('calculateByPaymentToggle'), loanTermInput: document.getElementById('loanTermInput'),
+            targetPaymentInput: document.getElementById('targetPaymentInput'), origFee: document.getElementById('origFee'),
+            feeMode: () => document.querySelector('input[name="feeMode"]:checked').value, exportBtn: document.getElementById('exportBtn'),
+            currentMonths: document.getElementById('currentMonths'), newMonths: document.getElementById('newMonths'),
+            interestSavings: document.getElementById('interestSavings'), currentDebtsSummary: document.getElementById('currentDebtsSummary'),
+            resultNote: document.getElementById('resultNote'),
+        };
+        const chartCtx = {
+            monthly: document.getElementById('monthlyPaymentChart').getContext('2d'),
+            interest: document.getElementById('totalInterestChart').getContext('2d'),
+        };
+        let charts = { monthly: null, interest: null };
+        let debtCounter = 0;
+
+        const fmtCurrency = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
+        const debounce = (func, wait) => { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => func.apply(this, args), wait); }; };
+
+        function createDebtRow(data = {}) {
+            debtCounter++;
+            const div = document.createElement('div');
+            div.className = 'debt-row'; div.dataset.id = debtCounter;
+            div.innerHTML = `<div class="flex justify-between items-center mb-3"><h4 class="font-semibold text-gray-800">Debt #${debtCounter}</h4><button type="button" class="remove-btn" onclick="removeDebtRow(${debtCounter})">Remove</button></div><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label class="block text-sm">Balance ($)</label><input type="number" data-type="balance" value="${data.balance || ''}" class="mt-1 w-full p-2 border rounded-md"></div><div><label class="block text-sm">APR (%)</label><input type="number" data-type="apr" value="${data.apr || ''}" class="mt-1 w-full p-2 border rounded-md"></div><div><label class="block text-sm">Payment ($)</label><input type="number" data-type="payment" value="${data.payment || ''}" class="mt-1 w-full p-2 border rounded-md"></div></div><div class="mt-2 text-xs text-red-600 h-4" data-type="error"></div>`;
+            div.querySelectorAll('input').forEach(i => i.addEventListener('input', debounce(calculateResults, 250)));
+            return div;
+        }
+
+        window.removeDebtRow = (id) => { document.querySelector(`.debt-row[data-id='${id}']`).remove(); calculateResults(); };
+        const addDebt = (data) => elements.debtsContainer.appendChild(createDebtRow(data));
+
+        function getDebts() {
+            return Array.from(document.querySelectorAll('.debt-row')).map(row => ({
+                id: row.dataset.id,
+                balance: parseFloat(row.querySelector('[data-type="balance"]').value) || 0,
+                apr: parseFloat(row.querySelector('[data-type="apr"]').value) || 0,
+                payment: parseFloat(row.querySelector('[data-type="payment"]').value) || 0,
+                errorEl: row.querySelector('[data-type="error"]'),
+            })).filter(d => d.balance > 0);
+        }
+
+        function calculateCurrentScenario() {
+            const debts = getDebts();
+            let totalMinPayment = 0;
+            let hasError = false;
+
+            debts.forEach(debt => {
+                debt.monthlyRate = debt.apr / 100 / 12;
+                debt.minPayment = debt.monthlyRate * debt.balance;
+                if(debt.payment < debt.minPayment) {
+                    debt.errorEl.textContent = `Payment must be > ${fmtCurrency(debt.minPayment)} to cover interest.`;
+                    hasError = true;
+                } else {
+                    debt.errorEl.textContent = '';
+                }
+                totalMinPayment += debt.payment;
+            });
+            if (hasError) return { totalInterest: 0, months: 0, totalPayment: 0, debtDetails: [] };
+
+            const strategy = elements.payoffStrategy.value;
+            let workingDebts = JSON.parse(JSON.stringify(debts));
+            if (strategy === 'avalanche') workingDebts.sort((a, b) => b.apr - a.apr);
+            if (strategy === 'snowball') workingDebts.sort((a, b) => a.balance - b.balance);
+            
+            let months = 0, totalInterest = 0;
+            let debtDetails = debts.map(d => ({...d, totalInterest: 0, payoffMonth: 0}));
+
+            while(workingDebts.some(d => d.balance > 0)) {
+                months++;
+                let monthlyPaymentPool = totalMinPayment;
+                let interestThisMonth = 0;
+
+                workingDebts.forEach(d => {
+                    if (d.balance > 0) {
+                        const interest = d.balance * d.monthlyRate;
+                        interestThisMonth += interest;
+                        d.balance += interest;
+                        totalInterest += interest;
+                        
+                        let detail = debtDetails.find(det => det.id === d.id);
+                        if(detail) detail.totalInterest += interest;
+                    }
+                });
+                
+                workingDebts.forEach(d => {
+                    if (d.balance > 0) {
+                        const payment = Math.min(d.balance, (strategy === 'current' ? d.payment : d.minPayment));
+                        d.balance -= payment;
+                        monthlyPaymentPool -= payment;
+
+                        if (d.balance <= 0) {
+                           monthlyPaymentPool += (strategy === 'current' ? d.payment : d.minPayment); // Free up this payment
+                           let detail = debtDetails.find(det => det.id === d.id);
+                           if(detail && !detail.payoffMonth) detail.payoffMonth = months;
+                        }
+                    }
+                });
+                
+                // Apply snowball/avalanche extra payment
+                if (strategy !== 'current' && monthlyPaymentPool > 0) {
+                    for (const debt of workingDebts) {
+                        if (debt.balance > 0) {
+                            const extraPayment = Math.min(debt.balance, monthlyPaymentPool);
+                            debt.balance -= extraPayment;
+                            monthlyPaymentPool -= extraPayment;
+                            if (debt.balance <= 0) {
+                                let detail = debtDetails.find(det => det.id === d.id);
+                                if(detail && !detail.payoffMonth) detail.payoffMonth = months;
+                            }
+                            if (monthlyPaymentPool <= 0) break;
+                        }
+                    }
+                }
+                 if(months > 1200) break; // Safety break
+            }
+            return { totalInterest, months, totalPayment: totalMinPayment, debtDetails };
+        }
+
+        function calculateConsolidationScenario(totalPrincipal) {
+            const apr = parseFloat(elements.loanApr.value) || 0;
+            let term = parseInt(elements.loanTerm.value) || 0;
+            const targetPayment = parseFloat(elements.targetPayment.value) || 0;
+            const feePct = parseFloat(elements.origFee.value) || 0;
+            const feeMode = elements.feeMode();
+            
+            if (totalPrincipal <= 0) return { payment: 0, totalInterest: 0, term: 0 };
+            
+            const feeAmount = totalPrincipal * (feePct / 100);
+            const loanPrincipal = feeMode === 'financed' ? totalPrincipal + feeAmount : totalPrincipal;
+            const monthlyRate = apr / 100 / 12;
+            let payment = 0, totalInterest = 0;
+
+            if (elements.calculateByPaymentToggle.checked) {
+                if (targetPayment <= loanPrincipal * monthlyRate) {
+                     elements.resultNote.textContent = 'Target payment is too low to cover interest on the new loan.';
+                     elements.resultNote.classList.remove('hidden');
+                     return { payment: targetPayment, totalInterest: Infinity, term: Infinity };
+                }
+                term = Math.ceil(-Math.log(1 - (monthlyRate * loanPrincipal) / targetPayment) / Math.log(1 + monthlyRate));
+                payment = targetPayment;
+            } else {
+                if(term <= 0) return { payment: 0, totalInterest: 0, term: 0 };
+                payment = monthlyRate > 0 ? (loanPrincipal * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -term)) : loanPrincipal / term;
+            }
+
+            totalInterest = (payment * term) - loanPrincipal;
+            if (feeMode === 'upfront') totalInterest += feeAmount;
+
+            return { payment, totalInterest, term };
+        }
+
+        function calculateResults() {
+            elements.resultNote.classList.add('hidden');
+            const current = calculateCurrentScenario();
+            const totalPrincipal = getDebts().reduce((sum, d) => sum + d.balance, 0);
+            const consolidated = calculateConsolidationScenario(totalPrincipal);
+            
+            const interestSavings = current.totalInterest - consolidated.totalInterest;
+
+            // Update charts
+            updateChart(charts.monthly, chartCtx.monthly, ['Current', 'New'], [current.totalPayment, consolidated.payment]);
+            updateChart(charts.interest, chartCtx.interest, ['Current', 'New'], [current.totalInterest, consolidated.totalInterest]);
+            
+            // Update summary text
+            elements.currentMonths.textContent = `${current.months} mo`;
+            elements.newMonths.textContent = `${consolidated.term} mo`;
+            elements.interestSavings.textContent = fmtCurrency(interestSavings);
+            elements.interestSavings.classList.toggle('text-red-600', interestSavings < 0);
+            elements.interestSavings.classList.toggle('text-green-600', interestSavings >= 0);
+
+            // Update current debts summary table
+            elements.currentDebtsSummary.innerHTML = current.debtDetails.map(d => `<tr><td class="p-2 text-left">Debt #${d.id}</td><td class="p-2 text-right">${d.payoffMonth} mo</td><td class="p-2 text-right">${fmtCurrency(d.totalInterest)}</td></tr>`).join('');
+        }
+        
+        function updateChart(chartInstance, context, labels, data) {
+            if (chartInstance) chartInstance.destroy();
+            chartInstance = new Chart(context, {
+                type: 'bar',
+                data: { labels, datasets: [{ data, backgroundColor: ['#6b7280', '#3b82f6'], borderWidth: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+            if (context === chartCtx.monthly) charts.monthly = chartInstance;
+            if (context === chartCtx.interest) charts.interest = chartInstance;
+        }
+
+        elements.addDebtBtn.addEventListener('click', () => addDebt());
+        elements.calculateByPaymentToggle.addEventListener('change', (e) => {
+            elements.loanTermInput.classList.toggle('hidden', e.target.checked);
+            elements.targetPaymentInput.classList.toggle('hidden', !e.target.checked);
+            calculateResults();
+        });
+        
+        document.querySelectorAll('#calculator-ui input, #calculator-ui select').forEach(el => {
+            el.addEventListener('input', debounce(calculateResults, 250));
+        });
+
+        addDebt({ balance: 7500, apr: 21.99, payment: 250 });
+        addDebt({ balance: 4000, apr: 15.5, payment: 150 });
+        calculateResults();
+    });
+    </script>
+</body>
+</html>
