@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>FHA Loan Calculator | Finance › Mortgages</title>
+  <meta name="description" content="Professional FHA loan calculator that estimates monthly payment including principal & interest, FHA UFMIP and annual MIP, taxes, insurance, and HOA dues. Mobile-first, WCAG 2.1 AA, fast." />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="author" content="Ugo Candido" />
+  <meta name="theme-color" content="#005A9C" />
+  <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1" />
+  <link rel="canonical" href="https://www.calcdomain.com/fha-loan.html" />
+
+  <style>
+    /* ==== Design tokens ==== */
+    :root{
+      --primary:#005A9C; --secondary:#003F6E; --accent:#00A4E4;
+      --bg:#F8F9FA; --surface:#FFFFFF; --text:#212529; --muted:#6C757D; --border:#DEE2E6;
+      --success:#198754; --error:#DC3545;
+      --radius:12px; --radius-sm:8px; --shadow:0 4px 8px rgba(0,0,0,.06);
+      --touch:48px; --container:max(320px, min(100%, 1200px));
+    }
+    @media (prefers-contrast: more){ :root{ --primary:#003366; --secondary:#001a33; --text:#000; --border:#000; --bg:#fff; } }
+    @media (prefers-reduced-motion: reduce){ *{animation-duration:.001ms!important;transition-duration:.001ms!important;scroll-behavior:auto!important} }
+
+    /* ==== Base ==== */
+    *,*::before,*::after{ box-sizing:border-box }
+    html{ font-size:clamp(16px,2.5vw,18px) }
+    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; -webkit-font-smoothing:antialiased }
+    a{ color:var(--primary); text-decoration:none } a:hover{ text-decoration:underline }
+    img{ max-width:100%; display:block }
+
+    /* Skip link */
+    .skip-link{ position:absolute; left:8px; top:-40px; background:var(--primary); color:#fff; padding:.5rem .75rem; border-radius:6px; z-index:1000 }
+    .skip-link:focus{ top:8px }
+
+    /* Header (non-sticky) */
+    header.site-header{ background:var(--surface); border-bottom:1px solid var(--border) }
+    .container{ width:var(--container); margin-inline:auto; padding-inline:clamp(1rem,4vw,2rem) }
+    .header-inner{ display:grid; grid-template-columns:auto 1fr; gap:.75rem; align-items:center; padding:.75rem 0 }
+    .brand{ font-weight:700; color:var(--primary); font-size:1.15rem }
+
+    nav.main{ margin-left:auto }
+    nav.main ul{ list-style:none; display:flex; gap:.75rem; padding:0; margin:0 }
+    nav.main a{ display:inline-block; padding:.4rem .6rem; border-radius:6px; color:var(--secondary) }
+    nav.main a:hover{ background:rgba(0,90,156,.08); text-decoration:none }
+
+    /* Breadcrumbs */
+    nav.breadcrumb{ font-size:.95rem; color:var(--muted); margin:.5rem 0 1rem }
+    nav.breadcrumb a{ color:inherit }
+
+    /* Layout */
+    main{ padding-block:clamp(1rem,3vw,2rem) }
+    .calculator-layout{ display:grid; grid-template-columns:1fr; gap:1.5rem; margin-top:1rem }
+    @media (min-width:992px){ .calculator-layout{ grid-template-columns:420px 1fr; gap:2rem } }
+
+    .card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:clamp(1rem,2.2vw,1.5rem) }
+
+    /* Form */
+    .form-group{ margin-bottom:1rem }
+    label{ display:flex; align-items:center; gap:.5rem; font-weight:600; margin-bottom:.35rem }
+    .input-row{ display:grid; grid-template-columns:1fr auto; gap:.5rem; align-items:center }
+    .form-control{ width:100%; min-height:var(--touch); padding:.75rem .85rem; border:1px solid var(--border); border-radius:10px; font-size:1rem; transition:border-color .15s, box-shadow .15s }
+    .form-control:focus-visible{ outline:3px solid var(--primary); outline-offset:2px; border-color:var(--primary); box-shadow:0 0 0 3px rgba(0,90,156,.15) }
+    .unit{ color:var(--muted) }
+    .radio{ display:flex; gap:.5rem; flex-wrap:wrap }
+    .radio input{ position:absolute; opacity:0 }
+    .seg{ border:1px solid var(--border); border-radius:8px; padding:.5rem .75rem; min-height:var(--touch); display:inline-flex; align-items:center; cursor:pointer }
+    .radio input:checked + .seg{ background:var(--primary); color:#fff }
+    .error{ color:var(--error); font-size:.9rem; min-height:1.25em; margin-top:.25rem }
+    .btn{ display:inline-flex; align-items:center; justify-content:center; gap:.5rem; padding:.75rem 1rem; min-height:var(--touch); min-width:var(--touch); font-weight:700; border-radius:10px; border:1px solid transparent; cursor:pointer }
+    .btn-primary{ background:var(--primary); color:#fff; border-color:var(--primary) }
+    .btn-primary:hover{ background:var(--secondary); border-color:var(--secondary) }
+    .btn-secondary{ background:transparent; color:var(--primary); border-color:var(--primary) }
+
+    /* Results */
+    .results{ min-height:320px; background:#F0F6FF }
+    .kpi-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:.75rem; margin-top:.75rem }
+    @media (min-width:720px){ .kpi-grid{ grid-template-columns:repeat(4,1fr) } }
+    .kpi{ background:#fff; border:1px solid var(--border); border-radius:10px; padding:.75rem }
+    .kpi .label{ color:var(--muted); font-size:.9rem }
+    .kpi .value{ font-weight:800; font-size:1.1rem; margin-top:.35rem; color:var(--success) }
+
+    /* Content / EEAT */
+    .formula-box{ background:#EFF3F7; border:1px solid var(--border); border-radius:10px; padding:1rem; overflow:auto }
+    code,.latex{ font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; background:#f6f8fa; color:#111; padding:.25rem .4rem; border-radius:6px }
+    .author-box{ color:var(--muted); border-top:1px solid var(--border); margin-top:1.25rem; padding-top:.75rem; font-size:.95rem }
+
+    /* Footer */
+    footer{ margin-top:2rem; padding:1.5rem 0; background:#0f2840; color:#fff }
+    footer a{ color:#fff; padding:.15rem .35rem; border-radius:6px }
+    footer a:hover{ background:rgba(255,255,255,.1); text-decoration:none }
+
+    /* Helpers */
+    .ad-placeholder:empty{ display:none }
+  </style>
+
+  <!-- Ads: lazy-load -->
+  <script>
+    function lazyLoadAds(){
+      const obs = new IntersectionObserver((entries, o)=>{
+        entries.forEach(e=>{
+          if(!e.isIntersecting) return;
+          const ad = e.target;
+          if(ad.dataset.loaded) return;
+          (adsbygoogle=window.adsbygoogle||[]).push({});
+          ad.dataset.loaded = "1"; o.unobserve(ad);
+        });
+      },{rootMargin:"100px"});
+      document.querySelectorAll(".adsbygoogle").forEach(ad=>obs.observe(ad));
+    }
+    window.addEventListener("load", function(){
+      const gads=document.createElement("script");
+      gads.src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js";
+      gads.async=true;
+      gads.setAttribute("data-ad-client","ca-pub-9476637732224939");
+      gads.onload=lazyLoadAds;
+      document.head.appendChild(gads);
+    });
+  </script>
+
+  <!-- JSON-LD: WebPage + Breadcrumbs + HowTo + FAQ -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"WebPage",
+    "name":"FHA Loan Calculator",
+    "url":"https://www.calcdomain.com/fha-loan.html",
+    "inLanguage":"en",
+    "breadcrumb":{
+      "@type":"BreadcrumbList",
+      "itemListElement":[
+        {"@type":"ListItem","position":1,"name":"Home","item":"https://www.calcdomain.com/index.html"},
+        {"@type":"ListItem","position":2,"name":"Finance","item":"https://www.calcdomain.com/finance.html"},
+        {"@type":"ListItem","position":3,"name":"Mortgages","item":"https://www.calcdomain.com/mortgages.html"},
+        {"@type":"ListItem","position":4,"name":"FHA Loan Calculator","item":"https://www.calcdomain.com/fha-loan.html"}
+      ]
+    }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"HowTo",
+    "name":"How to use the FHA Loan Calculator",
+    "description":"Enter price, down payment, interest rate, term, taxes/insurance/HOA to estimate payment including FHA mortgage insurance.",
+    "step":[
+      {"@type":"HowToStep","name":"Enter home price","text":"Use the purchase price or target price."},
+      {"@type":"HowToStep","name":"Set down payment","text":"Choose amount or percentage; FHA minimums apply."},
+      {"@type":"HowToStep","name":"Enter rate & term","text":"Annual interest rate and loan term in years."},
+      {"@type":"HowToStep","name":"Add taxes/insurance/HOA","text":"Annual property tax, homeowners insurance, and any HOA dues."}
+    ],
+    "supply":[{"@type":"HowToSupply","name":"Home price, rate, term, taxes, insurance, HOA"}],
+    "tool":[{"@type":"HowToTool","name":"FHA Loan Calculator"}]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"FAQPage",
+    "mainEntity":[
+      {"@type":"Question","name":"What is FHA UFMIP?","acceptedAnswer":{"@type":"Answer","text":"Up-front mortgage insurance premium (typically 1.75% of base loan amount) that may be financed into the loan."}},
+      {"@type":"Question","name":"What is annual MIP?","acceptedAnswer":{"@type":"Answer","text":"Monthly mortgage insurance split across payments; the rate depends on LTV, term, and base loan amount."}},
+      {"@type":"Question","name":"What is the minimum down payment for FHA?","acceptedAnswer":{"@type":"Answer","text":"Typically 3.5% with qualifying credit; higher down payments reduce insurance costs."}}
+    ]
+  }
+  </script>
+
+  <!-- Icons -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"/>
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
+  <link rel="shortcut icon" href="/favicon.ico"/>
+</head>
+<body>
+  <header class="site-header" role="banner">
+    <div class="container header-inner">
+      <a class="brand" href="/index.html" aria-label="CalcDomain Home">CalcDomain</a>
+      <nav class="main" aria-label="Primary">
+        <ul>
+          <li><a href="/finance.html">Finance</a></li>
+          <li><a href="/mortgages.html">Mortgages</a></li>
+          <li><a href="/search.html">Search</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <main id="main" role="main">
+    <div class="container">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="/index.html">Home</a> ›
+        <a href="/finance.html">Finance</a> ›
+        <a href="/mortgages.html">Mortgages</a> ›
+        <span>FHA Loan Calculator</span>
+      </nav>
+
+      <h1>FHA Loan Calculator</h1>
+      <div class="ad-placeholder ad-slot-1">
+        <ins class="adsbygoogle ad-slot-1" data-ad-client="ca-pub-9476637732224939" data-ad-slot="auto" data-ad-format="auto" data-full-width-responsive="true" style="display:block"></ins>
+      </div>
+
+      <p>This professional FHA loan calculator estimates your complete monthly payment (principal & interest, FHA UFMIP and annual MIP, property taxes, homeowners insurance, and HOA dues) so buyers and pros can plan with confidence.</p>
+
+      <div class="calculator-layout" aria-live="polite">
+        <!-- Calculator -->
+        <section class="card" aria-labelledby="calc-heading" id="calculator">
+          <h2 id="calc-heading">Enter your loan details</h2>
+
+          <!-- Home price -->
+          <div class="form-group">
+            <label for="price">Home price *</label>
+            <div class="input-row">
+              <input id="price" class="form-control" type="number" inputmode="decimal" min="1" step="0.01" placeholder="e.g. 350000" aria-required="true" />
+              <span class="unit">$</span>
+            </div>
+            <div class="error" id="err-price" aria-live="polite"></div>
+          </div>
+
+          <!-- Down payment mode -->
+          <div class="form-group">
+            <fieldset class="radio" aria-label="Down payment entry mode">
+              <label><input type="radio" name="dpMode" value="amount" checked /><span class="seg">Amount</span></label>
+              <label><input type="radio" name="dpMode" value="percent" /><span class="seg">Percent</span></label>
+            </fieldset>
+          </div>
+
+          <!-- Down payment -->
+          <div class="form-group">
+            <label for="down">Down payment</label>
+            <div class="input-row">
+              <input id="down" class="form-control" type="number" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 12250" />
+              <span class="unit" id="downUnit">$</span>
+            </div>
+            <div class="error" id="err-down" aria-live="polite"></div>
+          </div>
+
+          <!-- Rate & term -->
+          <div class="form-group">
+            <label for="rate">Interest rate (APR) *</label>
+            <div class="input-row">
+              <input id="rate" class="form-control" type="number" inputmode="decimal" min="0" step="0.001" placeholder="e.g. 6.25" aria-required="true" />
+              <span class="unit">%</span>
+            </div>
+            <div class="error" id="err-rate"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="term">Term (years) *</label>
+            <input id="term" class="form-control" type="number" inputmode="numeric" min="5" max="40" step="1" value="30" aria-required="true" />
+            <div class="error" id="err-term"></div>
+          </div>
+
+          <!-- Taxes / Insurance / HOA -->
+          <div class="form-group">
+            <label for="tax">Annual property tax</label>
+            <div class="input-row">
+              <input id="tax" class="form-control" type="number" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 4200" />
+              <span class="unit">$</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="ins">Annual homeowners insurance</label>
+            <div class="input-row">
+              <input id="ins" class="form-control" type="number" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 1200" />
+              <span class="unit">$</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="hoa">Monthly HOA dues</label>
+            <div class="input-row">
+              <input id="hoa" class="form-control" type="number" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 85" />
+              <span class="unit">$</span>
+            </div>
+          </div>
+
+          <div class="form-group" style="display:flex; gap:.5rem; flex-wrap:wrap">
+            <button class="btn btn-secondary" type="button" id="resetBtn">Reset</button>
+            <button class="btn btn-primary" type="button" id="calcBtn">Calculate</button>
+          </div>
+        </section>
+
+        <!-- Results -->
+        <section class="card results" aria-labelledby="results-heading">
+          <h2 id="results-heading">Results</h2>
+          <div class="kpi-grid">
+            <div class="kpi"><div class="label">Base loan amount</div><div class="value" id="baseLoan">$0</div></div>
+            <div class="kpi"><div class="label">Financed UFMIP</div><div class="value" id="ufmip">$0</div></div>
+            <div class="kpi"><div class="label">Total loan amount</div><div class="value" id="totalLoan">$0</div></div>
+            <div class="kpi"><div class="label">Monthly payment</div><div class="value" id="piti">$0</div></div>
+          </div>
+          <div style="margin-top:1rem">
+            <div><strong>Principal & Interest:</strong> <span id="piOut">$0</span></div>
+            <div><strong>Monthly MIP:</strong> <span id="mipOut">$0</span></div>
+            <div><strong>Taxes + Insurance + HOA:</strong> <span id="tiOut">$0</span></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- SEO content -->
+      <section class="card" id="content">
+        <h2>FHA mortgage insurance: UFMIP & annual MIP</h2>
+        <p>FHA loans include an up-front premium (UFMIP, typically 1.75% of the base loan) which may be financed, and an annual MIP paid monthly. Rates depend on LTV, loan amount, and term.</p>
+
+        <h2>Formulae</h2>
+        <div class="formula-box">
+          <div><code>BaseLoan = Price − DownPayment</code></div>
+          <div><code>UFMIP = BaseLoan × 0.0175</code> (typical)</div>
+          <div><code>TotalLoan = BaseLoan + UFMIP</code></div>
+          <div><code>PI = r × TotalLoan / (1 − (1 + r)^(−n))</code>, with <code>r = APR/12</code>, <code>n = 12×Years</code></div>
+          <div><code>PITI = PI + MonthlyMIP + Tax/12 + Insurance/12 + HOA</code></div>
+        </div>
+
+        <h2>Frequently asked questions</h2>
+        <details><summary>Is UFMIP always 1.75%?</summary><p>That’s the common rate, but FHA may change policy; your lender’s disclosures govern.</p></details>
+        <details><summary>Can I remove FHA MIP?</summary><p>With sufficient principal reduction or refinance into a conventional loan, MIP can end; policy varies by case and LTV/term.</p></details>
+        <details><summary>Minimum down payment?</summary><p>Often 3.5% with qualifying credit; larger down payments lower MIP and payment.</p></details>
+
+        <!-- Full original guide (expanded) -->
+        <div class="author-box">
+          <p><strong>Author:</strong> Ugo Candido. <strong>Reviewed by:</strong> Finance SME Team. <strong>Last updated:</strong> <time datetime="2025-10-04">October 4, 2025</time>. Category: Finance › Mortgages.</p>
+        </div>
+      </section>
+
+      <!-- Sidebar (topic cluster) -->
+      <aside class="card" aria-label="Related calculators" style="margin-top:1.5rem">
+        <h2 style="margin-top:0">Related calculators</h2>
+        <ul>
+          <li><a href="/mortgage-refinance.html">Mortgage Refinance Calculator</a></li>
+          <li><a href="/va-loan.html">VA Loan Calculator</a></li>
+          <li><a href="/rent-vs-buy.html">Rent vs. Buy Calculator</a></li>
+        </ul>
+      </aside>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>&copy; <span id="year"></span> CalcDomain — professional calculators for finance, engineering, and everyday decisions.</p>
+      <p><a href="/sitemap.xml">Sitemap</a> · <a href="/about.html">About</a> · <a href="/contact.html">Contact</a></p>
+    </div>
+    <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+  </footer>
+
+  <script>
+    // Minimal calculator logic (no frameworks)
+    (function(){
+      const $ = id => document.getElementById(id);
+      const price = $('price'), down = $('down'), rate = $('rate'), term = $('term'), tax = $('tax'), ins = $('ins'), hoa = $('hoa');
+      const baseLoanOut=$('baseLoan'), ufmipOut=$('ufmip'), totalLoanOut=$('totalLoan'), pitiOut=$('piti'), piOut=$('piOut'), mipOut=$('mipOut'), tiOut=$('tiOut');
+      const resetBtn = $('resetBtn'), calcBtn = $('calcBtn');
+      let dpMode = 'amount';
+      document.querySelectorAll('input[name="dpMode"]').forEach(r=>{
+        r.addEventListener('change', e=>{
+          dpMode = e.target.value;
+          $('downUnit').textContent = dpMode==='percent' ? '%' : '$';
+        });
+      });
+
+      function fmt(n){ return isFinite(n) ? n.toLocaleString(undefined,{maximumFractionDigits:2,minimumFractionDigits:2}) : '0'; }
+
+      function calculate(){
+        const P = Number(price.value)||0;
+        let DP = Number(down.value)||0;
+        if (dpMode==='percent') DP = P*(DP/100);
+        const r = (Number(rate.value)||0)/100/12;
+        const n = (Number(term.value)||30)*12;
+
+        const base = Math.max(P-DP,0);
+        const ufmip = base*0.0175; // typical
+        const total = base+ufmip;
+
+        const PI = r>0 ? r*total/(1-Math.pow(1+r,-n)) : total/n;
+        const monthlyMIP = (base>0 ? (base*0.008)/12 : 0); // example 0.8%/yr — adjust per policy if needed
+        const monthlyTIH = (Number(tax.value)||0)/12 + (Number(ins.value)||0)/12 + (Number(hoa.value)||0);
+
+        baseLoanOut.textContent = '$'+fmt(base);
+        ufmipOut.textContent = '$'+fmt(ufmip);
+        totalLoanOut.textContent = '$'+fmt(total);
+        piOut.textContent = '$'+fmt(PI);
+        mipOut.textContent = '$'+fmt(monthlyMIP);
+        tiOut.textContent = '$'+fmt(monthlyTIH);
+        pitiOut.textContent = '$'+fmt(PI+monthlyMIP+monthlyTIH);
+      }
+
+      calcBtn.addEventListener('click', calculate);
+      resetBtn.addEventListener('click', ()=>{
+        [price,down,rate,term,tax,ins,hoa].forEach(i=>i.value='');
+        calculate();
+      });
+      // initial
+      calculate();
+    })();
+  </script>
+</body>
+</html>
