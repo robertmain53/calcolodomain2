@@ -955,7 +955,7 @@ $calc_cards
             popular_links="
                             <li><a href=\"mortgage-payment-calculator.html\" class=\"text-blue-600 hover:underline\">Mortgage Payment Calculator</a></li>
                             <li><a href=\"auto-loan-calculator.html\" class=\"text-blue-600 hover:underline\">Auto Loan Calculator</a></li>
-                            <li><a href=\"loan-payoff-calculator.html\" class=\"text-blue-600 hover:underline\">Loan Payoff Calculator</a></li>
+                            <li><a href=\"loan-payoff.html\" class=\"text-blue-600 hover:underline\">Loan Payoff Calculator</a></li>
                             <li><a href=\"house-affordability-calculator.html\" class=\"text-blue-600 hover:underline\">House Affordability Calculator</a></li>"
             ;;
         "health-fitness")
