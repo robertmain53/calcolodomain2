@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<title>Z-Score Calculator | CalcDomain</title>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<meta content="Professional, accessible Z-score calculator. Compute Z from a value, convert Z to a raw score, or standardize an entire dataset. Get left/right/two-tailed p-values and percentiles using the standard normal distribution." name="description"/>
+<meta content="Ugo Candido" name="author"/>
+<link href="https://calcdomain.com/z-score.html" rel="canonical"/>
+<meta content="#ffffff" name="theme-color"/>
+<meta content="index, follow" name="robots"/>
+<!-- Non-critical global styles (optional). Loaded non-blocking. -->
+<link as="style" href="style.css" onload="this.onload=null;this.rel='stylesheet'" rel="preload"/>
+<noscript><link href="style.css" rel="stylesheet"/></noscript>
+<style>
+    /* ===== Critical, mobile-first CSS (WCAG 2.1 AA, high-contrast) ===== */
+    :root{
+      --primary:#005A9C; --primary-600:#004a80;
+      --bg:#F8F9FA; --surface:#FFFFFF; --text:#212529; --muted:#5a6672;
+      --border:#DEE2E6; --success:#1B7F45; --error:#C62828; --warning:#B28704;
+      --radius:12px; --radius-sm:8px; --focus:3px; --touch:48px;
+    }
+    *{box-sizing:border-box}
+    html{font-size:16px}
+    @media (min-width:480px){html{font-size:17px}}
+    @media (min-width:992px){html{font-size:18px}}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      color:var(--text); background:var(--bg); line-height:1.6;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    a{color:var(--primary); text-decoration:none}
+    a:hover{text-decoration:underline}
+    a:focus{outline:var(--focus) solid var(--primary); outline-offset:2px; border-radius:3px}
+
+    .skip-link{
+      position:absolute; left:6px; top:-40px; background:var(--primary); color:#fff;
+      padding:.5rem .75rem; border-radius:0 0 6px 6px; z-index:1000;
+    }
+    .skip-link:focus{top:0}
+
+    header{
+      background:var(--surface); border-bottom:1px solid var(--border);
+    }
+    .container{max-width:1100px; margin:0 auto; padding:0 1rem}
+    .site-header{display:flex; align-items:center; gap:.75rem; padding:.85rem 0}
+    .brand{font-weight:800; color:var(--primary); font-size:1.1rem}
+    .breadcrumb{font-size:.95rem; margin:.75rem 0 0; color:var(--muted)}
+    .breadcrumb a{color:var(--muted)}
+    main{padding:1.25rem 0 2rem}
+    h1{font-size:clamp(1.6rem,4vw,2.2rem); margin:.25rem 0 .5rem; color:#0f2a3d}
+    h2{font-size:clamp(1.25rem,3.2vw,1.6rem); margin:1.75rem 0 .75rem; color:#0f2a3d}
+    h3{font-size:clamp(1.1rem,2.8vw,1.25rem); margin:1.25rem 0 .5rem; color:#12354e}
+    p{margin:.75rem 0; max-width:72ch}
+    ul{margin:.5rem 0 .75rem .95rem}
+
+    /* Layout: calculator + content */
+    .layout{display:grid; grid-template-columns:1fr; gap:1.25rem; margin-top:.5rem}
+    @media (min-width:992px){.layout{grid-template-columns: min(440px, 100%) 1fr; gap:2rem}}
+
+    .card{
+      background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+      padding:1rem; box-shadow:0 1px 2px rgba(0,0,0,.03);
+    }
+    @media (min-width:480px){.card{padding:1.25rem}}
+    .calculator{padding:1rem}
+    @media (min-width:480px){.calculator{padding:1.25rem}}
+
+    /* Form controls */
+    .form-group{margin-bottom:1rem}
+    label{font-weight:700; display:inline-flex; align-items:center; gap:.5rem}
+    .required{color:var(--error); margin-left:.25rem}
+    .field-note{display:block; font-size:.9rem; color:var(--muted); margin-top:.25rem}
+    .input, textarea{
+      width:100%; min-height:var(--touch); padding:.75rem .85rem; font-size:1rem;
+      border:1px solid var(--border); border-radius:var(--radius-sm); background:#fff;
+      transition:border-color .15s ease, box-shadow .15s ease;
+    }
+    textarea{min-height:148px; resize:vertical}
+    .input:focus, textarea:focus{
+      outline:none; border-color:var(--primary);
+      box-shadow:0 0 0 3px rgba(0,90,156,.18);
+    }
+    .input[aria-invalid="true"], textarea[aria-invalid="true"]{border-color:var(--error)}
+    .error{color:var(--error); font-size:.9rem; margin-top:.35rem}
+    .row{display:grid; grid-template-columns:1fr; gap:1rem}
+    @media (min-width:520px){.row-2{grid-template-columns:1fr 1fr}}
+    .unit{position:absolute; right:.75rem; top:50%; transform:translateY(-50%); color:var(--muted)}
+    .input-wrap{position:relative}
+
+    /* Radio group (segmented) */
+    .radio-seg{
+      display:flex; gap:.5rem; border:1px solid var(--border); padding:.25rem; border-radius:10px; flex-wrap:wrap;
+    }
+    .radio-seg input{position:absolute; opacity:0; pointer-events:none}
+    .seg{
+      flex:1 1 auto; min-width: calc(50% - .5rem); display:inline-flex; justify-content:center; align-items:center;
+      padding:.6rem .75rem; border-radius:8px; cursor:pointer; user-select:none; text-align:center; min-height:var(--touch);
+      color:#0f2a3d; border:1px solid transparent;
+    }
+    .radio-seg input:checked + .seg{background:var(--primary); color:#fff}
+    .radio-seg input:focus-visible + .seg{outline:var(--focus) solid var(--primary); outline-offset:2px}
+
+    /* Buttons */
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
+      padding:.75rem 1rem; min-height:var(--touch); min-width:var(--touch);
+      font-weight:700; border-radius:10px; border:1px solid transparent; cursor:pointer; background:var(--primary); color:#fff;
+    }
+    .btn:hover{background:var(--primary-600)}
+    .btn.secondary{background:#fff; color:var(--primary); border-color:var(--primary)}
+    .btn.ghost{background:transparent; color:var(--primary)}
+    .btn:focus{outline:var(--focus) solid var(--primary); outline-offset:2px}
+    .btn-bar{display:flex; gap:.5rem; flex-wrap:wrap}
+
+    /* Tooltip */
+    .tip-btn{
+      appearance:none; border:1px solid var(--border); background:#fff; color:#0f2a3d; font-weight:800;
+      width:1.5rem; height:1.5rem; border-radius:50%; line-height:1.2; text-align:center; cursor:pointer;
+    }
+    .tip-btn:focus{outline:var(--focus) solid var(--primary); outline-offset:2px}
+    .tooltip{
+      margin-top:.35rem; background:#eef6ff; border:1px solid #cfe3f8; color:#0b2a43;
+      padding:.6rem .75rem; border-radius:8px; font-size:.92rem;
+    }
+    .tooltip[hidden]{display:none}
+
+    /* Results */
+    .results{margin-top:1rem; background:#fbfcfe}
+    .results h2{margin-top:0}
+    .results-grid{display:grid; grid-template-columns:1fr; gap:.75rem}
+    @media (min-width:540px){.results-grid{grid-template-columns:1fr 1fr}}
+    .result{
+      background:#fff; border:1px solid var(--border); border-radius:10px; padding:.75rem .85rem;
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .result .label{color:var(--muted)}
+    .result .value{font-weight:800; color:var(--success); font-size:1.05rem}
+    .results[aria-busy="true"]{opacity:.7}
+    .results .note{color:var(--muted); font-size:.92rem; margin-top:.5rem}
+    .results-min{min-height:220px} /* Prevent CLS */
+
+    /* Data table / pre */
+    .pre{background:#0b1220; color:#e7ecf3; padding:1rem; border-radius:10px; overflow:auto; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace; font-size:.95rem}
+    .muted{color:var(--muted)}
+    .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0}
+
+    footer{
+      margin-top:2.5rem; background:#0f2a3d; color:#fff; padding:1.5rem 0;
+      border-top:1px solid #0b1e2d;
+    }
+    footer a{color:#9dd1ff}
+  </style>
+<!-- MathJax (renders LaTeX), deferred for performance -->
+<script crossorigin="anonymous" defer="" id="MathJax-script" integrity="sha384-nY0eXqUFSzDs2rqfQYjvGg9S4bq7jqT3C0HW5STr1e2N9t2m4vB2qXf5kCkY1+QK" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<!-- Structured Data: WebPage + HowTo + FAQ -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Z-Score Calculator",
+  "description": "Compute Z-scores, convert Z to raw values, standardize datasets, and obtain percentiles and p-values with a fast, accessible Z-score calculator.",
+  "url": "https://calcdomain.com/z-score.html",
+  "author": {
+    "@type": "Person",
+    "name": "Ugo Candido"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "CalcDomain"
+  },
+  "mainEntity": [
+    {
+      "@type": "HowTo",
+      "name": "Compute a Z-Score: A Worked Example",
+      "description": "Step-by-step example showing how to compute a Z-score and interpret the percentile.",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "name": "Collect inputs",
+          "text": "Assume x = 110, mean μ = 100, standard deviation σ = 15."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Apply the formula",
+          "text": "Compute z = (x − μ) / σ = (110 − 100) / 15 ≈ 0.6667."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Find percentile",
+          "text": "Left-tail probability Φ(z) ≈ 0.7475 (74.75th percentile)."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Interpret",
+          "text": "The value is about 0.67 standard deviations above the mean, which is typical."
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is a Z-score?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A Z-score standardizes a value relative to the mean and standard deviation of a distribution: z = (x − μ) / σ. It expresses how many standard deviations a value is from the mean."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I convert a Z-score back to a raw value?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Use x = μ + zσ. Provide the mean and standard deviation to reconstruct the original value from a Z-score."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What probabilities does the calculator report?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It provides left-tail P(Z ≤ z), right-tail P(Z ≥ z), two-tailed P(|Z| ≥ |z|), and the percentile (100 × P(Z ≤ z)) for the standard normal distribution."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I compute Z-scores for an entire dataset?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Paste your values and choose sample (n − 1) or population (n) standard deviation. The tool returns mean, SD, and a list of Z-scores."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which standard deviation should I use?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Use the population SD when you know the full population’s variability. Use the sample SD (n − 1) when estimating variability from a sample."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Are extreme Z-scores outliers?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Values beyond ±2 are unusual under normality; beyond ±3 are rare. Outlier status depends on context, assumptions, and diagnostics beyond the Z-score alone."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How accurate are the probabilities?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Probabilities are computed via a numerically stable approximation to the normal CDF based on the error function (Abramowitz and Stegun, 1964), providing high accuracy for typical use cases."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+<html><body><header class="bg-white shadow-sm sticky top-0 z-50">
+<nav aria-label="Primary" class="container mx-auto px-4 lg:px-6 py-4">
+<!-- TOP ROW -->
+<div class="flex justify-between items-center">
+<!-- LOGO -->
+<a class="text-2xl font-bold text-blue-600" href="index.html">CalcDomain</a>
+<!-- DESKTOP SEARCH -->
+<div class="w-full max-w-md hidden md:block mx-8">
+<div class="relative">
+<input autocomplete="off" class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" id="search-input" placeholder="Search for a calculator..." type="search"/>
+<svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<!-- CONTAINER RISULTATI RICERCA -->
+<div class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200" id="search-results"></div>
+</div>
+</div>
+<!-- NAVIGATION LINKS -->
+<div class="hidden md:flex items-center space-x-6">
+<a class="text-gray-700 hover:text-blue-600 transition-colors" href="search.html">Advanced Search</a>
+<a class="text-gray-700 hover:text-blue-600 transition-colors" href="#categories">Categories</a>
+</div>
+<!-- MOBILE TOGGLE (ARIA added) -->
+<button aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" class="md:hidden p-2" id="mobile-menu-toggle" type="button">
+<svg aria-hidden="true" class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+</div>
+<!-- MOBILE MENU (converted to <nav> with aria-label) -->
+<nav aria-label="Mobile menu" class="md:hidden mt-4 hidden" id="mobile-menu" role="navigation">
+<div class="mb-4">
+<div class="relative">
+<input class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="mobile-search-input" placeholder="Search calculators..." type="search"/>
+<svg aria-hidden="true" class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<div class="space-y-2">
+<a class="block py-2 text-gray-700 hover:text-blue-600" href="search.html">Advanced Search</a>
+<a class="block py-2 text-gray-700 hover:text-blue-600" href="#categories">Categories</a>
+</div>
+</nav>
+</nav>
+</header></body></html>
+<a class="skip-link" href="#main">Skip to main content</a>
+<header role="banner">
+<div aria-label="Site header" class="container site-header">
+<a aria-label="CalcDomain Home" class="brand" href="/">CalcDomain</a>
+</div>
+<div class="container">
+<nav aria-label="Breadcrumb" class="breadcrumb">
+<a href="/">Home</a> / <a href="https://calcdomain.com/math.html">Math</a> / <a href="https://calcdomain.com/math/statistics-and-probability.html">Statistics &amp; Probability</a> / Z-Score Calculator
+      </nav>
+</div>
+</header>
+<main class="container" id="main" role="main">
+<!-- 1. Page Title -->
+<h1>Z-Score Calculator</h1>
+<!-- 2. Introduction -->
+<p>
+      A professional-grade Z-score calculator for students, data analysts, and researchers. Compute the Z-score of a value, convert a Z-score back to a raw value, or standardize an entire dataset. Instantly get left/right/two-tailed probabilities and percentiles under the standard normal distribution.
+    </p>
+<div class="layout" id="calc-layout">
+<!-- 3. Interactive Calculator -->
+<section aria-labelledby="calc-heading" class="card calculator" id="zcalc">
+<h2 id="calc-heading">Calculator</h2>
+<!-- Mode selection -->
+<div aria-labelledby="mode-label" class="form-group" role="group">
+<div class="sr-only" id="mode-label">Choose calculation mode</div>
+<div aria-label="Calculation mode" class="radio-seg" role="radiogroup">
+<input checked="" id="mode-z-from-x" name="mode" type="radio" value="zFromX"/>
+<label class="seg" for="mode-z-from-x">Z from value</label>
+<input id="mode-x-from-z" name="mode" type="radio" value="xFromZ"/>
+<label class="seg" for="mode-x-from-z">Value from Z</label>
+<input id="mode-dataset" name="mode" type="radio" value="dataset"/>
+<label class="seg" for="mode-dataset">Dataset Z-scores</label>
+</div>
+</div>
+<!-- Panels -->
+<div data-panel="zFromX" id="panel-z-from-x">
+<div class="row row-2">
+<div class="form-group">
+<label for="x-value">Value (x) <span aria-hidden="true" class="required">*</span>
+<button aria-controls="tip-x" aria-expanded="false" class="tip-btn" type="button">?</button>
+</label>
+<div class="input-wrap">
+<input aria-describedby="err-x tip-x" aria-required="true" class="input" id="x-value" inputmode="decimal" type="number"/>
+</div>
+<div class="tooltip" hidden="" id="tip-x" role="tooltip">
+                The observed value to standardize.
+              </div>
+<div aria-live="polite" class="error" id="err-x"></div>
+</div>
+<div class="form-group">
+<label for="mean">Mean (μ) <span aria-hidden="true" class="required">*</span>
+<button aria-controls="tip-mean" aria-expanded="false" class="tip-btn" type="button">?</button>
+</label>
+<div class="input-wrap">
+<input aria-describedby="err-mean tip-mean" aria-required="true" class="input" id="mean" inputmode="decimal" type="number"/>
+<span aria-hidden="true" class="unit">μ</span>
+</div>
+<div class="tooltip" hidden="" id="tip-mean" role="tooltip">
+                The expected average of the distribution for x.
+              </div>
+<div aria-live="polite" class="error" id="err-mean"></div>
+</div>
+</div>
+<div class="row row-2">
+<div class="form-group">
+<label for="sd">Standard Deviation (σ) <span aria-hidden="true" class="required">*</span>
+<button aria-controls="tip-sd" aria-expanded="false" class="tip-btn" type="button">?</button>
+</label>
+<div class="input-wrap">
+<input aria-describedby="err-sd tip-sd" aria-required="true" class="input" id="sd" inputmode="decimal" step="any" type="number"/>
+<span aria-hidden="true" class="unit">σ</span>
+</div>
+<div class="tooltip" hidden="" id="tip-sd" role="tooltip">
+                Use population σ if known; otherwise use a sample estimate. Must be greater than 0.
+              </div>
+<div aria-live="polite" class="error" id="err-sd"></div>
+</div>
+<div class="form-group">
+<label for="tails">Tail for p-value
+                <button aria-controls="tip-tails" aria-expanded="false" class="tip-btn" type="button">?</button>
+</label>
+<select aria-describedby="tip-tails" class="input" id="tails">
+<option value="left">Left-tailed P(Z ≤ z)</option>
+<option value="right">Right-tailed P(Z ≥ z)</option>
+<option value="two">Two-tailed P(|Z| ≥ |z|)</option>
+</select>
+<div class="tooltip" hidden="" id="tip-tails" role="tooltip">
+                Choose which probability to highlight in the results.
+              </div>
+</div>
+</div>
+</div>
+<div data-panel="xFromZ" hidden="" id="panel-x-from-z">
+<div class="row row-2">
+<div class="form-group">
+<label for="z-input">Z-score (z) <span aria-hidden="true" class="required">*</span></label>
+<input aria-describedby="err-z" aria-required="true" class="input" id="z-input" inputmode="decimal" type="number"/>
+<div aria-live="polite" class="error" id="err-z"></div>
+</div>
+<div class="form-group">
+<label for="mean2">Mean (μ) <span aria-hidden="true" class="required">*</span></label>
+<input aria-describedby="err-mean2" aria-required="true" class="input" id="mean2" inputmode="decimal" type="number"/>
+<div aria-live="polite" class="error" id="err-mean2"></div>
+</div>
+</div>
+<div class="row row-2">
+<div class="form-group">
+<label for="sd2">Standard Deviation (σ) <span aria-hidden="true" class="required">*</span></label>
+<input aria-describedby="err-sd2" aria-required="true" class="input" id="sd2" inputmode="decimal" step="any" type="number"/>
+<div aria-live="polite" class="error" id="err-sd2"></div>
+</div>
+<div class="form-group">
+<label for="tails2">Tail for p-value</label>
+<select class="input" id="tails2">
+<option value="left">Left-tailed P(Z ≤ z)</option>
+<option value="right">Right-tailed P(Z ≥ z)</option>
+<option value="two">Two-tailed P(|Z| ≥ |z|)</option>
+</select>
+</div>
+</div>
+</div>
+<div data-panel="dataset" hidden="" id="panel-dataset">
+<div class="form-group">
+<label for="data">Dataset values <span aria-hidden="true" class="required">*</span>
+<button aria-controls="tip-data" aria-expanded="false" class="tip-btn" type="button">?</button>
+</label>
+<textarea aria-describedby="err-data tip-data" aria-required="true" class="input" id="data" placeholder="Paste numbers separated by comma, space, semicolon, or newline"></textarea>
+<div class="tooltip" hidden="" id="tip-data" role="tooltip">
+              Example: 98, 102, 110, 105  100; 97.5. A minimum of 2 valid numbers is required.
+            </div>
+<div aria-live="polite" class="error" id="err-data"></div>
+</div>
+<div class="row row-2">
+<div class="form-group">
+<label for="sd-type">Standard deviation type</label>
+<select aria-label="Standard deviation type" class="input" id="sd-type">
+<option value="sample">Sample SD (n − 1)</option>
+<option value="population">Population SD (n)</option>
+</select>
+<span class="field-note">Controls whether Z-scores use s or σ.</span>
+</div>
+<div class="form-group">
+<label for="highlight-x">Value to highlight (optional)</label>
+<input aria-describedby="note-highlight" class="input" id="highlight-x" inputmode="decimal" type="number"/>
+<span class="field-note" id="note-highlight">If provided, its Z-score is highlighted alongside the dataset results.</span>
+</div>
+</div>
+</div>
+<div aria-label="Calculator actions" class="btn-bar" role="group">
+<button aria-controls="results" class="btn" id="btn-calc" type="button">Calculate</button>
+<button class="btn secondary" id="btn-clear" type="button">Clear</button>
+</div>
+</section>
+<!-- 4. Results Area -->
+<section aria-busy="false" aria-labelledby="results-heading" aria-live="polite" class="card results results-min" id="results" tabindex="-1">
+<h2 id="results-heading">Results</h2>
+<div class="results-grid" id="results-grid">
+<div class="result">
+<span class="label">Z-score</span>
+<span class="value" id="res-z">—</span>
+</div>
+<div class="result">
+<span class="label">Left-tail P(Z ≤ z)</span>
+<span class="value" id="res-left">—</span>
+</div>
+<div class="result">
+<span class="label">Right-tail P(Z ≥ z)</span>
+<span class="value" id="res-right">—</span>
+</div>
+<div class="result">
+<span class="label">Two-tailed p-value</span>
+<span class="value" id="res-two">—</span>
+</div>
+<div class="result">
+<span class="label">Percentile</span>
+<span class="value" id="res-percentile">—</span>
+</div>
+<div class="result">
+<span class="label">Classification</span>
+<span class="value" id="res-class">—</span>
+</div>
+<div class="result" hidden="" id="res-x-wrap">
+<span class="label">Reconstructed value (x)</span>
+<span class="value" id="res-x">—</span>
+</div>
+</div>
+<div class="muted" hidden="" id="dataset-summary">
+<h3>Dataset summary</h3>
+<p id="ds-line">—</p>
+<div class="btn-bar">
+<button aria-controls="zlist" aria-expanded="false" class="btn ghost" id="btn-toggle-zlist" type="button">Show Z-score list</button>
+<button class="btn secondary" id="btn-copy-zlist" type="button">Copy Z-scores (CSV)</button>
+</div>
+<pre class="pre" hidden="" id="zlist"></pre>
+<p class="note">Note: If all values are identical (SD = 0), all Z-scores are reported as 0.</p>
+</div>
+</section>
+</div>
+<!-- 5. Authoritative Content Ecosystem -->
+<section aria-labelledby="h2-source" class="card">
+<h2 id="h2-source">Data Source and Methodology</h2>
+<p>
+        Primary references:
+      </p>
+<ul>
+<li>
+          NIST/SEMATECH e-Handbook of Statistical Methods (2012), Normal Distribution and Summary Statistics. Available at:
+          <a href="https://www.itl.nist.gov/div898/handbook/" rel="noopener" target="_blank">https://www.itl.nist.gov/div898/handbook/</a>
+</li>
+<li>
+          Abramowitz, M., &amp; Stegun, I. A. (1964). Handbook of Mathematical Functions, National Bureau of Standards, Chapter 7 (Error Function).
+          <a href="https://personal.math.ubc.ca/~cbm/aands/" rel="noopener" target="_blank">Reference</a>
+</li>
+</ul>
+<p><strong>Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.</strong></p>
+</section>
+<section aria-labelledby="h2-formula" class="card">
+<h2 id="h2-formula">The Formula Explained</h2>
+<p>Core definitions:</p>
+<div>
+<p>Inline: z = (x − μ) / σ</p>
+<div>
+<p>Display:</p>
+<p>$$ z = \frac{x - \mu}{\sigma} $$</p>
+<p>$$ x = \mu + z\,\sigma $$</p>
+<p>$$ \Phi(z) = \Pr(Z \le z) = \tfrac{1}{2}\left[1 + \operatorname{erf}\!\left(\frac{z}{\sqrt{2}}\right)\right] $$</p>
+<p>$$ p_{\text{right}} = 1 - \Phi(z), \quad p_{\text{two}} = 2\min\{\Phi(z), 1 - \Phi(z)\} $$</p>
+<p>For a dataset {x₁,…,xₙ}:</p>
+<p>$$ \bar{x} = \frac{1}{n}\sum_{i=1}^{n} x_i, \quad s = \sqrt{\frac{1}{n-1}\sum_{i=1}^{n}(x_i - \bar{x})^2}, \quad \sigma_{\text{pop}} = \sqrt{\frac{1}{n}\sum_{i=1}^{n}(x_i - \bar{x})^2} $$</p>
+<p>Each standardized score: $$ z_i = \frac{x_i - \bar{x}}{s} \quad \text{or} \quad \frac{x_i - \bar{x}}{\sigma_{\text{pop}}} $$</p>
+</div>
+</div>
+</section>
+<section aria-labelledby="h2-glossary" class="card">
+<h2 id="h2-glossary">Glossary of Variables</h2>
+<ul>
+<li>x — raw value (observation) to standardize.</li>
+<li>μ — mean of the distribution (population or assumed mean).</li>
+<li>σ — standard deviation of the distribution (population SD, must be &gt; 0).</li>
+<li>z — Z-score, measured in standard deviations from the mean.</li>
+<li>Φ(z) — standard normal CDF, the left-tail probability.</li>
+<li>Percentile — 100 × Φ(z).</li>
+<li>Left/Right/Two-tailed p-value — probabilities under the standard normal curve.</li>
+<li>s — sample standard deviation (n − 1), used to standardize sample data.</li>
+</ul>
+</section>
+<section aria-labelledby="h2-example" class="card">
+<h2 id="h2-example">How It Works: A Step-by-Step Example</h2>
+<h3>Worked Example</h3>
+<p>
+        Suppose a test has μ = 100 and σ = 15. A student scores x = 110.
+      </p>
+<ol>
+<li>Compute the Z-score using z = (x − μ) / σ:
+          <strong>z = (110 − 100) / 15 ≈ 0.6667</strong>.
+        </li>
+<li>Compute the percentile: Φ(0.6667) ≈ 0.7475 → 74.75th percentile.</li>
+<li>Right-tail probability: 1 − Φ(0.6667) ≈ 0.2525.</li>
+<li>Two-tailed p-value: 2 × min(0.7475, 0.2525) = 0.5050.</li>
+<li>Interpretation: About 0.67 SD above average, which is typical.</li>
+</ol>
+</section>
+<section aria-labelledby="h2-faq" class="card">
+<h2 id="h2-faq">Frequently Asked Questions (FAQ)</h2>
+<details>
+<summary>What is a Z-score?</summary>
+<p>A Z-score standardizes a value relative to the mean and standard deviation: z = (x − μ) / σ. It indicates how many standard deviations a value is above or below the mean.</p>
+</details>
+<details>
+<summary>When should I use sample vs population standard deviation?</summary>
+<p>Use the population SD (σ) when the variability of the entire population is known. Use the sample SD (s, with n − 1 in the denominator) when you estimate variability from a sample.</p>
+</details>
+<details>
+<summary>Does a Z-score assume normality?</summary>
+<p>Z-scores are most interpretable under approximate normality. For highly skewed or heavy-tailed data, probabilities derived from the standard normal may be misleading.</p>
+</details>
+<details>
+<summary>How precise are the probabilities?</summary>
+<p>They are calculated via an accurate approximation to the normal CDF using the error function (erf). For most practical purposes, the precision matches standard statistical tables.</p>
+</details>
+<details>
+<summary>Are Z-scores the same as standard scores?</summary>
+<p>Yes. “Standard score” is another name for Z-score, representing units of standard deviation from the mean.</p>
+</details>
+<details>
+<summary>What percentile corresponds to z = 0, 1, and 2?</summary>
+<p>z = 0 → 50th percentile; z = 1 → ~84.13th percentile; z = 2 → ~97.72nd percentile (under the standard normal model).</p>
+</details>
+<details>
+<summary>Can I export dataset Z-scores?</summary>
+<p>Yes. After computing, use “Copy Z-scores (CSV)” to put a CSV list on your clipboard.</p>
+</details>
+</section>
+<!-- 6. Authorship and Review -->
+<section aria-labelledby="h2-authorship" class="card">
+<h2 id="h2-authorship">Authorship &amp; Review</h2>
+<p>
+        Tool developed by <strong>Ugo Candido</strong>.<br/>
+        Content verified by <strong>CalcDomain Expert Team</strong>.<br/>
+        Last reviewed for accuracy on: <time datetime="2025-09-14">September 14, 2025</time>.
+      </p>
+</section>
+</main>
+<!-- Standard Footer --> <html><body><footer class="bg-gray-900 text-white py-12">
+<div class="container mx-auto px-4">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+<div>
+<h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+<p class="text-gray-400 mb-4">Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.</p>
+<div class="flex space-x-4">
+<a aria-label="Twitter" class="text-gray-400 hover:text-white" href="#">
+<svg aria-hidden="true" class="w-6 h-6" fill="currentColor" viewbox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"></path></svg>
+</a>
+<a aria-label="Facebook" class="text-gray-400 hover:text-white" href="#">
+<svg aria-hidden="true" class="w-6 h-6" fill="currentColor" viewbox="0 0 24 24"><path d="M22.46 6c-.77.35-1.6.58-2.46.69.88-.53 1.56-1.37 1.88-2.38-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98C8.28 9.09 5.11 7.38 3 4.79c-.37.63-.58 1.37-.58 2.15 0 1.49.75 2.81 1.91 3.56-.71 0-1.37-.2-1.95-.5v.03c0 2.08 1.48 3.82 3.44 4.21a4.22 4.22 0 0 1-1.93.07 4.28 4.28 0 0 0 4 2.98 8.521 8.521 0 0 1-5.33 1.84c-.34 0-.68-.02-1.02-.06C3.44 20.29 5.7 21 8.12 21 16 21 20.33 14.46 20.33 8.79c0-.19 0-.37-.01-.56.84-.6 1.56-1.36 2.14-2.23z"></path></svg>
+</a>
+</div>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Categories</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="finance.html">Finance</a></li>
+<li><a class="text-gray-400 hover:text-white" href="health-fitness.html">Health &amp; Fitness</a></li>
+<li><a class="text-gray-400 hover:text-white" href="math-conversions.html">Math &amp; Conversions</a></li>
+<li><a class="text-gray-400 hover:text-white" href="lifestyle-everyday.html">Lifestyle &amp; Everyday</a></li>
+<li><a class="text-gray-400 hover:text-white" href="construction-diy.html">Construction &amp; DIY</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="mortgage-payment.html">Mortgage Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="percentage-calculator.html">Percentage Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="bmi-calculator.html">BMI Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="auto-loan-calculator.html">Auto Loan Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="house-affordability.html">House Affordability</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Support</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="#">About Us</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Contact</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Privacy Policy</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Terms of Service</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Site Map</a></li>
+</ul>
+</div>
+</div>
+<div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+<p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+</div>
+</div>
+</footer></body></html>
+
+
+<html><head><script defer="" src="/assets/js/mobile-menu.js"></script></head></html></body></html>

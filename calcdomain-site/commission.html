@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<title>Commission Calculator | Finance • Business</title>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<meta content="Professional commission calculator for sales and real estate. Compute simple, flat+percent, or tiered commissions, apply caps, and split payouts. WCAG 2.1 AA accessible, mobile‑first, and optimized for Core Web Vitals." name="description"/>
+<meta content="Ugo Candido" name="author"/>
+<link href="https://calcdomain.com/commission.html" rel="canonical"/>
+<meta content="#ffffff" name="theme-color"/>
+<meta content="IE=edge" http-equiv="x-ua-compatible"/>
+<style>
+    /* ======= Design tokens (critical) ======= */
+    :root{
+      --primary:#005A9C; --primary-700:#004574; --secondary:#0B3D60;
+      --bg:#F8F9FA; --surface:#FFFFFF; --text:#212529; --muted:#6C757D;
+      --border:#DEE2E6; --success:#198754; --danger:#DC3545; --warning:#B8860B;
+      --radius-s:6px; --radius-m:10px; --radius-l:12px;
+      --touch:48px; --shadow-sm:0 2px 4px rgba(0,0,0,.05);
+      --shadow:0 6px 16px rgba(0,0,0,.08);
+    }
+    *,*::before,*::after{box-sizing:border-box}
+    html{font-size:16px}
+    body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+    img{max-width:100%;display:block}
+    a{color:var(--primary);text-decoration:none}
+    a:hover{text-decoration:underline}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    .skip-link{position:absolute;left:8px;top:-40px;background:var(--primary);color:#fff;padding:.5rem .75rem;border-radius:0 0 6px 6px;z-index:1000}
+    .skip-link:focus{top:0}
+    /* ======= Layout ======= */
+    .container{max-width:1200px;margin:0 auto;padding:0 1rem}
+    header.site-header{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:var(--shadow-sm)}
+    .header-inner{display:grid;grid-template-columns:auto 1fr auto;gap:1rem;align-items:center;padding:.75rem 0}
+    .logo{font-weight:800;color:var(--primary);font-size:1.25rem}
+    .site-search{display:flex;align-items:center;gap:.5rem;width:100%}
+    .site-search input[type="search"]{flex:1;min-width:0;padding:.6rem .75rem;border:1px solid var(--border);border-radius:8px}
+    .site-search .btn{white-space:nowrap}
+    nav.main-nav ul{display:flex;gap:.75rem;list-style:none;margin:0;padding:0}
+    nav.main-nav a{display:inline-block;padding:.5rem .75rem;border-radius:8px}
+    nav.main-nav a:focus{outline:3px solid var(--primary);outline-offset:2px}
+    /* ======= Buttons ======= */
+    .btn{display:inline-flex;align-items:center;justify-content:center;padding:.7rem 1rem;border:1px solid transparent;border-radius:8px;cursor:pointer;font-weight:600;text-decoration:none;min-height:var(--touch);min-width:var(--touch)}
+    .btn-primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+    .btn-primary:hover{background:var(--primary-700);border-color:var(--primary-700)}
+    .btn-secondary{background:transparent;color:var(--primary);border-color:var(--primary)}
+    .btn-ghost{background:transparent;border-color:var(--border);color:var(--text)}
+    .help-btn{inline-size:var(--touch);block-size:var(--touch);min-inline-size:var(--touch);min-block-size:var(--touch);display:inline-grid;place-items:center;border:1px solid var(--border);border-radius:50%;font-weight:700;background:#fff;color:var(--primary)}
+    .help-btn:focus{outline:3px solid var(--primary);outline-offset:2px}
+    /* ======= Main ======= */
+    main{padding:1.5rem 0}
+    h1{font-size:clamp(1.75rem,3.5vw,2.25rem);margin:.25rem 0 0;color:var(--secondary)}
+    h2{font-size:clamp(1.35rem,3vw,1.75rem);color:var(--secondary);margin:1.5rem 0 .75rem}
+    h3{font-size:1.1rem;margin:1rem 0 .5rem;color:var(--secondary)}
+    p{margin:.75rem 0}
+    /* grid */
+    .calculator-layout{display:grid;grid-template-columns:1fr;gap:1.25rem;margin-top:.75rem}
+    @media (min-width: 992px){
+      .calculator-layout{grid-template-columns:450px 1fr}
+    }
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-sm);padding:1.25rem}
+    /* ======= Form styles ======= */
+    .form-group{margin-bottom:1rem}
+    .form-group label{display:block;font-weight:700;margin-bottom:.35rem}
+    .field-row{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+    .form-control{width:100%;padding:.75rem 1rem;min-height:48px;border:1px solid var(--border);border-radius:8px;font-size:1rem}
+    .form-control:focus-visible{outline:3px solid var(--primary);outline-offset:2px}
+    .form-control[aria-invalid="true"]{border-color:var(--danger)}
+    .input-suffix{position:relative}
+    .input-suffix .suffix{position:absolute;right:.75rem;top:50%;transform:translateY(-50%);color:var(--muted)}
+    .radio-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+    .radio-tile{border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;gap:.5rem;padding:.5rem;min-height:48px}
+    .radio-tile input{appearance:none;width:18px;height:18px;border:2px solid var(--primary);border-radius:50%;display:inline-block;position:relative}
+    .radio-tile input:checked{background:radial-gradient(var(--primary) 45%, transparent 46%)}
+    .radio-tile label{cursor:pointer;font-weight:600}
+    .error-message{color:var(--danger);font-size:.875rem;margin-top:.25rem}
+    .fieldset{border:1px solid var(--border);border-radius:10px;padding:1rem}
+    .fieldset legend{font-weight:700;color:var(--secondary);padding:0 .5rem}
+    .tooltip{display:none;margin-top:.5rem;border-left:3px solid var(--primary);padding:.5rem .75rem;background:#f0f6fb;border-radius:6px}
+    .tooltip[aria-hidden="false"]{display:block}
+    /* ======= Results ======= */
+    .results{min-height:260px}
+    .result-item{display:flex;justify-content:space-between;align-items:center;padding:.6rem 0;border-bottom:1px solid var(--border)}
+    .result-item:last-child{border-bottom:none}
+    .result-label{color:var(--muted)}
+    .result-value{font-weight:800;color:var(--success);font-size:1.2rem}
+    .badge{display:inline-block;background:#eef7f0;color:var(--success);border:1px solid #cfe9d6;border-radius:999px;padding:.15rem .5rem;font-size:.85rem;margin-left:.5rem}
+    .note{font-size:.9rem;color:var(--muted)}
+    /* ======= Footer ======= */
+    footer.site-footer{background:#0b2a40;color:#fff;margin-top:2rem}
+    .site-footer a{color:#fff}
+    .footer-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;padding:1.25rem 0}
+    .footer-bottom{border-top:1px solid rgba(255,255,255,.15);padding:1rem 0;text-align:center;font-size:.9rem;color:#e6eef5}
+    /* Accessibility high-contrast preference */
+    @media (prefers-contrast: more){
+      :root{--primary:#00305c;--secondary:#000}
+    }
+  </style>
+<!-- MathJax for LaTeX rendering (deferred for performance) -->
+<script crossorigin="anonymous" defer="" integrity="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Commission Calculator",
+  "description": "Compute sales and real-estate commissions with simple, flat+percent, or tiered models. Apply commission caps and split payouts. WCAG-accessible, mobile-first, and optimized for Core Web Vitals.",
+  "url": "https://calcdomain.com/commission.html",
+  "inLanguage": "en",
+  "author": {
+    "@type": "Person",
+    "name": "Ugo Candido"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "CalcDomain"
+  },
+  "mainEntity": [
+    {
+      "@type": "HowTo",
+      "name": "How it Works: A Step-by-Step Example",
+      "description": "Example using a tiered commission with a cap and a 60/40 split.",
+      "supply": [
+        {
+          "@type": "HowToSupply",
+          "name": "Sale amount"
+        },
+        {
+          "@type": "HowToSupply",
+          "name": "Commission model and rates"
+        },
+        {
+          "@type": "HowToSupply",
+          "name": "Optional cap and split"
+        }
+      ],
+      "step": [
+        {
+          "@type": "HowToStep",
+          "name": "Enter sale amount and discount",
+          "text": "Set Sale amount to $150,000 and Discount to $0."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Choose Tiered model and define tiers",
+          "text": "Use 4% up to $100,000; 2% on the next $50,000; 1% above that."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Add a commission cap",
+          "text": "Set Cap to $6,000 to limit the maximum commission."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Split the payout",
+          "text": "Enable Split and set Agent share to 60%."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Review the results",
+          "text": "Commission before cap is $5,000; capped remains $5,000; agent receives $3,000 and partner $2,000; effective rate is 3.33%."
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What commission models does this calculator support?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "You can compute simple percentage commissions, flat fee plus percentage, or tiered brackets across up to three tiers. You may also apply a cap and split the payout."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do tiered commissions work?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Tiered commissions apply one rate to sales up to Threshold 1, a second rate to the portion between Threshold 1 and Threshold 2, and a third rate to any amount above Threshold 2."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is a commission cap?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A cap is a maximum payout. If the calculated commission exceeds the cap, it is reduced to the cap amount."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I split the commission between two parties?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Enable Split and specify the agent's share (e.g., 60%). The tool shows amounts for both parties."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which currency formats are supported?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "You can pick a symbol such as $, €, or £, and values are formatted with your browser locale for thousands separators."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is this calculator suitable for real estate?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. The percentage and tiered options mirror common real-estate practices (e.g., a fixed rate or broken-point structures) and allow caps and splits."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do the results constitute financial advice?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. This tool provides general calculations based on your inputs. Always confirm rates, tiers, and caps in your written compensation agreement."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<html><body><header class="bg-white shadow-sm sticky top-0 z-50">
+<nav aria-label="Primary" class="container mx-auto px-4 lg:px-6 py-4">
+<!-- TOP ROW -->
+<div class="flex justify-between items-center">
+<!-- LOGO -->
+<a class="text-2xl font-bold text-blue-600" href="index.html">CalcDomain</a>
+<!-- DESKTOP SEARCH -->
+<div class="w-full max-w-md hidden md:block mx-8">
+<div class="relative">
+<input autocomplete="off" class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" id="search-input" placeholder="Search for a calculator..." type="search"/>
+<svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<!-- CONTAINER RISULTATI RICERCA -->
+<div class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200" id="search-results"></div>
+</div>
+</div>
+<!-- NAVIGATION LINKS -->
+<div class="hidden md:flex items-center space-x-6">
+<a class="text-gray-700 hover:text-blue-600 transition-colors" href="search.html">Advanced Search</a>
+<a class="text-gray-700 hover:text-blue-600 transition-colors" href="#categories">Categories</a>
+</div>
+<!-- MOBILE TOGGLE (ARIA added) -->
+<button aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" class="md:hidden p-2" id="mobile-menu-toggle" type="button">
+<svg aria-hidden="true" class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+</div>
+<!-- MOBILE MENU (converted to <nav> with aria-label) -->
+<nav aria-label="Mobile menu" class="md:hidden mt-4 hidden" id="mobile-menu" role="navigation">
+<div class="mb-4">
+<div class="relative">
+<input class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="mobile-search-input" placeholder="Search calculators..." type="search"/>
+<svg aria-hidden="true" class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<div class="space-y-2">
+<a class="block py-2 text-gray-700 hover:text-blue-600" href="search.html">Advanced Search</a>
+<a class="block py-2 text-gray-700 hover:text-blue-600" href="#categories">Categories</a>
+</div>
+</nav>
+</nav>
+</header></body></html>
+<main class="container" id="main" role="main">
+<nav aria-label="Breadcrumb" class="note" style="margin:.5rem 0 1rem;">
+<a href="/">Home</a> › <a href="https://calcdomain.com/business-operations.html">Business Operations</a> › Commission Calculator
+    </nav>
+<h1>Commission Calculator</h1>
+<p>
+      This professional commission calculator helps sales reps, managers, and real‑estate professionals compute payouts quickly and accurately.
+      Model simple percentage, flat+percent, or tiered commissions; apply caps; and split amounts between parties — all with accessible, mobile‑first UX.
+    </p>
+<div aria-label="Calculator and content layout" class="calculator-layout" role="region">
+<aside aria-labelledby="calc-heading" class="card">
+<section aria-describedby="calc-desc" id="calculator">
+<h2 class="sr-only" id="calc-heading">Interactive Commission Calculator</h2>
+<p class="note" id="calc-desc">All required fields are marked with an asterisk (*). Values update live as you type.</p>
+<div class="form-group">
+<label for="currencySymbol">Currency symbol</label>
+<div class="field-row">
+<input aria-describedby="currencyHelp" class="form-control" id="currencySymbol" inputmode="text" maxlength="3" value="$"/>
+<span class="note" id="currencyHelp">Examples: $, €, £</span>
+</div>
+</div>
+<div class="form-group">
+<label for="saleAmount">Sale amount *</label>
+<div class="input-suffix">
+<input aria-describedby="saleAmountError saleTT" aria-required="true" class="form-control" id="saleAmount" min="0" placeholder="e.g., 150000" step="0.01" type="number"/>
+<span aria-hidden="true" class="suffix">amount</span>
+</div>
+<div class="field-row" style="gap:.5rem;align-items:center;margin-top:.25rem">
+<button aria-controls="saleTT" aria-expanded="false" aria-label="What counts as sale amount?" class="help-btn" id="saleTTBtn" type="button">?</button>
+<div aria-hidden="true" class="tooltip" id="saleTT" role="region">
+                Enter the transaction value used as the commission base (e.g., contract price). Discounts reduce this base.
+              </div>
+</div>
+<div aria-live="polite" class="error-message" id="saleAmountError" role="alert"></div>
+</div>
+<div class="form-group">
+<label for="discount">Discounts/adjustments</label>
+<div class="input-suffix">
+<input aria-describedby="discountError discTT" class="form-control" id="discount" min="0" placeholder="e.g., 0" step="0.01" type="number"/>
+<span aria-hidden="true" class="suffix">less</span>
+</div>
+<div class="field-row" style="gap:.5rem;align-items:center;margin-top:.25rem">
+<button aria-controls="discTT" aria-expanded="false" aria-label="What is discounted?" class="help-btn" id="discTTBtn" type="button">?</button>
+<div aria-hidden="true" class="tooltip" id="discTT" role="region">
+                Optional reductions (e.g., promotions, concessions) subtracted from the sale amount before commission is computed.
+              </div>
+</div>
+<div aria-live="polite" class="error-message" id="discountError" role="alert"></div>
+</div>
+<fieldset class="fieldset form-group">
+<legend>Commission model *</legend>
+<div aria-labelledby="modelGroupLabel" class="radio-grid" role="radiogroup">
+<span class="sr-only" id="modelGroupLabel">Choose commission model</span>
+<div class="radio-tile">
+<input aria-describedby="modelPercentLabel" checked="" id="modelPercent" name="model" type="radio" value="percent"/>
+<label for="modelPercent" id="modelPercentLabel">Percentage</label>
+</div>
+<div class="radio-tile">
+<input aria-describedby="modelFlatPlusLabel" id="modelFlatPlus" name="model" type="radio" value="flatplus"/>
+<label for="modelFlatPlus" id="modelFlatPlusLabel">Flat + %</label>
+</div>
+<div class="radio-tile" style="grid-column:1 / -1">
+<input aria-describedby="modelTieredLabel" id="modelTiered" name="model" type="radio" value="tiered"/>
+<label for="modelTiered" id="modelTieredLabel">Tiered (brackets)</label>
+</div>
+</div>
+</fieldset>
+<!-- Percentage model -->
+<div class="form-group" data-model="percent" id="percentFields">
+<label for="percentRate">Commission rate (%) *</label>
+<div class="input-suffix">
+<input aria-describedby="percentRateError" aria-required="true" class="form-control" id="percentRate" max="100" min="0" step="0.01" type="number" value="3"/>
+<span aria-hidden="true" class="suffix">%</span>
+</div>
+<div aria-live="polite" class="error-message" id="percentRateError" role="alert"></div>
+</div>
+<!-- Flat + Percent model -->
+<div aria-hidden="true" class="form-group" data-model="flatplus" hidden="" id="flatplusFields">
+<div class="form-group">
+<label for="flatFee">Flat fee *</label>
+<input aria-describedby="flatFeeError" aria-required="true" class="form-control" id="flatFee" min="0" step="0.01" type="number" value="0"/>
+<div aria-live="polite" class="error-message" id="flatFeeError" role="alert"></div>
+</div>
+<div class="form-group">
+<label for="flatPlusRate">Percentage on base (%) *</label>
+<div class="input-suffix">
+<input aria-describedby="flatPlusRateError" aria-required="true" class="form-control" id="flatPlusRate" max="100" min="0" step="0.01" type="number" value="2.5"/>
+<span aria-hidden="true" class="suffix">%</span>
+</div>
+<div aria-live="polite" class="error-message" id="flatPlusRateError" role="alert"></div>
+</div>
+</div>
+<!-- Tiered model -->
+<div aria-hidden="true" class="form-group" data-model="tiered" hidden="" id="tieredFields">
+<div class="field-row" style="gap:.5rem;align-items:center;margin-bottom:.25rem">
+<button aria-controls="tierTT" aria-expanded="false" aria-label="How tiered commission works" class="help-btn" id="tierTTBtn" type="button">?</button>
+<div aria-hidden="true" class="tooltip" id="tierTT" role="region">
+                Apply Rate 1 up to Threshold 1, Rate 2 to the portion between Threshold 1 and 2, and Rate 3 above Threshold 2.
+              </div>
+</div>
+<div class="form-group">
+<label for="t1">Threshold 1</label>
+<input aria-describedby="t1Error" class="form-control" id="t1" min="0" step="0.01" type="number" value="100000"/>
+<div aria-live="polite" class="error-message" id="t1Error" role="alert"></div>
+</div>
+<div class="form-group">
+<label for="r1">Rate 1 (%)</label>
+<input aria-describedby="r1Error" class="form-control" id="r1" max="100" min="0" step="0.01" type="number" value="4"/>
+<div aria-live="polite" class="error-message" id="r1Error" role="alert"></div>
+</div>
+<div class="form-group">
+<label for="t2">Threshold 2</label>
+<input aria-describedby="t2Error" class="form-control" id="t2" min="0" step="0.01" type="number" value="150000"/>
+<div aria-live="polite" class="error-message" id="t2Error" role="alert"></div>
+</div>
+<div class="form-group">
+<label for="r2">Rate 2 (%)</label>
+<input aria-describedby="r2Error" class="form-control" id="r2" max="100" min="0" step="0.01" type="number" value="2"/>
+<div aria-live="polite" class="error-message" id="r2Error" role="alert"></div>
+</div>
+<div class="form-group">
+<label for="r3">Rate 3 (%)</label>
+<input aria-describedby="r3Error" class="form-control" id="r3" max="100" min="0" step="0.01" type="number" value="1"/>
+<div aria-live="polite" class="error-message" id="r3Error" role="alert"></div>
+</div>
+</div>
+<fieldset class="fieldset form-group">
+<legend>Options</legend>
+<div class="form-group">
+<div class="field-row">
+<label for="cap">Commission cap (optional)</label>
+<button aria-controls="capTT" aria-expanded="false" aria-label="What is a commission cap?" class="help-btn" id="capTTBtn" type="button">?</button>
+</div>
+<input aria-describedby="capError capTT" class="form-control" id="cap" min="0" step="0.01" type="number" value="0"/>
+<div aria-hidden="true" class="tooltip" id="capTT" role="region">
+                Sets a maximum payout. Leave 0 to disable capping.
+              </div>
+<div aria-live="polite" class="error-message" id="capError" role="alert"></div>
+</div>
+<div class="form-group">
+<div class="field-row" style="align-items:center;gap:.5rem">
+<input aria-describedby="splitHelp" id="splitToggle" type="checkbox"/>
+<label for="splitToggle">Split commission between two parties</label>
+</div>
+<div class="note" id="splitHelp">Enable to split payout (e.g., agent/broker or buyer/seller agents).</div>
+</div>
+<div aria-hidden="true" class="form-group" hidden="" id="splitFields">
+<label for="agentShare">Agent share (%)</label>
+<div class="input-suffix">
+<input aria-describedby="agentShareError" class="form-control" id="agentShare" max="100" min="0" step="0.01" type="number" value="60"/>
+<span aria-hidden="true" class="suffix">%</span>
+</div>
+<div aria-live="polite" class="error-message" id="agentShareError" role="alert"></div>
+</div>
+</fieldset>
+</section>
+</aside>
+<article aria-labelledby="resultsHeading" aria-live="polite" class="card results" id="results">
+<section>
+<h2 id="resultsHeading">Results</h2>
+<div class="result-item">
+<span class="result-label">Commission base</span>
+<span class="result-value" id="baseOut">$0.00</span>
+</div>
+<div class="result-item">
+<span class="result-label">Calculated commission</span>
+<span class="result-value" id="commissionRawOut">$0.00</span>
+</div>
+<div class="result-item">
+<span class="result-label">Applied cap</span>
+<span class="result-value" id="capAppliedOut">$0.00</span>
+</div>
+<div class="result-item">
+<span class="result-label">Commission (after cap)</span>
+<span class="result-value" id="commissionFinalOut">$0.00</span>
+</div>
+<div class="result-item">
+<span class="result-label">Effective rate</span>
+<span class="result-value" id="effectiveRateOut">0.00%</span>
+</div>
+<div class="result-item">
+<span class="result-label">Net after commission</span>
+<span class="result-value" id="netAfterOut">$0.00</span>
+</div>
+<div id="splitSummary" style="margin-top:.5rem;display:none">
+<div class="result-item">
+<span class="result-label">Agent amount</span>
+<span class="result-value" id="agentOut">$0.00</span>
+</div>
+<div class="result-item">
+<span class="result-label">Partner amount</span>
+<span class="result-value" id="partnerOut">$0.00</span>
+</div>
+</div>
+<p class="note" id="resultsNote" style="margin-top:.75rem">Enter values to see detailed results. No data is stored.</p>
+</section>
+</article>
+</div>
+<section class="card" id="content-ecosystem">
+<h2>Data Source and Methodology</h2>
+<p>
+        Authoritative Data Source: U.S. Department of Labor — 29 CFR § 778.117 “Commission payments—general” (2024-07-01).
+        <a href="https://www.ecfr.gov/current/title-29/subtitle-B/chapter-V/part-778/subject-group-ECFR5a3068f3d9b492e/section-778.117" rel="noopener nofollow" target="_blank">Direct link</a>.
+        All calculations are strictly based on standard percentage and piecewise (tiered) functions consistent with these definitions.
+        Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.
+      </p>
+<p class="note">For industry-specific norms (e.g., real estate), consult your brokerage agreement or local association guidelines.</p>
+<h2>The Formula Explained</h2>
+<div class="formula-box" style="background:#e9f3fb;border:1px solid #cfe6fb;border-radius:8px;padding:1rem">
+<p><strong>Base</strong>: The commission base subtracts discounts from sale amount:</p>
+<p>\\( B = \max(0,\; S - D) \\)</p>
+<p><strong>Percentage model</strong>:</p>
+<p>\\( C = B \times \frac{r}{100} \\)</p>
+<p><strong>Flat + percentage</strong>:</p>
+<p>\\( C = F + B \times \frac{r}{100} \\)</p>
+<p><strong>Tiered (three brackets)</strong>:</p>
+<p>
+          \\[
+          C =
+          \begin{cases}
+          B \cdot \frac{r_1}{100}, &amp; B \le T_1 \\\\
+          T_1 \cdot \frac{r_1}{100} + (B - T_1) \cdot \frac{r_2}{100}, &amp; T_1 &lt; B \le T_2 \\\\
+          T_1 \cdot \frac{r_1}{100} + (T_2 - T_1) \cdot \frac{r_2}{100} + (B - T_2) \cdot \frac{r_3}{100}, &amp; B &gt; T_2
+          \end{cases}
+          \\]
+        </p>
+<p><strong>Cap</strong> and <strong>split</strong>:</p>
+<p>\\( C_{cap} = \min(C,\; \text{Cap}) \\)</p>
+<p>\\( C_{agent} = C_{cap} \times \frac{a}{100}, \quad C_{partner} = C_{cap} - C_{agent} \\)</p>
+<p><strong>Effective rate</strong>: \\( r_{eff} = \begin{cases} \frac{C_{cap}}{B}\times 100\%, &amp; B&gt;0 \\\\ 0, &amp; B=0 \end{cases} \\)</p>
+</div>
+<h2>Glossary of Variables</h2>
+<ul>
+<li>S — Sale amount (transaction value)</li>
+<li>D — Discounts/adjustments applied before commission</li>
+<li>B — Commission base (S − D, floored at 0)</li>
+<li>r — Commission rate (%) for percentage models</li>
+<li>F — Flat fee amount</li>
+<li>T1, T2 — Tier thresholds; r1, r2, r3 — rates (%) for each tier</li>
+<li>Cap — Maximum commission payout (0 means no cap)</li>
+<li>a — Agent share (%) when splitting the commission</li>
+<li>C — Calculated commission before cap; Ccap — commission after cap</li>
+<li>Effective rate — Ccap divided by base, expressed as a percentage</li>
+</ul>
+<h2>How It Works: A Step‑by‑Step Example</h2>
+<p><strong>Scenario</strong>: S = $150,000; D = $0; Tiered with T1 = $100,000 at r1 = 4%; T2 = $150,000 at r2 = 2%; r3 = 1% above T2; Cap = $6,000; split a = 60%.</p>
+<ol>
+<li>Base: B = max(0, 150,000 − 0) = 150,000.</li>
+<li>Commission before cap:
+          C = 100,000×0.04 + (150,000−100,000)×0.02 = 4,000 + 1,000 = 5,000.
+        </li>
+<li>Cap: Ccap = min(5,000, 6,000) = 5,000.</li>
+<li>Split: Cagent = 5,000×0.60 = 3,000; Cpartner = 2,000.</li>
+<li>Effective rate: reff = 5,000 / 150,000 = 3.33%.</li>
+</ol>
+<h2>Frequently Asked Questions (FAQ)</h2>
+<div>
+<h3>Can I model brokerage splits or co‑op splits?</h3>
+<p>Yes. Use the Split option to allocate a percentage to the agent; the remainder goes to the partner/broker/coparticipant.</p>
+<h3>What happens if discounts exceed the sale amount?</h3>
+<p>The commission base is floored at zero, so no negative bases are allowed.</p>
+<h3>How do I represent a minimum guarantee?</h3>
+<p>Enter the minimum as a Cap only if it’s a maximum. For a minimum payout, add it to a flat fee in the Flat + % model or include it in your plan outside of this calculation.</p>
+<h3>How do I add transaction fees?</h3>
+<p>If fees reduce the commission base, include them in Discounts. If they are in addition to commission, add them manually to your final payout outside the tool.</p>
+<h3>Is tier order important?</h3>
+<p>Yes. Threshold 1 should be lower than Threshold 2. The calculator validates the order and shows how much of the base falls in each bracket.</p>
+<h3>Do you store my inputs?</h3>
+<p>No. All calculations run in your browser. Nothing is sent to a server.</p>
+<h3>Will this calculator match my contract exactly?</h3>
+<p>It models common structures, but contracts vary. Always defer to your signed compensation plan for the authoritative payout rules.</p>
+</div>
+<div class="note author-box" style="margin-top:1rem;border-top:1px solid var(--border);padding-top:.75rem">
+        Tool developed by <strong>Ugo Candido</strong>. Content verified by <strong>Finance Editorial Board</strong>.<br/>
+        Last reviewed for accuracy on: September 13, 2025.
+      </div>
+</section>
+</main>
+<!-- Standard Footer --> <html><body><footer class="bg-gray-900 text-white py-12">
+<div class="container mx-auto px-4">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+<div>
+<h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+<p class="text-gray-400 mb-4">Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.</p>
+<div class="flex space-x-4">
+<a aria-label="Twitter" class="text-gray-400 hover:text-white" href="#">
+<svg aria-hidden="true" class="w-6 h-6" fill="currentColor" viewbox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"></path></svg>
+</a>
+<a aria-label="Facebook" class="text-gray-400 hover:text-white" href="#">
+<svg aria-hidden="true" class="w-6 h-6" fill="currentColor" viewbox="0 0 24 24"><path d="M22.46 6c-.77.35-1.6.58-2.46.69.88-.53 1.56-1.37 1.88-2.38-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98C8.28 9.09 5.11 7.38 3 4.79c-.37.63-.58 1.37-.58 2.15 0 1.49.75 2.81 1.91 3.56-.71 0-1.37-.2-1.95-.5v.03c0 2.08 1.48 3.82 3.44 4.21a4.22 4.22 0 0 1-1.93.07 4.28 4.28 0 0 0 4 2.98 8.521 8.521 0 0 1-5.33 1.84c-.34 0-.68-.02-1.02-.06C3.44 20.29 5.7 21 8.12 21 16 21 20.33 14.46 20.33 8.79c0-.19 0-.37-.01-.56.84-.6 1.56-1.36 2.14-2.23z"></path></svg>
+</a>
+</div>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Categories</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="finance.html">Finance</a></li>
+<li><a class="text-gray-400 hover:text-white" href="health-fitness.html">Health &amp; Fitness</a></li>
+<li><a class="text-gray-400 hover:text-white" href="math-conversions.html">Math &amp; Conversions</a></li>
+<li><a class="text-gray-400 hover:text-white" href="lifestyle-everyday.html">Lifestyle &amp; Everyday</a></li>
+<li><a class="text-gray-400 hover:text-white" href="construction-diy.html">Construction &amp; DIY</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="mortgage-payment.html">Mortgage Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="percentage-calculator.html">Percentage Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="bmi-calculator.html">BMI Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="auto-loan-calculator.html">Auto Loan Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="house-affordability.html">House Affordability</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Support</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="#">About Us</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Contact</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Privacy Policy</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Terms of Service</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Site Map</a></li>
+</ul>
+</div>
+</div>
+<div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+<p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+</div>
+</div>
+</footer></body></html>
+<script defer="">
+    (function(){
+      'use strict';
+
+      const $ = (sel) => document.querySelector(sel);
+      const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+      // Elements
+      const currencyEl = $('#currencySymbol');
+      const saleEl = $('#saleAmount');
+      const discEl = $('#discount');
+      const percentFields = $('#percentFields');
+      const percentRateEl = $('#percentRate');
+
+      const flatplusFields = $('#flatplusFields');
+      const flatFeeEl = $('#flatFee');
+      const flatPlusRateEl = $('#flatPlusRate');
+
+      const tieredFields = $('#tieredFields');
+      const t1El = $('#t1'), r1El = $('#r1'), t2El = $('#t2'), r2El = $('#r2'), r3El = $('#r3');
+
+      const capEl = $('#cap');
+      const splitToggleEl = $('#splitToggle');
+      const splitFieldsEl = $('#splitFields');
+      const agentShareEl = $('#agentShare');
+
+      // Tooltips
+      const tooltipPairs = [
+        ['saleTTBtn','saleTT'],
+        ['discTTBtn','discTT'],
+        ['tierTTBtn','tierTT'],
+        ['capTTBtn','capTT']
+      ];
+      tooltipPairs.forEach(([btnId, tipId])=>{
+        const btn = document.getElementById(btnId);
+        const tip = document.getElementById(tipId);
+        if(!btn || !tip) return;
+        btn.addEventListener('click', ()=>{
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          tip.setAttribute('aria-hidden', String(expanded));
+        });
+        btn.addEventListener('keydown', (e)=>{
+          if(e.key === 'Escape'){
+            btn.setAttribute('aria-expanded', 'false');
+            tip.setAttribute('aria-hidden','true');
+            btn.focus();
+          }
+        });
+      });
+
+      // Results
+      const baseOut = $('#baseOut');
+      const commissionRawOut = $('#commissionRawOut');
+      const commissionFinalOut = $('#commissionFinalOut');
+      const capAppliedOut = $('#capAppliedOut');
+      const effectiveRateOut = $('#effectiveRateOut');
+      const netAfterOut = $('#netAfterOut');
+      const splitSummary = $('#splitSummary');
+      const agentOut = $('#agentOut');
+      const partnerOut = $('#partnerOut');
+
+      function fmt(n){
+        const sym = (currencyEl.value || '$').trim();
+        const num = isFinite(n) ? Number(n) : 0;
+        return sym + ' ' + num.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+      }
+      function pct(n){
+        const num = isFinite(n) ? Number(n) : 0;
+        return num.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '%';
+      }
+
+      // Validation helpers
+      function setError(input, id, msg){
+        input.setAttribute('aria-invalid','true');
+        const el = document.getElementById(id);
+        if(el){ el.textContent = msg || ''; }
+      }
+      function clearError(input, id){
+        input.setAttribute('aria-invalid','false');
+        const el = document.getElementById(id);
+        if(el){ el.textContent = ''; }
+      }
+      function getVal(input){
+        const v = parseFloat(input.value);
+        return isNaN(v) ? 0 : v;
+      }
+
+      // Model show/hide
+      const modelRadios = $$('input[name="model"]');
+      function switchModel(){
+        const val = (modelRadios.find(r=>r.checked) || {}).value;
+        // toggle sections
+        [
+          [percentFields, val === 'percent'],
+          [flatplusFields, val === 'flatplus'],
+          [tieredFields, val === 'tiered']
+        ].forEach(([el, show])=>{
+          el.hidden = !show;
+          el.setAttribute('aria-hidden', String(!show));
+          // disable inputs within hidden sections to avoid validation noise
+          el.querySelectorAll('input,select,textarea').forEach(inp => inp.disabled = !show);
+        });
+        compute(); // recalc on switch
+      }
+      modelRadios.forEach(r => r.addEventListener('change', switchModel));
+
+      // Split toggle
+      splitToggleEl.addEventListener('change', ()=>{
+        const on = splitToggleEl.checked;
+        splitFieldsEl.hidden = !on;
+        splitFieldsEl.setAttribute('aria-hidden', String(!on));
+        agentShareEl.disabled = !on;
+        compute();
+      });
+
+      // Inline validation on blur
+      function validateField(input){
+        const id = input.id;
+        const v = getVal(input);
+        if(id === 'saleAmount'){
+          if(v <= 0){ return setError(input,'saleAmountError','Enter a sale amount greater than 0.'); }
+          return clearError(input,'saleAmountError');
+        }
+        if(id === 'discount'){
+          if(v < 0){ return setError(input,'discountError','Discount cannot be negative.'); }
+          const s = getVal(saleEl);
+          if(v > s){ return setError(input,'discountError','Discount cannot exceed the sale amount.'); }
+          return clearError(input,'discountError');
+        }
+        if(id === 'percentRate'){
+          if(v < 0 || v > 100){ return setError(input,'percentRateError','Enter a percentage between 0 and 100.'); }
+          return clearError(input,'percentRateError');
+        }
+        if(id === 'flatFee'){
+          if(v < 0){ return setError(input,'flatFeeError','Flat fee cannot be negative.'); }
+          return clearError(input,'flatFeeError');
+        }
+        if(id === 'flatPlusRate'){
+          if(v < 0 || v > 100){ return setError(input,'flatPlusRateError','Enter a percentage between 0 and 100.'); }
+          return clearError(input,'flatPlusRateError');
+        }
+        if(id === 't1'){
+          if(v < 0){ return setError(input,'t1Error','Threshold must be zero or greater.'); }
+          const t2 = getVal(t2El);
+          if(t2 > 0 && v > t2){ return setError(input,'t1Error','Threshold 1 must be less than or equal to Threshold 2.'); }
+          return clearError(input,'t1Error');
+        }
+        if(id === 't2'){
+          if(v < 0){ return setError(input,'t2Error','Threshold must be zero or greater.'); }
+          const t1 = getVal(t1El);
+          if(v > 0 && v < t1){ return setError(input,'t2Error','Threshold 2 must be greater than or equal to Threshold 1.'); }
+          return clearError(input,'t2Error');
+        }
+        if(id === 'r1'){
+          if(v < 0 || v > 100){ return setError(input,'r1Error','Rate must be between 0 and 100.'); }
+          return clearError(input,'r1Error');
+        }
+        if(id === 'r2'){
+          if(v < 0 || v > 100){ return setError(input,'r2Error','Rate must be between 0 and 100.'); }
+          return clearError(input,'r2Error');
+        }
+        if(id === 'r3'){
+          if(v < 0 || v > 100){ return setError(input,'r3Error','Rate must be between 0 and 100.'); }
+          return clearError(input,'r3Error');
+        }
+        if(id === 'cap'){
+          if(v < 0){ return setError(input,'capError','Cap cannot be negative. Use 0 for no cap.'); }
+          return clearError(input,'capError');
+        }
+        if(id === 'agentShare'){
+          if(v < 0 || v > 100){ return setError(input,'agentShareError','Enter a split percentage between 0 and 100.'); }
+          return clearError(input,'agentShareError');
+        }
+      }
+      // Attach blur listeners
+      $$('input').forEach(inp => {
+        inp.addEventListener('blur', () => validateField(inp));
+      });
+
+      // Compute logic
+      function compute(){
+        // Basic inputs
+        const sale = getVal(saleEl);
+        const disc = getVal(discEl);
+        // Validate base to safeguard compute
+        if(sale <= 0 || disc < 0 || disc > sale){
+          baseOut.textContent = fmt(0);
+          commissionRawOut.textContent = fmt(0);
+          capAppliedOut.textContent = fmt(0);
+          commissionFinalOut.textContent = fmt(0);
+          effectiveRateOut.textContent = pct(0);
+          netAfterOut.textContent = fmt(0);
+          splitSummary.style.display = 'none';
+          return;
+        }
+        const base = Math.max(0, sale - disc);
+
+        // Determine model
+        const model = (modelRadios.find(r=>r.checked)||{}).value;
+
+        let commission = 0;
+        if(model === 'percent'){
+          const rate = Math.max(0, Math.min(100, getVal(percentRateEl)));
+          commission = base * rate / 100;
+        } else if(model === 'flatplus'){
+          const fee = Math.max(0, getVal(flatFeeEl));
+          const rate = Math.max(0, Math.min(100, getVal(flatPlusRateEl)));
+          commission = fee + base * rate / 100;
+        } else if(model === 'tiered'){
+          // thresholds in ascending order; treat 0 as not provided for T2
+          let T1 = Math.max(0, getVal(t1El));
+          let T2 = Math.max(0, getVal(t2El));
+          if(T2 && T2 < T1){ [T1, T2] = [T2, T1]; } // ensure order
+          const R1 = Math.max(0, Math.min(100, getVal(r1El)));
+          const R2 = Math.max(0, Math.min(100, getVal(r2El)));
+          const R3 = Math.max(0, Math.min(100, getVal(r3El)));
+
+          const part1 = Math.min(base, T1);
+          const part2 = Math.max(0, Math.min(base - T1, Math.max(0, T2 - T1)));
+          const part3 = Math.max(0, base - Math.max(T1, T2));
+          commission = (part1 * R1 + part2 * R2 + part3 * R3) / 100;
+        }
+
+        // Apply cap if any
+        const cap = Math.max(0, getVal(capEl));
+        const capped = cap > 0 ? Math.min(commission, cap) : commission;
+        const capApplied = Math.max(0, commission - capped);
+
+        // Split
+        const splitOn = splitToggleEl.checked;
+        let agentAmt = 0, partnerAmt = 0;
+        if(splitOn){
+          const a = Math.max(0, Math.min(100, getVal(agentShareEl)));
+          agentAmt = capped * a / 100;
+          partnerAmt = capped - agentAmt;
+        }
+
+        // Net after commission
+        const netAfter = sale - disc - capped;
+        const effRate = base > 0 ? (capped / base * 100) : 0;
+
+        // Render
+        baseOut.textContent = fmt(base);
+        commissionRawOut.textContent = fmt(commission);
+        capAppliedOut.textContent = fmt(capApplied);
+        commissionFinalOut.textContent = fmt(capped);
+        effectiveRateOut.textContent = pct(effRate);
+        netAfterOut.textContent = fmt(netAfter);
+
+        if(splitOn){
+          splitSummary.style.display = '';
+          agentOut.textContent = fmt(agentAmt);
+          partnerOut.textContent = fmt(partnerAmt);
+        }else{
+          splitSummary.style.display = 'none';
+        }
+      }
+
+      // Live compute on input (debounced micro)
+      let rafId = null;
+      function scheduleCompute(){
+        if(rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(()=>{ compute(); rafId = null; });
+      }
+      $$('input,select').forEach(el => {
+        el.addEventListener('input', scheduleCompute);
+        el.addEventListener('change', scheduleCompute);
+      });
+
+      // Init
+      switchModel();
+      compute();
+
+      // Accessibility: ensure radio tiles clickable on label
+      $$('.radio-tile').forEach(tile=>{
+        tile.addEventListener('click', (e)=>{
+          const input = tile.querySelector('input[type="radio"]');
+          if(input){ input.checked = true; input.dispatchEvent(new Event('change',{bubbles:true})); }
+        });
+      });
+    })();
+  </script>
+
+<html><head><script defer="" src="/assets/js/mobile-menu.js"></script></head></html></body></html>

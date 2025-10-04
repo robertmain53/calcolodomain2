@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<title>Roof Pitch Calculator | Framing &amp; Roofing | CalcDomain</title>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<meta content="Professional roof pitch calculator. Convert between pitch (in-12), angle (degrees), slope (%), and rise:run. Compute rafter length and actual rise from any input method. WCAG 2.1 AA accessible and mobile-first." name="description"/>
+<meta content="Ugo Candido" name="author"/>
+<link href="https://calcdomain.com/roof-pitch.html" rel="canonical"/>
+<meta content="#005A9C" name="theme-color"/>
+<meta content="index,follow,max-image-preview:large" name="robots"/>
+<style>
+    /* ====================================================================== */
+    /* Design tokens                                                          */
+    /* ====================================================================== */
+    :root{
+      --primary-color:#005A9C; --secondary-color:#003F6E; --accent-color:#00A4E4;
+      --background-color:#F8F9FA; --surface-color:#FFFFFF;
+      --text-color:#212529; --muted-text-color:#495057; --border-color:#DEE2E6;
+      --success-color:#198754; --danger-color:#DC3545; --warning-color:#FFC107;
+      --focus-ring:3px solid #005A9C;
+
+      --font-sans:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","Liberation Sans",sans-serif;
+
+      --container-max:1200px;
+      --gap-1:.5rem; --gap-2:1rem; --gap-3:1.5rem; --gap-4:2rem;
+
+      --radius-6:6px; --radius-8:8px; --radius-12:12px;
+
+      --touch-min:48px;
+    }
+    @media (prefers-reduced-motion: reduce){
+      *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+    }
+    /* ====================================================================== */
+    /* Base                                                                   */
+    /* ====================================================================== */
+    *{box-sizing:border-box}
+    html{font-size:16px}
+    body{
+      margin:0; font-family:var(--font-sans); line-height:1.6;
+      color:var(--text-color); background:var(--background-color);
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    .container{max-width:var(--container-max); margin:0 auto; padding:0 clamp(1rem,4vw,2rem)}
+    a{color:var(--primary-color); text-decoration:none}
+    a:hover{text-decoration:underline}
+    a:focus{outline:var(--focus-ring); outline-offset:2px}
+    h1,h2,h3{color:var(--secondary-color); margin:.5rem 0 .75rem}
+    h1{font-size:clamp(1.75rem,4.5vw,2.5rem)}
+    h2{font-size:clamp(1.5rem,3.5vw,2rem)}
+    h3{font-size:clamp(1.25rem,3vw,1.5rem)}
+    p{margin:0 0 1rem}
+    code{background:#e9ecef; padding:.15em .35em; border-radius:4px}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+    /* Skip link */
+    .skip-link{position:absolute;left:8px;top:-40px;z-index:1000;background:var(--primary-color);color:#fff;padding:.5rem .75rem;border-radius:0 0 6px 6px}
+    .skip-link:focus{top:0}
+
+    /* Header (non-sticky per spec) */
+    .site-header{background:var(--surface-color); border-bottom:1px solid var(--border-color)}
+    .header-inner{display:grid; grid-template-columns:auto 1fr; gap:var(--gap-2); align-items:center; padding:.75rem 0}
+    .brand{font-weight:800; color:var(--primary-color); font-size:1.2rem}
+    .breadcrumb{font-size:.95rem; color:var(--muted-text-color); margin:.75rem 0 0}
+    .breadcrumb a{color:inherit}
+    .breadcrumb a:hover{color:var(--primary-color)}
+
+    /* Layout */
+    .main{padding:clamp(1rem,3vw,2rem) 0}
+    .calculator-layout{display:grid; grid-template-columns:1fr; gap:var(--gap-4)}
+    @media (min-width: 992px){
+      .calculator-layout{grid-template-columns: minmax(280px,420px) 1fr}
+    }
+
+    /* Calculator */
+    .card{
+      background:var(--surface-color); border:1px solid var(--border-color);
+      border-radius:var(--radius-12); padding:clamp(1rem,2.5vw,1.5rem);
+      box-shadow:0 2px 8px rgba(0,0,0,.04);
+    }
+    .calculator h2{margin-top:0}
+    .form-group{margin-bottom:var(--gap-2)}
+    .form-group label{display:block; font-weight:700; margin-bottom:.5rem}
+    .req{color:var(--danger-color); margin-left:.25rem}
+    .field-row{display:grid; grid-template-columns:1fr auto; gap:.5rem; align-items:center}
+    .form-control{
+      width:100%; min-height:var(--touch-min); padding:.75rem 1rem;
+      border:1px solid var(--border-color); border-radius:var(--radius-8); font-size:1rem;
+      background:#fff; color:inherit;
+    }
+    .form-control:focus{outline:var(--focus-ring)}
+    .form-control[aria-invalid="true"]{border-color:var(--danger-color)}
+    select.form-control{padding-right:2rem}
+    .unit-suffix{padding:.5rem .75rem; background:#f1f3f5; border:1px solid var(--border-color); border-radius:var(--radius-8); min-height:var(--touch-min); display:inline-flex; align-items:center; justify-content:center; color:#343a40}
+
+    .radio-group{display:flex; gap:.5rem; flex-wrap:wrap}
+    .radio-pill{position:relative}
+    .radio-pill input{position:absolute; opacity:0; pointer-events:none}
+    .radio-pill label{
+      display:inline-flex; align-items:center; justify-content:center; padding:.5rem .75rem; min-height:var(--touch-min);
+      border:1px solid var(--border-color); border-radius:999px; cursor:pointer; font-weight:600; color:#0b1721; background:#fff; min-width:48px;
+    }
+    .radio-pill input:checked + label{background:var(--primary-color); color:#fff; border-color:var(--primary-color)}
+    .radio-pill input:focus + label{outline:var(--focus-ring)}
+
+    .inline-help{display:inline-flex; align-items:center; gap:.375rem}
+    .tooltip-btn{
+      appearance:none; border:1px solid var(--border-color); background:#fff; color:#0b1721; border-radius:50%;
+      width:28px; height:28px; min-width:28px; min-height:28px; font-weight:700; cursor:pointer;
+      line-height:1; display:inline-flex; align-items:center; justify-content:center;
+    }
+    .tooltip-btn:focus{outline:var(--focus-ring)}
+    .tooltip{margin:.5rem 0 0; padding:.75rem; border-left:4px solid var(--primary-color); background:#edf6ff; border-radius:4px}
+    .tooltip[hidden]{display:none}
+
+    .error{color:var(--danger-color); font-size:.95rem; margin-top:.35rem; min-height:1.25rem}
+
+    /* Results */
+    .results{margin-top:var(--gap-2); background:#f8f9fb; border:1px solid var(--border-color); border-radius:var(--radius-12); padding:var(--gap-2)}
+    .results h3{margin-top:0}
+    .result-grid{display:grid; grid-template-columns:1fr; gap:.75rem}
+    @media (min-width: 600px){
+      .result-grid{grid-template-columns:1fr 1fr}
+    }
+    .result-item{display:flex; flex-direction:column; gap:.25rem; padding:.5rem .75rem; background:#fff; border:1px solid var(--border-color); border-radius:8px; min-height:72px}
+    .result-label{color:var(--muted-text-color); font-size:.95rem}
+    .result-value{font-weight:800; font-size:1.25rem; color:var(--success-color)}
+    .results[aria-busy="true"] .result-value{opacity:.7}
+
+    /* Content */
+    .content h2{border-bottom:1px solid var(--border-color); padding-bottom:.5rem}
+    .formula-box{background:#f1f3f5; padding:1rem; border-radius:8px; overflow:auto}
+    .dl{display:grid; grid-template-columns:1fr; gap:.5rem}
+    @media (min-width:700px){ .dl{grid-template-columns:1fr 2fr} }
+    .dl dt{font-weight:700}
+    .faq h3{margin-top:1rem}
+
+    /* Footer */
+    .site-footer{margin-top:3rem; background:var(--secondary-color); color:#fff; padding:1.5rem 0}
+    .site-footer a{color:#fff}
+    .footer-bottom{margin-top:1rem; font-size:.95rem; opacity:.9}
+    .author-box{font-size:.95rem; color:#495057; border-top:1px solid var(--border-color); padding-top:1rem; margin-top:1rem}
+  </style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Roof Pitch Calculator",
+  "description": "Convert between roof pitch (in-12), angle in degrees, slope percentage, and rise:run. Compute rafter length and actual rise from any input method.",
+  "url": "https://calcdomain.com/roof-pitch.html",
+  "inLanguage": "en",
+  "author": {
+    "@type": "Person",
+    "name": "Ugo Candido"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "CalcDomain",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://calcdomain.com/logo.png"
+    }
+  },
+  "dateModified": "2025-09-15",
+  "hasPart": [
+    {
+      "@type": "HowTo",
+      "name": "How to calculate roof pitch from rise and run",
+      "description": "A practical example showing how to derive pitch, angle, and rafter length starting from a measured rise and run.",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "name": "Measure run",
+          "text": "Measure the horizontal run, e.g., 12 in."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Measure rise",
+          "text": "Measure the vertical rise over that run, e.g., 6 in."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Compute pitch in-12",
+          "text": "Pitch = (rise/run) × 12 = (6/12) × 12 = 6-in-12."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Convert to angle",
+          "text": "Angle θ = arctan(rise/run) = arctan(6/12) ≈ 26.565°."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Rafter length",
+          "text": "For actual run 10 ft, rise = 10 × (6/12) = 5 ft and rafter = √(10² + 5²) ≈ 11.18 ft."
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What does 6-in-12 mean?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It means the roof rises 6 inches for every 12 inches of horizontal run."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I convert pitch to degrees?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Use θ = arctan(rise/run). For pitch x-in-12, θ = arctan(x/12)."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I compute rafter length?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Rafter = √(run² + rise²), where rise = run × (rise/run ratio)."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use metric units?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. The ratio is unitless; you can enter rise and run in mm, cm, m, inches, or feet."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is slope percentage?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Slope % = 100 × rise/run. A 6-in-12 pitch equals 50% slope."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is the calculator code-compliant?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The math follows standard trigonometry. Minimum roof slopes for materials are governed by codes like the IRC; verify your design with local code and a professional."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<html><body><header class="bg-white shadow-sm sticky top-0 z-50">
+<nav aria-label="Primary" class="container mx-auto px-4 lg:px-6 py-4">
+<!-- TOP ROW -->
+<div class="flex justify-between items-center">
+<!-- LOGO -->
+<a class="text-2xl font-bold text-blue-600" href="index.html">CalcDomain</a>
+<!-- DESKTOP SEARCH -->
+<div class="w-full max-w-md hidden md:block mx-8">
+<div class="relative">
+<input autocomplete="off" class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" id="search-input" placeholder="Search for a calculator..." type="search"/>
+<svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<!-- CONTAINER RISULTATI RICERCA -->
+<div class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200" id="search-results"></div>
+</div>
+</div>
+<!-- NAVIGATION LINKS -->
+<div class="hidden md:flex items-center space-x-6">
+<a class="text-gray-700 hover:text-blue-600 transition-colors" href="search.html">Advanced Search</a>
+<a class="text-gray-700 hover:text-blue-600 transition-colors" href="#categories">Categories</a>
+</div>
+<!-- MOBILE TOGGLE (ARIA added) -->
+<button aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" class="md:hidden p-2" id="mobile-menu-toggle" type="button">
+<svg aria-hidden="true" class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+</div>
+<!-- MOBILE MENU (converted to <nav> with aria-label) -->
+<nav aria-label="Mobile menu" class="md:hidden mt-4 hidden" id="mobile-menu" role="navigation">
+<div class="mb-4">
+<div class="relative">
+<input class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="mobile-search-input" placeholder="Search calculators..." type="search"/>
+<svg aria-hidden="true" class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<div class="space-y-2">
+<a class="block py-2 text-gray-700 hover:text-blue-600" href="search.html">Advanced Search</a>
+<a class="block py-2 text-gray-700 hover:text-blue-600" href="#categories">Categories</a>
+</div>
+</nav>
+</nav>
+</header></body></html>
+<main class="main" id="main-content" role="main">
+<div class="container">
+<h1>Roof Pitch Calculator</h1>
+<p>This professional roof pitch calculator converts between pitch (in-12), roof angle (degrees), slope percentage, and rise:run. It also computes actual rise and rafter length for any horizontal run. Built for roofers, framers, architects, inspectors, and DIYers who need fast, accurate, and accessible results on any device.</p>
+<div class="calculator-layout">
+<!-- Calculator -->
+<aside aria-labelledby="calc-heading" class="card calculator">
+<h2 id="calc-heading">Interactive calculator</h2>
+<div aria-labelledby="method-label" class="form-group" role="group">
+<div class="inline-help" id="method-label" style="margin-bottom:.5rem">
+<strong>Choose input method</strong>
+</div>
+<div class="radio-group" id="methodGroup">
+<div class="radio-pill">
+<input checked="" id="mRiseRun" name="method" type="radio" value="riseRun"/>
+<label for="mRiseRun">Rise &amp; Run</label>
+</div>
+<div class="radio-pill">
+<input id="mAngle" name="method" type="radio" value="angle"/>
+<label for="mAngle">Angle (°)</label>
+</div>
+<div class="radio-pill">
+<input id="mPercent" name="method" type="radio" value="percent"/>
+<label for="mPercent">Slope (%)</label>
+</div>
+<div class="radio-pill">
+<input id="mPitch12" name="method" type="radio" value="pitch12"/>
+<label for="mPitch12">Pitch (in-12)</label>
+</div>
+</div>
+</div>
+<!-- Rise & Run -->
+<div aria-live="polite" class="method-group" id="grpRiseRun">
+<div class="form-group">
+<div class="inline-help">
+<label for="riseValue">Rise (vertical) <span aria-hidden="true" class="req">*</span></label>
+<button aria-controls="tipRise" aria-expanded="false" aria-label="What is rise?" class="tooltip-btn" id="tipRiseBtn" type="button">?</button>
+</div>
+<div class="field-row">
+<input aria-describedby="riseError tipRise" aria-required="true" class="form-control" id="riseValue" inputmode="decimal" min="0" placeholder="e.g., 6" step="any" type="number"/>
+<select aria-label="Rise unit" class="form-control" id="riseUnit">
+<option value="in">in</option>
+<option value="ft">ft</option>
+<option value="mm">mm</option>
+<option value="cm">cm</option>
+<option value="m">m</option>
+</select>
+</div>
+<div class="tooltip" hidden="" id="tipRise" role="note">
+                Rise is the vertical increase over the selected horizontal run distance.
+              </div>
+<div aria-live="polite" class="error" id="riseError" role="alert"></div>
+</div>
+<div class="form-group">
+<div class="inline-help">
+<label for="runValue">Run (horizontal) <span aria-hidden="true" class="req">*</span></label>
+<button aria-controls="tipRun" aria-expanded="false" aria-label="What is run?" class="tooltip-btn" id="tipRunBtn" type="button">?</button>
+</div>
+<div class="field-row">
+<input aria-describedby="runError tipRun" aria-required="true" class="form-control" id="runValue" inputmode="decimal" min="0.0001" placeholder="e.g., 12" step="any" type="number"/>
+<select aria-label="Run unit" class="form-control" id="runUnit">
+<option value="in">in</option>
+<option value="ft">ft</option>
+<option value="mm">mm</option>
+<option value="cm">cm</option>
+<option value="m">m</option>
+</select>
+</div>
+<div class="tooltip" hidden="" id="tipRun" role="note">
+                Run is the horizontal distance corresponding to the measured rise (commonly 12 inches for pitch in North America).
+              </div>
+<div aria-live="polite" class="error" id="runError" role="alert"></div>
+</div>
+</div>
+<!-- Angle -->
+<div aria-live="polite" class="method-group" hidden="" id="grpAngle">
+<div class="form-group">
+<div class="inline-help">
+<label for="angleDeg">Roof angle (degrees) <span aria-hidden="true" class="req">*</span></label>
+<button aria-controls="tipAngle" aria-expanded="false" aria-label="Angle help" class="tooltip-btn" id="tipAngleBtn" type="button">?</button>
+</div>
+<input aria-describedby="angleError tipAngle" aria-required="true" class="form-control" id="angleDeg" inputmode="decimal" max="89.999" min="0" placeholder="e.g., 26.565" step="any" type="number"/>
+<div class="tooltip" hidden="" id="tipAngle" role="note">
+                Angle is measured from the horizontal plane. Typical roof angles range from ~14° (3-in-12) to ~40° (10-in-12).
+              </div>
+<div aria-live="polite" class="error" id="angleError" role="alert"></div>
+</div>
+</div>
+<!-- Percent -->
+<div aria-live="polite" class="method-group" hidden="" id="grpPercent">
+<div class="form-group">
+<label for="slopePercent">Slope percentage <span aria-hidden="true" class="req">*</span></label>
+<input aria-describedby="percentError" aria-required="true" class="form-control" id="slopePercent" inputmode="decimal" min="0" placeholder="e.g., 50" step="any" type="number"/>
+<div aria-live="polite" class="error" id="percentError" role="alert"></div>
+</div>
+</div>
+<!-- Pitch x in 12 -->
+<div aria-live="polite" class="method-group" hidden="" id="grpPitch12">
+<div class="form-group">
+<div class="inline-help">
+<label for="pitchIn12">Pitch (x-in-12) <span aria-hidden="true" class="req">*</span></label>
+<span aria-hidden="true" class="unit-suffix">in-12</span>
+</div>
+<input aria-describedby="pitch12Error" aria-required="true" class="form-control" id="pitchIn12" inputmode="decimal" min="0" placeholder="e.g., 6" step="any" type="number"/>
+<div aria-live="polite" class="error" id="pitch12Error" role="alert"></div>
+</div>
+</div>
+<!-- Optional actual run -->
+<div class="form-group">
+<div class="inline-help">
+<label for="actualRun">Actual horizontal run (optional)</label>
+<button aria-controls="tipActualRun" aria-expanded="false" aria-label="Actual run help" class="tooltip-btn" id="tipActualRunBtn" type="button">?</button>
+</div>
+<div class="field-row">
+<input class="form-control" id="actualRun" inputmode="decimal" min="0" placeholder="e.g., 10" step="any" type="number"/>
+<select aria-label="Actual run unit" class="form-control" id="actualRunUnit">
+<option value="ft">ft</option>
+<option value="in">in</option>
+<option value="m">m</option>
+<option value="cm">cm</option>
+<option value="mm">mm</option>
+</select>
+</div>
+<div class="tooltip" hidden="" id="tipActualRun" role="note">
+              The full horizontal distance from wall plate to ridge/centerline for the rafter you are sizing. Used to compute actual rise and rafter length.
+            </div>
+<div aria-live="polite" class="error" id="actualRunError" role="alert"></div>
+</div>
+<section aria-labelledby="results-heading" class="results" role="region">
+<h3 id="results-heading">Results</h3>
+<div aria-live="polite" class="result-grid">
+<div class="result-item">
+<span class="result-label">Pitch (in-12)</span>
+<span class="result-value" id="resPitch12">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Slope ratio (rise:run)</span>
+<span class="result-value" id="resRatio">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Angle (degrees)</span>
+<span class="result-value" id="resAngle">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Slope (%)</span>
+<span class="result-value" id="resPercent">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Actual rise</span>
+<span class="result-value" id="resActualRise">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Rafter length (hypotenuse)</span>
+<span class="result-value" id="resRafterLen">—</span>
+</div>
+</div>
+</section>
+</aside>
+<!-- Content -->
+<article aria-labelledby="content-heading" class="card content">
+<h2 id="content-heading">Data source and methodology</h2>
+<p><strong>Authoritative source:</strong> NIST Digital Library of Mathematical Functions (DLMF), Chapter 4 — Trigonometric Functions, Release 1.1.9 (2023-06-15). Link: <a href="https://dlmf.nist.gov/4" rel="nofollow noopener" target="_blank">https://dlmf.nist.gov/4</a>.</p>
+<p>All calculations are strictly based on the formulas and definitions provided by this source.</p>
+<p>Note: Minimum allowable roof slopes for various materials are regulated by building codes (e.g., ICC International Residential Code, 2021, Section R905). Always verify code requirements for your jurisdiction.</p>
+<section>
+<h2>The formula explained</h2>
+<div class="formula-box">
+<p>Given rise r and run a (same units), the fundamental trig relation is:</p>
+<p>$$\theta = \arctan\!\left(\frac{r}{a}\right)$$</p>
+<p>Pitch in-12 (x-in-12):</p>
+<p>$$x = 12 \cdot \frac{r}{a}$$</p>
+<p>Slope percentage:</p>
+<p>$$\text{slope}\% = 100 \cdot \frac{r}{a}$$</p>
+<p>For an actual horizontal run A, the actual rise R and rafter length L are:</p>
+<p>$$R = A \cdot \frac{r}{a} \quad\text{and}\quad L = \sqrt{A^2 + R^2} = A \cdot \sqrt{1 + \left(\frac{r}{a}\right)^2}$$</p>
+</div>
+</section>
+<section>
+<h2>Glossary of variables</h2>
+<dl class="dl">
+<dt>Rise (r)</dt><dd>Vertical increase over the run (any length unit).</dd>
+<dt>Run (a)</dt><dd>Horizontal distance corresponding to the measured rise (any length unit).</dd>
+<dt>Pitch (x-in-12)</dt><dd>How many inches of rise for every 12 inches of run.</dd>
+<dt>Angle (θ)</dt><dd>Roof inclination measured from the horizontal, in degrees.</dd>
+<dt>Slope (%)</dt><dd>Rise divided by run, expressed as a percentage.</dd>
+<dt>Actual run (A)</dt><dd>Real project horizontal distance for the rafter span from plate to ridge/centerline.</dd>
+<dt>Actual rise (R)</dt><dd>Vertical height corresponding to the actual run A.</dd>
+<dt>Rafter length (L)</dt><dd>Hypotenuse of the right triangle formed by run and rise (before plumb/seat cuts and overhangs).</dd>
+</dl>
+</section>
+<section>
+<h2>Worked example</h2>
+<h3>How it works: A step-by-step example</h3>
+<p>Inputs: rise r = 6 in, run a = 12 in. Optional actual run A = 10 ft.</p>
+<ol>
+<li>Pitch (in-12): x = 12 × (r/a) = 12 × (6/12) = 6-in-12.</li>
+<li>Angle: θ = arctan(r/a) = arctan(0.5) ≈ 26.565°.</li>
+<li>Slope %: 100 × (r/a) = 100 × 0.5 = 50%.</li>
+<li>Convert A = 10 ft (keep units consistent). Rise R = A × (r/a) = 10 × 0.5 = 5 ft.</li>
+<li>Rafter length L = √(A² + R²) = √(10² + 5²) = √125 ≈ 11.180 ft.</li>
+</ol>
+<p>This matches the calculator’s outputs when you enter the same values.</p>
+</section>
+<section class="faq">
+<h2>Frequently asked questions (FAQ)</h2>
+<h3>What does 6-in-12 mean?</h3>
+<p>It means the roof rises 6 inches for every 12 inches of horizontal run. This is equivalent to 26.565° and 50% slope.</p>
+<h3>How do I convert pitch to degrees?</h3>
+<p>Use θ = arctan(rise/run). For pitch x-in-12, substitute rise/run = x/12. Example: 9-in-12 → θ = arctan(9/12) ≈ 36.87°.</p>
+<h3>Can I enter metric measurements?</h3>
+<p>Yes. Rise and run can be entered in mm, cm, or m. The ratio is unitless, so final angle and pitch are independent of unit choice.</p>
+<h3>How accurate is the rafter length?</h3>
+<p>The geometric length is exact given your inputs. In practice, account for plumb/seat cuts, ridge thickness, overhangs, and material allowances.</p>
+<h3>What pitch should I use for my roof?</h3>
+<p>It depends on climate, roofing material, and architectural design. Check manufacturer specifications and local codes (e.g., IRC R905) and consult a licensed professional.</p>
+<h3>How do I measure pitch on an existing roof?</h3>
+<p>On a safe, stable surface, place a level so that 12 in is horizontal; measure the vertical rise at the 12-in mark. That reading is your pitch in-12. Always follow fall protection best practices.</p>
+<h3>Is slope (%) the same as grade?</h3>
+<p>Yes—both express rise/run × 100. A 6-in-12 roof is 50% grade.</p>
+</section>
+<div class="author-box">
+<p>Tool developed by <strong>Ugo Candido</strong>. Content verified by <strong>CalcDomain Editorial Team</strong>.<br/>
+            Last reviewed for accuracy on: <time datetime="2025-09-15">September 15, 2025</time>.</p>
+</div>
+</article>
+</div>
+</div>
+</main>
+<!-- Standard Footer --> <html><body><footer class="bg-gray-900 text-white py-12">
+<div class="container mx-auto px-4">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+<div>
+<h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+<p class="text-gray-400 mb-4">Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.</p>
+<div class="flex space-x-4">
+<a aria-label="Twitter" class="text-gray-400 hover:text-white" href="#">
+<svg aria-hidden="true" class="w-6 h-6" fill="currentColor" viewbox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"></path></svg>
+</a>
+<a aria-label="Facebook" class="text-gray-400 hover:text-white" href="#">
+<svg aria-hidden="true" class="w-6 h-6" fill="currentColor" viewbox="0 0 24 24"><path d="M22.46 6c-.77.35-1.6.58-2.46.69.88-.53 1.56-1.37 1.88-2.38-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98C8.28 9.09 5.11 7.38 3 4.79c-.37.63-.58 1.37-.58 2.15 0 1.49.75 2.81 1.91 3.56-.71 0-1.37-.2-1.95-.5v.03c0 2.08 1.48 3.82 3.44 4.21a4.22 4.22 0 0 1-1.93.07 4.28 4.28 0 0 0 4 2.98 8.521 8.521 0 0 1-5.33 1.84c-.34 0-.68-.02-1.02-.06C3.44 20.29 5.7 21 8.12 21 16 21 20.33 14.46 20.33 8.79c0-.19 0-.37-.01-.56.84-.6 1.56-1.36 2.14-2.23z"></path></svg>
+</a>
+</div>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Categories</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="finance.html">Finance</a></li>
+<li><a class="text-gray-400 hover:text-white" href="health-fitness.html">Health &amp; Fitness</a></li>
+<li><a class="text-gray-400 hover:text-white" href="math-conversions.html">Math &amp; Conversions</a></li>
+<li><a class="text-gray-400 hover:text-white" href="lifestyle-everyday.html">Lifestyle &amp; Everyday</a></li>
+<li><a class="text-gray-400 hover:text-white" href="construction-diy.html">Construction &amp; DIY</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="mortgage-payment.html">Mortgage Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="percentage-calculator.html">Percentage Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="bmi-calculator.html">BMI Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="auto-loan-calculator.html">Auto Loan Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="house-affordability.html">House Affordability</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Support</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="#">About Us</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Contact</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Privacy Policy</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Terms of Service</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Site Map</a></li>
+</ul>
+</div>
+</div>
+<div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+<p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+</div>
+</div>
+</footer></body></html>
+<!-- MathJax for LaTeX rendering -->
+<script crossorigin="anonymous" defer="" integrity="sha384-QoB1pUHyTbS9sPlw9Sdlr2b9E8xKkz7pX5qvBiYo4+0Y54iVqb6lYl4zU3TtJH9G" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script defer="">
+  (function(){
+    'use strict';
+
+    // DOM helpers
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+    const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
+
+    // Elements
+    const methodRadios = $$('input[name="method"]');
+    const groups = {
+      riseRun: $('#grpRiseRun'),
+      angle: $('#grpAngle'),
+      percent: $('#grpPercent'),
+      pitch12: $('#grpPitch12')
+    };
+
+    const riseEl = $('#riseValue');
+    const riseUnitEl = $('#riseUnit');
+    const runEl = $('#runValue');
+    const runUnitEl = $('#runUnit');
+
+    const angleEl = $('#angleDeg');
+    const percentEl = $('#slopePercent');
+    const pitch12El = $('#pitchIn12');
+
+    const actRunEl = $('#actualRun');
+    const actRunUnitEl = $('#actualRunUnit');
+
+    const resPitch12 = $('#resPitch12');
+    const resRatio = $('#resRatio');
+    const resAngle = $('#resAngle');
+    const resPercent = $('#resPercent');
+    const resActualRise = $('#resActualRise');
+    const resRafterLen = $('#resRafterLen');
+
+    const resultsPanel = document.querySelector('.results');
+
+    // Tooltips
+    function bindTooltip(buttonId, panelId){
+      const btn = document.getElementById(buttonId);
+      const panel = document.getElementById(panelId);
+      if(!btn || !panel) return;
+      btn.addEventListener('click', () => {
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        panel.hidden = expanded;
+      });
+    }
+    bindTooltip('tipRiseBtn', 'tipRise');
+    bindTooltip('tipRunBtn', 'tipRun');
+    bindTooltip('tipAngleBtn', 'tipAngle');
+    bindTooltip('tipActualRunBtn', 'tipActualRun');
+
+    // Units conversion to meters for neutral math when needed
+    const toMeters = (val, unit) => {
+      const n = Number(val);
+      if (!isFinite(n)) return NaN;
+      switch(unit){
+        case 'mm': return n / 1000;
+        case 'cm': return n / 100;
+        case 'm': return n;
+        case 'in': return n * 0.0254;
+        case 'ft': return n * 0.3048;
+        default: return NaN;
+      }
+    };
+    const fromMeters = (meters, unit) => {
+      switch(unit){
+        case 'mm': return meters * 1000;
+        case 'cm': return meters * 100;
+        case 'm': return meters;
+        case 'in': return meters / 0.0254;
+        case 'ft': return meters / 0.3048;
+        default: return NaN;
+      }
+    };
+
+    // Validation
+    const showError = (id, msg, input) => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = msg || ''; }
+      if (input) { input.setAttribute('aria-invalid', msg ? 'true' : 'false'); }
+    };
+
+    function validateRiseRun(){
+      const rise = parseFloat(riseEl.value);
+      const run = parseFloat(runEl.value);
+      let ok = true;
+
+      if (isNaN(rise) || rise < 0){
+        showError('riseError', 'Please enter a rise value greater than or equal to 0.', riseEl);
+        ok = false;
+      } else {
+        showError('riseError', '', riseEl);
+      }
+
+      if (isNaN(run) || run <= 0){
+        showError('runError', 'Please enter a run value greater than 0.', runEl);
+        ok = false;
+      } else {
+        showError('runError', '', runEl);
+      }
+      return ok;
+    }
+
+    function validateAngle(){
+      const ang = parseFloat(angleEl.value);
+      if (isNaN(ang) || ang < 0 || ang >= 90){
+        showError('angleError', 'Enter an angle between 0 and less than 90 degrees.', angleEl);
+        return false;
+      }
+      showError('angleError', '', angleEl);
+      return true;
+    }
+
+    function validatePercent(){
+      const p = parseFloat(percentEl.value);
+      if (isNaN(p) || p < 0){
+        showError('percentError', 'Enter a non-negative slope percentage.', percentEl);
+        return false;
+      }
+      showError('percentError', '', percentEl);
+      return true;
+    }
+
+    function validatePitch12(){
+      const x = parseFloat(pitch12El.value);
+      if (isNaN(x) || x < 0){
+        showError('pitch12Error', 'Enter a non-negative pitch value (x-in-12).', pitch12El);
+        return false;
+      }
+      showError('pitch12Error', '', pitch12El);
+      return true;
+    }
+
+    function validateActualRun(){
+      const v = actRunEl.value.trim();
+      if (!v){
+        showError('actualRunError', '', actRunEl);
+        return true;
+      }
+      const n = parseFloat(v);
+      if (isNaN(n) || n <= 0){
+        showError('actualRunError', 'Enter a value greater than 0 for actual run, or leave blank.', actRunEl);
+        return false;
+      }
+      showError('actualRunError', '', actRunEl);
+      return true;
+    }
+
+    // Bind blur events for inline validation
+    [riseEl, runEl].forEach(el => el && el.addEventListener('blur', validateRiseRun));
+    angleEl && angleEl.addEventListener('blur', validateAngle);
+    percentEl && percentEl.addEventListener('blur', validatePercent);
+    pitch12El && pitch12El.addEventListener('blur', validatePitch12);
+    actRunEl && actRunEl.addEventListener('blur', validateActualRun);
+
+    // Method switching
+    function switchMethod(m){
+      Object.keys(groups).forEach(key => {
+        groups[key].hidden = (key !== m);
+      });
+      // Clear errors when switching
+      ['riseError','runError','angleError','percentError','pitch12Error'].forEach(id => showError(id,''));
+      calculate(); // recalc on switch
+    }
+
+    methodRadios.forEach(r => {
+      r.addEventListener('change', (e) => switchMethod(e.target.value));
+    });
+
+    // Default values
+    runEl.value = '12';
+    runUnitEl.value = 'in';
+    riseUnitEl.value = 'in';
+    actRunUnitEl.value = 'ft';
+
+    // Simplify ratio helper (rise:run to simplest integer form, within reason)
+    function simplifyRatio(ratio){
+      if (!isFinite(ratio) || ratio < 0) return null;
+      // scale to avoid floating noise, target denominator 12 first for display  x:12
+      const x12 = ratio * 12;
+      const num = Math.round(x12);
+      const den = 12;
+      // Also compute simplest 1:n form
+      // Another representation using integers up to reasonable max
+      function gcd(a,b){ return b ? gcd(b, a % b) : a; }
+      let a = Math.round(ratio * 10000), b = 10000; // high precision
+      const g = gcd(a,b);
+      a = a / g; b = b / g;
+      // limit to avoid gigantic numbers
+      if (a > 1000 || b > 1000){
+        a = Math.round(ratio * 100); b = 100;
+        const g2 = gcd(a,b); a/=g2; b/=g2;
+      }
+      return {
+        pitch12: `${num}:${den}`,
+        simple: `${a}:${b}`
+      };
+    }
+
+    // Format number
+    const fmt = (n, digits=2) => {
+      if (!isFinite(n)) return '—';
+      return new Intl.NumberFormat(undefined, {maximumFractionDigits: digits}).format(n);
+    };
+
+    // Calculation core: derive ratio k = rise/run from active method
+    function getRatio(){
+      const active = document.querySelector('input[name="method"]:checked').value;
+      if (active === 'riseRun'){
+        if (!validateRiseRun()) return null;
+        const r = toMeters(riseEl.value, riseUnitEl.value);
+        const a = toMeters(runEl.value, runUnitEl.value);
+        if (!isFinite(r) || !isFinite(a) || a <= 0 || r < 0) return null;
+        return r / a;
+      }
+      if (active === 'angle'){
+        if (!validateAngle()) return null;
+        const ang = parseFloat(angleEl.value) * Math.PI / 180;
+        return Math.tan(ang);
+      }
+      if (active === 'percent'){
+        if (!validatePercent()) return null;
+        return parseFloat(percentEl.value) / 100;
+      }
+      if (active === 'pitch12'){
+        if (!validatePitch12()) return null;
+        return parseFloat(pitch12El.value) / 12;
+      }
+      return null;
+    }
+
+    function calculate(){
+      resultsPanel.setAttribute('aria-busy', 'true');
+      const k = getRatio(); // rise/run
+      if (k === null){
+        resPitch12.textContent = '—';
+        resRatio.textContent = '—';
+        resAngle.textContent = '—';
+        resPercent.textContent = '—';
+        resActualRise.textContent = '—';
+        resRafterLen.textContent = '—';
+        resultsPanel.setAttribute('aria-busy', 'false');
+        return;
+      }
+
+      // Derived primary outputs
+      const pitch12 = 12 * k;
+      const angleDeg = Math.atan(k) * 180 / Math.PI;
+      const percent = 100 * k;
+
+      resPitch12.textContent = fmt(pitch12, 3) + ' in-12';
+      const simp = simplifyRatio(k);
+      resRatio.textContent = simp ? `${fmt(k,4)} (rise/run)  •  as 12-base ${simp.pitch12}  •  simplified ${simp.simple}` : fmt(k,4);
+
+      resAngle.textContent = fmt(angleDeg, 3) + '°';
+      resPercent.textContent = fmt(percent, 3) + ' %';
+
+      // Actual run dependent
+      let arText = '—', rlText = '—';
+      const actVal = actRunEl.value.trim();
+      if (validateActualRun() && actVal){
+        const A_m = toMeters(parseFloat(actVal), actRunUnitEl.value);
+        if (isFinite(A_m) && A_m > 0){
+          const R_m = A_m * k;
+          const L_m = A_m * Math.sqrt(1 + k*k);
+          // Display in the same unit chosen for actual run
+          const unit = actRunUnitEl.value;
+          const R_out = fromMeters(R_m, unit);
+          const L_out = fromMeters(L_m, unit);
+          arText = fmt(R_out, 3) + ' ' + unit;
+          rlText = fmt(L_out, 3) + ' ' + unit;
+        }
+      }
+      resActualRise.textContent = arText;
+      resRafterLen.textContent = rlText;
+      resultsPanel.setAttribute('aria-busy', 'false');
+    }
+
+    // Recalculate on input changes
+    [
+      riseEl, riseUnitEl, runEl, runUnitEl, angleEl, percentEl, pitch12El, actRunEl, actRunUnitEl
+    ].forEach(el => el && el.addEventListener('input', calculate));
+
+    // Init
+    switchMethod('riseRun');
+    riseEl.value = '6';
+    calculate();
+  })();
+  </script>
+
+<html><head><script defer="" src="/assets/js/mobile-menu.js"></script></head></html></body></html>

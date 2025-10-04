@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<title>Mortgage Payment Calculator | CalcDomain</title>
+<meta content="Professional mortgage payment calculator: compute monthly principal and interest, taxes, insurance, PMI, HOA, total payment, and full amortization with extra payments. WCAG 2.1 AA accessible, mobile-first, and optimized for Core Web Vitals." name="description"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<meta content="Ugo Candido" name="author"/>
+<link href="https://calcdomain.com/mortgage-payment.html" rel="canonical"/>
+<meta content="index,follow,max-image-preview:large" name="robots"/>
+<meta content="#005A9C" name="theme-color"/>
+<!-- Preconnects for potential font loading (non-blocking) -->
+<link crossorigin="" href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<!-- Non-critical global CSS loaded asynchronously -->
+<link as="style" href="style.css" onload="this.onload=null;this.rel='stylesheet'" rel="preload"/>
+<noscript><link href="style.css" rel="stylesheet"/></noscript>
+<!-- Critical Above-the-Fold CSS -->
+<style>
+    :root{
+      --primary-color:#005A9C; --secondary-color:#003F6E; --accent-color:#00A4E4;
+      --background-color:#F8F9FA; --surface-color:#FFFFFF;
+      --text-color:#212529; --muted-text-color:#6C757D; --border-color:#DEE2E6;
+      --success-color:#198754; --error-color:#DC3545;
+      --touch-target-min:48px;
+    }
+    *{box-sizing:border-box}
+    html{font-size:16px}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      background:var(--background-color); color:var(--text-color); line-height:1.6;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    a{color:var(--primary-color); text-decoration:none}
+    a:hover{text-decoration:underline}
+    .container{max-width:1200px; margin:0 auto; padding:0 1rem}
+    .skip-link{
+      position:absolute; left:8px; top:-40px; background:var(--primary-color); color:#fff;
+      padding:8px 14px; border-radius:4px; z-index:1000; text-decoration:none; font-weight:700;
+    }
+    .skip-link:focus{top:8px; outline:3px solid #fff; outline-offset:2px}
+
+    /* Header (explicitly non-sticky per requirement) */
+    .site-header{background:var(--surface-color); border-bottom:1px solid var(--border-color)}
+    .header-content{display:grid; grid-template-columns:auto 1fr auto; gap:.75rem; align-items:center; padding:.75rem 0}
+    .logo{font-weight:800; color:var(--secondary-color); letter-spacing:.2px}
+    .site-search{display:flex; gap:.5rem; align-items:center}
+    .site-search input[type="search"]{
+      flex:1 1 auto; min-width:0; padding:.65rem .75rem; border:1px solid var(--border-color); border-radius:8px;
+    }
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      min-height:var(--touch-target-min); min-width:var(--touch-target-min);
+      padding:.65rem 1rem; border-radius:8px; border:1px solid var(--primary-color);
+      background:var(--primary-color); color:#fff; font-weight:700; cursor:pointer;
+    }
+    .btn.secondary{background:transparent; color:var(--primary-color)}
+    .btn:focus-visible{outline:3px solid var(--accent-color); outline-offset:2px}
+
+    .main-content{padding:1.5rem 0}
+    nav[aria-label="breadcrumb"]{font-size:.95rem; color:var(--muted-text-color); margin-bottom:.75rem}
+    nav[aria-label="breadcrumb"] a{color:inherit}
+
+    /* Layout for calculator + content */
+    .calculator-layout{display:grid; grid-template-columns:1fr; gap:1.5rem}
+    @media (min-width: 992px){
+      .calculator-layout{grid-template-columns:420px 1fr}
+    }
+    .card{
+      background:#fff; border:1px solid var(--border-color); border-radius:12px;
+      padding:1.25rem; box-shadow:0 2px 6px rgba(0,0,0,.04);
+    }
+
+    /* Calculator form */
+    .calculator-container h1{margin:0 0 .5rem; color:var(--secondary-color)}
+    .form-group{margin-bottom:1rem}
+    .form-group label{display:flex; align-items:center; gap:.5rem; font-weight:700; margin-bottom:.5rem}
+    .form-control{
+      width:100%; min-height:var(--touch-target-min); padding:.75rem .85rem;
+      border:1px solid var(--border-color); border-radius:8px; font-size:1rem;
+    }
+    .form-control:focus-visible{
+      outline:3px solid var(--primary-color); outline-offset:2px; border-color:var(--primary-color);
+      box-shadow:0 0 0 3px rgba(0,90,156,.2);
+    }
+    .input-row{display:grid; grid-template-columns:1fr auto; gap:.5rem; align-items:center}
+    .suffix{color:var(--muted-text-color); padding:0 .25rem}
+    .inline{display:flex; gap:.75rem; align-items:center; flex-wrap:wrap}
+    .select{min-height:var(--touch-target-min); padding:.6rem .75rem; border:1px solid var(--border-color); border-radius:8px; background:#fff}
+
+    .help-btn{
+      appearance:none; background:#eef6ff; color:#064da7; border:1px solid #bcd9ff; border-radius:50%;
+      width:28px; height:28px; min-width:28px; min-height:28px; display:inline-flex; align-items:center; justify-content:center;
+      font-weight:800; cursor:pointer;
+    }
+    .help-btn:focus-visible{outline:3px solid var(--accent-color); outline-offset:2px}
+    .help-tip{display:none; margin:.25rem 0 0; color:#0b3d67; background:#eef6ff; border:1px dashed #bcd9ff; border-radius:6px; padding:.5rem .6rem}
+    .help-tip[data-visible="true"]{display:block}
+
+    .error-message{color:var(--error-color); font-size:.9rem; margin-top:.25rem}
+    .form-control[aria-invalid="true"]{border-color:var(--error-color)}
+
+    /* Results */
+    .results-container{
+      margin-top:1rem; background:var(--background-color); border:1px solid var(--border-color);
+      border-radius:12px; padding:1rem; min-height:260px;
+    }
+    .results-grid{display:grid; grid-template-columns:1fr; gap:.5rem}
+    @media (min-width: 576px){
+      .results-grid{grid-template-columns:1fr 1fr}
+    }
+    .result-item{
+      background:#fff; border:1px solid var(--border-color); border-radius:10px; padding:.9rem;
+      display:flex; align-items:baseline; justify-content:space-between; gap:1rem;
+    }
+    .result-label{color:var(--muted-text-color)}
+    .result-value{font-weight:800; color:var(--success-color); font-size:1.15rem}
+
+    .pill{
+      display:inline-block; padding:.25rem .5rem; border-radius:999px; background:#eef6ff; color:#064da7; font-weight:700; font-size:.85rem;
+      border:1px solid #bcd9ff;
+    }
+
+    /* Amortization section */
+    .schedule-actions{display:flex; gap:.5rem; flex-wrap:wrap; margin-top:1rem}
+    .table-wrap{overflow:auto; border:1px solid var(--border-color); border-radius:10px}
+    table{border-collapse:separate; border-spacing:0; width:100%; background:#fff}
+    thead th{
+      position:sticky; top:0; background:#f1f4f8; text-align:left; font-weight:800; border-bottom:1px solid var(--border-color);
+      padding:.6rem .75rem; color:#0b3d67
+    }
+    tbody td{border-bottom:1px solid var(--border-color); padding:.55rem .75rem}
+    tbody tr:nth-child(even){background:#fafbfc}
+
+    /* Content section */
+    .content-container h2{margin-top:1.5rem; color:var(--secondary-color)}
+    .formula-box{
+      background:#eef2f7; border:1px solid #d7deea; border-radius:8px; padding:1rem; overflow:auto;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+    }
+    .author-box{margin-top:2rem; padding-top:1rem; border-top:1px solid var(--border-color); color:var(--muted-text-color); font-size:.95rem}
+
+    /* Utility */
+    .sr-only{position:absolute; width:1px; height:1px; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0}
+  </style>
+<!-- MathJax for LaTeX rendering (deferred) -->
+<script crossorigin="anonymous" defer="" integrity="sha384-cYg4s3u6s6l4X6l8M2mQK2aFQn0kO8e6NRE2QGg4b5C3zZ2XqEJrQHk0kF9M2K3E" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<!-- Structured Data (WebPage + HowTo + FAQPage) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Mortgage Payment Calculator",
+  "description": "Calculate accurate monthly mortgage payments including principal and interest, taxes, insurance, PMI, HOA, and see a full amortization schedule. Accessible and mobile-first.",
+  "url": "https://calcdomain.com/mortgage-payment.html",
+  "inLanguage": "en",
+  "author": {
+    "@type": "Person",
+    "name": "Ugo Candido"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "CalcDomain",
+    "url": "https://calcdomain.com"
+  },
+  "mainEntity": [
+    {
+      "@type": "HowTo",
+      "name": "How to calculate your mortgage payment",
+      "description": "Enter loan amount, annual interest rate, and term. Optionally add taxes, insurance, PMI, HOA, or extra principal to see impact and amortization.",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "name": "Enter loan amount",
+          "text": "Provide the principal you plan to borrow (e.g., 350,000)."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Set interest rate and term",
+          "text": "Enter the annual interest rate (APR) and the loan term in years (e.g., 6.5% for 30 years)."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Add costs (optional)",
+          "text": "Add annual property tax and homeowners insurance, monthly PMI and HOA dues, and any extra monthly principal payment."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Choose currency",
+          "text": "Select your currency to format results. Calculations are currency-agnostic."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Review results",
+          "text": "See monthly principal and interest, taxes and fees, total payment, total interest, and payoff insights."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "View amortization",
+          "text": "Expand the amortization table to review each month's interest, principal, and remaining balance. Download CSV if needed."
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How is a mortgage payment calculated?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Monthly principal and interest are computed using the standard amortization formula based on the loan amount, monthly interest rate, and total number of payments. Taxes, insurance, PMI, and HOA are then added to estimate the total monthly housing payment."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What costs are included besides principal and interest?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Property taxes and homeowners insurance (usually billed annually but paid monthly via escrow), private mortgage insurance (PMI) when applicable, and HOA dues. These are optional in the calculator."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does an extra monthly payment reduce total interest?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Paying extra toward principal shortens the term and lowers total interest. The calculator shows months and interest saved when you add an extra principal payment."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is APR the same as the interest rate?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "APR includes the interest rate plus most lender fees expressed annually, while the note rate is the interest on the loan. This calculator uses the interest rate (note rate) for amortization."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I change payment frequency?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "This version uses monthly payments, the industry standard. Biweekly schedules can be approximated by adding a small extra monthly principal payment."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do results constitute financial advice?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Results are educational estimates based on user inputs and standard formulas. Consult a licensed mortgage professional for personalized advice."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<html><body><header class="bg-white shadow-sm sticky top-0 z-50">
+<nav aria-label="Primary" class="container mx-auto px-4 lg:px-6 py-4">
+<!-- TOP ROW -->
+<div class="flex justify-between items-center">
+<!-- LOGO -->
+<a class="text-2xl font-bold text-blue-600" href="index.html">CalcDomain</a>
+<!-- DESKTOP SEARCH -->
+<div class="w-full max-w-md hidden md:block mx-8">
+<div class="relative">
+<input autocomplete="off" class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" id="search-input" placeholder="Search for a calculator..." type="search"/>
+<svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<!-- CONTAINER RISULTATI RICERCA -->
+<div class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200" id="search-results"></div>
+</div>
+</div>
+<!-- NAVIGATION LINKS -->
+<div class="hidden md:flex items-center space-x-6">
+<a class="text-gray-700 hover:text-blue-600 transition-colors" href="search.html">Advanced Search</a>
+<a class="text-gray-700 hover:text-blue-600 transition-colors" href="#categories">Categories</a>
+</div>
+<!-- MOBILE TOGGLE (ARIA added) -->
+<button aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" class="md:hidden p-2" id="mobile-menu-toggle" type="button">
+<svg aria-hidden="true" class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+</div>
+<!-- MOBILE MENU (converted to <nav> with aria-label) -->
+<nav aria-label="Mobile menu" class="md:hidden mt-4 hidden" id="mobile-menu" role="navigation">
+<div class="mb-4">
+<div class="relative">
+<input class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="mobile-search-input" placeholder="Search calculators..." type="search"/>
+<svg aria-hidden="true" class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<div class="space-y-2">
+<a class="block py-2 text-gray-700 hover:text-blue-600" href="search.html">Advanced Search</a>
+<a class="block py-2 text-gray-700 hover:text-blue-600" href="#categories">Categories</a>
+</div>
+</nav>
+</nav>
+</header></body></html>
+<main class="main-content" id="main-content">
+<div class="container">
+<nav aria-label="breadcrumb"> <a href="https://calcdomain.com/finance.html">Finance</a> / <a href="https://calcdomain.com/mortgages.html">Mortgages</a> / Mortgage Payment Calculator </nav>
+<!-- 1. Page Title -->
+<h1>Mortgage Payment Calculator</h1>
+<!-- 2. Introduction -->
+<p>
+        Use this professional mortgage payment calculator to estimate your monthly payment and total cost. Enter your loan amount, interest rate, and term, then optionally add property tax, insurance, PMI, HOA, and extra principal. Get an instant breakdown, payoff insights, and a downloadable amortization schedule.
+      </p>
+<div class="calculator-layout">
+<!-- 3. Calculator Section -->
+<aside aria-labelledby="calc-heading" class="card calculator-container" id="mortgage-calculator">
+<h2 class="sr-only" id="calc-heading">Calculator inputs</h2>
+<div class="form-group">
+<label for="currency">Currency</label>
+<select aria-label="Currency" class="select" id="currency">
+<option selected="" value="USD">USD — $</option>
+<option value="EUR">EUR — €</option>
+<option value="GBP">GBP — £</option>
+<option value="CAD">CAD — $</option>
+<option value="AUD">AUD — $</option>
+</select>
+</div>
+<div class="form-group">
+<label for="loanAmount">Loan amount *</label>
+<input aria-describedby="loanAmountError" aria-required="true" autocomplete="off" class="form-control" id="loanAmount" inputmode="decimal" min="1" placeholder="e.g., 350000" step="0.01" type="number"/>
+<div aria-live="polite" class="error-message" id="loanAmountError" role="alert"></div>
+</div>
+<div class="form-group">
+<label for="interestRate">Interest rate (annual, %) *</label>
+<input aria-describedby="interestRateError interestRateTip" aria-required="true" class="form-control" id="interestRate" inputmode="decimal" max="100" min="0" step="0.001" type="number" value="6.5"/>
+<button aria-controls="interestRateTip" aria-expanded="false" class="help-btn" id="interestRateHelp" title="What is this?" type="button">?</button>
+<div aria-live="polite" class="error-message" id="interestRateError" role="alert"></div>
+<div class="help-tip" data-visible="false" id="interestRateTip" role="note">
+              This is the note rate used to amortize your loan (not APR). The calculator converts it to a monthly rate.
+            </div>
+</div>
+<div class="form-group">
+<label for="loanTermYears">Loan term (years) *</label>
+<input aria-describedby="loanTermYearsError" aria-required="true" class="form-control" id="loanTermYears" inputmode="numeric" max="50" min="1" step="1" type="number" value="30"/>
+<div aria-live="polite" class="error-message" id="loanTermYearsError" role="alert"></div>
+</div>
+<div aria-label="Optional costs" class="form-group inline" role="group">
+<div style="flex:1 1 180px">
+<label for="annualTax">Property tax (annual)</label>
+<div class="input-row">
+<input aria-describedby="annualTaxTip" class="form-control" id="annualTax" inputmode="decimal" min="0" placeholder="e.g., 4800" step="0.01" type="number"/>
+<span aria-hidden="true" class="suffix">/yr</span>
+</div>
+<button aria-controls="annualTaxTip" aria-expanded="false" class="help-btn" id="annualTaxHelp" title="What is this?" type="button">?</button>
+<div class="help-tip" data-visible="false" id="annualTaxTip" role="note">
+                Local property taxes are commonly escrowed and paid monthly. Enter your estimated yearly tax to include it.
+              </div>
+</div>
+<div style="flex:1 1 180px">
+<label for="annualInsurance">Homeowners insurance (annual)</label>
+<div class="input-row">
+<input aria-describedby="annualInsuranceTip" class="form-control" id="annualInsurance" inputmode="decimal" min="0" placeholder="e.g., 1500" step="0.01" type="number"/>
+<span aria-hidden="true" class="suffix">/yr</span>
+</div>
+<button aria-controls="annualInsuranceTip" aria-expanded="false" class="help-btn" id="annualInsuranceHelp" title="What is this?" type="button">?</button>
+<div class="help-tip" data-visible="false" id="annualInsuranceTip" role="note">
+                Hazard/homeowners insurance. Enter the annual premium; the tool divides by 12 to estimate monthly escrow.
+              </div>
+</div>
+</div>
+<div aria-label="More optional costs" class="form-group inline" role="group">
+<div style="flex:1 1 180px">
+<label for="monthlyPMI">PMI (monthly)</label>
+<input aria-describedby="monthlyPMITip" class="form-control" id="monthlyPMI" inputmode="decimal" min="0" placeholder="e.g., 150" step="0.01" type="number"/>
+<button aria-controls="monthlyPMITip" aria-expanded="false" class="help-btn" id="monthlyPMIHelp" title="What is this?" type="button">?</button>
+<div class="help-tip" data-visible="false" id="monthlyPMITip" role="note">
+                Private Mortgage Insurance if your down payment is below typical thresholds. Enter the monthly amount if applicable.
+              </div>
+</div>
+<div style="flex:1 1 180px">
+<label for="monthlyHOA">HOA dues (monthly)</label>
+<input class="form-control" id="monthlyHOA" inputmode="decimal" min="0" placeholder="e.g., 90" step="0.01" type="number"/>
+</div>
+</div>
+<div class="form-group">
+<label for="extraPrincipal">Extra principal (monthly)</label>
+<input aria-describedby="extraPrincipalTip" class="form-control" id="extraPrincipal" inputmode="decimal" min="0" placeholder="e.g., 100" step="0.01" type="number"/>
+<button aria-controls="extraPrincipalTip" aria-expanded="false" class="help-btn" id="extraPrincipalHelp" title="What is this?" type="button">?</button>
+<div class="help-tip" data-visible="false" id="extraPrincipalTip" role="note">
+              An optional extra amount paid toward principal each month. This shortens your payoff time and reduces total interest.
+            </div>
+</div>
+<div class="inline" style="gap:.5rem; margin-top:.5rem">
+<button class="btn" id="calcBtn" type="button">Calculate</button>
+<button aria-label="Reset inputs" class="btn secondary" id="resetBtn" type="button">Reset</button>
+<span aria-live="polite" class="pill" id="statusPill">Ready</span>
+</div>
+</aside>
+<!-- 4. Results Section -->
+<section aria-labelledby="results-heading" class="card">
+<h2 id="results-heading">Results</h2>
+<p aria-live="polite" class="sr-only" id="results-announce"></p>
+<div class="results-container">
+<div class="results-grid" role="list">
+<div class="result-item" role="listitem">
+<span class="result-label">Monthly principal &amp; interest</span>
+<span class="result-value" id="piMonthly">$0.00</span>
+</div>
+<div class="result-item" role="listitem">
+<span class="result-label">Monthly taxes &amp; insurance</span>
+<span class="result-value" id="tiMonthly">$0.00</span>
+</div>
+<div class="result-item" role="listitem">
+<span class="result-label">Total monthly payment</span>
+<span class="result-value" id="totalMonthly">$0.00</span>
+</div>
+<div class="result-item" role="listitem">
+<span class="result-label">Total interest (lifetime)</span>
+<span class="result-value" id="totalInterest">$0.00</span>
+</div>
+<div class="result-item" role="listitem">
+<span class="result-label">Total cost (principal + interest)</span>
+<span class="result-value" id="totalCost">$0.00</span>
+</div>
+<div class="result-item" role="listitem">
+<span class="result-label">Estimated payoff time</span>
+<span class="result-value" id="payoffTime">—</span>
+</div>
+</div>
+<div aria-label="Amortization actions" class="schedule-actions">
+<button aria-controls="scheduleWrap" aria-expanded="false" class="btn secondary" id="toggleSchedule" type="button">View amortization schedule</button>
+<button class="btn secondary" disabled="" id="downloadCsv" type="button">Download CSV</button>
+<button class="btn secondary" id="copySummary" type="button">Copy summary</button>
+</div>
+<div class="table-wrap" hidden="" id="scheduleWrap">
+<table aria-label="Amortization schedule">
+<thead>
+<tr>
+<th scope="col">#</th>
+<th scope="col">Payment</th>
+<th scope="col">Interest</th>
+<th scope="col">Principal</th>
+<th scope="col">Extra</th>
+<th scope="col">Balance</th>
+</tr>
+</thead>
+<tbody id="scheduleBody">
+<!-- Populated via JS -->
+</tbody>
+</table>
+</div>
+</div>
+</section>
+</div>
+<!-- 5. Authoritative Content Ecosystem -->
+<section aria-labelledby="ecosystem-heading" class="content-container">
+<h2 class="sr-only" id="ecosystem-heading">Authoritative content</h2>
+<!-- a. Data Source and Methodology -->
+<section aria-labelledby="data-source-heading">
+<h2 id="data-source-heading">Data Source and Methodology</h2>
+<p>
+            Authoritative Data Source: Consumer Financial Protection Bureau (CFPB), “How is a mortgage payment calculated?”, last updated 2023. Direct link:
+            <a href="https://www.consumerfinance.gov/ask-cfpb/how-is-a-mortgage-payment-calculated-en-1907/" rel="nofollow noopener" target="_blank">https://www.consumerfinance.gov/ask-cfpb/how-is-a-mortgage-payment-calculated-en-1907/</a>.
+          </p>
+<p>
+            All calculations are strictly based on the standard amortization formulas and the components described by the CFPB. All calculations are strictly based on the formulas and data provided by this source.
+          </p>
+</section>
+<!-- b. Formula Explained -->
+<section aria-labelledby="formula-heading">
+<h2 id="formula-heading">The Formula Explained</h2>
+<div class="formula-box">
+<p>Let P be the loan amount (principal), r the monthly interest rate, and n the total number of monthly payments:</p>
+<p>Monthly rate: \( r = \dfrac{i_{\text{annual}}}{12} \)</p>
+<p>Total payments: \( n = \text{years} \times 12 \)</p>
+<p>Monthly principal and interest (P&amp;I):</p>
+<p>\[
+              M = \frac{P \cdot r \cdot (1+r)^{n}}{(1+r)^{n} - 1}
+            \]</p>
+<p>Total interest: \( I_{\text{total}} = M \cdot n - P \)</p>
+<p>Optional monthly escrows and dues added to the housing payment:</p>
+<p>\[
+              \text{Taxes/Ins} = \frac{\text{PropertyTax}_{\text{annual}} + \text{Insurance}_{\text{annual}}}{12}, \quad
+              \text{TotalMonthly} = M + \text{Taxes/Ins} + \text{PMI}_{\text{monthly}} + \text{HOA}_{\text{monthly}}
+            \]</p>
+<p>If an extra monthly principal \( E \) is applied, the amortization advances faster; the calculator simulates period-by-period reductions until payoff.</p>
+</div>
+</section>
+<!-- c. Glossary -->
+<section aria-labelledby="glossary-heading">
+<h2 id="glossary-heading">Glossary of Variables</h2>
+<ul>
+<li>Loan amount (P): The principal borrowed.</li>
+<li>Interest rate (annual): The yearly note rate; converted to a monthly rate for amortization.</li>
+<li>Loan term (years): The number of years over which the loan amortizes.</li>
+<li>Monthly P&amp;I (M): Payment that covers interest and principal, excluding taxes/fees.</li>
+<li>Property tax (annual): Estimated yearly property tax; divided by 12 for monthly escrow.</li>
+<li>Homeowners insurance (annual): Yearly hazard insurance; divided by 12 for monthly escrow.</li>
+<li>PMI (monthly): Private Mortgage Insurance, when applicable.</li>
+<li>HOA dues (monthly): Homeowners Association dues, if applicable.</li>
+<li>Total monthly payment: Monthly P&amp;I plus taxes, insurance, PMI, and HOA.</li>
+<li>Total interest: Sum of interest across all payments until payoff.</li>
+<li>Extra principal: Additional amount applied to reduce the principal each month.</li>
+</ul>
+</section>
+<!-- d. Worked Example -->
+<section aria-labelledby="example-heading">
+<h2 id="example-heading">How It Works: A Step-by-Step Example</h2>
+<p>
+            Suppose you borrow P = $350,000 at 6.5% annual interest for 30 years. Then r = 0.065 / 12 ≈ 0.0054167, and n = 360.
+          </p>
+<div class="formula-box">
+            \[
+              M = \frac{350{,}000 \times 0.0054167 \times (1 + 0.0054167)^{360}}{(1 + 0.0054167)^{360} - 1} \approx \$2{,}212.03
+            \]
+          </div>
+<p>
+            If annual property tax is $4,800 and annual insurance is $1,500, then Taxes/Ins = (4800 + 1500) / 12 = $525. Add PMI = $0 and HOA = $0, the total monthly housing payment ≈ $2,737.03. If you add an extra $100 principal each month, the calculator will simulate faster payoff and lower total interest.
+          </p>
+</section>
+<!-- e. FAQ -->
+<section aria-labelledby="faq-heading">
+<h2 id="faq-heading">Frequently Asked Questions (FAQ)</h2>
+<h3>What inputs are required to calculate my mortgage payment?</h3>
+<p>At minimum, you need the loan amount, annual interest rate, and term in years. Taxes, insurance, PMI, HOA, and extra principal are optional and help estimate your full housing payment.</p>
+<h3>How accurate are these results?</h3>
+<p>Results use standard amortization formulas and user-provided assumptions. Real-world figures may vary due to escrow adjustments, changing taxes/insurance, and lender-specific practices.</p>
+<h3>Can I include biweekly payments?</h3>
+<p>Not directly. However, adding approximately one extra monthly payment per year (e.g., 1/12th of your P&amp;I each month) approximates the effect of a biweekly schedule.</p>
+<h3>When does PMI drop off?</h3>
+<p>PMI typically ends when you reach 20% equity based on current guidelines and investor rules. This calculator treats PMI as a fixed monthly input for simplicity.</p>
+<h3>Does the interest rate change over time?</h3>
+<p>This tool models a fixed-rate mortgage only. For adjustable-rate mortgages (ARMs), payments can change when rates reset.</p>
+<h3>Why is total interest so high early on?</h3>
+<p>Amortized loans allocate more interest upfront because it is calculated on the outstanding principal. As principal declines, the interest portion decreases and principal increases.</p>
+<h3>Are taxes and insurance required?</h3>
+<p>Most lenders require you to maintain homeowners insurance. Escrowing taxes and insurance is common, though rules vary. Consult your lender for details.</p>
+</section>
+</section>
+<!-- 6. Author signature and review -->
+<div class="author-box">
+<p>
+          Tool developed by <strong>Ugo Candido</strong>. Content verified by <strong>CalcDomain Editorial Board</strong>.<br/>
+          Last reviewed for accuracy on: September 12, 2025.
+        </p>
+</div>
+</div>
+</main>
+<!-- Standard Footer --> <html><body><footer class="bg-gray-900 text-white py-12">
+<div class="container mx-auto px-4">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+<div>
+<h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+<p class="text-gray-400 mb-4">Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.</p>
+<div class="flex space-x-4">
+<a aria-label="Twitter" class="text-gray-400 hover:text-white" href="#">
+<svg aria-hidden="true" class="w-6 h-6" fill="currentColor" viewbox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"></path></svg>
+</a>
+<a aria-label="Facebook" class="text-gray-400 hover:text-white" href="#">
+<svg aria-hidden="true" class="w-6 h-6" fill="currentColor" viewbox="0 0 24 24"><path d="M22.46 6c-.77.35-1.6.58-2.46.69.88-.53 1.56-1.37 1.88-2.38-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98C8.28 9.09 5.11 7.38 3 4.79c-.37.63-.58 1.37-.58 2.15 0 1.49.75 2.81 1.91 3.56-.71 0-1.37-.2-1.95-.5v.03c0 2.08 1.48 3.82 3.44 4.21a4.22 4.22 0 0 1-1.93.07 4.28 4.28 0 0 0 4 2.98 8.521 8.521 0 0 1-5.33 1.84c-.34 0-.68-.02-1.02-.06C3.44 20.29 5.7 21 8.12 21 16 21 20.33 14.46 20.33 8.79c0-.19 0-.37-.01-.56.84-.6 1.56-1.36 2.14-2.23z"></path></svg>
+</a>
+</div>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Categories</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="finance.html">Finance</a></li>
+<li><a class="text-gray-400 hover:text-white" href="health-fitness.html">Health &amp; Fitness</a></li>
+<li><a class="text-gray-400 hover:text-white" href="math-conversions.html">Math &amp; Conversions</a></li>
+<li><a class="text-gray-400 hover:text-white" href="lifestyle-everyday.html">Lifestyle &amp; Everyday</a></li>
+<li><a class="text-gray-400 hover:text-white" href="construction-diy.html">Construction &amp; DIY</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="mortgage-payment.html">Mortgage Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="percentage-calculator.html">Percentage Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="bmi-calculator.html">BMI Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="auto-loan-calculator.html">Auto Loan Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="house-affordability.html">House Affordability</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Support</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="#">About Us</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Contact</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Privacy Policy</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Terms of Service</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Site Map</a></li>
+</ul>
+</div>
+</div>
+<div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+<p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+</div>
+</div>
+</footer></body></html>
+<!-- Calculator Logic -->
+
+
+<html><head><script defer="" src="/assets/js/mobile-menu.js"></script></head></html></body></html>

@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<title>NPV (Net Present Value) Calculator</title>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<meta content="Professional NPV calculator. Compute Net Present Value (NPV) from periodic or dated cash flows (XNPV), with sensitivity analysis and clear, accessible UX." name="description"/>
+<meta content="Ugo Candido" name="author"/>
+<link href="https://calcdomain.com/npv.html" rel="canonical"/>
+<meta content="#ffffff" name="theme-color"/>
+<meta content="index,follow" name="robots"/>
+<meta content="NPV (Net Present Value) Calculator" property="og:title"/>
+<meta content="Compute NPV from periodic or dated cash flows with an accessible, high-precision calculator." property="og:description"/>
+<meta content="website" property="og:type"/>
+<meta content="https://calcdomain.com/npv.html" property="og:url"/>
+<meta content="en_US" property="og:locale"/>
+<style>
+    /* ====================================================================== */
+    /* Design Tokens                                                          */
+    /* ====================================================================== */
+    :root{
+      --primary-color:#005A9C; --secondary-color:#003F6E; --accent-color:#00A4E4;
+      --background-color:#F8F9FA; --surface-color:#FFFFFF;
+      --text-color:#212529; --muted-text-color:#5a6772; --border-color:#DEE2E6;
+      --success-color:#198754; --error-color:#DC3545; --warning-color:#FFC107;
+
+      --font-sans-serif:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+      --font-monospace:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+
+      --touch-target-min:48px; --input-padding:clamp(.75rem,2vw,1rem);
+      --radius-6:6px; --radius-8:8px; --radius-12:12px;
+      --container-max:1200px;
+      --gap-4:.25rem; --gap-8:.5rem; --gap-12:.75rem; --gap-16:1rem; --gap-24:1.5rem; --gap-32:2rem;
+      --focus-ring:0 0 0 3px rgba(0,90,156,.25);
+    }
+    @media (prefers-contrast: more){
+      :root{ --primary-color:#003366; --secondary-color:#001a33; --muted-text-color:#3a434a; }
+    }
+    @media (prefers-reduced-motion: reduce){
+      *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+    }
+
+    /* ====================================================================== */
+    /* Base                                                                   */
+    /* ====================================================================== */
+    *{box-sizing:border-box}
+    html{font-size:clamp(16px,2.2vw,18px)}
+    body{margin:0;font-family:var(--font-sans-serif);background:var(--background-color);color:var(--text-color);line-height:1.6;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+    img{max-width:100%;height:auto}
+    a{color:var(--primary-color);text-decoration:none}
+    a:hover{text-decoration:underline}
+    a:focus{outline:3px solid var(--primary-color);outline-offset:2px;border-radius:2px}
+    code,kbd,pre{font-family:var(--font-monospace)}
+    .container{max-width:var(--container-max);margin:0 auto;padding:0 clamp(1rem,4vw,2rem)}
+    .skip-link{position:absolute;left:6px;top:-40px;background:var(--primary-color);color:#fff;padding:8px 14px;border-radius:0 0 4px 4px;z-index:1000}
+    .skip-link:focus{top:0}
+
+    /* ====================================================================== */
+    /* Header (non-sticky as requested)                                       */
+    /* ====================================================================== */
+    header.site-header{background:var(--surface-color);border-bottom:1px solid var(--border-color)}
+    .header-content{display:grid;grid-template-columns:auto 1fr auto;gap:var(--gap-16);align-items:center;padding:.75rem 0}
+    .logo{font-weight:700;color:var(--secondary-color);font-size:1.15rem}
+    .site-search{display:flex;align-items:center;gap:.5rem}
+    .site-search input[type="search"]{flex:1 1 auto;min-width:0;padding:.6rem .75rem;border:1px solid var(--border-color);border-radius:8px}
+    .site-search input[type="search"]:focus{outline:none;border-color:var(--primary-color);box-shadow:var(--focus-ring)}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;min-height:var(--touch-target-min);min-width:var(--touch-target-min);padding:.6rem 1rem;border-radius:8px;border:1px solid var(--primary-color);background:transparent;color:var(--primary-color);font-weight:600;cursor:pointer}
+    .btn:hover{background:var(--primary-color);color:#fff;text-decoration:none}
+    .btn-primary{background:var(--primary-color);color:#fff}
+    .btn-primary:hover{background:var(--secondary-color);border-color:var(--secondary-color)}
+
+    nav.main-nav ul{list-style:none;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:.5rem}
+    nav.main-nav a{display:inline-block;padding:.4rem .6rem;border-radius:6px}
+    nav.main-nav a:hover{background:rgba(0,90,156,.08);text-decoration:none}
+
+    /* ====================================================================== */
+    /* Main Layout                                                            */
+    /* ====================================================================== */
+    main{padding:var(--gap-32) 0}
+    .breadcrumb{font-size:.9rem;color:var(--muted-text-color);margin-bottom:var(--gap-16)}
+    .calculator-layout{display:grid;grid-template-columns:1fr;gap:var(--gap-32)}
+    @media (min-width: 992px){
+      .calculator-layout{grid-template-columns:clamp(300px,40vw,450px) 1fr}
+    }
+
+    /* ====================================================================== */
+    /* Calculator UI                                                          */
+    /* ====================================================================== */
+    .card{background:var(--surface-color);border:1px solid var(--border-color);border-radius:12px;padding:clamp(1rem,2.5vw,1.5rem);box-shadow:0 2px 6px rgba(0,0,0,.05)}
+    .calculator-container h1{font-size:clamp(1.5rem,4vw,2rem);color:var(--secondary-color);margin:0 0 .25rem}
+    .small-muted{color:var(--muted-text-color);font-size:.92rem}
+    .form-group{margin-bottom:var(--gap-16)}
+    label{display:block;font-weight:700;margin-bottom:.5rem;color:var(--secondary-color)}
+    .req{color:var(--error-color)}
+    .input-group{position:relative}
+    .form-control,.form-select,textarea{width:100%;min-height:48px;padding:var(--input-padding);border:1px solid var(--border-color);border-radius:var(--radius-8);font-size:1rem;background:#fff}
+    .form-control:focus,.form-select:focus,textarea:focus{outline:none;border-color:var(--primary-color);box-shadow:var(--focus-ring)}
+    .input-suffix{position:absolute;right:.75rem;top:50%;transform:translateY(-50%);color:var(--muted-text-color);pointer-events:none}
+    .row-actions{display:flex;gap:.5rem;flex-wrap:wrap}
+    .radio-group{display:flex;gap:.5rem;border:1px solid var(--border-color);border-radius:8px;padding:.25rem}
+    .radio-group input[type="radio"]{position:absolute;opacity:0;width:0;height:0}
+    .radio-group label{flex:1;text-align:center;padding:.5rem;border-radius:6px;cursor:pointer;min-height:var(--touch-target-min);display:flex;align-items:center;justify-content:center}
+    .radio-group input[type="radio"]:checked + label{background:var(--primary-color);color:#fff}
+    .radio-group input[type="radio"]:focus-visible + label{outline:3px solid var(--primary-color);outline-offset:2px}
+    .error-message{color:var(--error-color);font-size:.9rem;margin-top:.35rem;min-height:1.25rem}
+    .help-inline{display:block;color:var(--muted-text-color);font-size:.9rem;margin-top:.35rem}
+    .tooltip-btn{margin-left:.5rem;inline-size:var(--touch-target-min);block-size:var(--touch-target-min);min-width:var(--touch-target-min);min-height:var(--touch-target-min);border-radius:50%;border:1px solid var(--border-color);background:#fff;color:var(--secondary-color);font-weight:700;cursor:pointer}
+    .tooltip-btn:focus{outline:3px solid var(--primary-color);outline-offset:2px}
+    .tooltip-content{display:none;margin-top:.35rem;background:#eef6ff;border:1px solid #cfe5ff;border-radius:8px;padding:.75rem}
+    .tooltip-content[aria-hidden="false"]{display:block}
+
+    table.cf-table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--border-color);border-radius:10px;overflow:hidden}
+    .cf-table th,.cf-table td{padding:.6rem .5rem;border-bottom:1px solid var(--border-color);vertical-align:middle}
+    .cf-table thead th{background:#f1f3f5;text-align:left;color:#1f2d3d}
+    .cf-table tbody tr:last-child td{border-bottom:0}
+    .icon-btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border-color);background:#fff;border-radius:8px;min-width:var(--touch-target-min);min-height:var(--touch-target-min);cursor:pointer}
+    .icon-btn:focus{outline:3px solid var(--primary-color);outline-offset:2px}
+    .danger{border-color:#f1b0b7;color:#a4161a}
+    .muted{color:var(--muted-text-color)}
+    .mono{font-family:var(--font-monospace)}
+
+    .results-container{margin-top:var(--gap-24);padding:var(--gap-16);background:#f8fbff;border:1px solid var(--border-color);border-radius:10px;min-height:250px}
+    .results-grid{display:grid;grid-template-columns:1fr;gap:.75rem;margin-top:.5rem}
+    @media (min-width: 640px){
+      .results-grid{grid-template-columns:repeat(2,1fr)}
+    }
+    .result-item{display:flex;align-items:baseline;justify-content:space-between;background:#fff;border:1px solid var(--border-color);border-radius:8px;padding:.75rem 1rem}
+    .result-label{color:var(--muted-text-color)}
+    .result-value{font-weight:800;color:var(--success-color);font-size:1.25rem}
+    .neutral{color:#0d6efd}
+
+    /* Content sections */
+    .content-container h2{margin-top:var(--gap-32);padding-bottom:.4rem;border-bottom:1px solid var(--border-color);color:var(--secondary-color)}
+    .formula-box{background:#eef2f7;border:1px solid #d7dee7;border-radius:8px;padding:1rem;overflow:auto}
+    .glossary{display:grid;grid-template-columns:1fr;gap:.25rem}
+    @media (min-width: 720px){ .glossary{grid-template-columns:repeat(2,1fr)} }
+    .faq dt{font-weight:700;margin-top:1rem}
+    .faq dd{margin:0 0 .75rem 0}
+
+    /* Footer */
+    footer{background:var(--secondary-color);color:#fff;margin-top:3rem}
+    .footer-content{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.5rem;padding:2rem 0}
+    .footer-content a{color:#fff;border-radius:6px;padding:.15rem .35rem}
+    .footer-content a:hover{background:rgba(255,255,255,.1);text-decoration:none}
+    .footer-bottom{text-align:center;padding:1rem;border-top:1px solid rgba(255,255,255,.2);font-size:.95rem}
+
+    /* Utilities */
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  </style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "NPV (Net Present Value) Calculator",
+  "description": "Professional NPV calculator to compute Net Present Value from periodic or dated cash flows (XNPV). Includes sensitivity analysis and accessible UX.",
+  "url": "https://calcdomain.com/npv.html",
+  "inLanguage": "en",
+  "author": {
+    "@type": "Person",
+    "name": "Ugo Candido"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "CalcDomain"
+  },
+  "mainEntity": [
+    {
+      "@type": "HowTo",
+      "name": "How It Works: A Step-by-Step Example",
+      "description": "Calculate the NPV of an investment with a single initial outflow and four annual inflows.",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "name": "Enter discount rate",
+          "text": "Input an effective annual discount rate (e.g., 10%)."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Choose mode",
+          "text": "Select Periodic NPV and Annual frequency."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Set initial investment",
+          "text": "Enter -10000 at t0."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Add cash flows",
+          "text": "Add four inflows: 3000, 4000, 4000, 3000 for periods 1–4."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Read results",
+          "text": "The calculator displays NPV, PV of inflows/outflows, and profitability index."
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is Net Present Value (NPV)?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "NPV is the sum of present values of all cash inflows and outflows discounted at a required rate of return."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the difference between NPV and XNPV?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "NPV assumes equal time intervals; XNPV uses exact dates and day-count to discount each cash flow."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can the discount rate be negative?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. The calculator accepts negative discount rates greater than -100% to reflect unusual market conditions."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which day-count convention is used for XNPV?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Actual/365 Fixed: days between cash flow date and base date divided by 365."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does the Profitability Index show?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "PI equals PV of inflows divided by the absolute value of the initial investment; values above 1 suggest value creation."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+<!-- MathJax for LaTeX rendering of formulas (deferred, non-blocking) -->
+<script defer="" id="mathjax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<html><body><header class="bg-white shadow-sm sticky top-0 z-50">
+<nav aria-label="Primary" class="container mx-auto px-4 lg:px-6 py-4">
+<!-- TOP ROW -->
+<div class="flex justify-between items-center">
+<!-- LOGO -->
+<a class="text-2xl font-bold text-blue-600" href="index.html">CalcDomain</a>
+<!-- DESKTOP SEARCH -->
+<div class="w-full max-w-md hidden md:block mx-8">
+<div class="relative">
+<input autocomplete="off" class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" id="search-input" placeholder="Search for a calculator..." type="search"/>
+<svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<!-- CONTAINER RISULTATI RICERCA -->
+<div class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200" id="search-results"></div>
+</div>
+</div>
+<!-- NAVIGATION LINKS -->
+<div class="hidden md:flex items-center space-x-6">
+<a class="text-gray-700 hover:text-blue-600 transition-colors" href="search.html">Advanced Search</a>
+<a class="text-gray-700 hover:text-blue-600 transition-colors" href="#categories">Categories</a>
+</div>
+<!-- MOBILE TOGGLE (ARIA added) -->
+<button aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" class="md:hidden p-2" id="mobile-menu-toggle" type="button">
+<svg aria-hidden="true" class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+</div>
+<!-- MOBILE MENU (converted to <nav> with aria-label) -->
+<nav aria-label="Mobile menu" class="md:hidden mt-4 hidden" id="mobile-menu" role="navigation">
+<div class="mb-4">
+<div class="relative">
+<input class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="mobile-search-input" placeholder="Search calculators..." type="search"/>
+<svg aria-hidden="true" class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<div class="space-y-2">
+<a class="block py-2 text-gray-700 hover:text-blue-600" href="search.html">Advanced Search</a>
+<a class="block py-2 text-gray-700 hover:text-blue-600" href="#categories">Categories</a>
+</div>
+</nav>
+</nav>
+</header></body></html>
+<main class="container" id="main" role="main">
+<nav aria-label="Breadcrumb" class="breadcrumb">
+<a href="/">Home</a> / <a href="https://calcdomain.com/finance.html">Finance</a> / <a href="https://calcdomain.com/finance-investing-and-growth.html">Business</a> / NPV Calculator
+    </nav>
+<div class="calculator-layout">
+<aside class="calculator-wrapper">
+<section aria-labelledby="calc-heading" class="card calculator-container" id="npv-calculator" role="region">
+<h1 id="calc-heading">NPV (Net Present Value) Calculator</h1>
+<p class="small-muted">Compute Net Present Value from periodic or dated cash flows with precise, accessible controls.</p>
+<!-- Mode selection -->
+<div class="form-group">
+<fieldset>
+<legend class="sr-only">Calculation mode</legend>
+<div aria-label="Calculation mode" class="radio-group" role="radiogroup">
+<input checked="" id="modePeriodic" name="mode" type="radio" value="periodic"/>
+<label for="modePeriodic">Periodic NPV</label>
+<input id="modeDated" name="mode" type="radio" value="dated"/>
+<label for="modeDated">Dated (XNPV)</label>
+</div>
+</fieldset>
+</div>
+<!-- Discount rate -->
+<div class="form-group">
+<div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+<label for="discountRate">Discount rate (annual, effective) <span aria-hidden="true" class="req">*</span></label>
+<button aria-controls="rateTip" aria-expanded="false" aria-label="What is the discount rate?" class="tooltip-btn" id="rateTipBtn" type="button">?</button>
+</div>
+<div class="input-group">
+<input aria-describedby="discountRateError rateTip rateHelp" aria-required="true" class="form-control" id="discountRate" inputmode="decimal" placeholder="e.g., 10" step="0.0001" type="number"/>
+<span class="input-suffix">%</span>
+</div>
+<div aria-live="polite" class="error-message" id="discountRateError" role="alert"></div>
+<div aria-hidden="true" class="tooltip-content" id="rateTip">
+              Enter your required return as an effective annual rate. For periodic NPV, the tool converts this to a per-period rate based on the selected cash-flow frequency. For XNPV, day-count discounting is applied (Actual/365).
+            </div>
+<span class="help-inline" id="rateHelp">Accepts negative rates down to -99.999%.</span>
+</div>
+<!-- Frequency and timing (Periodic mode only) -->
+<div class="form-group" id="freqGroup">
+<label for="frequency">Cash-flow frequency (Periodic mode)</label>
+<select aria-describedby="frequencyHelp" class="form-select" id="frequency">
+<option value="12">Monthly (12/yr)</option>
+<option value="4">Quarterly (4/yr)</option>
+<option value="2">Semiannual (2/yr)</option>
+<option selected="" value="1">Annual (1/yr)</option>
+</select>
+<span class="help-inline" id="frequencyHelp">Determines the per-period discount rate from the annual rate.</span>
+</div>
+<div class="form-group" id="timingGroup">
+<label>Timing of cash flows</label>
+<div aria-label="Timing of cash flows" class="radio-group" role="radiogroup">
+<input checked="" id="timingEnd" name="timing" type="radio" value="end"/>
+<label for="timingEnd">End of period (ordinary)</label>
+<input id="timingBegin" name="timing" type="radio" value="begin"/>
+<label for="timingBegin">Beginning of period (due)</label>
+</div>
+<span class="help-inline">Beginning-of-period shifts each periodic inflow back by one period.</span>
+</div>
+<!-- Initial investment -->
+<div class="form-group">
+<label for="initialAmount">Initial investment (t0) <span aria-hidden="true" class="req">*</span></label>
+<div class="input-group">
+<input aria-describedby="initialAmountError" aria-required="true" class="form-control" id="initialAmount" placeholder="e.g., -10000" step="0.01" type="number"/>
+<span class="input-suffix mono">$</span>
+</div>
+<div aria-live="polite" class="error-message" id="initialAmountError" role="alert"></div>
+</div>
+<div class="form-group" hidden="" id="initialDateGroup">
+<label for="initialDate">Initial cash flow date (XNPV)</label>
+<input aria-describedby="initialDateHelp initialDateError" class="form-control" id="initialDate" type="date"/>
+<div aria-live="polite" class="error-message" id="initialDateError" role="alert"></div>
+<span class="help-inline" id="initialDateHelp">When using dates, this sets the base date for discounting.</span>
+</div>
+<!-- Cash flows table -->
+<div class="form-group">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap">
+<label id="flowsLabel">Cash flows</label>
+<div class="row-actions">
+<button aria-label="Add cash flow row" class="icon-btn" id="addRowBtn" type="button">＋</button>
+<button aria-label="Clear all rows" class="icon-btn danger" id="clearRowsBtn" type="button">🗑</button>
+</div>
+</div>
+<table aria-describedby="flowsHelp" class="cf-table">
+<thead>
+<tr id="periodHead">
+<th scope="col" style="width:35%">Period</th>
+<th scope="col" style="width:45%">Amount</th>
+<th scope="col" style="width:20%">Actions</th>
+</tr>
+<tr hidden="" id="dateHead">
+<th scope="col" style="width:35%">Date</th>
+<th scope="col" style="width:45%">Amount</th>
+<th scope="col" style="width:20%">Actions</th>
+</tr>
+</thead>
+<tbody id="flowsBody">
+<!-- Rows dynamically populated -->
+</tbody>
+</table>
+<span class="help-inline" id="flowsHelp">Enter positive inflows and negative outflows. At least one row is required.</span>
+</div>
+<!-- Results -->
+<div aria-atomic="true" aria-live="polite" class="results-container" role="status">
+<h2 style="margin:0 0 .75rem">Results</h2>
+<div class="results-grid">
+<div class="result-item">
+<span class="result-label">NPV</span>
+<span class="result-value mono" id="npvOut">$0.00</span>
+</div>
+<div class="result-item">
+<span class="result-label">PV of inflows</span>
+<span class="result-value mono neutral" id="pvInOut">$0.00</span>
+</div>
+<div class="result-item">
+<span class="result-label">PV of outflows</span>
+<span class="result-value mono neutral" id="pvOutOut">$0.00</span>
+</div>
+<div class="result-item">
+<span class="result-label">Profitability Index</span>
+<span class="result-value mono neutral" id="piOut">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Per-period rate (Periodic)</span>
+<span class="result-value mono neutral" id="perPeriodRateOut">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Cash-flow rows</span>
+<span class="result-value mono neutral" id="rowsCountOut">0</span>
+</div>
+</div>
+<div style="margin-top:1rem">
+<h3 style="margin:0 0 .5rem;font-size:1.05rem;color:#2a2f36">Sensitivity (NPV vs discount rate)</h3>
+<div class="card" id="sensitivityTableWrapper" style="padding:.75rem">
+<table aria-label="Sensitivity table: NPV for nearby discount rates" class="mono" style="width:100%;border-collapse:separate;border-spacing:0">
+<thead>
+<tr>
+<th style="text-align:left;padding:.25rem .25rem;border-bottom:1px solid var(--border-color)">Rate</th>
+<th style="text-align:right;padding:.25rem .25rem;border-bottom:1px solid var(--border-color)">NPV</th>
+</tr>
+</thead>
+<tbody id="sensitivityBody">
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</section>
+</aside>
+<article class="content-container">
+<p>This professional-grade NPV calculator helps analysts, founders, and students evaluate investments by discounting future cash flows to today’s dollars. It supports both classic periodic cash flows and date-based XNPV, offers sensitivity analysis, and follows strict accessibility and performance best practices.</p>
+<section aria-labelledby="data-source">
+<h2 id="data-source">Data Source and Methodology</h2>
+<ul>
+<li><strong>Primary reference:</strong> Brealey, Myers, and Allen, “Principles of Corporate Finance,” 13th ed., 2020, McGraw-Hill. Chapter on Discounted Cash Flow (DCF). <a href="https://www.mheducation.com/highered/product/principles-corporate-finance-brealey-myers/M9781260013900.html" rel="noopener" target="_blank">Publisher page</a>.</li>
+<li><strong>Function parity:</strong> Microsoft Support — NPV and XNPV functions (last updated 2024). <a href="https://support.microsoft.com/en-us/office/npv-function-8672cb67-2576-4d07-b67b-ac28acf2a568" rel="noopener" target="_blank">NPV</a> and <a href="https://support.microsoft.com/en-us/office/xnpv-function-30f2bbf0-4676-4f3c-98c0-8b0a8245e2de" rel="noopener" target="_blank">XNPV</a>.</li>
+</ul>
+<p><strong>Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.</strong></p>
+</section>
+<section aria-labelledby="formula">
+<h2 id="formula">The Formula Explained</h2>
+<div class="formula-box">
+<p>Periodic NPV (equal spacing):</p>
+<p>$$ \mathrm{NPV} = C_0 + \sum_{t=1}^{N} \frac{C_t}{(1+r_p)^{t - \delta}} \quad \text{with } \delta=\begin{cases}0 &amp; \text{end of period}\\1 &amp; \text{beginning of period}\end{cases} $$</p>
+<p>Per-period discount rate from effective annual rate and frequency f:</p>
+<p>$$ r_p = (1+r)^{1/f}-1 $$</p>
+<p>XNPV (irregular dates, Actual/365):</p>
+<p>$$ \mathrm{XNPV} = \sum_{i=0}^{N} \frac{C_i}{(1+r)^{\frac{d_i - d_0}{365}}} $$</p>
+</div>
+</section>
+<section aria-labelledby="glossary">
+<h2 id="glossary">Glossary of Variables</h2>
+<div class="glossary">
+<div><strong>r</strong> — Effective annual discount rate (decimal).</div>
+<div><strong>f</strong> — Cash-flow frequency per year (1, 2, 4, 12).</div>
+<div><strong>r_p</strong> — Per-period discount rate derived from r and f.</div>
+<div><strong>C0</strong> — Initial cash flow at time zero (often negative for an investment).</div>
+<div><strong>Ct</strong> — Cash flow at period t (periodic) or date i (dated).</div>
+<div><strong>d0</strong> — Base date for XNPV (initial cash-flow date).</div>
+<div><strong>NPV/XNPV</strong> — Sum of discounted cash flows (present value).</div>
+<div><strong>Profitability Index (PI)</strong> — PV(inflows)/|Initial investment|.</div>
+</div>
+</section>
+<section aria-labelledby="example">
+<h2 id="example">Come Funziona: Un Esempio Passo-Passo</h2>
+<p>Assume an initial investment of −$10,000 at t0 and four annual inflows of $3,000, $4,000, $4,000, and $3,000 at the end of years 1–4. Let r = 10%.</p>
+<ol>
+<li>Convert to per-period rate: f = 1, so r_p = (1+0.10)^(1/1)−1 = 0.10.</li>
+<li>Discount each inflow: PV1 = 3000/(1.1)^1 = 2727.27; PV2 = 4000/(1.1)^2 = 3305.79; PV3 = 4000/(1.1)^3 = 3005.26; PV4 = 3000/(1.1)^4 = 2047.10.</li>
+<li>Sum PV of inflows: 2727.27 + 3305.79 + 3005.26 + 2047.10 = 11,085.42.</li>
+<li>Add C0: NPV = −10,000 + 11,085.42 = $1,085.42.</li>
+</ol>
+<p>Since NPV &gt; 0, the project adds value at a 10% required return.</p>
+</section>
+<section aria-labelledby="faq">
+<h2 id="faq">Frequently Asked Questions (FAQ)</h2>
+<dl class="faq">
+<dt>What is Net Present Value (NPV)?</dt>
+<dd>NPV is the present value of all inflows and outflows using a specified discount rate. Positive NPV indicates value creation relative to the required return.</dd>
+<dt>When should I use XNPV instead of NPV?</dt>
+<dd>Use XNPV when cash flows occur on irregular dates. It discounts using actual days between dates divided by 365.</dd>
+<dt>How is the per-period rate determined in periodic mode?</dt>
+<dd>From the effective annual rate r and frequency f: r_p = (1+r)^(1/f)−1.</dd>
+<dt>What does the “Beginning of period” option do?</dt>
+<dd>It shifts periodic cash flows back one period (annuity-due convention), increasing their present value compared to end-of-period timing.</dd>
+<dt>Can I enter negative discount rates?</dt>
+<dd>Yes. The tool allows rates down to −99.999% to model unusual macro environments.</dd>
+<dt>Is the Profitability Index always defined?</dt>
+<dd>PI is shown when an initial investment (negative C0) is provided and PV of inflows is positive.</dd>
+<dt>What currency does the tool use?</dt>
+<dd>Values are formatted in USD by default for readability; you can enter any currency amounts since the math is currency-agnostic.</dd>
+</dl>
+</section>
+<div class="card" style="margin-top:1.5rem">
+<p class="small-muted">
+            Tool developed by <strong>Ugo Candido</strong>. Content verified by <strong>CalcDomain Editorial Board</strong>.<br/>
+            Last reviewed for accuracy on: <time datetime="2025-09-13">September 13, 2025</time>.
+          </p>
+</div>
+</article>
+</div>
+</main>
+<!-- Standard Footer --> <html><body><footer class="bg-gray-900 text-white py-12">
+<div class="container mx-auto px-4">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+<div>
+<h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+<p class="text-gray-400 mb-4">Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.</p>
+<div class="flex space-x-4">
+<a aria-label="Twitter" class="text-gray-400 hover:text-white" href="#">
+<svg aria-hidden="true" class="w-6 h-6" fill="currentColor" viewbox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"></path></svg>
+</a>
+<a aria-label="Facebook" class="text-gray-400 hover:text-white" href="#">
+<svg aria-hidden="true" class="w-6 h-6" fill="currentColor" viewbox="0 0 24 24"><path d="M22.46 6c-.77.35-1.6.58-2.46.69.88-.53 1.56-1.37 1.88-2.38-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98C8.28 9.09 5.11 7.38 3 4.79c-.37.63-.58 1.37-.58 2.15 0 1.49.75 2.81 1.91 3.56-.71 0-1.37-.2-1.95-.5v.03c0 2.08 1.48 3.82 3.44 4.21a4.22 4.22 0 0 1-1.93.07 4.28 4.28 0 0 0 4 2.98 8.521 8.521 0 0 1-5.33 1.84c-.34 0-.68-.02-1.02-.06C3.44 20.29 5.7 21 8.12 21 16 21 20.33 14.46 20.33 8.79c0-.19 0-.37-.01-.56.84-.6 1.56-1.36 2.14-2.23z"></path></svg>
+</a>
+</div>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Categories</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="finance.html">Finance</a></li>
+<li><a class="text-gray-400 hover:text-white" href="health-fitness.html">Health &amp; Fitness</a></li>
+<li><a class="text-gray-400 hover:text-white" href="math-conversions.html">Math &amp; Conversions</a></li>
+<li><a class="text-gray-400 hover:text-white" href="lifestyle-everyday.html">Lifestyle &amp; Everyday</a></li>
+<li><a class="text-gray-400 hover:text-white" href="construction-diy.html">Construction &amp; DIY</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="mortgage-payment.html">Mortgage Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="percentage-calculator.html">Percentage Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="bmi-calculator.html">BMI Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="auto-loan-calculator.html">Auto Loan Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="house-affordability.html">House Affordability</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Support</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="#">About Us</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Contact</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Privacy Policy</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Terms of Service</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Site Map</a></li>
+</ul>
+</div>
+</div>
+<div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+<p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+</div>
+</div>
+</footer></body></html>
+<script defer="">
+    (function(){
+      'use strict';
+
+      // Elements
+      const discountRate = document.getElementById('discountRate');
+      const discountRateError = document.getElementById('discountRateError');
+      const rateTipBtn = document.getElementById('rateTipBtn');
+      const rateTip = document.getElementById('rateTip');
+
+      const modePeriodic = document.getElementById('modePeriodic');
+      const modeDated = document.getElementById('modeDated');
+
+      const freqGroup = document.getElementById('freqGroup');
+      const timingGroup = document.getElementById('timingGroup');
+      const frequencySel = document.getElementById('frequency');
+
+      const initialAmount = document.getElementById('initialAmount');
+      const initialAmountError = document.getElementById('initialAmountError');
+
+      const initialDateGroup = document.getElementById('initialDateGroup');
+      const initialDateInput = document.getElementById('initialDate');
+      const initialDateError = document.getElementById('initialDateError');
+
+      const flowsBody = document.getElementById('flowsBody');
+      const addRowBtn = document.getElementById('addRowBtn');
+      const clearRowsBtn = document.getElementById('clearRowsBtn');
+      const periodHead = document.getElementById('periodHead');
+      const dateHead = document.getElementById('dateHead');
+
+      const npvOut = document.getElementById('npvOut');
+      const pvInOut = document.getElementById('pvInOut');
+      const pvOutOut = document.getElementById('pvOutOut');
+      const piOut = document.getElementById('piOut');
+      const perPeriodRateOut = document.getElementById('perPeriodRateOut');
+      const rowsCountOut = document.getElementById('rowsCountOut');
+      const sensitivityBody = document.getElementById('sensitivityBody');
+
+      const flowsLabel = document.getElementById('flowsLabel');
+
+      // State
+      let mode = 'periodic'; // 'periodic' or 'dated'
+      let timing = 'end';    // 'end' or 'begin'
+
+      // Intl formatters
+      const fmtCurrency = new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits:2 });
+      const fmtPct = new Intl.NumberFormat('en-US', { style:'percent', minimumFractionDigits:2, maximumFractionDigits:4 });
+
+      // Helpers
+      const clampRate = v => Math.max(-0.99999, v); // avoid ≤ -100%
+      function parsePercent(val){
+        const n = Number(val);
+        if (Number.isFinite(n)) return n / 100;
+        return NaN;
+      }
+      function perPeriodRate(effectiveAnnual, freq){
+        return Math.pow(1 + effectiveAnnual, 1/Math.max(1, freq)) - 1;
+      }
+      function daysBetween(d1, d0){
+        const MS_PER_DAY = 24*60*60*1000;
+        const diff = (Date.UTC(d1.getFullYear(),d1.getMonth(),d1.getDate()) -
+                      Date.UTC(d0.getFullYear(),d0.getMonth(),d0.getDate()));
+        return diff / MS_PER_DAY;
+      }
+
+      function announce(el, msg){
+        el.textContent = msg || '';
+      }
+
+      function showTooltip(btn, contentEl){
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        contentEl.setAttribute('aria-hidden', String(expanded));
+      }
+
+      rateTipBtn.addEventListener('click', () => showTooltip(rateTipBtn, rateTip));
+      rateTipBtn.addEventListener('keydown', e => {
+        if (e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); showTooltip(rateTipBtn, rateTip); }
+      });
+
+      // Validation
+      function validateDiscountRate(){
+        const v = parsePercent(discountRate.value);
+        if (!Number.isFinite(v)){
+          discountRate.setAttribute('aria-invalid','true');
+          announce(discountRateError, 'Please enter a numeric rate (e.g., 10).');
+          return false;
+        }
+        if (v <= -1){
+          discountRate.setAttribute('aria-invalid','true');
+          announce(discountRateError, 'Rate cannot be less than or equal to -100%.');
+          return false;
+        }
+        discountRate.removeAttribute('aria-invalid');
+        announce(discountRateError, '');
+        return true;
+      }
+      function validateInitialAmount(){
+        const v = Number(initialAmount.value);
+        if (!Number.isFinite(v)){
+          initialAmount.setAttribute('aria-invalid','true');
+          announce(initialAmountError, 'Please enter a numeric initial amount (negative for an investment).');
+          return false;
+        }
+        initialAmount.removeAttribute('aria-invalid');
+        announce(initialAmountError, '');
+        return true;
+      }
+      function validateInitialDateIfNeeded(){
+        if (mode !== 'dated') { initialDateError.textContent=''; return true; }
+        if (!initialDateInput.value){
+          initialDateInput.setAttribute('aria-invalid','true');
+          announce(initialDateError, 'Please select the date for the initial cash flow.');
+          return false;
+        }
+        initialDateInput.removeAttribute('aria-invalid');
+        announce(initialDateError, '');
+        return true;
+      }
+
+      discountRate.addEventListener('blur', validateDiscountRate);
+      initialAmount.addEventListener('blur', validateInitialAmount);
+      initialDateInput.addEventListener('blur', validateInitialDateIfNeeded);
+
+      // Rows
+      function rowTemplate(idx){
+        // idx is 1-based display index
+        const tr = document.createElement('tr');
+
+        const c1 = document.createElement('td');
+        const c2 = document.createElement('td');
+        const c3 = document.createElement('td');
+
+        if (mode === 'periodic'){
+          const label = document.createElement('span');
+          label.textContent = `Period ${idx}`;
+          c1.appendChild(label);
+        } else {
+          const date = document.createElement('input');
+          date.type = 'date';
+          date.className = 'form-control';
+          date.required = true;
+          date.setAttribute('aria-label', `Cash flow ${idx} date`);
+          c1.appendChild(date);
+        }
+
+        const amount = document.createElement('input');
+        amount.type = 'number';
+        amount.step = '0.01';
+        amount.className = 'form-control';
+        amount.placeholder = 'Amount';
+        amount.setAttribute('aria-label', `Cash flow ${idx} amount`);
+        amount.addEventListener('blur', () => {
+          if (!amount.value || !Number.isFinite(Number(amount.value))){
+            amount.setAttribute('aria-invalid','true');
+          } else {
+            amount.removeAttribute('aria-invalid');
+          }
+          calc();
+        });
+        amount.addEventListener('input', rafCalc);
+        c2.appendChild(amount);
+
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'icon-btn danger';
+        del.setAttribute('aria-label', `Remove cash flow row ${idx}`);
+        del.textContent = '−';
+        del.addEventListener('click', () => { tr.remove(); renumberRows(); calc(); });
+
+        c3.appendChild(del);
+
+        tr.appendChild(c1);
+        tr.appendChild(c2);
+        tr.appendChild(c3);
+        return tr;
+      }
+
+      function addRow(preset = {}){
+        const idx = flowsBody.children.length + 1;
+        const tr = rowTemplate(idx);
+        flowsBody.appendChild(tr);
+
+        // set values if provided
+        if (mode === 'dated' && preset.date){
+          const dateInput = tr.querySelector('input[type="date"]');
+          dateInput.value = preset.date;
+          dateInput.addEventListener('change', rafCalc);
+        }
+        const amt = tr.querySelector('input[type="number"]');
+        if (typeof preset.amount === 'number'){
+          amt.value = preset.amount;
+        }
+        return tr;
+      }
+
+      function clearRows(){
+        while (flowsBody.firstChild) flowsBody.removeChild(flowsBody.firstChild);
+      }
+
+      function renumberRows(){
+        if (mode === 'periodic'){
+          [...flowsBody.children].forEach((tr, i) => {
+            const span = tr.querySelector('td:first-child span');
+            if (span) span.textContent = `Period ${i+1}`;
+            const amount = tr.querySelector('input[type="number"]');
+            if (amount) amount.setAttribute('aria-label', `Cash flow ${i+1} amount`);
+            const btn = tr.querySelector('button.icon-btn');
+            if (btn) btn.setAttribute('aria-label', `Remove cash flow row ${i+1}`);
+          });
+        } else {
+          // dated: only amounts aria-label renumber
+          [...flowsBody.children].forEach((tr, i) => {
+            const amount = tr.querySelector('input[type="number"]');
+            if (amount) amount.setAttribute('aria-label', `Cash flow ${i+1} amount`);
+            const btn = tr.querySelector('button.icon-btn');
+            if (btn) btn.setAttribute('aria-label', `Remove cash flow row ${i+1}`);
+          });
+        }
+      }
+
+      addRowBtn.addEventListener('click', () => { addRow(); calc(); });
+      clearRowsBtn.addEventListener('click', () => { clearRows(); calc(); });
+
+      // Mode switching
+      function setMode(newMode){
+        mode = newMode;
+        const isPeriodic = mode === 'periodic';
+        freqGroup.hidden = !isPeriodic;
+        timingGroup.hidden = !isPeriodic;
+        initialDateGroup.hidden = isPeriodic;
+
+        periodHead.hidden = !isPeriodic;
+        dateHead.hidden = isPeriodic;
+
+        flowsLabel.textContent = isPeriodic ? 'Cash flows by period' : 'Cash flows by date';
+
+        // Rebuild rows to swap first column
+        const existing = collectRows(); // attempt to preserve amounts
+        clearRows();
+        if (existing.length){
+          existing.forEach((r, i) => {
+            if (isPeriodic){
+              const tr = addRow({ amount: r.amount });
+            } else {
+              // For dated mode, try to propagate dates if present; otherwise blank
+              const tr = addRow({ amount: r.amount, date: r.date || '' });
+            }
+          });
+        } else {
+          // seed default rows
+          if (isPeriodic){
+            addRow({amount: 3000});
+            addRow({amount: 4000});
+            addRow({amount: 4000});
+            addRow({amount: 3000});
+          } else {
+            const today = new Date();
+            const y = today.getFullYear();
+            const m = String(today.getMonth()+1).padStart(2,'0');
+            const d = String(today.getDate()).padStart(2,'0');
+            const base = `${y}-${m}-${d}`;
+            addRow({amount: 3000, date: base});
+            addRow({amount: 4000, date: `${y+1}-${m}-${d}`});
+            addRow({amount: 4000, date: `${y+2}-${m}-${d}`});
+            addRow({amount: 3000, date: `${y+3}-${m}-${d}`});
+            if (!initialDateInput.value) initialDateInput.value = base;
+          }
+        }
+        renumberRows();
+        calc();
+      }
+
+      modePeriodic.addEventListener('change', ()=> { if (modePeriodic.checked) setMode('periodic'); });
+      modeDated.addEventListener('change', ()=> { if (modeDated.checked) setMode('dated'); });
+
+      // Timing
+      document.getElementById('timingEnd').addEventListener('change', ()=>{timing='end'; calc();});
+      document.getElementById('timingBegin').addEventListener('change', ()=>{timing='begin'; calc();});
+      frequencySel.addEventListener('change', calc);
+
+      // Collect rows
+      function collectRows(){
+        const rows = [];
+        [...flowsBody.children].forEach(tr => {
+          const amountEl = tr.querySelector('input[type="number"]');
+          const amt = Number(amountEl?.value);
+          if (mode === 'periodic'){
+            rows.push({amount: amt});
+          } else {
+            const dateEl = tr.querySelector('input[type="date"]');
+            rows.push({amount: amt, date: dateEl?.value});
+          }
+        });
+        return rows;
+      }
+
+      // Sensitivity
+      function buildSensitivity(baseRate){
+        // Create +/- 5pp and +/- 2.5pp around base
+        const candidates = [
+          baseRate - 0.05,
+          baseRate - 0.025,
+          baseRate,
+          baseRate + 0.025,
+          baseRate + 0.05
+        ].map(clampRate);
+
+        sensitivityBody.innerHTML = '';
+        for (const r of candidates){
+          const npvVal = (mode === 'periodic')
+            ? computeNPVPeriodic(r)
+            : computeXNPV(r);
+          const tr = document.createElement('tr');
+          const td1 = document.createElement('td');
+          const td2 = document.createElement('td');
+          td1.style.padding = '.25rem .25rem';
+          td2.style.padding = '.25rem .25rem';
+          td2.style.textAlign = 'right';
+          td1.textContent = fmtPct.format(r);
+          td2.textContent = fmtCurrency.format(npvVal.npv);
+          tr.appendChild(td1); tr.appendChild(td2);
+          sensitivityBody.appendChild(tr);
+        }
+      }
+
+      // Calculations
+      function computeNPVPeriodic(effectiveAnnual){
+        const rows = collectRows();
+        const C0 = Number(initialAmount.value) || 0;
+        const f = Number(frequencySel.value) || 1;
+        const rp = perPeriodRate(effectiveAnnual, f);
+
+        let pvIn = 0, pvOut = Math.min(0, C0);
+        rows.forEach((r, idx) => {
+          const t = idx + 1;
+          const shift = (timing === 'begin') ? 1 : 0;
+          const pv = r.amount / Math.pow(1 + rp, Math.max(0, t - shift));
+          if (r.amount >= 0) pvIn += pv; else pvOut += pv; // pvOut will be negative
+        });
+
+        const npv = C0 + pvIn + pvOut;
+        // Profitability Index where applicable
+        let pi = null;
+        if (C0 < 0 && pvIn > 0){
+          pi = pvIn / Math.abs(C0);
+        }
+        return { npv, pvIn, pvOut, rp, count: rows.length, pi };
+      }
+
+      function computeXNPV(effectiveAnnual){
+        const rows = collectRows();
+        // Validate dates
+        const baseStr = initialDateInput.value;
+        let baseDate;
+        if (baseStr){
+          baseDate = new Date(baseStr);
+        } else {
+          // fallback to earliest row date if not provided
+          const dates = rows.map(r => r.date).filter(Boolean);
+          if (dates.length){ baseDate = new Date(dates.sort()[0]); }
+        }
+        if (!baseDate || isNaN(baseDate.getTime())){
+          return { npv: NaN, pvIn: NaN, pvOut: NaN, count: rows.length, pi: null };
+        }
+
+        const C0 = Number(initialAmount.value) || 0;
+        let pvIn = 0, pvOut = Math.min(0, C0);
+        // Include initial at base date
+        let total = C0;
+
+        rows.forEach(r => {
+          const amount = Number(r.amount) || 0;
+          const ds = r.date ? new Date(r.date) : null;
+          if (!ds || isNaN(ds.getTime())) return;
+          const exp = daysBetween(ds, baseDate) / 365;
+          const pv = amount / Math.pow(1 + effectiveAnnual, exp);
+          total += pv;
+          if (amount >= 0) pvIn += pv; else pvOut += pv;
+        });
+
+        let pi = null;
+        if (C0 < 0 && pvIn > 0){
+          pi = pvIn / Math.abs(C0);
+        }
+        return { npv: total, pvIn, pvOut, count: rows.length, pi, rp: null };
+      }
+
+      function calc(){
+        const okRate = validateDiscountRate();
+        const okInit = validateInitialAmount();
+        const okDate = validateInitialDateIfNeeded();
+        rowsCountOut.textContent = String(flowsBody.children.length);
+
+        if (!okRate || !okInit || !okDate){
+          npvOut.textContent = '$0.00';
+          pvInOut.textContent = '$0.00';
+          pvOutOut.textContent = '$0.00';
+          piOut.textContent = '—';
+          perPeriodRateOut.textContent = (mode === 'periodic') ? '—' : '—';
+          sensitivityBody.innerHTML = '';
+          return;
+        }
+
+        const r = clampRate(parsePercent(discountRate.value));
+        let result;
+        if (mode === 'periodic'){
+          result = computeNPVPeriodic(r);
+          perPeriodRateOut.textContent = fmtPct.format(result.rp || 0);
+        } else {
+          result = computeXNPV(r);
+          perPeriodRateOut.textContent = '—';
+        }
+
+        npvOut.textContent = Number.isFinite(result.npv) ? fmtCurrency.format(result.npv) : '—';
+        pvInOut.textContent = Number.isFinite(result.pvIn) ? fmtCurrency.format(result.pvIn) : '—';
+        pvOutOut.textContent = Number.isFinite(result.pvOut) ? fmtCurrency.format(result.pvOut) : '—';
+        piOut.textContent = (result.pi && Number.isFinite(result.pi)) ? result.pi.toFixed(3) : '—';
+
+        // Sensitivity table
+        buildSensitivity(r);
+      }
+
+      let rafId = null;
+      function rafCalc(){
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(() => { rafId = null; calc(); });
+      }
+
+      // Seed defaults
+      function seed(){
+        discountRate.value = '10';
+        initialAmount.value = '-10000';
+        setMode('periodic');
+      }
+      seed();
+
+      // Recalculate on input
+      [discountRate, initialAmount, initialDateInput, frequencySel].forEach(el => {
+        el.addEventListener('input', rafCalc);
+      });
+
+      // Keyboard help: Enter to add row on table focused
+      flowsBody.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.target && e.target.tagName === 'INPUT'){
+          e.preventDefault();
+          addRow();
+          renumberRows();
+          calc();
+        }
+      });
+
+      // Expose for debugging (optional)
+      window.__NPV__ = { computeNPVPeriodic, computeXNPV };
+    })();
+  </script>
+
+<html><head><script defer="" src="/assets/js/mobile-menu.js"></script></head></html></body></html>

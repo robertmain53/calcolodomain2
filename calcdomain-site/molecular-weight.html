@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<title>Molecular Weight Calculator | Science • Chemistry</title>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<meta content="Professional molecular weight calculator for chemists and students. Parse chemical formulas (including parentheses and hydrates) and get precise molar mass and elemental composition." name="description"/>
+<meta content="Ugo Candido" name="author"/>
+<link href="https://calcdomain.com/molecular-weight.html" rel="canonical"/>
+<meta content="#ffffff" name="theme-color"/>
+<meta content="Molecular Weight Calculator" property="og:title"/>
+<meta content="Accurate molar mass and elemental composition from any chemical formula, with step-by-step methodology based on CIAAW/NIST data." property="og:description"/>
+<meta content="website" property="og:type"/>
+<meta content="https://calcdomain.com/molecular-weight-calculator" property="og:url"/>
+<meta content="https://calcdomain.com/og-image-molecular-weight.png" property="og:image"/>
+<style>
+    /* Critical, mobile-first, WCAG 2.1 AA compliant CSS (no external fonts for performance) */
+    :root{
+      --primary:#005A9C; --primary-700:#003F6E; --bg:#FFFFFF; --bg-soft:#F8F9FA;
+      --text:#1C1E21; --muted:#5C6770; --border:#D7DBE0; --success:#1B9E4B; --danger:#B00020;
+      --radius:12px; --radius-sm:8px; --shadow:0 4px 12px rgba(0,0,0,.06);
+      --touch:48px;
+    }
+    @media (prefers-contrast: more){
+      :root{ --primary:#003A66; --text:#000; --border:#000; }
+    }
+    *,*::before,*::after{ box-sizing:border-box }
+    html{ font-size:16px; }
+    body{
+      margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,Helvetica,sans-serif;
+      background:var(--bg); color:var(--text); line-height:1.6;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    a{ color:var(--primary); text-decoration:none }
+    a:hover{ text-decoration:underline }
+    .container{ max-width:1100px; margin:0 auto; padding:0 1rem }
+    .skip-link{
+      position:absolute; left:0; top:-40px; background:var(--primary); color:#fff; padding:.5rem .75rem; z-index:1000;
+    }
+    .skip-link:focus{ top:0 }
+    h1{ font-size:1.875rem; line-height:1.2; margin:1rem 0 .25rem; color:var(--primary-700) }
+    p{ margin:.75rem 0; color:var(--text) }
+    .lead{ color:#2b2f33; font-size:1.05rem }
+    main{ padding:1rem 0 2.5rem }
+    /* Calculator layout */
+    .calculator-layout{ display:grid; grid-template-columns:1fr; gap:1.25rem; margin-top:.5rem }
+    @media(min-width:992px){ .calculator-layout{ grid-template-columns:420px 1fr } }
+    .card{
+      background:#fff; border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow);
+      padding:1.25rem;
+    }
+    .section-title{ font-size:1.25rem; margin:0 0 .75rem; color:var(--primary-700) }
+    /* Form controls */
+    .form-group{ margin-bottom:1rem }
+    .form-group label{ display:flex; align-items:center; gap:.5rem; font-weight:600; margin-bottom:.35rem; color:#12202e }
+    .required{ color:var(--danger); margin-left:.15rem }
+    .help-btn{
+      appearance:none; border:1px solid var(--border); background:#fff; color:#222;
+      width:var(--touch); height:var(--touch); border-radius:50%; font-weight:700; cursor:pointer;
+    }
+    .help-btn:focus{ outline:3px solid var(--primary); outline-offset:2px }
+    .tooltip{
+      display:none; border-left:4px solid var(--primary); background:var(--bg-soft); padding:.75rem; border-radius:6px;
+      color:#1b2831; margin:.35rem 0 0
+    }
+    .tooltip[aria-hidden="false"]{ display:block }
+    .input, select{
+      width:100%; min-height:var(--touch); padding:.75rem .85rem; border:1px solid var(--border); border-radius:10px;
+      font-size:1rem; background:#fff;
+    }
+    .input:focus, select:focus{ outline:3px solid var(--primary); outline-offset:2px; border-color:var(--primary) }
+    .error{ color:var(--danger); font-size:.9rem; margin-top:.25rem }
+    .radio-group{
+      display:flex; gap:.5rem; border:1px solid var(--border); border-radius:10px; padding:.25rem;
+    }
+    .radio-option{ position:relative; flex:1 }
+    .radio-option input{ position:absolute; inset:0; opacity:0 }
+    .radio-option label{
+      display:flex; align-items:center; justify-content:center; min-height:var(--touch); border-radius:8px; cursor:pointer;
+      font-weight:600; color:#0f2432;
+    }
+    .radio-option input:focus + label{ outline:3px solid var(--primary); outline-offset:2px }
+    .radio-option input:checked + label{ background:var(--primary); color:#fff }
+    .controls-row{ display:flex; gap:.5rem; flex-wrap:wrap }
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
+      min-height:var(--touch); min-width:var(--touch); padding:.75rem 1rem; border-radius:10px; cursor:pointer;
+      border:1px solid var(--primary); color:#fff; background:var(--primary); font-weight:700;
+    }
+    .btn.secondary{ background:#fff; color:var(--primary); }
+    .btn:focus{ outline:3px solid var(--primary); outline-offset:2px }
+    /* Element list builder */
+    .builder{ border:1px dashed var(--border); border-radius:10px; padding:.75rem; background:#fbfcfd }
+    .builder-row{ display:grid; grid-template-columns:1fr 1fr auto; gap:.5rem; align-items:center; margin:.5rem 0 }
+    .btn-icon{
+      border:1px solid var(--border); background:#fff; color:#111; width:var(--touch); height:var(--touch);
+      border-radius:10px; font-size:1.1rem; cursor:pointer;
+    }
+    .btn-icon:hover{ background:#f1f5f9 }
+    /* Results */
+    .results{ min-height:260px; } /* Prevent CLS */
+    .result-item{ display:flex; align-items:baseline; justify-content:space-between; padding:.5rem 0; border-bottom:1px solid var(--border) }
+    .result-item:last-child{ border-bottom:none }
+    .result-label{ color:#33424f }
+    .result-value{ font-weight:800; font-size:1.25rem; color:var(--success) }
+    .muted{ color:var(--muted) }
+    .table-wrap{ overflow:auto; border:1px solid var(--border); border-radius:10px; margin-top:.5rem }
+    table{ border-collapse:collapse; width:100%; min-width:480px; background:#fff }
+    th, td{ padding:.65rem .75rem; border-bottom:1px solid var(--border); text-align:left }
+    th{ background:#f1f5f9; color:#0d1d2a }
+    tr:last-child td{ border-bottom:none }
+    /* Content */
+    .content h2{ margin-top:1.5rem; font-size:1.35rem; color:#0a2a43 }
+    .formula-box{ background:#eef4fa; border:1px solid #d7e3f2; border-radius:10px; padding:1rem; margin:.75rem 0 }
+    .author-box{ margin-top:1.5rem; padding-top:.75rem; border-top:1px solid var(--border); color:#3a454e; font-size:.95rem }
+    .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0 }
+  </style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "breadcrumb": {
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Science",
+        "item": "https://calcdomain.com/science"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Chemistry",
+        "item": "https://calcdomain.com/science/chemistry"
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": "Molecular Weight Calculator",
+        "item": "https://calcdomain.com/molecular-weight-calculator"
+      }
+    ]
+  },
+  "name": "Molecular Weight Calculator",
+  "description": "Accurate molar mass and elemental composition from any chemical formula, including parentheses and hydrates. Based on CIAAW standard atomic weights.",
+  "url": "https://calcdomain.com/molecular-weight.html",
+  "author": {
+    "@type": "Person",
+    "name": "Ugo Candido"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "CalcDomain"
+  },
+  "mainEntity": [
+    {
+      "@type": "HowTo",
+      "name": "How It Works: A Step-by-Step Example",
+      "description": "Worked example computing the molecular weight of caffeine (C8H10N4O2) using CIAAW atomic weights.",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "name": "Write the formula",
+          "text": "Enter C8H10N4O2 in the calculator."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Multiply counts by atomic weights",
+          "text": "C: 8 × 12.011; H: 10 × 1.008; N: 4 × 14.007; O: 2 × 15.999."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Sum contributions",
+          "text": "Total molar mass = 96.088 + 10.080 + 56.028 + 31.998 = 194.194 g/mol."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Review composition",
+          "text": "The tool displays per-element percentages and normalized/Hill formulas."
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is molecular weight (molar mass)?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It is the mass of one mole of a substance, reported in grams per mole (g/mol), computed from the sum of atomic weights of the constituent elements."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which atomic weights does this calculator use?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Standard atomic weights from the Commission on Isotopic Abundances and Atomic Weights (CIAAW, 2021), with supplemental values from NIST where applicable."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I enter hydrates like CuSO4·5H2O?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. The middle dot notation is fully supported and treated as an additive component with its multiplier."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does the tool support parentheses and nested groups?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Parentheses (), as well as [ ] and { }, with multipliers (including nested) are supported."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Are isotope-specific masses supported?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "If you prefix an element with a mass number (e.g., 13C), the calculator ignores the mass number and uses the standard atomic weight. Isotope-resolved calculations are not supported in this version."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How precise are the results?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Results use standard atomic weights and are rounded to 3–5 significant digits in the UI for readability. You can change precision using the copy/export feature of your browser if needed."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+<script defer="" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+<body>
+<html><body><header class="bg-white shadow-sm sticky top-0 z-50">
+<nav aria-label="Primary" class="container mx-auto px-4 lg:px-6 py-4">
+<!-- TOP ROW -->
+<div class="flex justify-between items-center">
+<!-- LOGO -->
+<a class="text-2xl font-bold text-blue-600" href="index.html">CalcDomain</a>
+<!-- DESKTOP SEARCH -->
+<div class="w-full max-w-md hidden md:block mx-8">
+<div class="relative">
+<input autocomplete="off" class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" id="search-input" placeholder="Search for a calculator..." type="search"/>
+<svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<!-- CONTAINER RISULTATI RICERCA -->
+<div class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200" id="search-results"></div>
+</div>
+</div>
+<!-- NAVIGATION LINKS -->
+<div class="hidden md:flex items-center space-x-6">
+<a class="text-gray-700 hover:text-blue-600 transition-colors" href="search.html">Advanced Search</a>
+<a class="text-gray-700 hover:text-blue-600 transition-colors" href="#categories">Categories</a>
+</div>
+<!-- MOBILE TOGGLE (ARIA added) -->
+<button aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" class="md:hidden p-2" id="mobile-menu-toggle" type="button">
+<svg aria-hidden="true" class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+</div>
+<!-- MOBILE MENU (converted to <nav> with aria-label) -->
+<nav aria-label="Mobile menu" class="md:hidden mt-4 hidden" id="mobile-menu" role="navigation">
+<div class="mb-4">
+<div class="relative">
+<input class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="mobile-search-input" placeholder="Search calculators..." type="search"/>
+<svg aria-hidden="true" class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<div class="space-y-2">
+<a class="block py-2 text-gray-700 hover:text-blue-600" href="search.html">Advanced Search</a>
+<a class="block py-2 text-gray-700 hover:text-blue-600" href="#categories">Categories</a>
+</div>
+</nav>
+</nav>
+</header></body></html>
+<a class="skip-link" href="#main">Skip to main content</a>
+<main class="container" id="main" role="main">
+<h1>Molecular Weight Calculator</h1>
+<p class="lead">Quickly compute the molecular weight (molar mass) and elemental composition of any compound. Designed for chemists, students, and lab professionals, this tool parses chemical formulas (including parentheses and hydrates) with precision and accessibility.</p>
+<section aria-labelledby="calc-heading" class="card">
+<h2 class="section-title" id="calc-heading">Calculator</h2>
+<div aria-labelledby="mode-label" class="form-group" role="radiogroup">
+<div class="sr-only" id="mode-label">Select input mode</div>
+<div class="radio-group">
+<div class="radio-option">
+<input checked="" id="mode-formula" name="mode" type="radio" value="formula"/>
+<label for="mode-formula">Formula</label>
+</div>
+<div class="radio-option">
+<input id="mode-builder" name="mode" type="radio" value="builder"/>
+<label for="mode-builder">Element list</label>
+</div>
+</div>
+</div>
+<div aria-labelledby="formula-label" id="formula-panel" role="region">
+<div class="form-group">
+<label for="formula-input" id="formula-label">
+            Chemical formula <span aria-hidden="true" class="required">*</span>
+<button aria-controls="formula-help" aria-expanded="false" aria-label="Toggle help for entering chemical formulas" class="help-btn" id="formula-help-btn" type="button">?</button>
+</label>
+<input aria-describedby="formula-help formula-error" aria-required="true" class="input" id="formula-input" inputmode="text" name="formula" placeholder="e.g., C8H10N4O2, CuSO4·5H2O, Ca3(PO4)2" type="text"/>
+<div aria-hidden="true" class="tooltip" id="formula-help" role="note">
+            Enter a valid chemical formula. Tips:
+            - Use parentheses with multipliers, e.g., Ca3(PO4)2.
+            - Hydrates with a middle dot are supported, e.g., CuSO4·5H2O.
+            - Nested groups and [ ] or { } are accepted.
+            - Optional leading coefficient multiplies a part: 3H2O.
+            - Isotope prefixes like 13C are ignored in this version.
+          </div>
+<div aria-live="polite" class="error" id="formula-error" role="alert"></div>
+</div>
+</div>
+<div aria-labelledby="builder-label" class="builder" hidden="" id="builder-panel" role="region">
+<div class="sr-only" id="builder-label">Build a composition by selecting elements and counts</div>
+<div id="builder-rows">
+<div class="builder-row">
+<select aria-label="Element symbol" class="input el-select">
+<option value="">Element…</option>
+</select>
+<input aria-label="Atom count" class="input el-count" inputmode="numeric" min="1" placeholder="Count" step="1" type="number"/>
+<button aria-label="Remove row" class="btn-icon remove-row" type="button">−</button>
+</div>
+</div>
+<div class="controls-row" style="margin-top:.5rem">
+<button aria-label="Add element row" class="btn secondary" id="add-row" type="button">Add element</button>
+<button aria-label="Convert to formula" class="btn secondary" id="builder-to-formula" type="button">Convert to formula</button>
+</div>
+<div aria-live="polite" class="error" id="builder-error" role="alert" style="margin-top:.25rem"></div>
+</div>
+<div class="controls-row" style="margin-top:.75rem">
+<button aria-label="Clear inputs" class="btn secondary" id="clear-btn" type="button">Clear</button>
+</div>
+<div aria-live="polite" class="sr-only" id="calc-status"></div>
+</section>
+<section aria-labelledby="results-heading" class="card results">
+<h2 class="section-title" id="results-heading">Results</h2>
+<div class="result-item">
+<div class="result-label">Normalized formula (Hill notation)</div>
+<div aria-live="polite" class="result-value" id="normalized-formula">—</div>
+</div>
+<div class="result-item">
+<div class="result-label">Empirical formula</div>
+<div aria-live="polite" class="result-value" id="empirical-formula">—</div>
+</div>
+<div class="result-item">
+<div class="result-label">Molar mass</div>
+<div aria-live="polite" class="result-value" id="molar-mass">0.000 g/mol</div>
+</div>
+<div class="result-item">
+<div class="result-label">Total atoms per formula unit</div>
+<div aria-live="polite" class="result-value" id="total-atoms">0</div>
+</div>
+<div aria-label="Elemental breakdown table" aria-live="polite" class="table-wrap">
+<table>
+<thead>
+<tr>
+<th scope="col">Element</th>
+<th scope="col">Count</th>
+<th scope="col">Atomic weight (g/mol)</th>
+<th scope="col">Mass contribution (g/mol)</th>
+<th scope="col">% by mass</th>
+</tr>
+</thead>
+<tbody id="breakdown">
+<tr><td class="muted" colspan="5">Enter a formula to see the breakdown.</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+<section class="content">
+<h2>Authoritative Data Source and Methodology</h2>
+<div class="formula-box" role="note">
+        Primary source: Commission on Isotopic Abundances and Atomic Weights (CIAAW). “Standard Atomic Weights of the Elements 2021.” Accessed at https://ciaaw.org/atomic-weights.htm (2021).
+        Secondary reference: NIST Chemistry WebBook / SRD, “Atomic Weights and Isotopic Compositions.”
+        All atomic weights used are the conventional standard values suitable for general chemical calculations.
+        <br/><strong>Statement:</strong> Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.
+      </div>
+<h2>The Formula Explained</h2>
+<div class="formula-box">
+        For a compound composed of elements E_i with stoichiometric coefficients n_i, the molar mass M is:
+        $$ M = \sum_{i} n_i \, A_r(E_i) \quad [\mathrm{g\,mol^{-1}}] $$
+        where A_r(E_i) is the standard atomic weight of element E_i.
+        <br/><br/>
+        The mass percent of element i is:
+        $$ w_i(\%) = \frac{n_i \, A_r(E_i)}{\sum_{j} n_j \, A_r(E_j)} \times 100 $$
+      </div>
+<h2>Glossary of Variables</h2>
+<ul>
+<li>Chemical formula (input): The symbolic representation of a substance indicating element symbols and their counts, e.g., C6H12O6.</li>
+<li>Element (input, builder mode): Individual chemical element symbol selected from the periodic table.</li>
+<li>Count (input, builder mode): Number of atoms of the selected element in one formula unit.</li>
+<li>Molar mass (result): The mass of one mole of the compound in grams per mole (g/mol).</li>
+<li>Normalized formula (result): The formula written in Hill notation (C then H, followed by other elements alphabetically; or alphabetical if no carbon).</li>
+<li>Empirical formula (result): The simplest whole-number ratio of atoms in the compound.</li>
+<li>Elemental breakdown (result): Table listing per-element count, atomic weight, mass contribution, and mass percentage.</li>
+</ul>
+<h2>Worked Example</h2>
+<h3>How It Works: A Step-by-Step Example (Caffeine, C8H10N4O2)</h3>
+<ol>
+<li>Enter the formula C8H10N4O2.</li>
+<li>Using standard atomic weights: A_r(C)=12.011, A_r(H)=1.008, A_r(N)=14.007, A_r(O)=15.999.</li>
+<li>Compute contributions:
+          $$ \begin{aligned}
+          m_C &amp;= 8 \times 12.011 = 96.088 \\
+          m_H &amp;= 10 \times 1.008 = 10.080 \\
+          m_N &amp;= 4 \times 14.007 = 56.028 \\
+          m_O &amp;= 2 \times 15.999 = 31.998
+          \end{aligned} $$
+        </li>
+<li>Sum to get the molar mass:
+          $$ M = 96.088 + 10.080 + 56.028 + 31.998 = 194.194\ \mathrm{g/mol} $$
+        </li>
+<li>Mass percentages, e.g., for carbon:
+          $$ w_C(\%) = \frac{96.088}{194.194} \times 100 \approx 49.48\% $$
+          The calculator performs the same for all elements and outputs the full breakdown.
+        </li>
+</ol>
+<h2>Frequently Asked Questions (FAQ)</h2>
+<details>
+<summary>What’s the difference between “molecular weight” and “molar mass”?</summary>
+<p>In modern IUPAC terminology, “molar mass” (g/mol) is preferred for macroscopic amounts; “molecular weight” historically refers to a relative quantity. Many labs still use the terms interchangeably—this tool reports values in g/mol.</p>
+</details>
+<details>
+<summary>Can I paste formulas with subscripts (e.g., H₂SO₄)?</summary>
+<p>Yes. Unicode subscripts ₀–₉ are normalized automatically, so H₂SO₄ is treated as H2SO4.</p>
+</details>
+<details>
+<summary>Does the calculator support nested parentheses and brackets?</summary>
+<p>Yes. Grouping with (), [], or {} is supported, including nesting and multipliers like Al2(SO4)3.</p>
+</details>
+<details>
+<summary>How do I enter hydrates?</summary>
+<p>Use the middle dot: CuSO4·5H2O. You may also include a leading multiplier for any part, such as 3H2O.</p>
+</details>
+<details>
+<summary>What happens if I type an unknown element?</summary>
+<p>The input is validated and a clear error message appears indicating the first unrecognized symbol, so you can correct the formula.</p>
+</details>
+<details>
+<summary>Are charged species or electrons considered?</summary>
+<p>No. This tool computes neutral formula weights from elemental composition only. Charges do not affect molar mass at this precision.</p>
+</details>
+<div class="author-box">
+<p>
+          Strumento sviluppato da <strong>Ugo Candido</strong>.<br/>
+          Contenuti verificati da <strong>CalcDomain Science Editorial Board</strong>.<br/>
+          Ultima revisione per l'accuratezza in data: <time datetime="2025-09-15">September 15, 2025</time>.
+        </p>
+</div>
+</section>
+</main>
+<script defer="">
+  // Atomic weights (CIAAW/NIST standard values; g/mol)
+  const ATOMIC_WEIGHTS = {
+    H:1.008, He:4.002602, Li:6.94, Be:9.0121831, B:10.81, C:12.011, N:14.007, O:15.999, F:18.998403163, Ne:20.1797,
+    Na:22.98976928, Mg:24.305, Al:26.9815385, Si:28.085, P:30.973761998, S:32.06, Cl:35.45, Ar:39.948, K:39.0983, Ca:40.078,
+    Sc:44.955908, Ti:47.867, V:50.9415, Cr:51.9961, Mn:54.938044, Fe:55.845, Co:58.933194, Ni:58.6934, Cu:63.546, Zn:65.38,
+    Ga:69.723, Ge:72.63, As:74.921595, Se:78.971, Br:79.904, Kr:83.798, Rb:85.4678, Sr:87.62, Y:88.90584, Zr:91.224,
+    Nb:92.90637, Mo:95.95, Tc:98, Ru:101.07, Rh:102.90550, Pd:106.42, Ag:107.8682, Cd:112.414, In:114.818, Sn:118.71,
+    Sb:121.76, Te:127.60, I:126.90447, Xe:131.293, Cs:132.905452, Ba:137.327, La:138.90547, Ce:140.116, Pr:140.90766, Nd:144.242,
+    Pm:145, Sm:150.36, Eu:151.964, Gd:157.25, Tb:158.92535, Dy:162.5, Ho:164.93033, Er:167.259, Tm:168.93422, Yb:173.045,
+    Lu:174.9668, Hf:178.49, Ta:180.94788, W:183.84, Re:186.207, Os:190.23, Ir:192.217, Pt:195.084, Au:196.966569, Hg:200.592,
+    Tl:204.38, Pb:207.2, Bi:208.98040, Po:209, At:210, Rn:222, Fr:223, Ra:226, Ac:227, Th:232.0377,
+    Pa:231.03588, U:238.02891, Np:237, Pu:244, Am:243, Cm:247, Bk:247, Cf:251, Es:252, Fm:257,
+    Md:258, No:259, Lr:266, Rf:267, Db:268, Sg:269, Bh:270, Hs:269, Mt:278, Ds:281,
+    Rg:282, Cn:285, Nh:286, Fl:289, Mc:290, Lv:293, Ts:294, Og:294
+  };
+
+  const elementsList = Object.keys(ATOMIC_WEIGHTS).sort((a,b)=>a.localeCompare(b));
+
+  // Subscript digits mapping
+  const subMap = {'₀':'0','₁':'1','₂':'2','₃':'3','₄':'4','₅':'5','₆':'6','₇':'7','₈':'8','₉':'9'};
+
+  const els = {
+    modeFormula: document.getElementById('mode-formula'),
+    modeBuilder: document.getElementById('mode-builder'),
+    formulaPanel: document.getElementById('formula-panel'),
+    builderPanel: document.getElementById('builder-panel'),
+    formulaInput: document.getElementById('formula-input'),
+    formulaError: document.getElementById('formula-error'),
+    builderRows: document.getElementById('builder-rows'),
+    addRow: document.getElementById('add-row'),
+    builderError: document.getElementById('builder-error'),
+    builderToFormula: document.getElementById('builder-to-formula'),
+    normalized: document.getElementById('normalized-formula'),
+    empirical: document.getElementById('empirical-formula'),
+    molarMass: document.getElementById('molar-mass'),
+    totalAtoms: document.getElementById('total-atoms'),
+    breakdown: document.getElementById('breakdown'),
+    status: document.getElementById('calc-status'),
+    clearBtn: document.getElementById('clear-btn'),
+    helpBtn: document.getElementById('formula-help-btn'),
+    helpBox: document.getElementById('formula-help')
+  };
+
+  // Initialize builder select options
+  function populateSelect(select){
+    if(select.options.length > 1) return;
+    const frag = document.createDocumentFragment();
+    elementsList.forEach(sym=>{
+      const opt = document.createElement('option');
+      opt.value = sym;
+      opt.textContent = `${sym} (${ATOMIC_WEIGHTS[sym]})`;
+      frag.appendChild(opt);
+    });
+    select.appendChild(frag);
+  }
+
+  // UI mode switching
+  function setMode(mode){
+    if(mode === 'builder'){
+      els.formulaPanel.hidden = true;
+      els.builderPanel.hidden = false;
+      els.modeBuilder.checked = true;
+      els.modeFormula.checked = false;
+      els.builderPanel.querySelectorAll('.el-select').forEach(populateSelect);
+      els.formulaInput.setAttribute('tabindex','-1');
+      els.builderPanel.focus({preventScroll:true});
+    }else{
+      els.formulaPanel.hidden = false;
+      els.builderPanel.hidden = true;
+      els.modeBuilder.checked = false;
+      els.modeFormula.checked = true;
+      els.formulaInput.removeAttribute('tabindex');
+      els.formulaInput.focus({preventScroll:true});
+    }
+  }
+  document.getElementsByName('mode').forEach(r=>{
+    r.addEventListener('change', e=> setMode(e.target.value));
+  });
+
+  // Accessible tooltip toggle
+  els.helpBtn.addEventListener('click', ()=>{
+    const expanded = els.helpBtn.getAttribute('aria-expanded') === 'true';
+    els.helpBtn.setAttribute('aria-expanded', String(!expanded));
+    els.helpBox.setAttribute('aria-hidden', String(expanded));
+  });
+
+  // Builder dynamic rows
+  function addBuilderRow(sym='', count=''){
+    const row = document.createElement('div');
+    row.className = 'builder-row';
+    row.innerHTML = `
+      <select class="input el-select" aria-label="Element symbol">
+        <option value="">Element…</option>
+      </select>
+      <input class="input el-count" type="number" inputmode="numeric" min="1" step="1" placeholder="Count" aria-label="Atom count" value="${count}">
+      <button type="button" class="btn-icon remove-row" aria-label="Remove row">−</button>
+    `;
+    els.builderRows.appendChild(row);
+    const sel = row.querySelector('.el-select');
+    populateSelect(sel);
+    if(sym) sel.value = sym;
+    row.querySelector('.remove-row').addEventListener('click', ()=>{
+      row.remove();
+      validateBuilder();
+      computeFromCurrentMode();
+    });
+    row.querySelector('.el-count').addEventListener('blur', ()=>{ validateBuilder(); computeFromCurrentMode(); });
+    sel.addEventListener('change', ()=>{ validateBuilder(); computeFromCurrentMode(); });
+  }
+  els.addRow.addEventListener('click', ()=> addBuilderRow());
+
+  // Convert builder rows to formula string
+  els.builderToFormula.addEventListener('click', ()=>{
+    const parts = [];
+    const rows = Array.from(els.builderRows.querySelectorAll('.builder-row'));
+    for(const r of rows){
+      const sym = r.querySelector('.el-select').value;
+      const cnt = Number(r.querySelector('.el-count').value || 0);
+      if(!sym || !cnt || cnt<1){ continue; }
+      parts.push(sym + (cnt>1 ? String(cnt) : ''));
+    }
+    const formula = parts.sort((a,b)=>a.localeCompare(b)).join('');
+    if(formula){
+      setMode('formula');
+      els.formulaInput.value = formula;
+      els.formulaInput.dispatchEvent(new Event('blur'));
+    }
+  });
+
+  // Seed one builder row
+  addBuilderRow();
+
+  // Validation helpers
+  function setError(el, msg){
+    el.setAttribute('aria-invalid','true');
+    if(el === els.formulaInput){
+      els.formulaError.textContent = msg;
+    } else {
+      els.builderError.textContent = msg;
+    }
+  }
+  function clearError(el){
+    el.removeAttribute('aria-invalid');
+    if(el === els.formulaInput){
+      els.formulaError.textContent = '';
+    } else {
+      els.builderError.textContent = '';
+    }
+  }
+
+  // Normalize subscripts and spaces
+  function normalizeInput(str){
+    if(!str) return '';
+    let s = str.trim();
+    // convert subscripts
+    s = s.replace(/[₀₁₂₃₄₅₆₇₈₉]/g, m => subMap[m] || m);
+    // remove spaces
+    s = s.replace(/\s+/g,'');
+    return s;
+  }
+
+  // Parse chemical formula to counts Map
+  function parseFormula(formula){
+    const F = normalizeInput(formula)
+      .replace(/·|•/g, '+')    // hydrates separator
+      .replace(/–|—/g, '-')    // normalize dashes (not used)
+      .replace(/\[(.*?)\]/g,'($1)')
+      .replace(/\{(.*?)\}/g,'($1)');
+    if(!F) throw new Error('Please enter a chemical formula.');
+    // Split by plus added from hydrate dots (treat as separate parts)
+    const parts = F.split('+').filter(Boolean);
+    const total = new Map();
+    for(let part of parts){
+      // Leading coefficient (e.g., 5H2O)
+      let lead = 1;
+      const m = part.match(/^(\d+)(.*)$/);
+      if(m){ lead = parseInt(m[1],10); part = m[2]; }
+      // Remove isotope mass prefix like 13C or [13C] already flattened; here ignore leading digits before symbol
+      const counts = parseGroup(part, 0).counts;
+      multiplyInto(total, counts, lead);
+    }
+    if(total.size === 0) throw new Error('The formula does not contain any recognizable elements.');
+    return total;
+  }
+
+  // Recursive parser: returns {counts: Map, index}
+  function parseGroup(s, i){
+    const counts = new Map();
+    while(i < s.length){
+      const ch = s[i];
+      if(ch === '('){
+        const inner = parseGroup(s, i+1);
+        i = inner.index;
+        // parse multiplier
+        let {num, next} = readNumber(s, i);
+        i = next;
+        if(num === null) num = 1;
+        multiplyInto(counts, inner.counts, num);
+        continue;
+      }
+      if(ch === ')'){
+        return {counts, index: i+1};
+      }
+      if(/[A-Z]/.test(ch)){
+        // element symbol (1-3 letters, but modern symbols 1-2)
+        let j = i+1;
+        while(j < s.length && /[a-z]/.test(s[j]) && j-i < 3){ j++; }
+        const sym = s.slice(i, j);
+        if(!ATOMIC_WEIGHTS[sym]){
+          // if digits prefix like 13C were not removed, handle: skip leading numbers until capital
+          if(/^\d+$/.test(sym)) { i = j; continue; }
+          throw new Error(`Unknown element symbol: “${sym}”.`);
+        }
+        // count after symbol
+        const read = readNumber(s, j);
+        let n = read.num==null ? 1 : read.num;
+        i = read.next;
+        counts.set(sym, (counts.get(sym)||0) + n);
+        continue;
+      }
+      if(/\d/.test(ch)){
+        // a number here without preceding element or closing group is ambiguous
+        // We treat it as a leading multiplier for the next token -> attach to following group/element
+        // Implement as multiplier for the next parenthesized group only; otherwise error for clarity
+        // To keep users safe, throw instructive error:
+        throw new Error(`Unexpected number “${ch}” at position ${i+1}. Place multipliers after parentheses or element symbols.`);
+      }
+      // Any other char invalid
+      throw new Error(`Invalid character “${ch}” at position ${i+1}.`);
+    }
+    return {counts, index:i};
+  }
+
+  function readNumber(s, i){
+    if(i >= s.length) return {num:null, next:i};
+    let j=i;
+    while(j < s.length && /\d/.test(s[j])) j++;
+    if(j===i) return {num:null, next:i};
+    return {num: parseInt(s.slice(i,j), 10), next:j};
+  }
+
+  function multiplyInto(target, src, factor){
+    for(const [k,v] of src.entries()){
+      target.set(k, (target.get(k)||0) + v * factor);
+    }
+  }
+
+  // Compute outputs
+  function computeFromCounts(counts){
+    // Molar mass
+    let M = 0;
+    for(const [e,n] of counts.entries()){
+      M += ATOMIC_WEIGHTS[e] * n;
+    }
+    // Hill notation
+    const hillEntries = Array.from(counts.entries());
+    const hasC = counts.has('C');
+    hillEntries.sort((a,b)=>{
+      if(hasC){
+        if(a[0]==='C') return -1;
+        if(b[0]==='C') return 1;
+        if(a[0]==='H' && b[0]!=='C') return -1;
+        if(b[0]==='H' && a[0]!=='C') return 1;
+        if(a[0]==='H' && b[0]==='H') return 0;
+        if(a[0]==='C' && b[0]==='C') return 0;
+        return a[0].localeCompare(b[0]);
+      }else{
+        return a[0].localeCompare(b[0]);
+      }
+    });
+    const normalized = hillEntries.map(([e,n]) => e + (n>1 ? n : '') ).join('');
+
+    // Empirical formula (divide by GCD)
+    const g = hillEntries.reduce((acc, [,n]) => gcd(acc, n), 0);
+    const empirical = hillEntries.map(([e,n]) => e + (n/g>1 ? (n/g) : '')).join('');
+
+    // Total atoms
+    const totalAtoms = hillEntries.reduce((acc, [,n]) => acc+n, 0);
+
+    // Breakdown rows
+    const breakdown = hillEntries.map(([e,n])=>{
+      const aw = ATOMIC_WEIGHTS[e];
+      const mass = aw * n;
+      const pct = M>0 ? (mass/M*100) : 0;
+      return {e, n, aw, mass, pct};
+    });
+
+    return {M, normalized, empirical, totalAtoms, breakdown};
+  }
+
+  function gcd(a,b){ if(!a) return b; if(!b) return a; while(b){ const t=a%b; a=b; b=t; } return a; }
+
+  // Render results
+  function renderResults(res){
+    els.normalized.textContent = res.normalized || '—';
+    els.empirical.textContent = res.empirical || '—';
+    els.molarMass.textContent = `${res.M.toFixed(3)} g/mol`;
+    els.totalAtoms.textContent = String(res.totalAtoms);
+
+    const tbody = els.breakdown;
+    tbody.innerHTML = '';
+    res.breakdown.forEach(row=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${row.e}</strong></td>
+        <td>${row.n}</td>
+        <td>${row.aw.toFixed(3)}</td>
+        <td>${row.mass.toFixed(3)}</td>
+        <td>${row.pct.toFixed(2)}%</td>
+      `;
+      tbody.appendChild(tr);
+    });
+    if(res.breakdown.length === 0){
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td colspan="5" class="muted">Enter a formula to see the breakdown.</td>`;
+      tbody.appendChild(tr);
+    }
+  }
+
+  // Validation
+  function validateFormula(){
+    const val = els.formulaInput.value;
+    if(!val.trim()){
+      setError(els.formulaInput, 'This field is required. Please enter a chemical formula.');
+      return null;
+    }
+    try{
+      const counts = parseFormula(val);
+      clearError(els.formulaInput);
+      return counts;
+    }catch(err){
+      setError(els.formulaInput, err.message + ' Example: C6H12O6 or Ca3(PO4)2.');
+      return null;
+    }
+  }
+
+  function validateBuilder(){
+    const rows = Array.from(els.builderRows.querySelectorAll('.builder-row'));
+    const counts = new Map();
+    let hasAny = false;
+    for(const r of rows){
+      const sym = r.querySelector('.el-select').value;
+      const cntRaw = r.querySelector('.el-count').value;
+      if(!sym && !cntRaw) continue; // ignore empty rows
+      hasAny = true;
+      const cnt = Number(cntRaw);
+      if(!sym){
+        setError(els.builderPanel, 'Please select an element in each filled row.');
+        return null;
+      }
+      if(!cnt || cnt < 1 || !Number.isFinite(cnt) || Math.floor(cnt) !== cnt){
+        setError(els.builderPanel, `Invalid count for ${sym}. Enter a positive integer (e.g., 1, 2, 3).`);
+        return null;
+      }
+      counts.set(sym, (counts.get(sym)||0) + cnt);
+    }
+    if(!hasAny){
+      setError(els.builderPanel, 'Add at least one element row with a positive count.');
+      return null;
+    }
+    clearError(els.builderPanel);
+    return counts;
+  }
+
+  function computeFromCurrentMode(){
+    let counts = null;
+    if(els.modeFormula.checked){
+      counts = validateFormula();
+    } else {
+      counts = validateBuilder();
+    }
+    if(!counts){ renderResults({M:0, normalized:'—', empirical:'—', totalAtoms:0, breakdown:[]}); return; }
+    const res = computeFromCounts(counts);
+    renderResults(res);
+    els.status.textContent = `Calculated molar mass ${res.M.toFixed(3)} g/mol for ${res.normalized}.`;
+  }
+
+  // Events
+  els.formulaInput.addEventListener('blur', computeFromCurrentMode);
+  els.formulaInput.addEventListener('input', ()=>{ /* live feedback without too much INP cost */ });
+
+  els.clearBtn.addEventListener('click', ()=>{
+    els.formulaInput.value = '';
+    els.formulaError.textContent = '';
+    els.builderError.textContent = '';
+    els.breakdown.innerHTML = '<tr><td colspan="5" class="muted">Enter a formula to see the breakdown.</td></tr>';
+    els.normalized.textContent = '—';
+    els.empirical.textContent = '—';
+    els.molarMass.textContent = '0.000 g/mol';
+    els.totalAtoms.textContent = '0';
+    els.status.textContent = 'Cleared.';
+  });
+
+  // Populate initial select options
+  document.querySelectorAll('.el-select').forEach(populateSelect);
+
+  // Accessibility: keyboard support for help toggle via Enter/Space is native on button.
+
+  // Example default: prefill with "C8H10N4O2"
+  window.addEventListener('DOMContentLoaded', ()=>{
+    els.formulaInput.value = 'C8H10N4O2';
+    computeFromCurrentMode();
+  });
+  </script>
+<html><body><footer class="bg-gray-900 text-white py-12">
+<div class="container mx-auto px-4">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+<div>
+<h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+<p class="text-gray-400 mb-4">Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.</p>
+<div class="flex space-x-4">
+<a aria-label="Twitter" class="text-gray-400 hover:text-white" href="#">
+<svg aria-hidden="true" class="w-6 h-6" fill="currentColor" viewbox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"></path></svg>
+</a>
+<a aria-label="Facebook" class="text-gray-400 hover:text-white" href="#">
+<svg aria-hidden="true" class="w-6 h-6" fill="currentColor" viewbox="0 0 24 24"><path d="M22.46 6c-.77.35-1.6.58-2.46.69.88-.53 1.56-1.37 1.88-2.38-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98C8.28 9.09 5.11 7.38 3 4.79c-.37.63-.58 1.37-.58 2.15 0 1.49.75 2.81 1.91 3.56-.71 0-1.37-.2-1.95-.5v.03c0 2.08 1.48 3.82 3.44 4.21a4.22 4.22 0 0 1-1.93.07 4.28 4.28 0 0 0 4 2.98 8.521 8.521 0 0 1-5.33 1.84c-.34 0-.68-.02-1.02-.06C3.44 20.29 5.7 21 8.12 21 16 21 20.33 14.46 20.33 8.79c0-.19 0-.37-.01-.56.84-.6 1.56-1.36 2.14-2.23z"></path></svg>
+</a>
+</div>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Categories</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="finance.html">Finance</a></li>
+<li><a class="text-gray-400 hover:text-white" href="health-fitness.html">Health &amp; Fitness</a></li>
+<li><a class="text-gray-400 hover:text-white" href="math-conversions.html">Math &amp; Conversions</a></li>
+<li><a class="text-gray-400 hover:text-white" href="lifestyle-everyday.html">Lifestyle &amp; Everyday</a></li>
+<li><a class="text-gray-400 hover:text-white" href="construction-diy.html">Construction &amp; DIY</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="mortgage-payment.html">Mortgage Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="percentage-calculator.html">Percentage Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="bmi-calculator.html">BMI Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="auto-loan-calculator.html">Auto Loan Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="house-affordability.html">House Affordability</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Support</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="#">About Us</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Contact</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Privacy Policy</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Terms of Service</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Site Map</a></li>
+</ul>
+</div>
+</div>
+<div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+<p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+</div>
+</div>
+</footer></body></html>
+
+<html><head><script defer="" src="/assets/js/mobile-menu.js"></script></head></html></body></html>

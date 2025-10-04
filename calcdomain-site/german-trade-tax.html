@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<title>German Trade Tax (Gewerbesteuer) Calculator</title>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<meta content="Authoritative German Trade Tax (Gewerbesteuer) calculator. Estimate your annual trade tax based on entity type, allowance, and municipal multiplier (Hebesatz). Built for accuracy, accessibility, and speed." name="description"/>
+<meta content="Ugo Candido" name="author"/>
+<link href="https://calcdomain.com/german-trade-tax.html" rel="canonical"/>
+<meta content="#005A9C" name="theme-color"/>
+<meta content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1" name="robots"/>
+<style>
+    /* ====================================================================== */
+    /* Design Tokens                                                          */
+    /* ====================================================================== */
+    :root{
+      --primary-color:#005A9C; --secondary-color:#003F6E; --accent-color:#00A4E4;
+      --background-color:#F8F9FA; --surface-color:#FFFFFF;
+      --text-color:#212529; --muted-text-color:#6C757D; --border-color:#DEE2E6;
+      --success-color:#198754; --error-color:#DC3545; --warning-color:#FFC107;
+      --focus-ring:3px solid rgba(0,90,156,.55);
+
+      --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+      --font-mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+
+      --container-max:1200px;
+      --radius-sm:6px; --radius-md:8px; --radius-lg:12px;
+      --gap-1:.5rem; --gap-2:1rem; --gap-3:1.5rem; --gap-4:2rem;
+      --touch:48px;
+    }
+
+    @media (prefers-contrast: more){
+      :root{ --primary-color:#000080; --secondary-color:#000; --text-color:#000; --border-color:#000; --background-color:#fff; }
+    }
+    @media (prefers-reduced-motion: reduce){
+      *,*::before,*::after{ animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; scroll-behavior:auto!important; }
+    }
+
+    /* ====================================================================== */
+    /* Base                                                                   */
+    /* ====================================================================== */
+    *{ box-sizing:border-box; }
+    html{ font-size:clamp(16px,2.2vw,18px); }
+    body{
+      margin:0; font-family:var(--font-sans); background:var(--background-color);
+      color:var(--text-color); line-height:1.6; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    a{ color:var(--primary-color); text-decoration:none; }
+    a:hover{ text-decoration:underline; }
+    a:focus-visible{ outline:var(--focus-ring); border-radius:2px; }
+    h1,h2,h3,h4{ color:var(--secondary-color); line-height:1.25; margin:.25rem 0 .75rem; font-weight:800; }
+    h1{ font-size:clamp(1.8rem,4vw,2.5rem); }
+    h2{ font-size:clamp(1.4rem,3.2vw,2rem); }
+    h3{ font-size:clamp(1.2rem,3vw,1.5rem); }
+    p{ margin:.5rem 0 1rem; max-width:75ch; }
+    code,kbd,pre{ font-family:var(--font-mono); }
+    .container{ max-width:var(--container-max); margin:0 auto; padding:0 clamp(1rem,4vw,2rem); }
+    .main{ padding:var(--gap-4) 0; }
+    .skip-link{
+      position:absolute; left:6px; top:-40px; background:var(--primary-color); color:#fff; padding:.5rem .75rem;
+      border-bottom-left-radius:4px; border-bottom-right-radius:4px; z-index:1000;
+    }
+    .skip-link:focus{ top:0; }
+
+    /* ====================================================================== */
+    /* Header (non-sticky as required)                                        */
+    /* ====================================================================== */
+    header.site-header{ background:var(--surface-color); border-bottom:1px solid var(--border-color); }
+    .header-inner{
+      display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:var(--gap-2); padding:.75rem 0;
+    }
+    .logo{ font-weight:900; color:var(--primary-color); font-size:clamp(1.1rem,3vw,1.4rem); }
+    .site-search{ display:flex; align-items:center; gap:.5rem; }
+    .site-search input[type="search"]{
+      min-height:var(--touch); padding:.6rem .8rem; border:1px solid var(--border-color); border-radius:var(--radius-md); width:100%;
+    }
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
+      padding:.6rem .9rem; min-height:var(--touch); min-width:var(--touch);
+      border-radius:var(--radius-md); cursor:pointer; border:1px solid transparent; font-weight:700;
+    }
+    .btn-primary{ background:var(--primary-color); color:#fff; border-color:var(--primary-color); }
+    .btn-secondary{ background:transparent; color:var(--primary-color); border-color:var(--primary-color); }
+    .btn:focus-visible{ outline:var(--focus-ring); }
+    .nav-toggle{ border:1px solid var(--border-color); background:var(--surface-color); }
+
+    nav.main-nav{ display:none; }
+    .breadcrumb{ font-size:.95rem; color:var(--muted-text-color); margin:.5rem 0 1rem; }
+    .breadcrumb a{ color:inherit; }
+    .breadcrumb a:hover{ color:var(--primary-color); text-decoration:underline; }
+
+    /* ====================================================================== */
+    /* Calculator Layout                                                      */
+    /* ====================================================================== */
+    .layout{
+      display:grid; grid-template-columns:1fr; gap:var(--gap-4);
+    }
+    @media (min-width: 992px){
+      .layout{ grid-template-columns:minmax(280px,420px) 1fr; }
+    }
+    .card{
+      background:var(--surface-color); border:1px solid var(--border-color);
+      border-radius:var(--radius-lg); padding:clamp(1rem,2.5vw,1.5rem);
+      box-shadow:0 2px 6px rgba(0,0,0,.04);
+    }
+    .calculator .form-group{ margin-bottom:var(--gap-2); }
+    .calculator label{ display:block; font-weight:700; margin:0 0 .5rem; }
+    .asterisk{ color:var(--error-color); margin-left:.15rem; }
+    .input-row{ display:flex; gap:.5rem; align-items:center; }
+    .input-wrap{ position:relative; flex:1; }
+    .form-control{
+      display:block; width:100%; min-height:var(--touch); padding:.75rem 1rem;
+      border:1px solid var(--border-color); border-radius:var(--radius-md); font-size:1rem; background:#fff;
+      transition:border-color .15s ease, box-shadow .15s ease;
+    }
+    .form-control:focus-visible{
+      outline:var(--focus-ring); border-color:var(--primary-color); box-shadow:0 0 0 3px rgba(0,90,156,.12);
+    }
+    .form-control[aria-invalid="true"]{ border-color:var(--error-color); }
+    .suffix{ position:absolute; right:.75rem; top:50%; transform:translateY(-50%); color:var(--muted-text-color); pointer-events:none; }
+
+    /* Radio group */
+    .radio-group{
+      display:flex; gap:.5rem; padding:.25rem; border:1px solid var(--border-color); border-radius:var(--radius-md);
+    }
+    .radio-option{ position:relative; flex:1; }
+    .radio-option input[type="radio"]{ position:absolute; opacity:0; inset:0; }
+    .radio-option label{
+      display:flex; align-items:center; justify-content:center; min-height:var(--touch);
+      border-radius:var(--radius-sm); cursor:pointer; padding:.5rem; border:1px solid transparent;
+      background:#f6f8fa; font-weight:700;
+    }
+    .radio-option input[type="radio"]:focus + label{ outline:var(--focus-ring); }
+    .radio-option input[type="radio"]:checked + label{ background:var(--primary-color); color:#fff; }
+
+    /* Select */
+    select.form-control{ appearance:auto; background:#fff; }
+    .helper{ font-size:.9rem; color:var(--muted-text-color); }
+
+    /* Tooltip */
+    .tooltip-btn{
+      border:1px solid var(--border-color); background:#fff; color:var(--secondary-color);
+      width:var(--touch); height:var(--touch); border-radius:50%; font-weight:900; line-height:1;
+    }
+    .tooltip-content{
+      display:none; margin-top:.5rem; background:#eef5fb; border:1px solid #cfe2ff; color:#0b3d6b;
+      padding:.75rem; border-radius:var(--radius-md);
+    }
+    .tooltip-content[data-open="true"]{ display:block; }
+
+    /* Errors */
+    .error{ color:var(--error-color); font-size:.9rem; margin-top:.35rem; min-height:1.25rem; }
+
+    /* Results */
+    .results{ background:var(--background-color); border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:var(--gap-3); min-height:260px; }
+    .results h3{ margin-top:0; }
+    .result-row{ display:flex; align-items:baseline; justify-content:space-between; padding:.5rem 0; border-bottom:1px dashed var(--border-color); }
+    .result-row:last-child{ border-bottom:none; }
+    .label{ color:var(--muted-text-color); }
+    .value{ font-weight:800; font-size:1.15rem; color:#111; }
+    .value.emph{ color:var(--success-color); font-size:1.25rem; }
+    .note{ font-size:.9rem; color:var(--muted-text-color); margin-top:.5rem; }
+
+    /* Content */
+    .content section + section{ margin-top:var(--gap-3); }
+    .formula-box{
+      background:#eef2f7; border:1px solid #d7dee7; border-radius:var(--radius-md);
+      padding:1rem; overflow:auto; font-family:var(--font-mono);
+    }
+
+    /* Footer */
+    footer.site-footer{ background:var(--secondary-color); color:#fff; margin-top:3rem; }
+    .footer-inner{ display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:var(--gap-3); padding:2rem 0; }
+    .site-footer a{ color:#fff; }
+    .footer-bottom{ text-align:center; padding:1rem 0; border-top:1px solid rgba(255,255,255,.25); font-size:.95rem; }
+
+    /* Utilities */
+    .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    .grid-2{ display:grid; grid-template-columns:1fr; gap:var(--gap-2); }
+    @media (min-width:700px){ .grid-2{ grid-template-columns:1fr 1fr; } }
+    .actions{ display:flex; gap:.5rem; flex-wrap:wrap; margin-top:var(--gap-2); }
+  </style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "German Trade Tax (Gewerbesteuer) Calculator",
+  "description": "Estimate German Trade Tax (Gewerbesteuer) based on entity type, statutory allowance and municipal multiplier (Hebesatz). Accurate, accessible, and mobile-first.",
+  "url": "https://calcdomain.com/german-trade-tax.html",
+  "inLanguage": "en",
+  "author": {
+    "@type": "Person",
+    "name": "Ugo Candido"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "CalcDomain"
+  },
+  "dateModified": "2025-09-14",
+  "mainEntity": [
+    {
+      "@type": "HowTo",
+      "name": "Worked Example: Step-by-Step",
+      "description": "How to compute German trade tax using the base rate (3.5%), the municipal multiplier (Hebesatz) and the statutory allowance for partnerships.",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "name": "Choose entity type",
+          "text": "Select Corporation (GmbH/UG/AG) or Sole proprietor/Partnership. The 24,500 EUR allowance applies only to the latter."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Enter annual trade income",
+          "text": "Provide your annual trade income before trade tax. Optionally add net adjustments (add-backs or reductions)."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Set municipal multiplier",
+          "text": "Input the Hebesatz in percent (e.g., 400%) or pick a city from the quick list."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Compute",
+          "text": "Tax base = max(0, income + adjustments − allowance). Base amount = 3.5% × tax base. Trade tax = base amount × (Hebesatz/100)."
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Who benefits from the EUR 24,500 allowance?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Sole proprietors and partnerships are entitled to a EUR 24,500 trade income allowance. Corporations (e.g., GmbH/UG/AG) are not."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the effective trade tax rate?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It equals 3.5% × (municipal multiplier / 100). For example, a 400% multiplier implies an effective 14% trade tax rate."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I find my municipality’s Hebesatz?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Consult the latest Realsteuerhebesätze published by the German Federal Statistical Office (Destatis) or your city’s finance department website."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is trade tax deductible from corporate income tax?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Trade tax is not deductible from the corporate income tax base. For individuals, a credit under Sec. 35 EStG can reduce personal income tax, capped at the trade tax paid."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can trade losses reduce future trade tax?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Trade losses can be carried forward for trade tax purposes, subject to German rules. This calculator does not model loss carryforwards."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does the calculator include add-backs and reductions?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "You can enter a net adjustment amount to reflect add-backs and reductions. For detailed add-back rules, consult Sec. 8 and Sec. 9 GewStG."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is the credit under Sec. 35 EStG automatic?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. The credit applies to individuals and partnerships via the personal income tax return and is limited to the trade tax actually due and the personal income tax attributable to trade income."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<html><body><header class="bg-white shadow-sm sticky top-0 z-50">
+<nav aria-label="Primary" class="container mx-auto px-4 lg:px-6 py-4">
+<!-- TOP ROW -->
+<div class="flex justify-between items-center">
+<!-- LOGO -->
+<a class="text-2xl font-bold text-blue-600" href="index.html">CalcDomain</a>
+<!-- DESKTOP SEARCH -->
+<div class="w-full max-w-md hidden md:block mx-8">
+<div class="relative">
+<input autocomplete="off" class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" id="search-input" placeholder="Search for a calculator..." type="search"/>
+<svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<!-- CONTAINER RISULTATI RICERCA -->
+<div class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200" id="search-results"></div>
+</div>
+</div>
+<!-- NAVIGATION LINKS -->
+<div class="hidden md:flex items-center space-x-6">
+<a class="text-gray-700 hover:text-blue-600 transition-colors" href="search.html">Advanced Search</a>
+<a class="text-gray-700 hover:text-blue-600 transition-colors" href="#categories">Categories</a>
+</div>
+<!-- MOBILE TOGGLE (ARIA added) -->
+<button aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" class="md:hidden p-2" id="mobile-menu-toggle" type="button">
+<svg aria-hidden="true" class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+</div>
+<!-- MOBILE MENU (converted to <nav> with aria-label) -->
+<nav aria-label="Mobile menu" class="md:hidden mt-4 hidden" id="mobile-menu" role="navigation">
+<div class="mb-4">
+<div class="relative">
+<input class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="mobile-search-input" placeholder="Search calculators..." type="search"/>
+<svg aria-hidden="true" class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<div class="space-y-2">
+<a class="block py-2 text-gray-700 hover:text-blue-600" href="search.html">Advanced Search</a>
+<a class="block py-2 text-gray-700 hover:text-blue-600" href="#categories">Categories</a>
+</div>
+</nav>
+</nav>
+</header></body></html>
+<main class="main" id="main-content" role="main">
+<div class="container">
+<nav aria-label="Breadcrumb" class="breadcrumb">
+<a href="/">Home</a> / <a href="https://calcdomain.com/finance.html">Finance</a> / <a href="https://calcdomain.com/taxation.html">German Taxation</a> / German Trade Tax Calculator
+      </nav>
+<h1>German Trade Tax (Gewerbesteuer) Calculator</h1>
+<p>
+        Estimate German Trade Tax with professional accuracy. This calculator is built for founders, finance leads and advisors who need a clear, audit-ready breakdown of the trade tax base, the 3.5% base amount, the municipal multiplier (Hebesatz), and the statutory allowance for non-corporate businesses.
+      </p>
+<div class="layout">
+<!-- Calculator -->
+<aside aria-labelledby="calc-heading" class="card calculator">
+<h2 id="calc-heading">Calculator</h2>
+<!-- Entity Type -->
+<div aria-labelledby="entityTypeLegend" class="form-group" role="group">
+<span class="sr-only" id="entityTypeLegend">Choose entity type</span>
+<div aria-labelledby="entityTypeLegend" class="radio-group" role="radiogroup">
+<div class="radio-option">
+<input checked="" id="entityCorp" name="entityType" type="radio" value="corp"/>
+<label for="entityCorp">Corporation (GmbH/UG/AG)</label>
+</div>
+<div class="radio-option">
+<input id="entityIndiv" name="entityType" type="radio" value="indiv"/>
+<label for="entityIndiv">Sole proprietor / Partnership</label>
+</div>
+</div>
+</div>
+<!-- Income -->
+<div class="form-group">
+<div class="input-row">
+<label for="tradeIncome">Annual trade income (EUR)<span aria-hidden="true" class="asterisk">*</span></label>
+<button aria-controls="tipIncome" aria-expanded="false" aria-haspopup="dialog" class="tooltip-btn" id="tipIncomeBtn" title="What is this?" type="button">?</button>
+</div>
+<div class="input-wrap">
+<input aria-describedby="tradeIncomeError tipIncome" aria-required="true" autocomplete="off" class="form-control" id="tradeIncome" inputmode="decimal" min="0" name="tradeIncome" placeholder="e.g., 100000" step="0.01" type="number"/>
+<span class="suffix">€</span>
+</div>
+<div aria-live="polite" class="error" id="tradeIncomeError" role="alert"></div>
+<div aria-label="Annual trade income help" aria-modal="false" class="tooltip-content" data-open="false" id="tipIncome" role="dialog">
+              Enter your annual trade income before trade tax (after accounting and tax adjustments). If you want to reflect net add-backs or reductions separately, use the next field.
+            </div>
+</div>
+<!-- Net adjustments -->
+<div class="form-group">
+<div class="input-row">
+<label for="netAdjust">Net adjustments (EUR)</label>
+<button aria-controls="tipAdjust" aria-expanded="false" aria-haspopup="dialog" class="tooltip-btn" id="tipAdjustBtn" title="What is this?" type="button">?</button>
+</div>
+<div class="input-wrap">
+<input aria-describedby="tipAdjust" class="form-control" id="netAdjust" inputmode="decimal" name="netAdjust" step="0.01" type="number" value="0"/>
+<span class="suffix">€</span>
+</div>
+<div aria-label="Net adjustments help" aria-modal="false" class="tooltip-content" data-open="false" id="tipAdjust" role="dialog">
+              Use a positive amount for add-backs (e.g., non-deductible financing portions) and a negative amount for reductions (e.g., certain dividends). This is a simplified, net field.
+            </div>
+</div>
+<!-- Allowance -->
+<div class="form-group">
+<label for="applyAllowance">Statutory allowance (EUR 24,500)</label>
+<div class="input-row">
+<input aria-describedby="allowanceHelp" class="form-control" id="applyAllowance" role="switch" style="width:auto; min-width:var(--touch);" type="checkbox"/>
+<span aria-live="polite" class="helper" id="allowanceState">Automatically disabled for corporations.</span>
+</div>
+<p class="helper" id="allowanceHelp">Allowed for sole proprietors and partnerships under Sec. 11(1) GewStG.</p>
+</div>
+<!-- Hebesatz -->
+<div class="form-group">
+<div class="input-row">
+<label for="hebesatz">Municipal multiplier (Hebesatz) %<span aria-hidden="true" class="asterisk">*</span></label>
+<button aria-controls="tipHebesatz" aria-expanded="false" aria-haspopup="dialog" class="tooltip-btn" id="tipHebesatzBtn" title="What is this?" type="button">?</button>
+</div>
+<div class="grid-2">
+<div class="input-wrap">
+<input aria-describedby="hebesatzError tipHebesatz" aria-required="true" class="form-control" id="hebesatz" inputmode="numeric" max="1000" min="200" name="hebesatz" step="1" type="number" value="400"/>
+<span class="suffix">%</span>
+</div>
+<div>
+<label for="citySelect">Quick select municipality</label>
+<select aria-label="Quick select municipality" class="form-control" id="citySelect">
+<option value="">Choose a city…</option>
+<option value="410">Berlin (410%)</option>
+<option value="490">Munich (490%)</option>
+<option value="470">Hamburg (470%)</option>
+<option value="460">Frankfurt am Main (460%)</option>
+<option value="475">Cologne (475%)</option>
+<option value="400">Düsseldorf (400%)</option>
+<option value="450">Stuttgart (450%)</option>
+</select>
+</div>
+</div>
+<div aria-live="polite" class="error" id="hebesatzError" role="alert"></div>
+<div aria-label="Hebesatz help" aria-modal="false" class="tooltip-content" data-open="false" id="tipHebesatz" role="dialog">
+              The Hebesatz is set by each municipality (min. 200%). Effective trade tax rate = 3.5% × (Hebesatz / 100). For example, 400% implies 14%.
+            </div>
+</div>
+<!-- Actions -->
+<div class="actions">
+<button aria-label="Recalculate" class="btn btn-primary" id="recalcBtn" type="button">Recalculate</button>
+<button aria-label="Reset inputs" class="btn btn-secondary" id="resetBtn" type="button">Reset</button>
+</div>
+</aside>
+<!-- Results -->
+<section aria-labelledby="results-heading" class="results card">
+<h2 id="results-heading">Results</h2>
+<div class="result-row">
+<span class="label">Taxable trade income (after allowance)</span>
+<span class="value" id="taxableIncome">€0.00</span>
+</div>
+<div class="result-row">
+<span class="label">Base amount (Steuermessbetrag) at 3.5%</span>
+<span class="value" id="baseAmount">€0.00</span>
+</div>
+<div class="result-row">
+<span class="label">Municipal multiplier (Hebesatz)</span>
+<span class="value" id="hebesatzOut">400%</span>
+</div>
+<div class="result-row">
+<span class="label">Effective trade tax rate</span>
+<span class="value" id="effectiveRate">14.00%</span>
+</div>
+<div class="result-row">
+<span class="label">Estimated annual trade tax</span>
+<span class="value emph" id="tradeTax">€0.00</span>
+</div>
+<div class="result-row" hidden="" id="creditRow">
+<span class="label">Max. credit under Sec. 35 EStG (cap: trade tax)</span>
+<span class="value" id="creditValue">€0.00</span>
+</div>
+<div class="result-row" hidden="" id="netAfterCreditRow">
+<span class="label">Net trade tax after max. credit</span>
+<span class="value" id="netAfterCredit">€0.00</span>
+</div>
+<p class="note" id="resultsNote">
+            Results update instantly. Figures are estimates for planning only and do not constitute tax advice.
+          </p>
+<div aria-live="polite" class="sr-only" id="liveSummary"></div>
+</section>
+</div>
+<!-- Authoritative Content -->
+<article aria-label="Authoritative content and documentation" class="content">
+<section>
+<h2>Data Source and Methodology</h2>
+<ul>
+<li>
+              German Trade Tax Act (Gewerbesteuergesetz, GewStG): base rate and allowance.
+              Official publication (Gesetze im Internet). Latest consolidated version:
+              <a href="https://www.gesetze-im-internet.de/gewstg/" rel="nofollow noopener" target="_blank">https://www.gesetze-im-internet.de/gewstg/</a>
+              — Sec. 11 (allowance and 3.5% base rate).
+            </li>
+<li>
+              Personal income tax credit for individuals and partnerships: Sec. 35 EStG —
+              <a href="https://www.gesetze-im-internet.de/estg/__35.html" rel="nofollow noopener" target="_blank">https://www.gesetze-im-internet.de/estg/__35.html</a>
+</li>
+<li>
+              Municipal multipliers (Hebesätze): Federal Statistical Office (Destatis), Realsteuerhebesätze (annual).
+              Overview: <a href="https://www.destatis.de" rel="nofollow noopener" target="_blank">https://www.destatis.de</a> (search “Realsteuerhebesätze”).
+            </li>
+</ul>
+<p><strong>Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.</strong></p>
+</section>
+<section>
+<h2>The Formula Explained</h2>
+<div aria-label="Formulas in LaTeX" class="formula-box">
+            \[
+              \text{Taxable Trade Income} = \max\!\big(0,\ \text{Income} + \text{Net Adjustments} - \text{Allowance}\big)
+            \]<br/><br/>
+            \[
+              \text{Base Amount (Steuermessbetrag)} = 0.035 \times \text{Taxable Trade Income}
+            \]<br/><br/>
+            \[
+              \text{Trade Tax} = \text{Base Amount} \times \left(\frac{\text{Hebesatz}}{100}\right)
+            \]<br/><br/>
+            \[
+              \text{Effective Rate} = 0.035 \times \left(\frac{\text{Hebesatz}}{100}\right)
+            \]<br/><br/>
+            For individuals/partnerships (Sec. 35 EStG) — maximum personal income tax credit:
+            \[
+              \text{Credit}_{\max} = \min\!\big(\text{Trade Tax},\ 3.8 \times \text{Base Amount}\big)
+            \]
+          </div>
+</section>
+<section>
+<h2>Glossary of Variables</h2>
+<ul>
+<li><strong>Annual trade income:</strong> Your business trade income before trade tax.</li>
+<li><strong>Net adjustments:</strong> Simplified net of add-backs and reductions per GewStG Sec. 8/9.</li>
+<li><strong>Allowance (EUR 24,500):</strong> Available to sole proprietors and partnerships (Sec. 11(1) GewStG).</li>
+<li><strong>Base amount (3.5%):</strong> The “Steuermessbetrag” computed on the taxable trade income (Sec. 11 GewStG).</li>
+<li><strong>Municipal multiplier (Hebesatz):</strong> Percentage set by the municipality (min. 200%).</li>
+<li><strong>Trade tax:</strong> Base amount × Hebesatz/100.</li>
+<li><strong>Effective rate:</strong> 3.5% × Hebesatz/100 (e.g., 400% → 14%).</li>
+<li><strong>Sec. 35 EStG credit:</strong> Max. personal income tax credit for individuals/partnerships, capped at trade tax paid.</li>
+</ul>
+</section>
+<section>
+<h2>Worked Example: A Step-by-Step Walkthrough</h2>
+<h3>How It Works: A Step-by-Step Example</h3>
+<p>
+            Assume a partnership with annual trade income of €150,000, net adjustments of €5,000, and a municipal multiplier of 410% (Berlin).
+          </p>
+<ol>
+<li>Allowance: €24,500 applies (partnership).</li>
+<li>Taxable trade income: max(0, 150,000 + 5,000 − 24,500) = €130,500.</li>
+<li>Base amount: 0.035 × 130,500 = €4,567.50.</li>
+<li>Trade tax: €4,567.50 × (410/100) = €18,726.75.</li>
+<li>Effective rate: 0.035 × (410/100) = 14.35%.</li>
+<li>Potential Sec. 35 EStG credit: min(€18,726.75, 3.8 × €4,567.50 = €17,356.50) = €17,356.50.</li>
+<li>Net trade tax after max. credit: €18,726.75 − €17,356.50 = €1,370.25 (subject to personal income tax cap).</li>
+</ol>
+</section>
+<section>
+<h2>Frequently Asked Questions (FAQ)</h2>
+<div>
+<h3>Which entities can use the €24,500 allowance?</h3>
+<p>Sole proprietors and partnerships qualify. Corporations (GmbH/UG/AG) do not.</p>
+<h3>How do I determine my municipality’s Hebesatz?</h3>
+<p>Use the latest “Realsteuerhebesätze” from Destatis or your city’s website. When in doubt, ask your tax office (Finanzamt).</p>
+<h3>Why is the effective rate different across cities?</h3>
+<p>Each municipality sets its own Hebesatz. The national base rate is fixed at 3.5%, but the local multiplier drives the final rate.</p>
+<h3>Does this tool account for all add-backs and reductions?</h3>
+<p>It provides a single net adjustment field for planning. Complex cases may require line-by-line modeling under Sec. 8/9 GewStG.</p>
+<h3>Is the Sec. 35 EStG credit guaranteed?</h3>
+<p>No. It applies only to individuals/partnerships and is limited by the trade tax due and the personal income tax attributable to trade income.</p>
+<h3>Are loss carryforwards included?</h3>
+<p>No. Loss carryforwards can reduce future trade tax bases, but they are not modeled here.</p>
+<h3>Is trade tax deductible from corporate tax?</h3>
+<p>No. Trade tax is not deductible from the corporate income tax base; however, individuals may benefit from the Sec. 35 EStG credit.</p>
+</div>
+</section>
+<section aria-label="Authorship and review" class="author-box">
+<p>
+            Tool developed by <strong>Ugo Candido</strong>. Content verified by <strong>CalcDomain Editorial Board</strong>.<br/>
+            Last reviewed for accuracy on: <time datetime="2025-09-14">September 14, 2025</time>.
+          </p>
+</section>
+</article>
+</div>
+</main>
+<!-- Standard Footer --> <html><body><footer class="bg-gray-900 text-white py-12">
+<div class="container mx-auto px-4">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+<div>
+<h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+<p class="text-gray-400 mb-4">Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.</p>
+<div class="flex space-x-4">
+<a aria-label="Twitter" class="text-gray-400 hover:text-white" href="#">
+<svg aria-hidden="true" class="w-6 h-6" fill="currentColor" viewbox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"></path></svg>
+</a>
+<a aria-label="Facebook" class="text-gray-400 hover:text-white" href="#">
+<svg aria-hidden="true" class="w-6 h-6" fill="currentColor" viewbox="0 0 24 24"><path d="M22.46 6c-.77.35-1.6.58-2.46.69.88-.53 1.56-1.37 1.88-2.38-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98C8.28 9.09 5.11 7.38 3 4.79c-.37.63-.58 1.37-.58 2.15 0 1.49.75 2.81 1.91 3.56-.71 0-1.37-.2-1.95-.5v.03c0 2.08 1.48 3.82 3.44 4.21a4.22 4.22 0 0 1-1.93.07 4.28 4.28 0 0 0 4 2.98 8.521 8.521 0 0 1-5.33 1.84c-.34 0-.68-.02-1.02-.06C3.44 20.29 5.7 21 8.12 21 16 21 20.33 14.46 20.33 8.79c0-.19 0-.37-.01-.56.84-.6 1.56-1.36 2.14-2.23z"></path></svg>
+</a>
+</div>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Categories</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="finance.html">Finance</a></li>
+<li><a class="text-gray-400 hover:text-white" href="health-fitness.html">Health &amp; Fitness</a></li>
+<li><a class="text-gray-400 hover:text-white" href="math-conversions.html">Math &amp; Conversions</a></li>
+<li><a class="text-gray-400 hover:text-white" href="lifestyle-everyday.html">Lifestyle &amp; Everyday</a></li>
+<li><a class="text-gray-400 hover:text-white" href="construction-diy.html">Construction &amp; DIY</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="mortgage-payment.html">Mortgage Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="percentage-calculator.html">Percentage Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="bmi-calculator.html">BMI Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="auto-loan-calculator.html">Auto Loan Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="house-affordability.html">House Affordability</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Support</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="#">About Us</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Contact</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Privacy Policy</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Terms of Service</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Site Map</a></li>
+</ul>
+</div>
+</div>
+<div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+<p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+</div>
+</div>
+</footer></body></html>
+<script defer="">
+    (function(){
+      'use strict';
+
+      // Elements
+      const incomeEl = document.getElementById('tradeIncome');
+      const incomeErr = document.getElementById('tradeIncomeError');
+      const adjustEl = document.getElementById('netAdjust');
+      const hebesatzEl = document.getElementById('hebesatz');
+      const hebesatzErr = document.getElementById('hebesatzError');
+      const citySelect = document.getElementById('citySelect');
+      const entityCorp = document.getElementById('entityCorp');
+      const entityIndiv = document.getElementById('entityIndiv');
+      const applyAllowance = document.getElementById('applyAllowance');
+      const allowanceState = document.getElementById('allowanceState');
+
+      const taxableIncomeOut = document.getElementById('taxableIncome');
+      const baseAmountOut = document.getElementById('baseAmount');
+      const hebesatzOut = document.getElementById('hebesatzOut');
+      const effectiveRateOut = document.getElementById('effectiveRate');
+      const tradeTaxOut = document.getElementById('tradeTax');
+      const creditRow = document.getElementById('creditRow');
+      const creditValue = document.getElementById('creditValue');
+      const netAfterCreditRow = document.getElementById('netAfterCreditRow');
+      const netAfterCredit = document.getElementById('netAfterCredit');
+      const liveSummary = document.getElementById('liveSummary');
+      const resultsNote = document.getElementById('resultsNote');
+
+      const recalcBtn = document.getElementById('recalcBtn');
+      const resetBtn = document.getElementById('resetBtn');
+
+      const tipIncomeBtn = document.getElementById('tipIncomeBtn');
+      const tipIncome = document.getElementById('tipIncome');
+      const tipAdjustBtn = document.getElementById('tipAdjustBtn');
+      const tipAdjust = document.getElementById('tipAdjust');
+      const tipHebesatzBtn = document.getElementById('tipHebesatzBtn');
+      const tipHebesatz = document.getElementById('tipHebesatz');
+
+      // Formatting
+      const fmtEUR = new Intl.NumberFormat('de-DE', { style:'currency', currency:'EUR', maximumFractionDigits:2 });
+      const fmtPct = new Intl.NumberFormat('en-GB', { style:'percent', maximumFractionDigits:2 });
+      const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
+
+      // State
+      function isIndiv(){ return entityIndiv.checked; }
+      function allowanceEnabled(){
+        // Enabled only for individuals/partnerships
+        return isIndiv() && applyAllowance.checked;
+      }
+
+      // Accessibility: Tooltips toggle
+      function toggleTip(btn, panel){
+        const open = panel.getAttribute('data-open') === 'true';
+        panel.setAttribute('data-open', String(!open));
+        btn.setAttribute('aria-expanded', String(!open));
+      }
+      tipIncomeBtn.addEventListener('click', () => toggleTip(tipIncomeBtn, tipIncome));
+      tipAdjustBtn.addEventListener('click', () => toggleTip(tipAdjustBtn, tipAdjust));
+      tipHebesatzBtn.addEventListener('click', () => toggleTip(tipHebesatzBtn, tipHebesatz));
+
+      // City quick select
+      citySelect.addEventListener('change', () => {
+        if (citySelect.value){
+          hebesatzEl.value = citySelect.value;
+          validateHebesatz();
+          compute();
+          resultsNote.textContent = `Hebesatz set from quick list: ${citySelect.options[citySelect.selectedIndex].text}.`;
+        }
+      });
+
+      // Validation (on blur as required)
+      function validateIncome(){
+        const v = incomeEl.value.trim();
+        let ok = true;
+        if (v === ''){
+          incomeErr.textContent = 'Please enter your annual trade income.';
+          incomeEl.setAttribute('aria-invalid','true');
+          ok = false;
+        } else {
+          const n = Number(v);
+          if (!Number.isFinite(n) || n < 0){
+            incomeErr.textContent = 'Income must be a number greater than or equal to 0.';
+            incomeEl.setAttribute('aria-invalid','true');
+            ok = false;
+          } else {
+            incomeErr.textContent = '';
+            incomeEl.removeAttribute('aria-invalid');
+          }
+        }
+        return ok;
+      }
+      function validateHebesatz(){
+        const v = hebesatzEl.value.trim();
+        let ok = true;
+        if (v === ''){
+          hebesatzErr.textContent = 'Please enter a municipal multiplier (200%–1000%).';
+          hebesatzEl.setAttribute('aria-invalid','true');
+          ok = false;
+        } else {
+          const n = Math.round(Number(v));
+          if (!Number.isFinite(n) || n < 200 || n > 1000){
+            hebesatzErr.textContent = 'Hebesatz must be between 200 and 1000 percent.';
+            hebesatzEl.setAttribute('aria-invalid','true');
+            ok = false;
+          } else {
+            hebesatzErr.textContent = '';
+            hebesatzEl.removeAttribute('aria-invalid');
+          }
+        }
+        return ok;
+      }
+      incomeEl.addEventListener('blur', validateIncome);
+      hebesatzEl.addEventListener('blur', validateHebesatz);
+
+      // Allowance toggle state sync
+      function syncAllowanceControl(){
+        if (isIndiv()){
+          applyAllowance.disabled = false;
+          if (!applyAllowance.hasAttribute('data-user-touched')){
+            applyAllowance.checked = true; // default ON for individuals
+          }
+          allowanceState.textContent = 'Eligible: allowance can be applied.';
+        } else {
+          applyAllowance.checked = false;
+          applyAllowance.disabled = true;
+          allowanceState.textContent = 'Automatically disabled for corporations.';
+        }
+      }
+      applyAllowance.addEventListener('change', () => {
+        applyAllowance.setAttribute('data-user-touched','true');
+        compute();
+      });
+      entityCorp.addEventListener('change', () => { syncAllowanceControl(); compute(); });
+      entityIndiv.addEventListener('change', () => { syncAllowanceControl(); compute(); });
+
+      // Compute
+      function compute(){
+        if (!validateIncome() || !validateHebesatz()){
+          // Still show zeroed outputs
+        }
+        const income = Math.max(0, Number(incomeEl.value || 0));
+        const adjust = Number(adjustEl.value || 0);
+        const hebesatz = clamp(Math.round(Number(hebesatzEl.value || 0)), 0, 5000);
+
+        const allowance = allowanceEnabled() ? 24500 : 0;
+        const taxBase = Math.max(0, income + adjust - allowance);
+        const baseAmount = taxBase * 0.035;
+        const tradeTax = baseAmount * (hebesatz/100);
+        const effRate = 0.035 * (hebesatz/100); // decimal
+
+        // Sec. 35 EStG credit (only for individuals/partnerships)
+        let creditMax = 0;
+        if (isIndiv()){
+          creditMax = Math.min(tradeTax, baseAmount * 3.8);
+          creditRow.hidden = false;
+          netAfterCreditRow.hidden = false;
+        } else {
+          creditRow.hidden = true;
+          netAfterCreditRow.hidden = true;
+        }
+
+        const netAfter = Math.max(0, tradeTax - creditMax);
+
+        // Outputs
+        taxableIncomeOut.textContent = fmtEUR.format(taxBase);
+        baseAmountOut.textContent = fmtEUR.format(baseAmount);
+        hebesatzOut.textContent = `${hebesatz}%`;
+        effectiveRateOut.textContent = (effRate*100).toFixed(2) + '%';
+        tradeTaxOut.textContent = fmtEUR.format(tradeTax);
+        if (isIndiv()){
+          creditValue.textContent = fmtEUR.format(creditMax);
+          netAfterCredit.textContent = fmtEUR.format(netAfter);
+        }
+
+        // Live summary
+        const kind = isIndiv() ? 'individual/partnership' : 'corporation';
+        liveSummary.textContent = `For a ${kind} at ${hebesatz}% Hebesatz, the estimated annual trade tax is ${fmtEUR.format(tradeTax)} at an effective rate of ${(effRate*100).toFixed(2)} percent.`;
+      }
+
+      // Actions
+      recalcBtn.addEventListener('click', () => compute());
+      resetBtn.addEventListener('click', () => {
+        entityCorp.checked = true;
+        entityIndiv.checked = false;
+        incomeEl.value = '';
+        adjustEl.value = '0';
+        hebesatzEl.value = '400';
+        citySelect.value = '';
+        applyAllowance.checked = false;
+        applyAllowance.removeAttribute('data-user-touched');
+        incomeErr.textContent = '';
+        incomeEl.removeAttribute('aria-invalid');
+        hebesatzErr.textContent = '';
+        hebesatzEl.removeAttribute('aria-invalid');
+        syncAllowanceControl();
+        compute();
+        incomeEl.focus();
+      });
+
+      // Init defaults
+      incomeEl.value = '100000';
+      adjustEl.value = '0';
+      hebesatzEl.value = '400';
+      syncAllowanceControl();
+      compute();
+
+      // Keyboard aid: close tooltip with Escape
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape'){
+          [tipIncome, tipAdjust, tipHebesatz].forEach(p => {
+            if (p.getAttribute('data-open') === 'true'){ p.setAttribute('data-open','false'); }
+          });
+          [tipIncomeBtn, tipAdjustBtn, tipHebesatzBtn].forEach(b => b.setAttribute('aria-expanded','false'));
+        }
+      });
+    })();
+  </script>
+
+<html><head><script defer="" src="/assets/js/mobile-menu.js"></script></head></html></body></html>

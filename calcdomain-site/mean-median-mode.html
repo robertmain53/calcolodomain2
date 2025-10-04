@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<title>Mean, Median, Mode, Range Calculator | CalcDomain</title>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<meta content="Compute mean, median, mode, and range instantly from a list of numbers. Mobile-first, accessible, and precise—optimized for students, analysts, and professionals." name="description"/>
+<meta content="Ugo Candido" name="author"/>
+<link href="https://calcdomain.com/mean-median-mode.html" rel="canonical"/>
+<meta content="#005A9C" name="theme-color"/>
+<style>
+    /* ====================================================================== */
+    /* Design Tokens                                                          */
+    /* ====================================================================== */
+    :root {
+      --primary-color:#005A9C; --secondary-color:#003F6E; --accent-color:#00A4E4;
+      --background-color:#F8F9FA; --surface-color:#FFFFFF;
+      --text-color:#212529; --muted-text-color:#495057; --border-color:#DEE2E6;
+      --success-color:#198754; --error-color:#DC3545; --warning-color:#FFC107;
+
+      --font-sans-serif:system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
+      --font-monospace:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+      --touch-target-min:48px; --touch-target-optimal:60px;
+      --input-padding:clamp(.75rem,2vw,1rem);
+      --radius-4:4px; --radius-6:6px; --radius-8:8px; --radius-12:12px;
+
+      --transition-fast:.12s ease-in-out; --transition-standard:.2s ease-in-out;
+
+      --container-max-width:1200px; --sidebar-width:clamp(300px,40vw,480px);
+      --gap-2:.5rem; --gap-3:.75rem; --gap-4:1rem; --gap-6:1.5rem; --gap-8:2rem;
+
+      --overlay-bg:rgba(0,0,0,.4);
+    }
+
+    @media (prefers-contrast: more){
+      :root{
+        --primary-color:#000080; --secondary-color:#00004d;
+        --text-color:#000; --border-color:#000; --background-color:#fff;
+      }
+    }
+    @media (prefers-reduced-motion: reduce){
+      *,*::before,*::after{
+        animation-duration:.01ms!important; animation-iteration-count:1!important;
+        transition-duration:.01ms!important; scroll-behavior:auto!important;
+      }
+    }
+
+    /* ====================================================================== */
+    /* Base                                                                   */
+    /* ====================================================================== */
+    *,*::before,*::after{ box-sizing:border-box; }
+    html{ font-size:clamp(16px,2.2vw,18px); }
+    body{
+      margin:0;
+      font-family:var(--font-sans-serif);
+      background:var(--background-color);
+      color:var(--text-color);
+      line-height:1.6;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+    img{ max-width:100%; height:auto; }
+    a{ color:var(--primary-color); text-decoration:none; }
+    a:hover{ color:var(--secondary-color); text-decoration:underline; }
+    a:focus{ outline:3px solid var(--primary-color); outline-offset:2px; border-radius:2px; }
+    code,kbd,pre{ font-family:var(--font-monospace); }
+    .container{ max-width:var(--container-max-width); margin:0 auto; padding:0 clamp(1rem,4vw,2rem); }
+    .main-content{ padding:var(--gap-8) 0; }
+
+    /* Skip link */
+    .skip-link{
+      position:absolute; top:-40px; left:6px;
+      background:var(--primary-color); color:#fff;
+      padding:8px 16px; z-index:1000; text-decoration:none; border-radius:0 0 var(--radius-4) var(--radius-4);
+      font-weight:600;
+    }
+    .skip-link:focus{ top:0; }
+
+    /* ====================================================================== */
+    /* Header (non-sticky per requirements)                                   */
+    /* ====================================================================== */
+    .site-header{
+      background:var(--surface-color); border-bottom:1px solid var(--border-color);
+    }
+    .header-content{
+      display:grid; grid-template-columns:auto 1fr; gap:var(--gap-4); align-items:center; padding:.75rem 0;
+    }
+    .logo{ font-weight:800; color:var(--secondary-color); font-size:clamp(1.2rem,3vw,1.5rem); }
+    .breadcrumb{
+      margin:.5rem 0 0; font-size:.95rem; color:var(--muted-text-color);
+    }
+    .breadcrumb a{ color:inherit; }
+    .breadcrumb a:hover{ color:var(--secondary-color); }
+
+    /* ====================================================================== */
+    /* Calculator Layout                                                       */
+    /* ====================================================================== */
+    .calculator-layout{
+      display:grid;
+      grid-template-columns:1fr; /* Mobile-first */
+      gap:var(--gap-8);
+      margin-top:1rem;
+    }
+    @media (min-width: 992px){
+      .calculator-layout{
+        grid-template-columns:var(--sidebar-width) 1fr;
+        align-items:start;
+      }
+    }
+
+    /* Calculator Panel */
+    .calculator-container{
+      background:var(--surface-color);
+      border:1px solid var(--border-color);
+      border-radius:var(--radius-12);
+      padding:clamp(1rem,3vw,1.5rem);
+      box-shadow:0 2px 6px rgba(0,0,0,.04);
+    }
+    .calculator-container h1{
+      margin-top:0; margin-bottom:.75rem;
+    }
+    .helper-text{ font-size:.92rem; color:var(--muted-text-color); }
+
+    .form-group{ margin-bottom:var(--gap-6); }
+    .form-group label{
+      display:flex; align-items:center; gap:.5rem;
+      font-weight:700; margin-bottom:.5rem; color:var(--secondary-color);
+    }
+    .form-control, .form-select, textarea.form-control{
+      width:100%; min-height:var(--touch-target-min);
+      padding:var(--input-padding);
+      font-size:1rem; border:1px solid var(--border-color);
+      border-radius:var(--radius-8);
+      background:#fff; color:var(--text-color);
+      transition:border-color var(--transition-standard), box-shadow var(--transition-standard);
+    }
+    .form-control:focus, .form-select:focus, textarea.form-control:focus{
+      outline:none; border-color:var(--primary-color);
+      box-shadow:0 0 0 3px rgba(0,90,156,.2);
+    }
+    .form-control[aria-invalid="true"]{ border-color:var(--error-color); }
+    .error-message{ color:var(--error-color); font-size:.9rem; margin-top:.35rem; }
+
+    .radio-group, .checkbox-group{
+      display:flex; gap:.5rem; flex-wrap:wrap;
+      border:1px solid var(--border-color); border-radius:var(--radius-8);
+      padding:.25rem;
+    }
+    .radio-group input[type="radio"], .checkbox-group input[type="checkbox"]{
+      position:absolute; opacity:0; width:0; height:0;
+    }
+    .radio-option, .checkbox-option{
+      position:relative; padding:.6rem .8rem; border-radius:var(--radius-6);
+      cursor:pointer; min-height:var(--touch-target-min); display:flex; align-items:center; justify-content:center;
+      user-select:none; border:1px solid transparent; color:var(--secondary-color); font-weight:600;
+    }
+    .radio-group input[type="radio"]:checked + label,
+    .checkbox-group input[type="checkbox"]:checked + label{
+      background:var(--primary-color); color:#fff;
+    }
+    .radio-group input[type="radio"]:focus-visible + label,
+    .checkbox-group input[type="checkbox"]:focus-visible + label{
+      outline:3px solid var(--primary-color); outline-offset:2px;
+    }
+
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      gap:.5rem; padding:var(--input-padding) clamp(1rem,3vw,1.25rem);
+      border-radius:var(--radius-8);
+      border:1px solid transparent; background:var(--primary-color); color:#fff;
+      font-weight:700; cursor:pointer; min-height:var(--touch-target-min); min-width:var(--touch-target-min);
+      transition:transform var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
+    }
+    .btn:hover{ background:var(--secondary-color); transform:translateY(-1px); }
+    .btn:focus{ outline:3px solid var(--primary-color); outline-offset:2px; }
+    .btn.secondary{ background:transparent; color:var(--primary-color); border-color:var(--primary-color); }
+    .btn.secondary:hover{ background:var(--primary-color); color:#fff; }
+    .btn.ghost{ background:transparent; border-color:var(--border-color); color:var(--secondary-color); }
+    .btn.ghost:hover{ border-color:var(--secondary-color); }
+
+    .actions{ display:flex; gap:.5rem; flex-wrap:wrap; }
+
+    /* Tooltip (accessible) */
+    .tooltip-button{
+      appearance:none; border:1px solid var(--border-color); background:var(--surface-color);
+      color:var(--secondary-color); border-radius:50%; width:28px; height:28px;
+      display:inline-flex; align-items:center; justify-content:center; font-weight:800; line-height:1;
+      cursor:pointer;
+    }
+    .tooltip-button:focus{ outline:3px solid var(--primary-color); outline-offset:2px; }
+    .tooltip{
+      display:none; margin-top:.35rem; background:#e9f3fb; color:#0b314a;
+      border:1px solid #bee1f7; padding:.75rem; border-radius:var(--radius-6);
+    }
+    .tooltip[aria-hidden="false"]{ display:block; }
+
+    /* Results */
+    .results-container{
+      margin-top:var(--gap-6);
+      padding:var(--gap-6);
+      background:#f4f6f8;
+      border:1px solid var(--border-color);
+      border-radius:var(--radius-12);
+      min-height:240px; /* Prevents CLS */
+    }
+    .results-grid{
+      display:grid; gap:.75rem;
+      grid-template-columns:1fr; 
+    }
+    @media (min-width:600px){
+      .results-grid{ grid-template-columns:repeat(2, minmax(0,1fr)); }
+    }
+    @media (min-width:992px){
+      .results-grid{ grid-template-columns:repeat(3, minmax(0,1fr)); }
+    }
+    .result-card{
+      background:#fff; border:1px solid var(--border-color); border-radius:var(--radius-8);
+      padding:.75rem .9rem;
+    }
+    .result-label{ font-size:.9rem; color:var(--muted-text-color); }
+    .result-value{ font-size:1.25rem; font-weight:800; color:var(--success-color); }
+    .mono{ font-family:var(--font-monospace); overflow:auto; }
+
+    /* Content */
+    .content-container h2{
+      margin-top:2rem; border-bottom:1px solid var(--border-color); padding-bottom:.5rem;
+    }
+    .formula-box{
+      background:#eef2f6; border:1px solid var(--border-color); border-radius:var(--radius-8);
+      padding:1rem; overflow:auto; font-size:1.1rem;
+    }
+    .dl-grid{ display:grid; grid-template-columns:1fr; gap:.5rem 1rem; }
+    @media (min-width:768px){
+      .dl-grid{ grid-template-columns: 240px 1fr; }
+    }
+    .author-box{
+      font-size:.95rem; color:var(--muted-text-color);
+      margin-top:2rem; border-top:1px solid var(--border-color); padding-top:1rem;
+    }
+
+    /* Footer */
+    .site-footer{
+      background:var(--secondary-color); color:#fff; margin-top:3rem; padding:2rem 0;
+    }
+    .site-footer a{ color:#fff; }
+    .footer-bottom{ text-align:center; margin-top:1rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,.25); font-size:.95rem; }
+
+    /* Utility */
+    .sr-only{
+      position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+    }
+  </style>
+<!-- MathJax for LaTeX rendering -->
+<script defer="" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<!-- Structured Data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Mean, Median, Mode, Range Calculator",
+  "description": "An authoritative, accessible, and mobile-first calculator to compute mean, median, mode, and range from a dataset. Includes methodology, formulas, glossary, and worked example.",
+  "url": "https://calcdomain.com/mean-median-mode.html",
+  "author": {
+    "@type": "Person",
+    "name": "Ugo Candido"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "CalcDomain"
+  },
+  "mainEntity": [
+    {
+      "@type": "HowTo",
+      "name": "How it Works: A Step-by-Step Example",
+      "description": "Compute descriptive statistics for the dataset 2, 3, 5, 5, 6, 7, 8.",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "name": "Enter the data",
+          "text": "Paste or type: 2, 3, 5, 5, 6, 7, 8 into the Data values field."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Choose options",
+          "text": "Keep default options: auto-detect separators, 2 decimal places, and ascending order output."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Calculate",
+          "text": "Press Calculate. Validation runs and results appear instantly."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Read the results",
+          "text": "Count = 7, Sum = 36, Mean ≈ 5.14, Median = 5, Mode = 5, Range = 6, Min = 2, Max = 8."
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Which separators can I use for input data?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Commas, spaces, tabs, and new lines are all supported. The tool auto-detects them."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How are multiple modes handled?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "If multiple values share the highest frequency, the calculator lists all of them (multimodal)."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does the tool ignore non-numeric tokens?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, by default it ignores stray text and focuses on valid numbers. You’ll see a gentle note listing tokens that were skipped."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is this calculator suitable for large datasets?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. It is optimized for responsive performance and can handle thousands of values in modern browsers."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What rounding does the tool apply?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "You choose the number of decimal places (0–8). Results are formatted using standard rounding to the selected precision."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What data sources back the methodology?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Formulas and definitions align with the NIST/SEMATECH e-Handbook of Statistical Methods and the open textbook OpenStax Introductory Statistics."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<html><body><header class="bg-white shadow-sm sticky top-0 z-50">
+<nav aria-label="Primary" class="container mx-auto px-4 lg:px-6 py-4">
+<!-- TOP ROW -->
+<div class="flex justify-between items-center">
+<!-- LOGO -->
+<a class="text-2xl font-bold text-blue-600" href="index.html">CalcDomain</a>
+<!-- DESKTOP SEARCH -->
+<div class="w-full max-w-md hidden md:block mx-8">
+<div class="relative">
+<input autocomplete="off" class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" id="search-input" placeholder="Search for a calculator..." type="search"/>
+<svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<!-- CONTAINER RISULTATI RICERCA -->
+<div class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200" id="search-results"></div>
+</div>
+</div>
+<!-- NAVIGATION LINKS -->
+<div class="hidden md:flex items-center space-x-6">
+<a class="text-gray-700 hover:text-blue-600 transition-colors" href="search.html">Advanced Search</a>
+<a class="text-gray-700 hover:text-blue-600 transition-colors" href="#categories">Categories</a>
+</div>
+<!-- MOBILE TOGGLE (ARIA added) -->
+<button aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" class="md:hidden p-2" id="mobile-menu-toggle" type="button">
+<svg aria-hidden="true" class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+</div>
+<!-- MOBILE MENU (converted to <nav> with aria-label) -->
+<nav aria-label="Mobile menu" class="md:hidden mt-4 hidden" id="mobile-menu" role="navigation">
+<div class="mb-4">
+<div class="relative">
+<input class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="mobile-search-input" placeholder="Search calculators..." type="search"/>
+<svg aria-hidden="true" class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<div class="space-y-2">
+<a class="block py-2 text-gray-700 hover:text-blue-600" href="search.html">Advanced Search</a>
+<a class="block py-2 text-gray-700 hover:text-blue-600" href="#categories">Categories</a>
+</div>
+</nav>
+</nav>
+</header></body></html>
+<main class="main-content" id="main-content">
+<div class="container">
+<h1>Mean, Median, Mode, Range Calculator</h1>
+<p class="helper-text">
+        This interactive calculator computes the mean, median, mode, and range from your dataset. It’s built for students, educators, data analysts, and professionals who need fast, accurate, and accessible descriptive statistics.
+      </p>
+<div class="calculator-layout">
+<aside class="calculator-wrapper">
+<section aria-labelledby="calculator-heading" class="calculator-container" id="m3r-calculator">
+<h2 class="sr-only" id="calculator-heading">Calculator Inputs</h2>
+<div class="form-group">
+<label for="dataInput">
+                Data values *
+                <button aria-controls="dataHelp" aria-expanded="false" aria-label="Help: how to enter data" class="tooltip-button" id="dataHelpBtn" type="button">?</button>
+</label>
+<textarea aria-describedby="dataHelp dataError" aria-required="true" class="form-control" id="dataInput" inputmode="decimal" placeholder="e.g., 12, 15, 15, 18  20
+or paste numbers on separate lines" rows="6"></textarea>
+<div aria-hidden="true" class="tooltip" id="dataHelp" role="note">
+                Separate numbers with commas, spaces, tabs, or new lines. Negative numbers and decimals are supported. Example: 2, 3, 5, 5, 6, 7, 8
+              </div>
+<div aria-live="polite" class="error-message" id="dataError" role="alert"></div>
+</div>
+<div class="form-group">
+<fieldset>
+<legend class="sr-only">Parsing options</legend>
+<div aria-label="Parsing options" class="checkbox-group" role="group">
+<input checked="" id="ignoreText" type="checkbox"/>
+<label class="checkbox-option" for="ignoreText">Ignore non-numeric tokens</label>
+<input checked="" id="trimSpaces" type="checkbox"/>
+<label class="checkbox-option" for="trimSpaces">Trim extra spaces</label>
+</div>
+</fieldset>
+</div>
+<div class="form-group">
+<label for="decimals">Decimal places *</label>
+<select aria-describedby="decimalsError" aria-required="true" class="form-select" id="decimals">
+<option value="0">0</option>
+<option value="1">1</option>
+<option selected="" value="2">2</option>
+<option value="3">3</option>
+<option value="4">4</option>
+<option value="5">5</option>
+<option value="6">6</option>
+<option value="7">7</option>
+<option value="8">8</option>
+</select>
+<div aria-live="polite" class="error-message" id="decimalsError" role="alert"></div>
+</div>
+<div class="form-group">
+<fieldset>
+<legend class="sr-only">Output options</legend>
+<div aria-label="Sort results" class="radio-group" role="radiogroup">
+<input id="sortNone" name="sortOption" type="radio" value="none"/>
+<label class="radio-option" for="sortNone">No sort</label>
+<input checked="" id="sortAsc" name="sortOption" type="radio" value="asc"/>
+<label class="radio-option" for="sortAsc">Ascending</label>
+<input id="sortDesc" name="sortOption" type="radio" value="desc"/>
+<label class="radio-option" for="sortDesc">Descending</label>
+</div>
+</fieldset>
+</div>
+<div aria-label="Calculator actions" class="actions" role="group">
+<button class="btn" id="calculateBtn" type="button">Calculate</button>
+<button class="btn secondary" id="clearBtn" type="button">Clear</button>
+<button class="btn ghost" id="copyBtn" type="button">Copy results</button>
+</div>
+<div aria-atomic="false" aria-live="polite" class="results-container">
+<h3>Results</h3>
+<div class="results-grid" id="resultsGrid">
+<div class="result-card">
+<div class="result-label">Count (n)</div>
+<div class="result-value" id="countOut">—</div>
+</div>
+<div class="result-card">
+<div class="result-label">Sum</div>
+<div class="result-value" id="sumOut">—</div>
+</div>
+<div class="result-card">
+<div class="result-label">Mean</div>
+<div class="result-value" id="meanOut">—</div>
+</div>
+<div class="result-card">
+<div class="result-label">Median</div>
+<div class="result-value" id="medianOut">—</div>
+</div>
+<div class="result-card">
+<div class="result-label">Mode</div>
+<div class="result-value" id="modeOut">—</div>
+</div>
+<div class="result-card">
+<div class="result-label">Range</div>
+<div class="result-value" id="rangeOut">—</div>
+</div>
+<div class="result-card">
+<div class="result-label">Minimum</div>
+<div class="result-value" id="minOut">—</div>
+</div>
+<div class="result-card">
+<div class="result-label">Maximum</div>
+<div class="result-value" id="maxOut">—</div>
+</div>
+<div class="result-card" style="grid-column:1/-1">
+<div class="result-label">Sorted values</div>
+<div class="result-value mono" id="sortedOut" style="white-space:pre-wrap; font-size:1rem; color:#0f5132">—</div>
+</div>
+<div class="result-card" style="grid-column:1/-1">
+<div class="result-label">Notes</div>
+<div class="result-value mono" id="notesOut" style="white-space:pre-wrap; font-size:1rem; color:#6a737d">—</div>
+</div>
+</div>
+</div>
+</section>
+</aside>
+<article aria-labelledby="content-heading" class="content-container">
+<h2 id="content-heading">Authoritative Data Source and Methodology</h2>
+<p>
+            Primary references:
+          </p>
+<ul>
+<li>
+              NIST/SEMATECH e-Handbook of Statistical Methods (2012), National Institute of Standards and Technology. See Descriptive Statistics chapters. URL:
+              <a href="https://www.itl.nist.gov/div898/handbook/" rel="nofollow noopener" target="_blank">https://www.itl.nist.gov/div898/handbook/</a>
+</li>
+<li>
+              OpenStax, Introductory Statistics, current edition. URL:
+              <a href="https://openstax.org/details/books/introductory-statistics" rel="nofollow noopener" target="_blank">https://openstax.org/details/books/introductory-statistics</a>
+</li>
+</ul>
+<p><strong>Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.</strong></p>
+<h2>The Formulas Explained</h2>
+<div aria-label="Mathematical formulas" class="formula-box">
+<p>
+              Mean (arithmetic average):<br/>
+              \\[
+                \\bar{x} = \\frac{1}{n}\\sum_{i=1}^{n} x_i
+              \\]
+            </p>
+<p>
+              Median (middle value in ordered data):<br/>
+              For odd n:
+              \\[
+                \\tilde{x} = x_{\\left(\\frac{n+1}{2}\\right)}
+              \\]
+              For even n:
+              \\[
+                \\tilde{x} = \\frac{x_{\\left(\\frac{n}{2}\\right)} + x_{\\left(\\frac{n}{2}+1\\right)}}{2}
+              \\]
+            </p>
+<p>
+              Mode (most frequent value(s)):<br/>
+              \\[
+                \\operatorname*{Mode} = \\operatorname*{arg\\,max}_v f(v)
+              \\]
+            </p>
+<p>
+              Range:<br/>
+              \\[
+                R = \\max(x) - \\min(x)
+              \\]
+            </p>
+</div>
+<h2>Glossary of Inputs and Results</h2>
+<div class="dl-grid" role="list">
+<div><strong>Data values</strong></div>
+<div>List of numbers separated by commas, spaces, tabs, or new lines. Accepts negatives and decimals.</div>
+<div><strong>Decimal places</strong></div>
+<div>Chosen precision applied to displayed results (0–8).</div>
+<div><strong>Sort option</strong></div>
+<div>How the dataset is displayed in the results area: none, ascending, or descending.</div>
+<div><strong>Count (n)</strong></div>
+<div>Number of valid numeric values parsed from your input.</div>
+<div><strong>Sum</strong></div>
+<div>Total of all values in the dataset.</div>
+<div><strong>Mean</strong></div>
+<div>Arithmetic average of the dataset.</div>
+<div><strong>Median</strong></div>
+<div>Middle value when the data are ordered; average of two middle values if n is even.</div>
+<div><strong>Mode</strong></div>
+<div>Value(s) with the highest frequency. If all values are unique, there is no mode.</div>
+<div><strong>Range</strong></div>
+<div>Difference between the maximum and the minimum values.</div>
+<div><strong>Minimum / Maximum</strong></div>
+<div>The smallest and largest values in the dataset.</div>
+</div>
+<h2>How It Works: A Step-by-Step Example</h2>
+<p>
+            Suppose you enter the dataset: 2, 3, 5, 5, 6, 7, 8.
+          </p>
+<ol>
+<li>Sort the data (ascending): 2, 3, 5, 5, 6, 7, 8.</li>
+<li>Count: n = 7; Sum = 2 + 3 + 5 + 5 + 6 + 7 + 8 = 36.</li>
+<li>Mean: \\( \\bar{x} = 36/7 \\approx 5.142857 \\) → 5.14 (2 decimals).</li>
+<li>Median: n is odd, middle value is the 4th item → 5.</li>
+<li>Mode: value with highest frequency → 5 (appears twice).</li>
+<li>Range: max − min = 8 − 2 = 6.</li>
+</ol>
+<h2>Frequently Asked Questions (FAQ)</h2>
+<section aria-labelledby="faq-heading">
+<h3 class="sr-only" id="faq-heading">FAQ list</h3>
+<h3>1) Which separators can I use for input data?</h3>
+<p>Commas, spaces, tabs, and new lines are supported. The tool auto-detects them.</p>
+<h3>2) How are multiple modes handled?</h3>
+<p>If multiple values share the highest frequency, the calculator reports each of them (multimodal).</p>
+<h3>3) What happens to text mixed with numbers?</h3>
+<p>By default, stray text tokens are ignored. The “Notes” area will list anything skipped so you can correct it if needed.</p>
+<h3>4) How many decimal places are supported?</h3>
+<p>You can select from 0 to 8 decimal places. Results use standard rounding to the chosen precision.</p>
+<h3>5) Does sorting affect the calculations?</h3>
+<p>Sorting only affects how values are displayed. It does not change the computed statistics.</p>
+<h3>6) Can I copy the results?</h3>
+<p>Yes. Use the “Copy results” button to copy a clean, plain-text summary to your clipboard.</p>
+<h3>7) Is this calculator based on authoritative sources?</h3>
+<p>Yes. Definitions and formulas align with the NIST/SEMATECH e-Handbook of Statistical Methods and OpenStax Introductory Statistics.</p>
+</section>
+<div class="author-box">
+<p>
+              Tool developed by <strong>Ugo Candido</strong>. Content reviewed by the <strong>CalcDomain Editorial Team</strong>.<br/>
+              Last reviewed for accuracy on: <time datetime="2025-09-14">September 14, 2025</time>.
+            </p>
+</div>
+</article>
+</div>
+</div>
+</main>
+<!-- Standard Footer --> <html><body><footer class="bg-gray-900 text-white py-12">
+<div class="container mx-auto px-4">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+<div>
+<h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+<p class="text-gray-400 mb-4">Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.</p>
+<div class="flex space-x-4">
+<a aria-label="Twitter" class="text-gray-400 hover:text-white" href="#">
+<svg aria-hidden="true" class="w-6 h-6" fill="currentColor" viewbox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"></path></svg>
+</a>
+<a aria-label="Facebook" class="text-gray-400 hover:text-white" href="#">
+<svg aria-hidden="true" class="w-6 h-6" fill="currentColor" viewbox="0 0 24 24"><path d="M22.46 6c-.77.35-1.6.58-2.46.69.88-.53 1.56-1.37 1.88-2.38-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98C8.28 9.09 5.11 7.38 3 4.79c-.37.63-.58 1.37-.58 2.15 0 1.49.75 2.81 1.91 3.56-.71 0-1.37-.2-1.95-.5v.03c0 2.08 1.48 3.82 3.44 4.21a4.22 4.22 0 0 1-1.93.07 4.28 4.28 0 0 0 4 2.98 8.521 8.521 0 0 1-5.33 1.84c-.34 0-.68-.02-1.02-.06C3.44 20.29 5.7 21 8.12 21 16 21 20.33 14.46 20.33 8.79c0-.19 0-.37-.01-.56.84-.6 1.56-1.36 2.14-2.23z"></path></svg>
+</a>
+</div>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Categories</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="finance.html">Finance</a></li>
+<li><a class="text-gray-400 hover:text-white" href="health-fitness.html">Health &amp; Fitness</a></li>
+<li><a class="text-gray-400 hover:text-white" href="math-conversions.html">Math &amp; Conversions</a></li>
+<li><a class="text-gray-400 hover:text-white" href="lifestyle-everyday.html">Lifestyle &amp; Everyday</a></li>
+<li><a class="text-gray-400 hover:text-white" href="construction-diy.html">Construction &amp; DIY</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="mortgage-payment.html">Mortgage Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="percentage-calculator.html">Percentage Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="bmi-calculator.html">BMI Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="auto-loan-calculator.html">Auto Loan Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="house-affordability.html">House Affordability</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Support</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="#">About Us</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Contact</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Privacy Policy</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Terms of Service</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Site Map</a></li>
+</ul>
+</div>
+</div>
+<div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+<p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+</div>
+</div>
+</footer></body></html>
+
+
+<html><head><script defer="" src="/assets/js/mobile-menu.js"></script></head></html></body></html>

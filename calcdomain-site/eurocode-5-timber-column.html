@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<title>Eurocode 5 Timber Column Design Calculator</title>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<meta content="Professional Eurocode 5 (EN 1995-1-1) timber column design calculator. Computes design axial compression resistance with buckling about both axes, per EC5 clause 6.3.2. Mobile-first, WCAG 2.1 AA accessible." name="description"/>
+<meta content="Ugo Candido" name="author"/>
+<link href="https://calcdomain.com/eurocode-5-timber-column.html" rel="canonical"/>
+<meta content="#ffffff" name="theme-color"/>
+<meta content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1" name="robots"/>
+<!-- Optional non-blocking global stylesheet hook (not required for this standalone file to render) -->
+<link as="style" href="style.css" onload="this.onload=null;this.rel='stylesheet'" rel="preload"/>
+<noscript><link href="style.css" rel="stylesheet"/></noscript>
+<!-- MathJax for LaTeX rendering of formulas -->
+<script crossorigin="anonymous" defer="" id="MathJax-script" integrity="sha384-wuyq8QnCwF6S4tI6+oRimjYJgD0VbJ8aDvYxwFq2TG4H0rL0/0Qk5y2qsaX0iD8j" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+    /* Design tokens and base (critical, mobile-first) */
+    :root{
+      --primary-color:#005A9C; --secondary-color:#003F6E; --accent-color:#00A4E4;
+      --background-color:#F8F9FA; --surface-color:#FFFFFF;
+      --text-color:#212529; --muted-text-color:#6C757D; --border-color:#DEE2E6;
+      --success-color:#198754; --error-color:#DC3545; --warning-color:#CC7A00;
+
+      --font-sans:'Inter',system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+      --font-mono: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+
+      --touch-target:48px;
+      --container-max:1200px;
+    }
+    @media (prefers-contrast: more){
+      :root{ --primary-color:#003366; --secondary-color:#001D3D; --border-color:#000; }
+    }
+    @media (prefers-reduced-motion: reduce){
+      *,*::before,*::after{ animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; scroll-behavior:auto!important; }
+    }
+    *{ box-sizing:border-box; }
+    html{ font-size:16px; }
+    body{
+      margin:0; font-family:var(--font-sans); color:var(--text-color);
+      background:var(--background-color); line-height:1.6;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    a{ color:var(--primary-color); text-decoration:none; }
+    a:hover{ text-decoration:underline; }
+    a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible{
+      outline:3px solid var(--primary-color); outline-offset:2px;
+    }
+    code,kbd,pre{ font-family:var(--font-mono); }
+    h1,h2,h3{ color:var(--secondary-color); line-height:1.25; margin:.5rem 0; font-weight:800; }
+    h1{ font-size:clamp(1.6rem,4.5vw,2.2rem); }
+    h2{ font-size:clamp(1.3rem,3.5vw,1.75rem); margin-top:1.5rem; }
+    h3{ font-size:clamp(1.1rem,3vw,1.3rem); margin-top:1rem; }
+
+    .container{ max-width:var(--container-max); margin-inline:auto; padding-inline:clamp(1rem,4vw,2rem); }
+    .skip-link{
+      position:absolute; left:8px; top:-40px; padding:.5rem .75rem; background:var(--primary-color); color:#fff; z-index:1000; border-radius:0 0 4px 4px;
+    }
+    .skip-link:focus{ top:0; }
+
+    /* Header (non-sticky per requirement) */
+    .site-header{ background:#fff; border-bottom:1px solid var(--border-color); }
+    .header-inner{ display:grid; grid-template-columns:auto 1fr auto; gap:.75rem; align-items:center; padding:.75rem 0; }
+    .logo{ font-weight:800; letter-spacing:.2px; color:var(--primary-color); }
+    .site-search{ display:flex; align-items:center; gap:.5rem; }
+    .site-search input[type="search"]{
+      border:1px solid var(--border-color); border-radius:8px; padding:.6rem .75rem; min-height:var(--touch-target); width:100%;
+    }
+    .btn{ display:inline-flex; align-items:center; justify-content:center; gap:.5rem; border:1px solid var(--primary-color); color:#fff; background:var(--primary-color); padding:.6rem 1rem; border-radius:8px; cursor:pointer; min-height:var(--touch-target); }
+    .btn.secondary{ background:transparent; color:var(--primary-color); }
+    .btn.secondary:hover{ background:rgba(0,90,156,.08); }
+    .nav-toggle{ border:1px solid var(--border-color); background:#fff; color:var(--text-color); border-radius:8px; padding:.6rem .8rem; min-height:var(--touch-target); cursor:pointer; }
+    nav[aria-label="Main"] ul{ list-style:none; padding:0; margin:0; display:flex; flex-wrap:wrap; gap:.75rem; }
+    nav[aria-label="Main"] a{ padding:.4rem .6rem; border-radius:6px; display:inline-block; }
+
+    /* Layout */
+    main{ padding-block:1.25rem 2rem; }
+    .calculator-layout{ display:grid; grid-template-columns:1fr; gap:1.5rem; }
+    @media (min-width: 992px){
+      .calculator-layout{ grid-template-columns: minmax(280px, 420px) 1fr; align-items:start; }
+    }
+
+    /* Calculator card */
+    .card{
+      background:var(--surface-color); border:1px solid var(--border-color); border-radius:12px;
+      padding:clamp(1rem,2.5vw,1.5rem); box-shadow:0 2px 6px rgba(0,0,0,.04);
+    }
+    .form-group{ margin-bottom:1rem; }
+    .form-group label{ display:flex; align-items:center; gap:.5rem; font-weight:700; margin-bottom:.35rem; }
+    .form-row{ display:grid; grid-template-columns:1fr 1fr; gap:.75rem; }
+    .form-control, .form-select{
+      width:100%; border:1px solid var(--border-color); border-radius:8px; padding:.7rem .8rem; min-height:var(--touch-target); font-size:1rem; background:#fff;
+    }
+    .unit{ color:var(--muted-text-color); font-size:.95rem; }
+    .hint{ color:var(--muted-text-color); font-size:.9rem; margin-top:.25rem; }
+    .error{ color:var(--error-color); font-size:.9rem; margin-top:.25rem; }
+    .tooltip-btn{
+      appearance:none; border:1px solid var(--border-color); border-radius:50%; width:28px; height:28px; font-weight:800; line-height:1; background:#fff; color:var(--secondary-color);
+    }
+    .tooltip-content{ display:none; margin-top:.35rem; padding:.6rem .75rem; border-left:3px solid var(--primary-color); background:#F1F7FC; border-radius:6px; }
+    .tooltip-content[data-open="true"]{ display:block; }
+
+    /* Results */
+    .results-container{ background:var(--background-color); border:1px solid var(--border-color); border-radius:12px; padding:1rem; min-height:260px; }
+    .result-grid{ display:grid; grid-template-columns:1fr; gap:.5rem; }
+    @media (min-width:600px){ .result-grid{ grid-template-columns:1fr 1fr; } }
+    .result-item{ display:flex; align-items:baseline; justify-content:space-between; gap:.75rem; background:#fff; border:1px solid var(--border-color); border-radius:8px; padding:.75rem .9rem; }
+    .result-label{ color:var(--muted-text-color); font-weight:600; }
+    .result-value{ font-weight:800; color:var(--success-color); }
+    .status-badge{ display:inline-block; font-weight:800; border-radius:999px; padding:.25rem .6rem; }
+    .ok{ background:#E6F4EA; color:#146C43; border:1px solid #B7DFB9; }
+    .ng{ background:#FDECEA; color:#B02A37; border:1px solid #F5C2C7; }
+
+    .formula-box{ background:#eef3f8; border:1px solid var(--border-color); border-radius:8px; padding:1rem; overflow:auto; }
+    .glossary{ border-collapse:collapse; width:100%; }
+    .glossary th,.glossary td{ border:1px solid var(--border-color); padding:.6rem .75rem; text-align:left; }
+    .author-box{ margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--border-color); color:var(--muted-text-color); font-size:.95rem; }
+
+    .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  </style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Eurocode 5 Timber Column Design Calculator",
+  "description": "Professional EC5 (EN 1995-1-1) timber column calculator for axial compression resistance with buckling about both axes, using kmod, γM, E0,mean, and imperfection factors. Accessible, mobile-first, and optimized for Core Web Vitals.",
+  "url": "https://calcdomain.com/eurocode-5-timber-column.html",
+  "inLanguage": "en",
+  "author": {
+    "@type": "Person",
+    "name": "Ugo Candido"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "CalcDomain"
+  },
+  "mainEntity": [
+    {
+      "@type": "HowTo",
+      "name": "How It Works: A Step-by-Step Example",
+      "description": "Step-by-step example showing how to compute the design axial compression resistance of a C24 rectangular timber column to Eurocode 5, including buckling about both axes.",
+      "totalTime": "PT2M",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "name": "Define material and geometry",
+          "text": "Select grade C24 (fc,0,k=21 N/mm², E0,mean=11000 N/mm²). Set width b=140 mm, depth h=140 mm, clear length L=3.0 m."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Set design parameters",
+          "text": "Use kmod=0.80, γM=1.30, effective length factors ky=kz=1.0, imperfection factors αy=αz=0.20."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Compute λrel for each axis",
+          "text": "Calculate Ncr,y and Ncr,z and then relative slenderness λrel = sqrt(A·fc,0,k / Ncr) for each axis."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Get reduction factors χ",
+          "text": "Compute ϕ = 0.5·(1 + α·(λrel − 0.3) + λrel²), then χ = 1 / (ϕ + sqrt(ϕ² − λrel²))."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Determine design resistance",
+          "text": "Evaluate fc,0,d = kmod·fc,0,k / γM and Nc,Rd = χ·A·fc,0,d per axis. Adopt the smaller of the two as governing."
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Which Eurocode edition does this tool implement?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "This tool follows EN 1995-1-1:2004 (Eurocode 5) with relevant buckling checks for compression members per clause 6.3.2. You should verify any National Annex requirements."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What units are used?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Section dimensions are in mm, length in m, stresses in N/mm², and forces in kN in the results for readability."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I override material properties?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Choose \"Custom\" in the grade selector to enter fc,0,k and E0,mean directly."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How are effective length and imperfection factors handled?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "You can specify separate effective length factors ky and kz, and imperfection factors αy and αz for each buckling axis. Defaults are set to 1.0 and 0.20 respectively."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it check eccentricity or combined bending?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "This calculator focuses on pure axial compression with global buckling. Interaction with bending, initial eccentricity, or second-order effects is outside the current scope and must be assessed separately."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Are National Annex parameters supported?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "National Annex provisions may alter parameters like kmod and γM. You can set these explicitly in the inputs."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is this suitable for glulam and LVL?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, provided you input the correct characteristic strength and mean modulus for the product, and use appropriate imperfection factors and length factors."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<html><body><header class="bg-white shadow-sm sticky top-0 z-50">
+<nav aria-label="Primary" class="container mx-auto px-4 lg:px-6 py-4">
+<!-- TOP ROW -->
+<div class="flex justify-between items-center">
+<!-- LOGO -->
+<a class="text-2xl font-bold text-blue-600" href="index.html">CalcDomain</a>
+<!-- DESKTOP SEARCH -->
+<div class="w-full max-w-md hidden md:block mx-8">
+<div class="relative">
+<input autocomplete="off" class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" id="search-input" placeholder="Search for a calculator..." type="search"/>
+<svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<!-- CONTAINER RISULTATI RICERCA -->
+<div class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200" id="search-results"></div>
+</div>
+</div>
+<!-- NAVIGATION LINKS -->
+<div class="hidden md:flex items-center space-x-6">
+<a class="text-gray-700 hover:text-blue-600 transition-colors" href="search.html">Advanced Search</a>
+<a class="text-gray-700 hover:text-blue-600 transition-colors" href="#categories">Categories</a>
+</div>
+<!-- MOBILE TOGGLE (ARIA added) -->
+<button aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" class="md:hidden p-2" id="mobile-menu-toggle" type="button">
+<svg aria-hidden="true" class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+</div>
+<!-- MOBILE MENU (converted to <nav> with aria-label) -->
+<nav aria-label="Mobile menu" class="md:hidden mt-4 hidden" id="mobile-menu" role="navigation">
+<div class="mb-4">
+<div class="relative">
+<input class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="mobile-search-input" placeholder="Search calculators..." type="search"/>
+<svg aria-hidden="true" class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<div class="space-y-2">
+<a class="block py-2 text-gray-700 hover:text-blue-600" href="search.html">Advanced Search</a>
+<a class="block py-2 text-gray-700 hover:text-blue-600" href="#categories">Categories</a>
+</div>
+</nav>
+</nav>
+</header></body></html>
+<main class="container" id="main-content" tabindex="-1">
+<h1>Eurocode 5 Timber Column Design Calculator</h1>
+<p>This expert-grade calculator determines the design axial compression resistance of rectangular timber columns according to Eurocode 5 (EN 1995-1-1), including global buckling about both principal axes. It is intended for structural engineers and advanced students seeking a fast, transparent, and standards-aligned check.</p>
+<div class="calculator-layout" id="ec5-layout">
+<section aria-labelledby="calc-heading" class="card">
+<h2 id="calc-heading">Input Parameters</h2>
+<!-- Material -->
+<div class="form-group">
+<label for="grade">Material grade *</label>
+<select aria-describedby="gradeHint gradeErr" aria-required="true" class="form-select" id="grade">
+<option selected="" value="C24">C24 (EN 338)</option>
+<option value="C16">C16 (EN 338)</option>
+<option value="GL24h">GL24h (EN 14080)</option>
+<option value="custom">Custom…</option>
+</select>
+<div class="hint" id="gradeHint">Choose a grade or select Custom to enter properties.</div>
+<div aria-live="polite" class="error" id="gradeErr" role="alert"></div>
+</div>
+<div aria-labelledby="props-legend" class="form-row" role="group">
+<h3 class="sr-only" id="props-legend">Material properties</h3>
+<div class="form-group">
+<label for="fc0k">
+              fc,0,k (characteristic compressive strength) *
+              <button aria-controls="fc0kTip" aria-expanded="false" aria-label="Help: compressive strength" class="tooltip-btn" type="button">?</button>
+</label>
+<input aria-describedby="fc0kTip fc0kErr" aria-required="true" class="form-control" id="fc0k" inputmode="decimal" min="0" step="0.1" type="number"/>
+<div class="tooltip-content" id="fc0kTip" role="note">Characteristic compressive strength parallel to grain (N/mm²) per EN 338 or product standard.</div>
+<div aria-live="polite" class="error" id="fc0kErr" role="alert"></div>
+</div>
+<div class="form-group">
+<label for="E0mean">
+              E0,mean (mean modulus of elasticity) *
+              <button aria-controls="E0Tip" aria-expanded="false" aria-label="Help: modulus of elasticity" class="tooltip-btn" type="button">?</button>
+</label>
+<input aria-describedby="E0Tip E0Err" aria-required="true" class="form-control" id="E0mean" inputmode="decimal" min="0" step="10" type="number"/>
+<div class="tooltip-content" id="E0Tip" role="note">Mean modulus parallel to grain in N/mm² (use EC5/EN 338 values or manufacturer data).</div>
+<div aria-live="polite" class="error" id="E0Err" role="alert"></div>
+</div>
+</div>
+<!-- Section geometry -->
+<div aria-labelledby="geom-legend" class="form-row" role="group">
+<h3 class="sr-only" id="geom-legend">Section geometry</h3>
+<div class="form-group">
+<label for="b">Width b (mm) *</label>
+<input aria-describedby="bErr" aria-required="true" class="form-control" id="b" min="10" step="1" type="number"/>
+<div aria-live="polite" class="error" id="bErr" role="alert"></div>
+</div>
+<div class="form-group">
+<label for="h">Depth h (mm) *</label>
+<input aria-describedby="hErr" aria-required="true" class="form-control" id="h" min="10" step="1" type="number"/>
+<div aria-live="polite" class="error" id="hErr" role="alert"></div>
+</div>
+</div>
+<div aria-labelledby="length-legend" class="form-row" role="group">
+<h3 class="sr-only" id="length-legend">Member length and factors</h3>
+<div class="form-group">
+<label for="L">Clear length L (m) *</label>
+<input aria-describedby="LErr" aria-required="true" class="form-control" id="L" min="0.1" step="0.01" type="number"/>
+<div aria-live="polite" class="error" id="LErr" role="alert"></div>
+</div>
+<div class="form-group">
+<label for="kmod">
+              kmod *
+              <button aria-controls="kmodTip" aria-expanded="false" aria-label="Help: kmod" class="tooltip-btn" type="button">?</button>
+</label>
+<input aria-describedby="kmodTip kmodErr" aria-required="true" class="form-control" id="kmod" max="1.2" min="0.1" step="0.01" type="number"/>
+<div class="tooltip-content" id="kmodTip" role="note">Modification factor for load duration and service class (EC5 §2.3.2). Typical 0.6–0.9.</div>
+<div aria-live="polite" class="error" id="kmodErr" role="alert"></div>
+</div>
+</div>
+<div aria-labelledby="lenfac-legend" class="form-row" role="group">
+<h3 class="sr-only" id="lenfac-legend">Effective length factors</h3>
+<div class="form-group">
+<label for="ky">
+              Effective length factor ky
+              <button aria-controls="kyTip" aria-expanded="false" aria-label="Help: ky" class="tooltip-btn" type="button">?</button>
+</label>
+<input aria-describedby="kyTip kyErr" class="form-control" id="ky" max="2.0" min="0.5" step="0.05" type="number"/>
+<div class="tooltip-content" id="kyTip" role="note">Multiplier for buckling length about y-axis (major). 1.0 for pinned-pinned.</div>
+<div aria-live="polite" class="error" id="kyErr" role="alert"></div>
+</div>
+<div class="form-group">
+<label for="kz">
+              Effective length factor kz
+              <button aria-controls="kzTip" aria-expanded="false" aria-label="Help: kz" class="tooltip-btn" type="button">?</button>
+</label>
+<input aria-describedby="kzTip kzErr" class="form-control" id="kz" max="2.0" min="0.5" step="0.05" type="number"/>
+<div class="tooltip-content" id="kzTip" role="note">Multiplier for buckling length about z-axis (minor). 1.0 for pinned-pinned.</div>
+<div aria-live="polite" class="error" id="kzErr" role="alert"></div>
+</div>
+</div>
+<div aria-labelledby="imperf-legend" class="form-row" role="group">
+<h3 class="sr-only" id="imperf-legend">Imperfection factors</h3>
+<div class="form-group">
+<label for="alphaY">
+              Imperfection αy
+              <button aria-controls="alphaTip" aria-expanded="false" aria-label="Help: α factors" class="tooltip-btn" type="button">?</button>
+</label>
+<input aria-describedby="alphaTip alphaYErr" class="form-control" id="alphaY" max="0.8" min="0.05" step="0.01" type="number"/>
+<div aria-live="polite" class="error" id="alphaYErr" role="alert"></div>
+</div>
+<div class="form-group">
+<label for="alphaZ">Imperfection αz</label>
+<input aria-describedby="alphaTip alphaZErr" class="form-control" id="alphaZ" max="0.8" min="0.05" step="0.01" type="number"/>
+<div aria-live="polite" class="error" id="alphaZErr" role="alert"></div>
+</div>
+<div class="tooltip-content" id="alphaTip" role="note">Imperfection factor used in the Perry–Robertson reduction (EC5 §6.3.2). Typical values 0.2–0.4; confirm with National Annex or guidance.</div>
+</div>
+<div aria-labelledby="safety-legend" class="form-row" role="group">
+<h3 class="sr-only" id="safety-legend">Safety factor and applied load</h3>
+<div class="form-group">
+<label for="gammaM">
+              γM (material partial factor) *
+              <button aria-controls="gammaTip" aria-expanded="false" aria-label="Help: gamma M" class="tooltip-btn" type="button">?</button>
+</label>
+<input aria-describedby="gammaTip gammaMErr" aria-required="true" class="form-control" id="gammaM" max="1.5" min="1.0" step="0.05" type="number"/>
+<div class="tooltip-content" id="gammaTip" role="note">Material partial factor per EC5 §2.4.1.1; common default 1.30 (verify National Annex).</div>
+<div aria-live="polite" class="error" id="gammaMErr" role="alert"></div>
+</div>
+<div class="form-group">
+<label for="NEd">Applied design axial load NEd (kN)</label>
+<input aria-describedby="NEdErr" class="form-control" id="NEd" min="0" step="0.1" type="number"/>
+<div aria-live="polite" class="error" id="NEdErr" role="alert"></div>
+</div>
+</div>
+<div class="form-row">
+<button aria-label="Copy permalink with current inputs" class="btn secondary" id="copyLink" type="button">Copy permalink</button>
+<button aria-label="Reset all fields" class="btn secondary" id="resetForm" type="button">Reset</button>
+</div>
+</section>
+<!-- Separate Results Area as requested -->
+<section aria-labelledby="results-heading" class="results-container" id="results">
+<h2 id="results-heading">Results</h2>
+<p aria-live="polite" class="hint" id="resultsNote">Enter values to see results. All outputs update instantly.</p>
+<div aria-atomic="true" aria-live="polite" class="result-grid">
+<div class="result-item">
+<span class="result-label">Design compressive strength fc,0,d</span>
+<span class="result-value" id="fc0dOut">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Cross-section area A</span>
+<span class="result-value" id="AOut">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Reduction factor χy / χz</span>
+<span class="result-value" id="chiOut">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Ncr,y / Ncr,z</span>
+<span class="result-value" id="NcrOut">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Nc,Rd (y) / Nc,Rd (z)</span>
+<span class="result-value" id="NRdAxesOut">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Governing Nc,Rd</span>
+<span class="result-value" id="NRdOut">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Utilization η = NEd / Nc,Rd</span>
+<span class="result-value" id="utilOut">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Check status</span>
+<span class="result-value" id="statusOut"><span class="status-badge" id="statusBadge">—</span></span>
+</div>
+</div>
+</section>
+</div>
+<section aria-labelledby="source-heading" class="card content" style="margin-top:1.5rem;">
+<h2 id="source-heading">Data Source and Methodology</h2>
+<p>
+        Authoritative Source: EN 1995-1-1:2004 Eurocode 5 — Design of timber structures — Part 1-1: General — Common rules and rules for buildings, Clause 6.3.2, and material properties per EN 338/EN 14080.
+        Direct link to the code text (public copy): <a href="https://www.phd.eng.br/wp-content/uploads/2015/12/en.1995.1.1.2004.pdf" rel="nofollow noopener" target="_blank">EN 1995-1-1:2004 PDF</a>.
+      </p>
+<p><strong>Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.</strong></p>
+<h2>The Formula Explained</h2>
+<div class="formula-box">
+<p>Design compressive strength: \( f_{c,0,d} = \dfrac{k_{mod}\, f_{c,0,k}}{\gamma_M} \)</p>
+<p>Critical buckling load about each axis: \( N_{cr} = \dfrac{\pi^2\, E_{0,mean}\, I}{L_{eff}^2} \), with \(L_{eff} = k \cdot L\)</p>
+<p>Relative slenderness: \( \lambda_{rel} = \sqrt{\dfrac{A\, f_{c,0,k}}{N_{cr}}} \)</p>
+<p>Reduction factor (Perry–Robertson): \( \phi = \tfrac12 \left[1 + \alpha\left(\lambda_{rel} - 0.3\right) + \lambda_{rel}^2\right] \)</p>
+<p>Then: \( \chi = \dfrac{1}{\phi + \sqrt{\phi^2 - \lambda_{rel}^2}} \le 1.0 \)</p>
+<p>Design axial resistance per axis: \( N_{c,Rd} = \chi \, A \, f_{c,0,d} \)</p>
+<p>Governing resistance: \( N_{c,Rd,\,min} = \min\left(N_{c,Rd,y},\, N_{c,Rd,z}\right) \)</p>
+</div>
+<h2>Glossary of Variables</h2>
+<table class="glossary">
+<thead>
+<tr><th>Symbol</th><th>Description</th><th>Unit</th></tr>
+</thead>
+<tbody>
+<tr><td>fc,0,k</td><td>Characteristic compressive strength parallel to grain</td><td>N/mm²</td></tr>
+<tr><td>E0,mean</td><td>Mean modulus of elasticity parallel to grain</td><td>N/mm²</td></tr>
+<tr><td>kmod</td><td>Modification factor for load duration and service class</td><td>—</td></tr>
+<tr><td>γM</td><td>Material partial factor</td><td>—</td></tr>
+<tr><td>b, h</td><td>Section dimensions (width, depth)</td><td>mm</td></tr>
+<tr><td>A</td><td>Cross-section area = b·h</td><td>mm²</td></tr>
+<tr><td>Iy, Iz</td><td>Second moments: Iy=b·h³/12, Iz=h·b³/12</td><td>mm⁴</td></tr>
+<tr><td>L</td><td>Clear member length</td><td>m</td></tr>
+<tr><td>ky, kz</td><td>Effective length factors about y and z axes</td><td>—</td></tr>
+<tr><td>αy, αz</td><td>Imperfection factors for each axis</td><td>—</td></tr>
+<tr><td>Ncr</td><td>Euler critical load for the axis</td><td>N</td></tr>
+<tr><td>λrel</td><td>Relative slenderness</td><td>—</td></tr>
+<tr><td>χ</td><td>Buckling reduction factor</td><td>—</td></tr>
+<tr><td>Nc,Rd</td><td>Design axial compression resistance</td><td>kN (reported)</td></tr>
+<tr><td>NEd</td><td>Applied design axial load (input)</td><td>kN</td></tr>
+<tr><td>η</td><td>Utilization ratio = NEd / Nc,Rd</td><td>—</td></tr>
+</tbody>
+</table>
+<h2>Worked Example</h2>
+<h3>How It Works: A Step-by-Step Example</h3>
+<p>Given: C24, fc,0,k=21 N/mm², E0,mean=11000 N/mm²; b=h=140 mm; L=3.0 m; ky=kz=1.0; kmod=0.80; γM=1.30; αy=αz=0.20.</p>
+<ol>
+<li>Area and inertia: A=140·140=19600 mm²; Iy=Iz=140·140³/12=32.0×10⁶ mm⁴.</li>
+<li>Effective lengths: L_eff,y=L_eff,z=1.0·3000 mm=3000 mm.</li>
+<li>Critical loads: Ncr=π²·11000·32.0e6 / 3000² ≈ 387,000 N.</li>
+<li>Relative slenderness: λrel=√(A·fc,0,k / Ncr)=√(19600·21 / 387000)≈1.03.</li>
+<li>ϕ=0.5·[1+0.2·(1.03−0.3)+1.03²]=0.5·(1+0.146+1.0609)=1.103.</li>
+<li>χ=1/(ϕ+√(ϕ²−λrel²))≈1/(1.103+√(1.216−1.061))≈0.61.</li>
+<li>fc,0,d=kmod·fc,0,k/γM=0.8·21/1.3=12.92 N/mm².</li>
+<li>Nc,Rd=χ·A·fc,0,d=0.61·19600·12.92 ≈ 154,000 N = 154 kN (both axes; governing).</li>
+</ol>
+<p>Therefore, the design axial resistance is approximately 154 kN. If NEd = 120 kN, utilization η ≈ 0.78 (OK).</p>
+<h2>Frequently Asked Questions (FAQ)</h2>
+<details>
+<summary>Which Eurocode version and clauses are implemented?</summary>
+<p>EN 1995-1-1:2004, primarily Clause 6.3.2 for compression members with global buckling. Material properties are aligned with EN 338 (solid timber) and EN 14080 (glulam) where applicable.</p>
+</details>
+<details>
+<summary>Do I need to include ksys or kc system factors?</summary>
+<p>System or stability factors beyond the Perry–Robertson reduction are not included. If required by your National Annex or design situation, account for them separately.</p>
+</details>
+<details>
+<summary>What about combined bending and compression?</summary>
+<p>This tool is focused on axial compression with global buckling. Interaction with bending should follow EC5 interaction equations and second-order analysis, which are beyond this calculator’s scope.</p>
+</details>
+<details>
+<summary>How should I choose α (imperfection) and effective length factors?</summary>
+<p>Use recognized guidance or National Annex tables. Defaults α=0.20 and k=1.0 are indicative for pinned-pinned; different end restraints and member types require different values.</p>
+</details>
+<details>
+<summary>Are service class and load duration covered?</summary>
+<p>Yes, via kmod. Determine kmod per EC5 §2.3.2 based on service class and load duration class, then input that value.</p>
+</details>
+<details>
+<summary>Why are forces reported in kN but the math uses N/mm²?</summary>
+<p>Internally, EC units are used for consistency with EC5: stresses in N/mm² and geometry in mm. Final forces are presented in kN for readability.</p>
+</details>
+</section>
+<div class="author-box" role="contentinfo">
+<p>
+        Tool developed by <strong>Ugo Candido</strong>. Content verified by <strong>CalcDomain Editorial Team</strong>.<br/>
+        Last reviewed for accuracy on: <time datetime="2025-09-14">September 14, 2025</time>.
+      </p>
+</div>
+</main>
+<!-- Standard Footer --> <html><body><footer class="bg-gray-900 text-white py-12">
+<div class="container mx-auto px-4">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+<div>
+<h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+<p class="text-gray-400 mb-4">Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.</p>
+<div class="flex space-x-4">
+<a aria-label="Twitter" class="text-gray-400 hover:text-white" href="#">
+<svg aria-hidden="true" class="w-6 h-6" fill="currentColor" viewbox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"></path></svg>
+</a>
+<a aria-label="Facebook" class="text-gray-400 hover:text-white" href="#">
+<svg aria-hidden="true" class="w-6 h-6" fill="currentColor" viewbox="0 0 24 24"><path d="M22.46 6c-.77.35-1.6.58-2.46.69.88-.53 1.56-1.37 1.88-2.38-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98C8.28 9.09 5.11 7.38 3 4.79c-.37.63-.58 1.37-.58 2.15 0 1.49.75 2.81 1.91 3.56-.71 0-1.37-.2-1.95-.5v.03c0 2.08 1.48 3.82 3.44 4.21a4.22 4.22 0 0 1-1.93.07 4.28 4.28 0 0 0 4 2.98 8.521 8.521 0 0 1-5.33 1.84c-.34 0-.68-.02-1.02-.06C3.44 20.29 5.7 21 8.12 21 16 21 20.33 14.46 20.33 8.79c0-.19 0-.37-.01-.56.84-.6 1.56-1.36 2.14-2.23z"></path></svg>
+</a>
+</div>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Categories</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="finance.html">Finance</a></li>
+<li><a class="text-gray-400 hover:text-white" href="health-fitness.html">Health &amp; Fitness</a></li>
+<li><a class="text-gray-400 hover:text-white" href="math-conversions.html">Math &amp; Conversions</a></li>
+<li><a class="text-gray-400 hover:text-white" href="lifestyle-everyday.html">Lifestyle &amp; Everyday</a></li>
+<li><a class="text-gray-400 hover:text-white" href="construction-diy.html">Construction &amp; DIY</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="mortgage-payment.html">Mortgage Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="percentage-calculator.html">Percentage Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="bmi-calculator.html">BMI Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="auto-loan-calculator.html">Auto Loan Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="house-affordability.html">House Affordability</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Support</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="#">About Us</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Contact</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Privacy Policy</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Terms of Service</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Site Map</a></li>
+</ul>
+</div>
+</div>
+<div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+<p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+</div>
+</div>
+</footer></body></html>
+
+
+<html><head><script defer="" src="/assets/js/mobile-menu.js"></script></head></html></body></html>

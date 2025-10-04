@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<title>BMI Calculator | Body Metrics for Adults (Metric &amp; US Units)</title>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<meta content="Accurately calculate your Body Mass Index (BMI) using metric or US units. Get your BMI category, BMI Prime, and healthy weight range—fast, accessible, and mobile-first." name="description"/>
+<meta content="Ugo Candido" name="author"/>
+<link href="https://calcdomain.com/bmi.html" rel="canonical"/>
+<meta content="index,follow" name="robots"/>
+<meta content="BMI Calculator | Body Metrics for Adults (Metric &amp; US Units)" property="og:title"/>
+<meta content="Accurately calculate your BMI and get instant interpretation, BMI Prime, and healthy weight range. WCAG-compliant, mobile-first." property="og:description"/>
+<meta content="https://calcdomain.com/bmi-calculator" property="og:url"/>
+<meta content="website" property="og:type"/>
+<meta content="summary" name="twitter:card"/>
+<meta content="#005A9C" name="theme-color"/>
+<style>
+    /* ====================================================================== */
+    /* Design Tokens (Critical and Global)                                    */
+    /* ====================================================================== */
+    :root{
+      --primary-color:#005A9C; --secondary-color:#003F6E; --accent-color:#00A4E4;
+      --background-color:#F8F9FA; --surface-color:#FFFFFF;
+      --text-color:#212529; --muted-text-color:#6C757D; --border-color:#DEE2E6;
+      --success-color:#198754; --error-color:#DC3545; --warning-color:#FFC107;
+
+      --font-sans-serif: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+      --font-monospace: ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono","Courier New",monospace;
+
+      --touch-target-min:48px; --touch-target-optimal:60px;
+      --input-padding:clamp(.75rem,2vw,1rem);
+      --radius-2:6px; --radius-3:8px; --radius-4:12px;
+
+      --transition-standard:.2s ease-in-out; --transition-fast:.1s ease-in-out;
+
+      --container-max-width:1200px; --sidebar-width:clamp(300px,40vw,460px);
+      --gap-1:.5rem; --gap-2:1rem; --gap-3:1.5rem; --gap-4:2rem;
+
+      --overlay-bg:rgba(0,0,0,.4);
+    }
+
+    @media (prefers-contrast: more){
+      :root{
+        --primary-color:#003366; --secondary-color:#001a33;
+        --text-color:#000; --border-color:#000; --background-color:#fff;
+      }
+    }
+    @media (prefers-reduced-motion: reduce){
+      *,*::before,*::after{
+        animation-duration:.01ms!important; animation-iteration-count:1!important;
+        transition-duration:.01ms!important; scroll-behavior:auto!important;
+      }
+    }
+
+    /* ====================================================================== */
+    /* Base                                                                   */
+    /* ====================================================================== */
+    *,*::before,*::after{ box-sizing:border-box; }
+    html{ font-size:clamp(16px,2.5vw,18px); }
+    body{
+      margin:0; font-family:var(--font-sans-serif);
+      background:var(--background-color); color:var(--text-color);
+      line-height:1.6; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    img{ max-width:100%; height:auto; }
+    a{ color:var(--primary-color); text-decoration:none; }
+    a:hover{ text-decoration:underline; color:var(--secondary-color); }
+    a:focus{ outline:3px solid var(--primary-color); outline-offset:2px; border-radius:2px; }
+
+    h1,h2,h3,h4{ margin:0 0 .75rem; line-height:1.25; color:var(--secondary-color); font-weight:800; }
+    h1{ font-size:clamp(1.75rem,4vw,2.5rem); }
+    h2{ font-size:clamp(1.4rem,3.2vw,2rem); }
+    h3{ font-size:clamp(1.2rem,2.8vw,1.5rem); }
+    p{ margin:0 0 1rem; max-width:70ch; }
+    code,.code{ font-family:var(--font-monospace); background:#e9ecef; padding:.15em .35em; border-radius:4px; }
+
+    .container{ max-width:var(--container-max-width); margin:0 auto; padding:0 clamp(1rem,4vw,2rem); }
+    .main-content{ padding:var(--gap-4) 0; }
+
+    /* Skip link */
+    .skip-link{
+      position:absolute; top:-40px; left:6px; z-index:1000;
+      background:var(--primary-color); color:#fff; padding:8px 16px; border-radius:0 0 4px 4px;
+      text-decoration:none; font-weight:700;
+    }
+    .skip-link:focus{ top:0; }
+
+    /* ====================================================================== */
+    /* Header & Nav (non-sticky, mobile-first overlay menu)                   */
+    /* ====================================================================== */
+    .site-header{
+      background:var(--surface-color); border-bottom:1px solid var(--border-color);
+      box-shadow:0 2px 4px rgba(0,0,0,.05);
+    }
+    .header-content{
+      display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:var(--gap-2);
+      padding:.75rem 0;
+    }
+    .logo{ font-weight:800; color:var(--primary-color); font-size:clamp(1.1rem,3vw,1.35rem); }
+    .site-search{ display:flex; align-items:center; gap:.5rem; }
+    .site-search input[type="search"]{
+      flex:1 1 auto; min-width:0; width:100%; padding:.6rem .75rem; border:1px solid var(--border-color); border-radius:8px;
+    }
+    .site-search input[type="search"]:focus{
+      outline:none; border-color:var(--primary-color); box-shadow:0 0 0 3px rgba(0,90,156,.15);
+    }
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:var(--input-padding) 1rem; min-height:var(--touch-target-min); min-width:var(--touch-target-min);
+      border-radius:8px; cursor:pointer; border:1px solid transparent; font-weight:700; gap:.5rem; text-decoration:none;
+      transition:transform var(--transition-standard), background var(--transition-standard), color var(--transition-standard), border-color var(--transition-standard);
+    }
+    .btn:focus{ outline:3px solid var(--primary-color); outline-offset:2px; }
+    .btn-secondary{ background:transparent; color:var(--primary-color); border-color:var(--primary-color); }
+    .btn-secondary:hover{ background:var(--primary-color); color:#fff; }
+
+    .nav-toggle{
+      appearance:none; border:1px solid var(--border-color); background:var(--surface-color);
+      border-radius:8px; padding:.5rem .75rem; min-height:var(--touch-target-min); cursor:pointer; display:inline-flex; align-items:center; gap:.5rem;
+    }
+    .nav-toggle:focus{ outline:3px solid var(--primary-color); outline-offset:2px; }
+    .nav-toggle-box{ position:relative; width:22px; height:16px; display:inline-block; }
+    .nav-toggle-inner,.nav-toggle-inner::before,.nav-toggle-inner::after{
+      content:""; position:absolute; height:2px; width:100%; background:var(--text-color); left:0; transition:transform var(--transition-standard), opacity var(--transition-standard);
+    }
+    .nav-toggle-inner{ top:50%; transform:translateY(-50%); }
+    .nav-toggle-inner::before{ top:-7px; }
+    .nav-toggle-inner::after{ top:7px; }
+    .nav-toggle.is-active .nav-toggle-inner{ background:transparent; }
+    .nav-toggle.is-active .nav-toggle-inner::before{ transform:translateY(7px) rotate(45deg); }
+    .nav-toggle.is-active .nav-toggle-inner::after{ transform:translateY(-7px) rotate(-45deg); }
+
+    .main-nav{
+      position:fixed; inset:0; transform:translateY(-100%); transition:transform var(--transition-standard);
+      background:var(--surface-color); border-top:1px solid var(--border-color); padding:5.5rem 1.25rem 2rem; overflow-y:auto; z-index:99;
+    }
+    .main-nav.is-open{ transform:translateY(0); }
+    .nav-header{
+      position:sticky; top:0; display:flex; align-items:center; justify-content:space-between;
+      background:var(--surface-color); padding:.5rem .25rem .75rem; margin:-.5rem 0 .75rem; border-bottom:1px solid var(--border-color);
+    }
+    .main-nav ul{ list-style:none; display:grid; gap:.25rem; max-width:720px; margin:0 auto; padding:0; }
+    .main-nav li a{
+      display:block; padding:.9rem .75rem; border-radius:8px; border:1px solid transparent; font-weight:600; color:var(--secondary-color);
+    }
+    .main-nav li a:hover{ text-decoration:none; background:rgba(0,90,156,.06); border-color:var(--border-color); }
+    .main-nav li.divider{ height:1px; background:var(--border-color); margin:.5rem 0 .25rem; }
+
+    @media (max-width:380px){
+      .header-content{
+        grid-template-columns:auto auto;
+        grid-template-areas:
+          "logo navbtn"
+          "search search";
+      }
+      .logo{ grid-area:logo; }
+      .nav-toggle{ grid-area:navbtn; justify-self:end; }
+      .site-search{ grid-area:search; }
+    }
+
+    /* ====================================================================== */
+    /* Calculator Layout & Components                                         */
+    /* ====================================================================== */
+    .breadcrumb{ margin:.75rem 0 1rem; font-size:.95rem; color:var(--muted-text-color); }
+    .breadcrumb a{ color:inherit; }
+    .breadcrumb a:hover{ color:var(--primary-color); }
+
+    .calculator-layout{
+      display:grid; grid-template-columns:1fr; gap:var(--gap-4);
+      margin-top:.5rem;
+    }
+    @media (min-width: 992px){
+      .calculator-layout{ grid-template-columns:var(--sidebar-width) 1fr; align-items:start; }
+    }
+
+    .calculator-container{
+      background:var(--surface-color); border:1px solid var(--border-color); border-radius:12px;
+      padding:clamp(1rem,2.5vw,1.5rem);
+    }
+    .form-group{ margin-bottom:var(--gap-3); }
+    .form-group label{ display:flex; align-items:center; gap:.5rem; font-weight:700; margin-bottom:.5rem; }
+    .tooltip-btn{
+      border:none; background:transparent; color:var(--primary-color); cursor:pointer; font-weight:800; width:var(--touch-target-min); height:var(--touch-target-min);
+      display:inline-flex; align-items:center; justify-content:center; border-radius:50%;
+    }
+    .tooltip-btn:focus{ outline:3px solid var(--primary-color); outline-offset:2px; }
+    .tooltip-panel{
+      display:none; margin:.5rem 0 0; padding:.75rem; border:1px dashed var(--border-color); border-radius:8px; background:#f1f5f9; color:#0f172a;
+    }
+    .tooltip-panel[aria-hidden="false"]{ display:block; }
+
+    .input-group{ position:relative; }
+    .form-control{
+      width:100%; min-height:var(--touch-target-min);
+      padding:.75rem 1rem; border:1px solid var(--border-color); border-radius:8px; font-size:1rem;
+      transition:border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+    .form-control:focus{
+      outline:none; border-color:var(--primary-color); box-shadow:0 0 0 3px rgba(0,90,156,.15);
+    }
+    .form-control[aria-invalid="true"]{ border-color:var(--error-color); }
+    .unit-addon{
+      position:absolute; top:50%; right:.75rem; transform:translateY(-50%); color:var(--muted-text-color); pointer-events:none;
+    }
+    .help-inline{ font-size:.9rem; color:var(--muted-text-color); }
+
+    .radio-group{ display:flex; gap:.5rem; border:1px solid var(--border-color); border-radius:8px; padding:.25rem; }
+    .radio-group input[type="radio"]{ position:absolute; opacity:0; width:0; height:0; }
+    .radio-group label{
+      flex:1; text-align:center; padding:.5rem; min-height:var(--touch-target-min);
+      border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:700;
+    }
+    .radio-group input[type="radio"]:checked + label{ background:var(--primary-color); color:#fff; }
+    .radio-group input[type="radio"]:focus + label{ outline:3px solid var(--primary-color); outline-offset:2px; }
+
+    .field-row{ display:grid; grid-template-columns:1fr 1fr; gap:var(--gap-2); }
+    @media (max-width:480px){ .field-row{ grid-template-columns:1fr; } }
+
+    .error-message{ color:var(--error-color); font-size:.9rem; margin-top:.25rem; min-height:1.15em; }
+
+    .actions{ display:flex; gap:.75rem; flex-wrap:wrap; margin-top:.5rem; }
+    .btn-primary{ background:var(--primary-color); color:#fff; border-color:var(--primary-color); }
+    .btn-primary:hover{ background:var(--secondary-color); border-color:var(--secondary-color); }
+    .btn-ghost{ background:transparent; border:1px solid var(--border-color); color:var(--secondary-color); }
+    .btn-ghost:hover{ background:#eef5fb; }
+
+    /* ====================================================================== */
+    /* Results                                                                */
+    /* ====================================================================== */
+    .results-container{
+      background:var(--surface-color); border:1px solid var(--border-color); border-radius:12px;
+      padding:clamp(1rem,2.5vw,1.5rem); min-height:260px;
+    }
+    .result-grid{ display:grid; grid-template-columns:1fr; gap:var(--gap-2); }
+    @media (min-width: 600px){ .result-grid{ grid-template-columns:repeat(2,1fr); } }
+    .result-item{
+      display:flex; align-items:center; justify-content:space-between; gap:.75rem;
+      padding:.75rem 0; border-bottom:1px dashed var(--border-color);
+    }
+    .result-item:last-child{ border-bottom:none; }
+    .result-label{ color:var(--muted-text-color); font-weight:600; }
+    .result-value{ font-weight:800; font-size:1.25rem; color:var(--success-color); }
+    .result-badge{
+      display:inline-block; padding:.25rem .5rem; border-radius:999px; font-weight:800; font-size:.95rem; line-height:1; border:1px solid var(--border-color);
+    }
+    .badge-under{ background:#fff7ed; color:#9a3412; border-color:#fdba74; }
+    .badge-normal{ background:#ecfdf5; color:#166534; border-color:#86efac; }
+    .badge-over{ background:#fef3c7; color:#92400e; border-color:#fcd34d; }
+    .badge-obese{ background:#fee2e2; color:#991b1b; border-color:#fca5a5; }
+    .live-summary{ margin-top:.5rem; color:var(--muted-text-color); }
+
+    /* ====================================================================== */
+    /* Content                                                                 */
+    /* ====================================================================== */
+    .content-container h2{ margin-top:2rem; padding-bottom:.5rem; border-bottom:1px solid var(--border-color); }
+    .formula-box{ background:#e9ecef; padding:1rem; border-radius:8px; overflow:auto; font-size:1.05rem; }
+    .glossary{ display:grid; grid-template-columns:1fr; gap:.5rem; }
+    @media (min-width: 700px){ .glossary{ grid-template-columns:repeat(2,1fr); } }
+    .note{ font-size:.95rem; color:var(--muted-text-color); }
+
+    .author-box{
+      margin-top:2rem; padding-top:1rem; border-top:1px solid var(--border-color);
+      font-size:.95rem; color:var(--muted-text-color);
+    }
+
+    /* Footer */
+    .site-footer{ background:var(--secondary-color); color:#fff; padding:2rem 0; margin-top:3rem; }
+    .site-footer a{ color:#fff; padding:.1rem .25rem; border-radius:4px; }
+    .site-footer a:hover{ color:#fff; background:rgba(255,255,255,.12); text-decoration:none; }
+    .footer-content{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:2rem; }
+    .footer-bottom{ text-align:center; margin-top:1.5rem; padding-top:1rem; border-top:1px solid #495057; font-size:.9rem; }
+
+    /* Utility */
+    .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  </style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "BMI Calculator",
+  "description": "Accurately calculate your Body Mass Index (BMI) using metric or US units. Get your BMI category, BMI Prime, and healthy weight range.",
+  "url": "https://calcdomain.com/bmi.html",
+  "inLanguage": "en",
+  "author": {
+    "@type": "Person",
+    "name": "Ugo Candido"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "CalcDomain"
+  },
+  "breadcrumb": {
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://calcdomain.com/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Health and Fitness",
+        "item": "https://calcdomain.com/health-and-fitness"
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": "Body Metrics",
+        "item": "https://calcdomain.com/health-and-fitness/body-metrics"
+      },
+      {
+        "@type": "ListItem",
+        "position": 4,
+        "name": "BMI Calculator",
+        "item": "https://calcdomain.com/bmi-calculator"
+      }
+    ]
+  },
+  "mainEntity": [
+    {
+      "@type": "HowTo",
+      "name": "Calculate your BMI (Body Mass Index)",
+      "description": "Use height and weight with metric or US units to compute BMI, BMI category, BMI Prime, and healthy weight range.",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "name": "Choose units",
+          "text": "Select Metric (cm, kg) or US (ft/in, lb)."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Enter height",
+          "text": "Input your height in centimeters or feet and inches."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Enter weight",
+          "text": "Input your weight in kilograms or pounds."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Read results",
+          "text": "Your BMI, category, BMI Prime, and healthy weight range appear instantly."
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is BMI?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "BMI (Body Mass Index) is a screening measure that estimates body fatness using weight relative to height."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which formula does this calculator use?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Metric: BMI = weight_kg / (height_m)^2. US: BMI = 703 × weight_lb / (height_in)^2. Categories follow WHO adult guidelines."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is BMI accurate for athletes or very muscular people?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "BMI can misclassify muscular individuals as overweight because it does not distinguish muscle from fat."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use BMI for children or teens?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Use age- and sex-specific BMI-for-age percentiles (e.g., CDC growth charts) instead of adult categories."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is a healthy BMI range?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "For adults, WHO defines 18.5–24.9 as the normal range."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is BMI Prime?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "BMI Prime is BMI divided by 25. Values <1 are below the upper normal threshold; >1 indicates overweight/obesity scales above 25."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<html><body><header class="bg-white shadow-sm sticky top-0 z-50">
+<nav aria-label="Primary" class="container mx-auto px-4 lg:px-6 py-4">
+<!-- TOP ROW -->
+<div class="flex justify-between items-center">
+<!-- LOGO -->
+<a class="text-2xl font-bold text-blue-600" href="index.html">CalcDomain</a>
+<!-- DESKTOP SEARCH -->
+<div class="w-full max-w-md hidden md:block mx-8">
+<div class="relative">
+<input autocomplete="off" class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" id="search-input" placeholder="Search for a calculator..." type="search"/>
+<svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<!-- CONTAINER RISULTATI RICERCA -->
+<div class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200" id="search-results"></div>
+</div>
+</div>
+<!-- NAVIGATION LINKS -->
+<div class="hidden md:flex items-center space-x-6">
+<a class="text-gray-700 hover:text-blue-600 transition-colors" href="search.html">Advanced Search</a>
+<a class="text-gray-700 hover:text-blue-600 transition-colors" href="#categories">Categories</a>
+</div>
+<!-- MOBILE TOGGLE (ARIA added) -->
+<button aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" class="md:hidden p-2" id="mobile-menu-toggle" type="button">
+<svg aria-hidden="true" class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+</div>
+<!-- MOBILE MENU (converted to <nav> with aria-label) -->
+<nav aria-label="Mobile menu" class="md:hidden mt-4 hidden" id="mobile-menu" role="navigation">
+<div class="mb-4">
+<div class="relative">
+<input class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="mobile-search-input" placeholder="Search calculators..." type="search"/>
+<svg aria-hidden="true" class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<div class="space-y-2">
+<a class="block py-2 text-gray-700 hover:text-blue-600" href="search.html">Advanced Search</a>
+<a class="block py-2 text-gray-700 hover:text-blue-600" href="#categories">Categories</a>
+</div>
+</nav>
+</nav>
+</header></body></html>
+<main class="main-content" id="main-content" role="main">
+<div class="container">
+<nav aria-label="Breadcrumb" class="breadcrumb">
+<a href="/">Home</a> / <a href="https://calcdomain.com/health-and-fitness.html">Health and Fitness</a> / <a href="https://calcdomain.com/health-and-fitness/body-metrics.html">Body Metrics</a> / BMI Calculator
+      </nav>
+<!-- 1) Page Title -->
+<h1>BMI Calculator</h1>
+<!-- 2) Introduction -->
+<p>This professional BMI calculator helps adults estimate body fatness using height and weight, in either metric or US units. It instantly provides your BMI value, WHO category, BMI Prime, and your healthy weight range for your height.</p>
+<div class="calculator-layout">
+<!-- 3) Interactive Calculator -->
+<section aria-labelledby="calculator-heading" class="calculator-container" id="bmi-calculator">
+<h2 class="sr-only" id="calculator-heading">Interactive BMI Calculator</h2>
+<!-- Units -->
+<div class="form-group">
+<fieldset>
+<legend class="sr-only">Choose measurement system</legend>
+<div aria-label="Measurement system" class="radio-group" role="radiogroup">
+<input checked="" id="unitsMetric" name="units" type="radio" value="metric"/>
+<label for="unitsMetric">Metric (cm, kg)</label>
+<input id="unitsUS" name="units" type="radio" value="us"/>
+<label for="unitsUS">US (ft/in, lb)</label>
+</div>
+</fieldset>
+</div>
+<!-- Metric group -->
+<div aria-labelledby="metricLabel" id="metricGroup" role="group">
+<div class="form-group">
+<label for="heightCm" id="metricLabel">
+                Height (centimeters) *
+                <button aria-controls="ttHeightCm" aria-expanded="false" aria-label="More info about height" class="tooltip-btn" id="ttHeightCmBtn" type="button">?</button>
+</label>
+<div class="input-group">
+<input aria-describedby="heightCmError ttHeightCm" aria-required="true" class="form-control" id="heightCm" inputmode="decimal" max="272" min="50" name="heightCm" placeholder="e.g., 175" step="0.1" type="number"/>
+<span aria-hidden="true" class="unit-addon">cm</span>
+</div>
+<div aria-hidden="true" class="tooltip-panel" id="ttHeightCm" role="note">
+                Enter your standing height without shoes in centimeters. Valid range: 50–272 cm.
+              </div>
+<div aria-live="polite" class="error-message" id="heightCmError" role="alert"></div>
+</div>
+<div class="form-group">
+<label for="weightKg">
+                Weight (kilograms) *
+                <button aria-controls="ttWeightKg" aria-expanded="false" aria-label="More info about weight" class="tooltip-btn" id="ttWeightKgBtn" type="button">?</button>
+</label>
+<div class="input-group">
+<input aria-describedby="weightKgError ttWeightKg" aria-required="true" class="form-control" id="weightKg" inputmode="decimal" max="500" min="2" name="weightKg" placeholder="e.g., 70" step="0.1" type="number"/>
+<span aria-hidden="true" class="unit-addon">kg</span>
+</div>
+<div aria-hidden="true" class="tooltip-panel" id="ttWeightKg" role="note">
+                Use your most recent measured weight in kilograms. Valid range: 2–500 kg.
+              </div>
+<div aria-live="polite" class="error-message" id="weightKgError" role="alert"></div>
+</div>
+</div>
+<!-- US group -->
+<div aria-labelledby="usLabel" hidden="" id="usGroup" role="group">
+<div class="form-group">
+<label for="heightFt" id="usLabel">
+                Height (feet/inches) *
+                <button aria-controls="ttHeightUs" aria-expanded="false" aria-label="More info about US height" class="tooltip-btn" id="ttHeightUsBtn" type="button">?</button>
+</label>
+<div class="field-row">
+<div class="input-group">
+<input aria-describedby="heightUsError ttHeightUs" aria-required="true" class="form-control" id="heightFt" inputmode="numeric" max="8" min="1" name="heightFt" placeholder="e.g., 5" step="1" type="number"/>
+<span aria-hidden="true" class="unit-addon">ft</span>
+</div>
+<div class="input-group">
+<input aria-describedby="heightUsError ttHeightUs" aria-required="true" class="form-control" id="heightIn" inputmode="numeric" max="11" min="0" name="heightIn" placeholder="e.g., 9" step="1" type="number"/>
+<span aria-hidden="true" class="unit-addon">in</span>
+</div>
+</div>
+<div aria-hidden="true" class="tooltip-panel" id="ttHeightUs" role="note">
+                Enter feet and additional inches. Valid ranges: 1–8 ft and 0–11 in. Example: 5 ft 9 in.
+              </div>
+<div aria-live="polite" class="error-message" id="heightUsError" role="alert"></div>
+</div>
+<div class="form-group">
+<label for="weightLb">
+                Weight (pounds) *
+                <button aria-controls="ttWeightLb" aria-expanded="false" aria-label="More info about pounds" class="tooltip-btn" id="ttWeightLbBtn" type="button">?</button>
+</label>
+<div class="input-group">
+<input aria-describedby="weightLbError ttWeightLb" aria-required="true" class="form-control" id="weightLb" inputmode="decimal" max="1100" min="5" name="weightLb" placeholder="e.g., 165" step="0.1" type="number"/>
+<span aria-hidden="true" class="unit-addon">lb</span>
+</div>
+<div aria-hidden="true" class="tooltip-panel" id="ttWeightLb" role="note">
+                Use your most recent measured weight in pounds. Valid range: 5–1100 lb.
+              </div>
+<div aria-live="polite" class="error-message" id="weightLbError" role="alert"></div>
+</div>
+</div>
+<div class="actions">
+<button aria-label="Calculate BMI" class="btn btn-primary" id="calcBtn" type="button">Calculate</button>
+<button aria-label="Reset inputs" class="btn btn-ghost" id="resetBtn" type="button">Reset</button>
+<button aria-label="Copy sharable link with current values" class="btn btn-secondary" id="shareBtn" type="button">Share result</button>
+<span aria-live="polite" class="help-inline" id="shareStatus" role="status"></span>
+</div>
+<p class="note" role="note">This tool is intended for adults. It does not provide medical advice.</p>
+</section>
+<!-- 4) Results -->
+<section aria-labelledby="resultsHeading" class="results-container">
+<h2 id="resultsHeading">Results</h2>
+<div aria-live="polite" class="result-grid" role="region">
+<div class="result-item">
+<span class="result-label">BMI</span>
+<span class="result-value" id="bmiValue">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Category (WHO)</span>
+<span class="result-badge" id="bmiCategory">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">BMI Prime</span>
+<span class="result-value" id="bmiPrime">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Healthy weight range</span>
+<span class="result-value" id="healthyRange">—</span>
+</div>
+</div>
+<p aria-live="polite" class="live-summary" id="liveSummary" role="status">Enter your details to see your BMI.</p>
+</section>
+</div>
+<!-- 5) Authoritative Content Ecosystem -->
+<section aria-label="Authoritative content" class="content-container">
+<h2 id="data-source">Data Source and Methodology</h2>
+<p>
+          Primary classification reference: World Health Organization (WHO). Obesity: preventing and managing the global epidemic. WHO Technical Report Series 894, 2000; and WHO BMI classification (Adults), updated guidance.
+          <a href="https://www.who.int/data/gho/indicator-metadata-registry/imr-details/141" rel="noopener">WHO BMI Classification</a>.
+          Formula reference for US customary conversion:
+          <a href="https://www.cdc.gov/bmi/adult-calculator/index.html" rel="noopener">CDC Adult BMI Calculator</a>.
+        </p>
+<p><strong>Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.</strong></p>
+<h2 id="formula">The Formula Explained</h2>
+<div aria-describedby="formulaNote" class="formula-box">
+<p>Metric: <span class="code">\( \mathrm{BMI} = \dfrac{w_{kg}}{(h_{m})^{2}} \)</span></p>
+<p>US Customary: <span class="code">\( \mathrm{BMI} = 703 \times \dfrac{w_{lb}}{(h_{in})^{2}} \)</span></p>
+<p>BMI Prime: <span class="code">\( \mathrm{BMI}' = \dfrac{\mathrm{BMI}}{25} \)</span></p>
+<p>Healthy weight range for a given height (m): <span class="code">\( w_{healthy} \in [18.5,\,24.9] \times h_{m}^{2} \)</span></p>
+</div>
+<p class="note" id="formulaNote">LaTeX notation is shown; formulas are standard and unit-sensitive.</p>
+<h2 id="glossary">Glossary of Variables</h2>
+<div class="glossary" role="list">
+<p role="listitem"><strong>Height (cm or ft/in):</strong> Your standing height without shoes.</p>
+<p role="listitem"><strong>Weight (kg or lb):</strong> Your body weight on a calibrated scale.</p>
+<p role="listitem"><strong>BMI:</strong> Body Mass Index computed from height and weight.</p>
+<p role="listitem"><strong>Category (WHO):</strong> Underweight, Normal, Overweight, or Obesity (Class I–III).</p>
+<p role="listitem"><strong>BMI Prime:</strong> Ratio of your BMI to 25 (upper bound of normal).</p>
+<p role="listitem"><strong>Healthy weight range:</strong> Weight interval corresponding to BMI 18.5–24.9 for your height.</p>
+</div>
+<h2 id="worked-example">How It Works: A Step-by-Step Example</h2>
+<p><strong>Scenario:</strong> Height = 175 cm (1.75 m), Weight = 72 kg.</p>
+<ol>
+<li>Convert height to meters: 175 cm = 1.75 m.</li>
+<li>Apply the metric formula: <span class="code">\( \mathrm{BMI} = \dfrac{72}{(1.75)^2} = \dfrac{72}{3.0625} \approx 23.5 \)</span>.</li>
+<li>Determine category (WHO): 23.5 is in the 18.5–24.9 range → <strong>Normal</strong>.</li>
+<li>BMI Prime: <span class="code">\( 23.5 / 25 = 0.94 \)</span>.</li>
+<li>Healthy weight range at 1.75 m:
+            <span class="code">\( [18.5,24.9] \times (1.75)^2 = [56.6, 76.2] \) kg</span> (rounded).</li>
+</ol>
+<h2 id="faq">Frequently Asked Questions (FAQ)</h2>
+<div>
+<h3>Is BMI a diagnostic tool?</h3>
+<p>No. BMI is a screening measure. A healthcare professional should consider other factors (waist circumference, body composition, health history).</p>
+<h3>What are the adult BMI categories?</h3>
+<p>WHO: Underweight &lt;18.5, Normal 18.5–24.9, Overweight 25–29.9, Obesity I 30–34.9, Obesity II 35–39.9, Obesity III ≥40.</p>
+<h3>Should older adults interpret BMI differently?</h3>
+<p>Aging changes body composition; clinical interpretation may differ. Discuss with a healthcare provider.</p>
+<h3>How precise should my inputs be?</h3>
+<p>One decimal place is usually sufficient. The calculator accepts decimals for higher precision.</p>
+<h3>Can clothing or time of day affect results?</h3>
+<p>Yes. Measure height without shoes and weight with minimal clothing, preferably at the same time of day.</p>
+<h3>Does the tool support both unit systems?</h3>
+<p>Yes. Toggle between Metric (cm, kg) and US (ft/in, lb). Formulas adjust automatically.</p>
+<h3>Where can I find BMI-for-age charts for children?</h3>
+<p>See CDC growth charts and BMI-for-age percentiles for children and teens: <a href="https://www.cdc.gov/growthcharts/index.htm" rel="noopener">CDC Growth Charts</a>.</p>
+</div>
+<!-- 6) Authorship & Review -->
+<div class="author-box">
+<p>
+            Strumento sviluppato da <strong>Ugo Candido</strong>,. Contenuti verificati da,.
+            <br/>
+            Last reviewed for accuracy on: 14 September 2025.
+          </p>
+</div>
+</section>
+</div>
+</main>
+<!-- Standard Footer --> <html><body><footer class="bg-gray-900 text-white py-12">
+<div class="container mx-auto px-4">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+<div>
+<h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+<p class="text-gray-400 mb-4">Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.</p>
+<div class="flex space-x-4">
+<a aria-label="Twitter" class="text-gray-400 hover:text-white" href="#">
+<svg aria-hidden="true" class="w-6 h-6" fill="currentColor" viewbox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"></path></svg>
+</a>
+<a aria-label="Facebook" class="text-gray-400 hover:text-white" href="#">
+<svg aria-hidden="true" class="w-6 h-6" fill="currentColor" viewbox="0 0 24 24"><path d="M22.46 6c-.77.35-1.6.58-2.46.69.88-.53 1.56-1.37 1.88-2.38-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98C8.28 9.09 5.11 7.38 3 4.79c-.37.63-.58 1.37-.58 2.15 0 1.49.75 2.81 1.91 3.56-.71 0-1.37-.2-1.95-.5v.03c0 2.08 1.48 3.82 3.44 4.21a4.22 4.22 0 0 1-1.93.07 4.28 4.28 0 0 0 4 2.98 8.521 8.521 0 0 1-5.33 1.84c-.34 0-.68-.02-1.02-.06C3.44 20.29 5.7 21 8.12 21 16 21 20.33 14.46 20.33 8.79c0-.19 0-.37-.01-.56.84-.6 1.56-1.36 2.14-2.23z"></path></svg>
+</a>
+</div>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Categories</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="finance.html">Finance</a></li>
+<li><a class="text-gray-400 hover:text-white" href="health-fitness.html">Health &amp; Fitness</a></li>
+<li><a class="text-gray-400 hover:text-white" href="math-conversions.html">Math &amp; Conversions</a></li>
+<li><a class="text-gray-400 hover:text-white" href="lifestyle-everyday.html">Lifestyle &amp; Everyday</a></li>
+<li><a class="text-gray-400 hover:text-white" href="construction-diy.html">Construction &amp; DIY</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="mortgage-payment.html">Mortgage Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="percentage-calculator.html">Percentage Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="bmi-calculator.html">BMI Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="auto-loan-calculator.html">Auto Loan Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="house-affordability.html">House Affordability</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Support</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="#">About Us</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Contact</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Privacy Policy</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Terms of Service</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Site Map</a></li>
+</ul>
+</div>
+</div>
+<div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+<p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+</div>
+</div>
+</footer></body></html>
+
+
+<html><head><script defer="" src="/assets/js/mobile-menu.js"></script></head></html></body></html>

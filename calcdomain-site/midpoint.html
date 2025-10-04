@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<title>Midpoint Calculator | CalcDomain</title>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<meta content="High-precision midpoint calculator for 2D and 3D geometry. Enter two points and instantly get the midpoint with adjustable precision, fraction support, and accessible, mobile-first UI." name="description"/>
+<meta content="Ugo Candido" name="author"/>
+<link href="https://calcdomain.com/midpoint.html" rel="canonical"/>
+<meta content="index,follow" name="robots"/>
+<meta content="Midpoint Calculator" property="og:title"/>
+<meta content="Compute the midpoint between two points in 2D or 3D space with an accessible, mobile-first tool." property="og:description"/>
+<meta content="website" property="og:type"/>
+<meta content="https://calcdomain.com/midpoint-calculator" property="og:url"/>
+<meta content="CalcDomain" property="og:site_name"/>
+<meta content="#005A9C" name="theme-color"/>
+<link href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='16' fill='%23005A9C'/%3E%3Ctext x='50' y='62' font-size='56' text-anchor='middle' fill='white' font-family='Arial,Helvetica,sans-serif'%3EC%3C/text%3E%3C/svg%3E" rel="icon"/>
+<style>
+    /* ====================================================================== */
+    /* Design tokens                                                          */
+    /* ====================================================================== */
+    :root{
+      --primary:#005A9C; --primary-700:#003F6E; --accent:#00A4E4;
+      --bg:#F8F9FA; --surface:#FFFFFF;
+      --text:#212529; --muted:#6C757D; --border:#DEE2E6;
+      --success:#198754; --error:#DC3545; --warning:#FFC107;
+      --radius-4:4px; --radius-6:6px; --radius-8:8px; --radius-12:12px;
+      --shadow-sm:0 2px 4px rgba(0,0,0,.06);
+      --shadow-md:0 6px 16px rgba(0,0,0,.08);
+      --touch:48px;
+    }
+    @media (prefers-contrast: more){
+      :root{ --primary:#003366; --text:#000; --border:#000; --bg:#fff; }
+    }
+    @media (prefers-reduced-motion: reduce){
+      *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+    }
+
+    /* ====================================================================== */
+    /* Base                                                                    */
+    /* ====================================================================== */
+    *,*::before,*::after{box-sizing:border-box}
+    html{font-size:clamp(16px,2.2vw,18px)}
+    body{
+      margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,Helvetica,sans-serif;
+      background:var(--bg); color:var(--text); line-height:1.6;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    a{color:var(--primary); text-decoration:none}
+    a:hover{text-decoration:underline}
+    a:focus{outline:3px solid var(--primary); outline-offset:2px; border-radius:2px}
+    h1,h2,h3{color:#0d2a43; line-height:1.25; margin:.5rem 0 .75rem; font-weight:800}
+    h1{font-size:clamp(1.8rem,4vw,2.4rem)}
+    h2{font-size:clamp(1.5rem,3.5vw,2rem)}
+    h3{font-size:clamp(1.2rem,3vw,1.5rem)}
+    p{margin:.5rem 0 1rem; max-width:72ch}
+    code,kbd,samp{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; background:#e9ecef; padding:.1em .35em; border-radius:4px}
+    .container{max-width:1200px; margin:0 auto; padding:0 clamp(1rem,3vw,2rem)}
+    .skip-link{
+      position:absolute; top:-40px; left:6px; background:var(--primary); color:#fff;
+      padding:8px 14px; border-radius:0 0 6px 6px; z-index:1000; text-decoration:none; font-weight:700
+    }
+    .skip-link:focus{top:0}
+
+    /* ====================================================================== */
+    /* Header (non-sticky as required)                                         */
+    /* ====================================================================== */
+    .site-header{background:var(--surface); border-bottom:1px solid var(--border); box-shadow:var(--shadow-sm)}
+    .header-content{display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:.75rem; padding:.75rem 0}
+    .logo{font-weight:900; letter-spacing:.2px; color:var(--primary); font-size:1.25rem}
+    .site-search{display:flex; align-items:center; gap:.5rem}
+    .site-search input{flex:1 1 auto; min-width:0; padding:.6rem .8rem; border:1px solid var(--border); border-radius:8px}
+    .site-search button{padding:.6rem .9rem; border-radius:8px; border:1px solid var(--primary); color:var(--primary); background:transparent; cursor:pointer; min-height:var(--touch)}
+    .site-search button:hover{background:var(--primary); color:#fff}
+    .nav-toggle{appearance:none; border:1px solid var(--border); background:var(--surface); border-radius:8px; padding:.5rem .75rem; cursor:pointer; min-height:var(--touch); display:inline-flex; align-items:center; gap:.5rem}
+    .main-nav{display:none}
+    .nav-toggle[aria-expanded="true"] + nav{display:block; position:absolute; left:-9999px} /* accessible but hidden (no trap) */
+
+    @media (max-width:380px){
+      .header-content{grid-template-columns:auto auto; grid-template-areas:"logo nav" "search search"}
+      .logo{grid-area:logo} .nav-toggle{grid-area:nav; justify-self:end} .site-search{grid-area:search}
+    }
+
+    /* ====================================================================== */
+    /* Layout                                                                  */
+    /* ====================================================================== */
+    .main-content{padding:1.25rem 0 2.25rem}
+    .calculator-layout{display:grid; grid-template-columns:1fr; gap:1.25rem}
+    @media (min-width:992px){
+      .calculator-layout{grid-template-columns:min(460px,40%) 1fr}
+    }
+
+    /* ====================================================================== */
+    /* Calculator UI                                                           */
+    /* ====================================================================== */
+    .card{background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow-sm); padding:clamp(1rem,3vw,1.5rem)}
+    .form-group{margin-bottom:1rem}
+    label{display:block; font-weight:700; margin-bottom:.4rem}
+    .required::after{content:" *"; color:var(--error); font-weight:800}
+    .input-grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:.5rem}
+    .input-row{display:grid; grid-template-columns:1fr 1fr; gap:.5rem}
+    .form-control{width:100%; min-height:var(--touch); padding:.7rem .9rem; border:1px solid var(--border); border-radius:8px; font-size:1rem}
+    .form-control:focus{outline:3px solid var(--primary); outline-offset:2px; border-color:var(--primary)}
+    .form-control[aria-invalid="true"]{border-color:var(--error); box-shadow:0 0 0 3px rgba(220,53,69,.15)}
+    .error{color:var(--error); font-size:.9rem; margin-top:.25rem}
+    .help{color:var(--muted); font-size:.9rem; margin-top:.25rem}
+    fieldset{border:1px solid var(--border); border-radius:10px; padding:1rem}
+    legend{padding:0 .35rem; font-weight:800; color:#0d2a43}
+    .radio-group{display:flex; gap:.5rem}
+    .radio-option{flex:1; display:flex; align-items:center; gap:.5rem; justify-content:center; padding:.5rem; border:1px solid var(--border); border-radius:8px; cursor:pointer; min-height:var(--touch)}
+    .radio-option input{width:20px; height:20px}
+    .radio-option:focus-within{outline:3px solid var(--primary); outline-offset:2px}
+    .toolbar{display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.5rem}
+    .btn{display:inline-flex; align-items:center; justify-content:center; gap:.5rem; padding:.7rem 1rem; border-radius:8px; border:1px solid transparent; cursor:pointer; min-height:var(--touch); min-width:var(--touch); font-weight:700}
+    .btn-primary{background:var(--primary); color:#fff; border-color:var(--primary)}
+    .btn-primary:hover{background:var(--primary-700)}
+    .btn-secondary{background:transparent; color:var(--primary); border-color:var(--primary)}
+    .btn-secondary:hover{background:rgba(0,90,156,.08)}
+    .btn-ghost{background:transparent; border-color:var(--border); color:#0d2a43}
+    .icon{width:1.1em; height:1.1em}
+
+    .tooltip{
+      display:none; background:#0f2234; color:#fff; padding:.6rem .8rem; border-radius:8px; margin-top:.35rem; box-shadow:var(--shadow-md)
+    }
+    .tooltip[data-open="true"]{display:block}
+    .tooltip-btn{margin-left:.5rem; width:var(--touch); height:var(--touch); display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--border); border-radius:8px; background:var(--surface); cursor:pointer}
+    .tooltip-btn:focus{outline:3px solid var(--primary); outline-offset:2px}
+
+    /* ====================================================================== */
+    /* Results                                                                 */
+    /* ====================================================================== */
+    .results{background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:1rem; min-height:260px}
+    .result-item{display:flex; align-items:flex-start; justify-content:space-between; gap:.75rem; padding:.6rem 0; border-bottom:1px solid var(--border)}
+    .result-item:last-child{border-bottom:none}
+    .result-label{color:var(--muted)}
+    .result-value{font-weight:900; color:var(--success); font-size:1.15rem}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .pill{display:inline-block; background:#e9f5ff; color:#083b66; padding:.2rem .5rem; border-radius:999px; font-weight:700; font-size:.85rem}
+
+    /* ====================================================================== */
+    /* Content section                                                         */
+    /* ====================================================================== */
+    .content-section h2{margin-top:1.5rem; padding-top:.5rem; border-top:1px solid var(--border)}
+    .formula-box{background:#e9ecef; border-radius:10px; padding:1rem; overflow:auto}
+    .author-box{border-top:1px solid var(--border); margin-top:1.5rem; padding-top:1rem; color:var(--muted); font-size:.95rem}
+
+    /* Footer */
+    .site-footer{background:#0d2a43; color:#fff; margin-top:2rem; padding:1.25rem 0}
+    .site-footer .container{display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap}
+    .site-footer a{color:#fff}
+    .badge{background:#153a5b; padding:.2rem .45rem; border-radius:6px; font-size:.85rem}
+  </style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Midpoint Calculator",
+  "description": "Compute the midpoint between two points in 2D or 3D space. Accessible, fast, and accurate with fraction support and adjustable precision.",
+  "url": "https://calcdomain.com/midpoint.html",
+  "isPartOf": {
+    "@type": "CreativeWorkSeries",
+    "name": "Math > Geometry"
+  },
+  "inLanguage": "en",
+  "author": {
+    "@type": "Person",
+    "name": "Ugo Candido"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "CalcDomain"
+  },
+  "mainEntity": [
+    {
+      "@type": "HowTo",
+      "name": "How It Works: A Step-by-Step Example",
+      "description": "Example computing the midpoint between A(1, 4) and B(5, -2) in 2D.",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "name": "Enter points",
+          "text": "Enter point A as (1, 4) and point B as (5, -2). Choose 2D."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Apply the formula",
+          "text": "Compute M = ((x1 + x2)/2, (y1 + y2)/2) = ((1 + 5)/2, (4 + -2)/2)."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Simplify",
+          "text": "M = (6/2, 2/2) = (3, 1)."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Set precision (optional)",
+          "text": "Choose decimal places if you want to round the result."
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How do you find the midpoint between two points?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Add the x-coordinates and divide by 2; do the same for the y-coordinates (and z-coordinates in 3D). M = ((x1 + x2)/2, (y1 + y2)/2[, (z1 + z2)/2])."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does the midpoint formula work with negative numbers?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Add the coordinates algebraically (including negatives) and divide by 2."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I enter fractions like 3/4?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. This calculator accepts decimals and simple fractions such as 3/4 or -7/2. Results are shown in decimals and, when possible, as exact fractions."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I control rounding?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Use the Precision control to choose 0–8 decimal places. Fraction output remains exact."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the difference between midpoint and average of points?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "For two points, the midpoint is the component-wise average of their coordinates. For more points, you would use a centroid, not a midpoint."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I compute the midpoint in 3D?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Select 3D and enter z1 and z2. The formula extends to z: (z1 + z2)/2."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is this midpoint the same as the center of a line segment?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. The midpoint is the exact center of the line segment connecting the two points."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+<!-- MathJax for LaTeX rendering (deferred for performance) -->
+<script defer="">
+    window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] }, svg: { fontCache: 'none' } };
+  </script>
+<script crossorigin="anonymous" defer="" integrity="sha384-q1F+3nC4Yg7CjSBD63b7YkPcb3lq0Yz2UzQQdN8mV4bqN3Vsw0d0N/3fVZlWzS6e" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.min.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<html><body><header class="bg-white shadow-sm sticky top-0 z-50">
+<nav aria-label="Primary" class="container mx-auto px-4 lg:px-6 py-4">
+<!-- TOP ROW -->
+<div class="flex justify-between items-center">
+<!-- LOGO -->
+<a class="text-2xl font-bold text-blue-600" href="index.html">CalcDomain</a>
+<!-- DESKTOP SEARCH -->
+<div class="w-full max-w-md hidden md:block mx-8">
+<div class="relative">
+<input autocomplete="off" class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" id="search-input" placeholder="Search for a calculator..." type="search"/>
+<svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<!-- CONTAINER RISULTATI RICERCA -->
+<div class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200" id="search-results"></div>
+</div>
+</div>
+<!-- NAVIGATION LINKS -->
+<div class="hidden md:flex items-center space-x-6">
+<a class="text-gray-700 hover:text-blue-600 transition-colors" href="search.html">Advanced Search</a>
+<a class="text-gray-700 hover:text-blue-600 transition-colors" href="#categories">Categories</a>
+</div>
+<!-- MOBILE TOGGLE (ARIA added) -->
+<button aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" class="md:hidden p-2" id="mobile-menu-toggle" type="button">
+<svg aria-hidden="true" class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+</div>
+<!-- MOBILE MENU (converted to <nav> with aria-label) -->
+<nav aria-label="Mobile menu" class="md:hidden mt-4 hidden" id="mobile-menu" role="navigation">
+<div class="mb-4">
+<div class="relative">
+<input class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="mobile-search-input" placeholder="Search calculators..." type="search"/>
+<svg aria-hidden="true" class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<div class="space-y-2">
+<a class="block py-2 text-gray-700 hover:text-blue-600" href="search.html">Advanced Search</a>
+<a class="block py-2 text-gray-700 hover:text-blue-600" href="#categories">Categories</a>
+</div>
+</nav>
+</nav>
+</header></body></html>
+<main class="main-content" id="main-content" role="main">
+<div class="container">
+<div class="calculator-layout">
+<!-- Left column: Calculator -->
+<section aria-labelledby="page-title" class="card">
+<h1 id="page-title">Midpoint Calculator</h1>
+<p>This professional-grade tool computes the midpoint between two points in 2D or 3D space. It’s designed for students, educators, engineers, and anyone working with analytic geometry, with full accessibility, fraction support, and adjustable precision.</p>
+<form id="midpoint-form" novalidate="">
+<div class="form-group">
+<fieldset aria-describedby="dimensionHelp">
+<legend id="dimensionLegend">Dimension</legend>
+<div aria-labelledby="dimensionLegend" class="radio-group" role="radiogroup">
+<label class="radio-option">
+<input checked="" id="dim2d" name="dimension" type="radio" value="2d"/>
+<span>2D</span>
+</label>
+<label class="radio-option">
+<input id="dim3d" name="dimension" type="radio" value="3d"/>
+<span>3D</span>
+</label>
+</div>
+<p class="help" id="dimensionHelp">Choose 2D for (x, y) or 3D for (x, y, z) coordinates.</p>
+</fieldset>
+</div>
+<fieldset class="form-group">
+<legend>Point A</legend>
+<div aria-labelledby="aLabel" class="input-grid" role="group">
+<div>
+<label class="required" for="ax">x₁</label>
+<input aria-describedby="axErr axTip" aria-required="true" autocomplete="off" class="form-control" id="ax" inputmode="decimal" name="ax" placeholder="e.g., 1.5 or 3/2"/>
+<div aria-live="polite" class="error" id="axErr" role="alert"></div>
+<div class="help" id="axTip">Use decimals or simple fractions.</div>
+</div>
+<div>
+<label class="required" for="ay">y₁</label>
+<input aria-describedby="ayErr ayTip" aria-required="true" autocomplete="off" class="form-control" id="ay" inputmode="decimal" name="ay" placeholder="e.g., -2 or -3/4"/>
+<div aria-live="polite" class="error" id="ayErr" role="alert"></div>
+<div class="help" id="ayTip">Negative values are allowed.</div>
+</div>
+<div id="azWrap">
+<label for="az">z₁</label>
+<input aria-describedby="azErr" autocomplete="off" class="form-control" id="az" inputmode="decimal" name="az" placeholder="3D only"/>
+<div aria-live="polite" class="error" id="azErr" role="alert"></div>
+</div>
+</div>
+</fieldset>
+<fieldset class="form-group">
+<legend>Point B</legend>
+<div aria-labelledby="bLabel" class="input-grid" role="group">
+<div>
+<label class="required" for="bx">x₂</label>
+<input aria-describedby="bxErr" aria-required="true" autocomplete="off" class="form-control" id="bx" inputmode="decimal" name="bx" placeholder="e.g., 4 or 7/3"/>
+<div aria-live="polite" class="error" id="bxErr" role="alert"></div>
+</div>
+<div>
+<label class="required" for="by">y₂</label>
+<input aria-describedby="byErr" aria-required="true" autocomplete="off" class="form-control" id="by" inputmode="decimal" name="by" placeholder="e.g., 0.25 or 1/4"/>
+<div aria-live="polite" class="error" id="byErr" role="alert"></div>
+</div>
+<div id="bzWrap">
+<label for="bz">z₂</label>
+<input aria-describedby="bzErr" autocomplete="off" class="form-control" id="bz" inputmode="decimal" name="bz" placeholder="3D only"/>
+<div aria-live="polite" class="error" id="bzErr" role="alert"></div>
+</div>
+</div>
+</fieldset>
+<div class="form-group">
+<div class="input-row">
+<div>
+<label for="precision">Precision (decimals)</label>
+<select aria-describedby="precisionTip" class="form-control" id="precision" style="min-height:var(--touch)">
+<option value="0">0</option>
+<option value="1">1</option>
+<option selected="" value="2">2</option>
+<option value="3">3</option>
+<option value="4">4</option>
+<option value="5">5</option>
+<option value="6">6</option>
+<option value="7">7</option>
+<option value="8">8</option>
+</select>
+<div class="help" id="precisionTip">Affects only decimal display, not exact fractions.</div>
+</div>
+<div>
+<label for="formatInfo">Input format
+                    <button aria-controls="fmtTip" aria-expanded="false" aria-label="Toggle input format help" class="tooltip-btn" id="fmtBtn" type="button">
+                      ?
+                    </button>
+</label>
+<div class="tooltip" data-open="false" id="fmtTip" role="note">
+                    Enter decimals (e.g., -3.75) or simple fractions (e.g., 15/4). You may use a comma as decimal if no dot is present (e.g., 1,5).
+                  </div>
+</div>
+</div>
+</div>
+<div aria-label="Calculator actions" class="toolbar" role="toolbar">
+<button aria-label="Calculate midpoint" class="btn btn-primary" id="calcBtn" type="button">
+<svg aria-hidden="true" class="icon" viewbox="0 0 24 24"><path d="M5 12h14M12 5v14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path></svg>
+                Calculate
+              </button>
+<button aria-label="Swap points A and B" class="btn btn-secondary" id="swapBtn" type="button">
+<svg aria-hidden="true" class="icon" viewbox="0 0 24 24"><path d="M7 7h11l-3-3M17 17H6l3 3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path></svg>
+                Swap A ↔ B
+              </button>
+<button aria-label="Reset all fields" class="btn btn-ghost" id="resetBtn" type="reset">
+<svg aria-hidden="true" class="icon" viewbox="0 0 24 24"><path d="M4 4v6h6M20 20v-6h-6M4 10a8 8 0 0113.657-2.343M20 14a8 8 0 01-13.657 2.343" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path></svg>
+                Reset
+              </button>
+</div>
+</form>
+</section>
+<!-- Right column: Results -->
+<section aria-atomic="true" aria-labelledby="resultsTitle" aria-live="polite" class="results" id="results" role="region">
+<h2 id="resultsTitle">Results</h2>
+<div class="result-item">
+<div class="result-label">Midpoint (decimal)</div>
+<div class="result-value mono" id="midpointDecimal">—</div>
+</div>
+<div class="result-item">
+<div class="result-label">Midpoint (exact fraction)</div>
+<div class="result-value mono" id="midpointFraction">—</div>
+</div>
+<div class="result-item">
+<div class="result-label">Per-axis details</div>
+<div class="mono" id="axisSteps">—</div>
+</div>
+<div aria-label="Result actions" class="toolbar">
+<button aria-label="Copy midpoint to clipboard" class="btn btn-secondary" id="copyBtn" type="button">
+<svg aria-hidden="true" class="icon" viewbox="0 0 24 24"><path d="M9 3h7a2 2 0 012 2v7M7 7h7a2 2 0 012 2v7a2 2 0 01-2 2H7a2 2 0 01-2-2V9a2 2 0 012-2z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path></svg>
+              Copy midpoint
+            </button>
+<span aria-live="polite" class="pill" id="copyStatus"></span>
+</div>
+</section>
+</div>
+<!-- Authoritative content ecosystem -->
+<section class="content-section card" id="content-ecosystem">
+<h2>Data Source and Methodology</h2>
+<p>
+          Authoritative reference: Wolfram MathWorld — “Midpoint” (accessed 2025-09-14). Link:
+          <a href="https://mathworld.wolfram.com/Midpoint.html" rel="noopener" target="_blank">https://mathworld.wolfram.com/Midpoint.html</a>.
+          Supplementary: OpenStax, Precalculus 2e — Section 3.1 “The Rectangular Coordinate System and Graphs” (2018).
+          <a href="https://openstax.org/details/books/precalculus-2e" rel="noopener" target="_blank">OpenStax Precalculus 2e</a>.
+        </p>
+<p><strong>Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.</strong></p>
+<h2>The Formula Explained</h2>
+<div class="formula-box">
+<p>2D midpoint of A(x₁, y₁) and B(x₂, y₂):</p>
+<p>$$\mathbf{M}=\left(\frac{x_1+x_2}{2},\ \frac{y_1+y_2}{2}\right)$$</p>
+<p style="margin-top:0.5rem">3D midpoint of A(x₁, y₁, z₁) and B(x₂, y₂, z₂):</p>
+<p>$$\mathbf{M}=\left(\frac{x_1+x_2}{2},\ \frac{y_1+y_2}{2},\ \frac{z_1+z_2}{2}\right)$$</p>
+</div>
+<h2>Glossary of Variables</h2>
+<ul>
+<li>x₁, y₁, z₁: Coordinates of point A (inputs, required for selected dimensions).</li>
+<li>x₂, y₂, z₂: Coordinates of point B (inputs, required for selected dimensions).</li>
+<li>M: Midpoint between A and B, output as decimal and, when possible, as exact fraction.</li>
+<li>Precision: Number of decimal places used for decimal display.</li>
+</ul>
+<h2>How It Works: A Step-by-Step Example</h2>
+<p>Suppose A = (1, 4) and B = (5, −2) in 2D.</p>
+<ol>
+<li>Apply the formula: M = ((1 + 5)/2, (4 + −2)/2).</li>
+<li>Simplify: M = (6/2, 2/2) = (3, 1).</li>
+<li>With precision set to 2 decimals, the decimal output is M = (3.00, 1.00). The fraction output remains exact: M = (3, 1).</li>
+</ol>
+<h2>Frequently Asked Questions (FAQ)</h2>
+<details>
+<summary>Can I enter fractions like 7/4 or -5/2?</summary>
+<p>Yes. This calculator accepts decimals and simple fractions. If both inputs for an axis are rational numbers, the midpoint is also shown as an exact fraction.</p>
+</details>
+<details>
+<summary>What if I choose 3D but leave z empty?</summary>
+<p>z₁ and z₂ are required in 3D mode. The corresponding fields are validated and must be provided.</p>
+</details>
+<details>
+<summary>Does rounding affect the exact fraction?</summary>
+<p>No. Rounding controls only the decimal display. The fraction output is exact (when available).</p>
+</details>
+<details>
+<summary>Can I use commas as decimal separators?</summary>
+<p>If an input contains a comma and no dot, the comma is interpreted as a decimal point (e.g., 1,5 → 1.5). Thousands separators are not supported.</p>
+</details>
+<details>
+<summary>Is the midpoint the same as the center of a line segment?</summary>
+<p>Yes. The midpoint is the exact center of the line segment that connects the two points.</p>
+</details>
+<details>
+<summary>Why do I see a dash (—) instead of a result?</summary>
+<p>At least one required field is missing or invalid. Correct the highlighted fields to see results.</p>
+</details>
+<details>
+<summary>How do I share or bookmark my inputs?</summary>
+<p>The URL updates automatically with your current inputs. Copy the page URL to share or revisit the same calculation.</p>
+</details>
+<div class="author-box">
+<p>Strumento sviluppato da <strong>Ugo Candido</strong>,. Contenuti verificati da,.</p>
+<p>Ultima revisione per l'accuratezza in data: <time datetime="2025-09-14">September 14, 2025</time>.</p>
+</div>
+</section>
+</div>
+</main>
+<!-- Standard Footer --> <html><body><footer class="bg-gray-900 text-white py-12">
+<div class="container mx-auto px-4">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+<div>
+<h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+<p class="text-gray-400 mb-4">Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.</p>
+<div class="flex space-x-4">
+<a aria-label="Twitter" class="text-gray-400 hover:text-white" href="#">
+<svg aria-hidden="true" class="w-6 h-6" fill="currentColor" viewbox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"></path></svg>
+</a>
+<a aria-label="Facebook" class="text-gray-400 hover:text-white" href="#">
+<svg aria-hidden="true" class="w-6 h-6" fill="currentColor" viewbox="0 0 24 24"><path d="M22.46 6c-.77.35-1.6.58-2.46.69.88-.53 1.56-1.37 1.88-2.38-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98C8.28 9.09 5.11 7.38 3 4.79c-.37.63-.58 1.37-.58 2.15 0 1.49.75 2.81 1.91 3.56-.71 0-1.37-.2-1.95-.5v.03c0 2.08 1.48 3.82 3.44 4.21a4.22 4.22 0 0 1-1.93.07 4.28 4.28 0 0 0 4 2.98 8.521 8.521 0 0 1-5.33 1.84c-.34 0-.68-.02-1.02-.06C3.44 20.29 5.7 21 8.12 21 16 21 20.33 14.46 20.33 8.79c0-.19 0-.37-.01-.56.84-.6 1.56-1.36 2.14-2.23z"></path></svg>
+</a>
+</div>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Categories</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="finance.html">Finance</a></li>
+<li><a class="text-gray-400 hover:text-white" href="health-fitness.html">Health &amp; Fitness</a></li>
+<li><a class="text-gray-400 hover:text-white" href="math-conversions.html">Math &amp; Conversions</a></li>
+<li><a class="text-gray-400 hover:text-white" href="lifestyle-everyday.html">Lifestyle &amp; Everyday</a></li>
+<li><a class="text-gray-400 hover:text-white" href="construction-diy.html">Construction &amp; DIY</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="mortgage-payment.html">Mortgage Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="percentage-calculator.html">Percentage Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="bmi-calculator.html">BMI Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="auto-loan-calculator.html">Auto Loan Calculator</a></li>
+<li><a class="text-gray-400 hover:text-white" href="house-affordability.html">House Affordability</a></li>
+</ul>
+</div>
+<div>
+<h4 class="text-lg font-semibold mb-4">Support</h4>
+<ul class="space-y-2">
+<li><a class="text-gray-400 hover:text-white" href="#">About Us</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Contact</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Privacy Policy</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Terms of Service</a></li>
+<li><a class="text-gray-400 hover:text-white" href="#">Site Map</a></li>
+</ul>
+</div>
+</div>
+<div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+<p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+</div>
+</div>
+</footer></body></html>
+
+
+<html><head><script defer="" src="/assets/js/mobile-menu.js"></script></head></html></body></html>
