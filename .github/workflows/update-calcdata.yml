@@ -81,9 +81,12 @@ PY
             echo "ℹ️ sitemap.xml non presente (skipping)"
           fi
 
-      - name: Quick internal link check (write report)
+     
+     - name: Quick internal link check (write report)
         if: env.RUN_LINK_CHECK == 'true'
+        id: linkcheck
         run: |
+          set +e
           mkdir -p reports
           python - << 'PY' > reports/link-check.txt
 import os, re, sys, pathlib
@@ -107,10 +110,18 @@ if bad:
     print('❌ Broken internal links:')
     for p,h in bad:
         print(f'- {p} -> {h}')
-    sys.exit(1)
+    sys.exit(2)  # codice 2 = rotti trovati
 else:
     print('✅ No broken internal links')
 PY
+          CODE=$?
+          set -e
+          # Esporta un output booleano per i passi successivi
+          if [ "$CODE" -eq 2 ]; then
+            echo "broken=true" >> $GITHUB_OUTPUT
+          else
+            echo "broken=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Upload link-check report
         if: env.RUN_LINK_CHECK == 'true'
@@ -130,6 +141,12 @@ PY
           else
             echo "✅ Nessun link interno rotto rilevato." >> $GITHUB_STEP_SUMMARY
           fi
+
+      - name: Fail if broken links were found
+        if: env.RUN_LINK_CHECK == 'true' && steps.linkcheck.outputs.broken == 'true'
+        run: |
+          echo "❌ Broken internal links found. Vedi 'link-check-report'." >&2
+          exit 1
 
       - name: Check for changes
         id: verify-changed-files
