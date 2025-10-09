@@ -3,10 +3,17 @@ name: Update CalcDomain Data
 on:
   push:
     branches: [ main, master ]
+    # Fai partire quando tocchi HTML, lo YAML del workflow, gli script
     paths:
-      - '*.html'
-      - 'subcategories/*.html'
       - '**/*.html'
+      - '.github/workflows/update-calcdata.yml'
+      - 'tools/**'
+      - 'generate_data_files.py'
+    # Evita loop quando il bot committa i file generati
+    paths-ignore:
+      - 'calculators-data.json'
+      - 'sitemap.xml'
+      - 'robots.txt'
   workflow_dispatch: {}
   schedule:
     - cron: '17 2 * * *'   # 02:17 UTC
@@ -23,7 +30,7 @@ concurrency:
 env:
   BASE_URL: https://calcdomain.com
   SRC_DIR: .
-  RUN_LINK_CHECK: "true"   # metti "false" per disattivare
+  RUN_LINK_CHECK: "true"
 
 jobs:
   update-data:
@@ -81,8 +88,7 @@ PY
             echo "ℹ️ sitemap.xml non presente (skipping)"
           fi
 
-     
-     - name: Quick internal link check (write report)
+      - name: Quick internal link check (write report)
         if: env.RUN_LINK_CHECK == 'true'
         id: linkcheck
         run: |
@@ -110,13 +116,12 @@ if bad:
     print('❌ Broken internal links:')
     for p,h in bad:
         print(f'- {p} -> {h}')
-    sys.exit(2)  # codice 2 = rotti trovati
+    sys.exit(2)
 else:
     print('✅ No broken internal links')
 PY
           CODE=$?
           set -e
-          # Esporta un output booleano per i passi successivi
           if [ "$CODE" -eq 2 ]; then
             echo "broken=true" >> $GITHUB_OUTPUT
           else
@@ -192,49 +197,4 @@ PY
           URL_COUNT="${{ steps.stats.outputs.url_count }}"
           git commit -m "🤖 Auto-update: data refreshed
 - calculators-data.json: ${CALC_COUNT:-0}
-- sitemap.xml: ${URL_COUNT:-0}
-- ${TIMESTAMP}
-[skip ci]" || echo "No changes to commit"
-          git push
-
-      - name: Upload artifacts
-        if: steps.verify-changed-files.outputs.has_changes == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: generated-data
-          path: |
-            calculators-data.json
-            sitemap.xml
-            robots.txt
-
-      - name: Create deployment summary
-        if: steps.verify-changed-files.outputs.has_changes == 'true'
-        run: |
-          echo "🎉 CalcDomain data update completed!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Updated Files" >> $GITHUB_STEP_SUMMARY
-          [ -f calculators-data.json ] && echo "- ✅ calculators-data.json" >> $GITHUB_STEP_SUMMARY
-          [ -f sitemap.xml ] && echo "- ✅ sitemap.xml" >> $GITHUB_STEP_SUMMARY
-          [ -f robots.txt ] && echo "- ✅ robots.txt" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f calculators-data.json ]; then
-            CALC_COUNT="${{ steps.stats.outputs.calc_count }}"
-            echo "## Statistics" >> $GITHUB_STEP_SUMMARY
-            echo "- 📊 Total calculators: ${CALC_COUNT:-0}" >> $GITHUB_STEP_SUMMARY
-          fi
-          if [ -f sitemap.xml ]; then
-            URL_COUNT="${{ steps.stats.outputs.url_count }}"
-            echo "- 🗺️ Sitemap URLs: ${URL_COUNT:-0}" >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Next Steps" >> $GITHUB_STEP_SUMMARY
-          echo "1. 🔍 Test search functionality on the site" >> $GITHUB_STEP_SUMMARY
-          echo "2. 📤 Submit updated sitemap to Google Search Console" >> $GITHUB_STEP_SUMMARY
-          echo "3. 🚀 Deploy changes to production if needed" >> $GITHUB_STEP_SUMMARY
-
-      - name: No changes notification
-        if: steps.verify-changed-files.outputs.has_changes == 'false'
-        run: |
-          echo "ℹ️ No data updates needed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "All data files are already up to date." >> $GITHUB_STEP_SUMMARY
+- sitemap.xml: ${URL_COUNT:-0_
