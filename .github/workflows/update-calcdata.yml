@@ -68,40 +68,33 @@ jobs:
       - name: Validate sitemap.xml (well-formed XML)
         run: |
           if [ -f sitemap.xml ]; then
-            python - << 'PY'
-import sys, xml.etree.ElementTree as ET
-try:
-    ET.parse('sitemap.xml')
-    print('OK')
-except Exception as e:
-    print('INVALID', e)
-    sys.exit(1)
-PY
+            python -c "import sys,xml.etree.ElementTree as ET; ET.parse('sitemap.xml'); print('✅ sitemap.xml XML well-formed')" \
+              || { echo '❌ sitemap.xml non valido'; exit 1; }
           else
             echo "ℹ️ sitemap.xml non presente (skipping)"
           fi
 
+      # --- Link check without heredocs ---
       - name: Quick internal link check (write report)
         if: env.RUN_LINK_CHECK == 'true'
-        id: linkcheck
         run: |
           set +e
-          mkdir -p reports
-          python - << 'PY' > reports/link-check.txt
+          mkdir -p reports tools
+          cat > tools/_link_check.py <<'PYCODE'
 import os, re, sys, pathlib
 bad = []
-for root,_,files in os.walk('.'):
+for root, _, files in os.walk('.'):
     for f in files:
         if f.endswith('.html'):
-            p=os.path.join(root,f)
+            p = os.path.join(root, f)
             try:
-                s=open(p,encoding='utf-8',errors='ignore').read()
-            except:
+                s = open(p, encoding='utf-8', errors='ignore').read()
+            except Exception:
                 continue
             for href in re.findall(r'href="([^"]+)"', s):
                 if href.startswith(('http://','https://','#','mailto:')):
                     continue
-                t=os.path.normpath(os.path.join(root, href.split('#')[0]))
+                t = os.path.normpath(os.path.join(root, href.split('#')[0]))
                 if not os.path.exists(t):
                     bad.append((p, href))
 pathlib.Path('reports').mkdir(exist_ok=True)
@@ -109,16 +102,15 @@ if bad:
     print('❌ Broken internal links:')
     for p,h in bad:
         print(f'- {p} -> {h}')
-    sys.exit(2)
+    sys.exit(2)  # signal "broken"
 else:
     print('✅ No broken internal links')
-PY
+PYCODE
+          python tools/_link_check.py > reports/link-check.txt
           CODE=$?
           set -e
           if [ "$CODE" -eq 2 ]; then
-            echo "broken=true" >> $GITHUB_OUTPUT
-          else
-            echo "broken=false" >> $GITHUB_OUTPUT
+            touch reports/.broken
           fi
 
       - name: Upload link-check report
@@ -132,19 +124,21 @@ PY
         if: env.RUN_LINK_CHECK == 'true'
         run: |
           echo "## 🔗 Internal Link Check" >> $GITHUB_STEP_SUMMARY
-          if grep -q "❌ Broken internal links" reports/link-check.txt; then
+          if [ -f reports/.broken ]; then
             echo "Trovati link rotti. Vedi artifact **link-check-report**." >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            head -n 50 reports/link-check.txt >> $GITHUB_STEP_SUMMARY
+            head -n 50 reports/link-check.txt >> $GITHUB_STEP_SUMMARY || true
           else
             echo "✅ Nessun link interno rotto rilevato." >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Fail if broken links were found
-        if: env.RUN_LINK_CHECK == 'true' && steps.linkcheck.outputs.broken == 'true'
+        if: env.RUN_LINK_CHECK == 'true'
         run: |
-          echo "❌ Broken internal links found. Vedi 'link-check-report'." >&2
-          exit 1
+          if [ -f reports/.broken ]; then
+            echo "❌ Broken internal links found. Vedi 'link-check-report'." >&2
+            exit 1
+          fi
 
       - name: Check for changes
         id: verify-changed-files
