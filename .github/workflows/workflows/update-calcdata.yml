@@ -1,19 +1,5 @@
 name: Update CalcDomain Data
 
-
-#!/usr/bin/env bash
-set -euo pipefail
-REPO_ROOT="$(git rev-parse --show-toplevel)"
-PY="$REPO_ROOT/.venv/bin/python"
-if [[ ! -x "$PY" ]]; then
-  PY="$(command -v python3 || command -v python)"
-fi
-echo "Using Python: $PY"
-# esempio: sostituisci con i tuoi comandi reali
-# "$PY" tools/gen_search_and_sitemap.py --check
-exit 0
-
-
 on:
   push:
     branches: [ main, master ]
@@ -23,7 +9,7 @@ on:
       - '**/*.html'
   workflow_dispatch: {}
   schedule:
-    - cron: '17 2 * * *'   # esegue ogni notte ~02:17 UTC (≈ 04:17 Europe/Rome)
+    - cron: '17 2 * * *'   # 02:17 UTC
 
 permissions:
   contents: write
@@ -37,7 +23,7 @@ concurrency:
 env:
   BASE_URL: https://calcdomain.com
   SRC_DIR: .
-  RUN_LINK_CHECK: "true"   # metti "true" per attivare il check link interno veloce
+  RUN_LINK_CHECK: "true"   # metti "false" per disattivare
 
 jobs:
   update-data:
@@ -64,7 +50,6 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f tools/requirements.txt ]; then pip install -r tools/requirements.txt; fi
-          # jq per normalizzare JSON se presente
           sudo apt-get update -y
           sudo apt-get install -y jq
 
@@ -76,7 +61,6 @@ jobs:
         run: |
           echo "📄 Generando calculators-data.json..."
           python generate_data_files.py --base-url "$BASE_URL" --dir "$SRC_DIR"
-          # Normalizza (ordinamento deterministico) se è JSON valido
           if [ -f calculators-data.json ] && jq -e . calculators-data.json >/dev/null 2>&1; then
             tmp=$(mktemp) && jq -S . calculators-data.json > "$tmp" && mv "$tmp" calculators-data.json
           fi
@@ -97,33 +81,55 @@ PY
             echo "ℹ️ sitemap.xml non presente (skipping)"
           fi
 
-     - name: Quick internal link check (write report)
-  if: env.RUN_LINK_CHECK == 'true'
-  run: |
-    python - << 'PY' > reports/link-check.txt
+      - name: Quick internal link check (write report)
+        if: env.RUN_LINK_CHECK == 'true'
+        run: |
+          mkdir -p reports
+          python - << 'PY' > reports/link-check.txt
 import os, re, sys, pathlib
 bad = []
 for root,_,files in os.walk('.'):
     for f in files:
         if f.endswith('.html'):
             p=os.path.join(root,f)
-            try: s=open(p,encoding='utf-8',errors='ignore').read()
-            except: continue
+            try:
+                s=open(p,encoding='utf-8',errors='ignore').read()
+            except:
+                continue
             for href in re.findall(r'href="([^"]+)"', s):
-                if href.startswith(('http://','https://','#','mailto:')): continue
+                if href.startswith(('http://','https://','#','mailto:')):
+                    continue
                 t=os.path.normpath(os.path.join(root, href.split('#')[0]))
                 if not os.path.exists(t):
                     bad.append((p, href))
 pathlib.Path('reports').mkdir(exist_ok=True)
 if bad:
-    print('❌ Broken internal links:', file=sys.stdout)
+    print('❌ Broken internal links:')
     for p,h in bad:
-        print(f'- {p} -> {h}', file=sys.stdout)
+        print(f'- {p} -> {h}')
     sys.exit(1)
 else:
-    print('✅ No broken internal links', file=sys.stdout)
+    print('✅ No broken internal links')
 PY
 
+      - name: Upload link-check report
+        if: env.RUN_LINK_CHECK == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: link-check-report
+          path: reports/link-check.txt
+
+      - name: Link-check summary
+        if: env.RUN_LINK_CHECK == 'true'
+        run: |
+          echo "## 🔗 Internal Link Check" >> $GITHUB_STEP_SUMMARY
+          if grep -q "❌ Broken internal links" reports/link-check.txt; then
+            echo "Trovati link rotti. Vedi artifact **link-check-report**." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            head -n 50 reports/link-check.txt >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ Nessun link interno rotto rilevato." >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Check for changes
         id: verify-changed-files
