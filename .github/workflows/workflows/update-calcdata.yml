@@ -1,0 +1,202 @@
+name: Update CalcDomain Data
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - '*.html'
+      - 'subcategories/*.html'
+      - '**/*.html'
+  workflow_dispatch: {}
+  schedule:
+    - cron: '17 2 * * *'   # esegue ogni notte ~02:17 UTC (≈ 04:17 Europe/Rome)
+
+permissions:
+  contents: write
+  actions: read
+  pull-requests: write
+
+concurrency:
+  group: calcdomain-data-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BASE_URL: https://calcdomain.com
+  SRC_DIR: .
+  RUN_LINK_CHECK: "true"   # metti "true" per attivare il check link interno veloce
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            tools/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f tools/requirements.txt ]; then pip install -r tools/requirements.txt; fi
+          # jq per normalizzare JSON se presente
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+
+      - name: Check for data generation script
+        run: |
+          test -f generate_data_files.py || { echo "❌ generate_data_files.py mancante"; exit 1; }
+
+      - name: Generate calculators-data.json
+        run: |
+          echo "📄 Generando calculators-data.json..."
+          python generate_data_files.py --base-url "$BASE_URL" --dir "$SRC_DIR"
+          # Normalizza (ordinamento deterministico) se è JSON valido
+          if [ -f calculators-data.json ] && jq -e . calculators-data.json >/dev/null 2>&1; then
+            tmp=$(mktemp) && jq -S . calculators-data.json > "$tmp" && mv "$tmp" calculators-data.json
+          fi
+
+      - name: Validate sitemap.xml (well-formed XML)
+        run: |
+          if [ -f sitemap.xml ]; then
+            python - << 'PY'
+import sys, xml.etree.ElementTree as ET
+try:
+    ET.parse('sitemap.xml')
+    print('✅ sitemap.xml XML well-formed')
+except Exception as e:
+    print('❌ sitemap.xml non valido:', e)
+    sys.exit(1)
+PY
+          else
+            echo "ℹ️ sitemap.xml non presente (skipping)"
+          fi
+
+      - name: Quick internal link check (optional)
+        if: env.RUN_LINK_CHECK == 'true'
+        continue-on-error: true
+        run: |
+          python - << 'PY'
+import os, re, sys
+bad = []
+for root,_,files in os.walk('.'):
+    for f in files:
+        if f.endswith('.html'):
+            p=os.path.join(root,f)
+            try: s=open(p,encoding='utf-8',errors='ignore').read()
+            except: continue
+            for href in re.findall(r'href="([^"]+)"', s):
+                if href.startswith(('http://','https://','#','mailto:')): continue
+                # normalizza e rimuove anchor
+                t=os.path.normpath(os.path.join(root, href.split('#')[0]))
+                if not os.path.exists(t):
+                    bad.append((p, href))
+if bad:
+    print('❌ Broken internal links (top 50):')
+    for p,h in bad[:50]:
+        print('-',p,'->',h)
+    sys.exit(1)
+print('✅ No broken internal links')
+PY
+
+      - name: Check for changes
+        id: verify-changed-files
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "✅ Rilevate modifiche nei file generati"
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ Nessuna modifica rilevata"
+          fi
+
+      - name: Display file stats
+        if: steps.verify-changed-files.outputs.has_changes == 'true'
+        id: stats
+        run: |
+          echo "📊 Statistiche file aggiornati:"
+          CALC_COUNT=0
+          URL_COUNT=0
+          if [ -f "calculators-data.json" ]; then
+            echo "calculators-data.json: $(wc -l < calculators-data.json) righe"
+            CALC_COUNT=$(grep -o '"slug":' calculators-data.json | wc -l || echo "0")
+            echo "Numero calcolatori: $CALC_COUNT"
+          fi
+          if [ -f "sitemap.xml" ]; then
+            URL_COUNT=$(grep -c '<url>' sitemap.xml || echo "0")
+            echo "sitemap.xml URL: $URL_COUNT"
+          fi
+          if [ -f "robots.txt" ]; then
+            echo "robots.txt: $(wc -l < robots.txt) righe"
+          fi
+          echo "calc_count=$CALC_COUNT" >> $GITHUB_OUTPUT
+          echo "url_count=$URL_COUNT" >> $GITHUB_OUTPUT
+
+      - name: Commit and push changes
+        if: steps.verify-changed-files.outputs.has_changes == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add calculators-data.json sitemap.xml robots.txt || true
+          TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S %Z')
+          CALC_COUNT="${{ steps.stats.outputs.calc_count }}"
+          URL_COUNT="${{ steps.stats.outputs.url_count }}"
+          git commit -m "🤖 Auto-update: data refreshed
+- calculators-data.json: ${CALC_COUNT:-0}
+- sitemap.xml: ${URL_COUNT:-0}
+- ${TIMESTAMP}
+[skip ci]" || echo "No changes to commit"
+          git push
+
+      - name: Upload artifacts
+        if: steps.verify-changed-files.outputs.has_changes == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-data
+          path: |
+            calculators-data.json
+            sitemap.xml
+            robots.txt
+
+      - name: Create deployment summary
+        if: steps.verify-changed-files.outputs.has_changes == 'true'
+        run: |
+          echo "🎉 CalcDomain data update completed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Updated Files" >> $GITHUB_STEP_SUMMARY
+          [ -f calculators-data.json ] && echo "- ✅ calculators-data.json" >> $GITHUB_STEP_SUMMARY
+          [ -f sitemap.xml ] && echo "- ✅ sitemap.xml" >> $GITHUB_STEP_SUMMARY
+          [ -f robots.txt ] && echo "- ✅ robots.txt" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f calculators-data.json ]; then
+            CALC_COUNT="${{ steps.stats.outputs.calc_count }}"
+            echo "## Statistics" >> $GITHUB_STEP_SUMMARY
+            echo "- 📊 Total calculators: ${CALC_COUNT:-0}" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -f sitemap.xml ]; then
+            URL_COUNT="${{ steps.stats.outputs.url_count }}"
+            echo "- 🗺️ Sitemap URLs: ${URL_COUNT:-0}" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. 🔍 Test search functionality on the site" >> $GITHUB_STEP_SUMMARY
+          echo "2. 📤 Submit updated sitemap to Google Search Console" >> $GITHUB_STEP_SUMMARY
+          echo "3. 🚀 Deploy changes to production if needed" >> $GITHUB_STEP_SUMMARY
+
+      - name: No changes notification
+        if: steps.verify-changed-files.outputs.has_changes == 'false'
+        run: |
+          echo "ℹ️ No data updates needed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All data files are already up to date." >> $GITHUB_STEP_SUMMARY
