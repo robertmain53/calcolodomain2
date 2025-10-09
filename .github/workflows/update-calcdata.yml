@@ -8,9 +8,9 @@ on:
       - ".github/workflows/update-calcdata.yml"
       - "tools/**"
       - "generate_data_files.py"
-  workflow_dispatch: {}
+  workflow_dispatch:
   schedule:
-    - cron: "17 2 * * *"  # 02:17 UTC
+    - cron: "17 2 * * *"
 
 permissions:
   contents: write
@@ -30,7 +30,7 @@ jobs:
   update-data:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -40,7 +40,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: pip
+          cache: "pip"
           cache-dependency-path: |
             requirements.txt
             tools/requirements.txt
@@ -53,33 +53,37 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y jq
 
-      - name: Check for data generation script
+      - name: Check for generator
         run: |
-          test -f generate_data_files.py || { echo "❌ generate_data_files.py mancante"; exit 1; }
+          if [ ! -f generate_data_files.py ]; then
+            echo "❌ generate_data_files.py mancante"
+            exit 1
+          fi
 
       - name: Generate calculators-data.json
         run: |
           echo "📄 Generando calculators-data.json..."
           python generate_data_files.py --base-url "$BASE_URL" --dir "$SRC_DIR"
-          if [ -f calculators-data.json ] && jq -e . calculators-data.json >/dev/null 2>&1; then
-            tmp=$(mktemp) && jq -S . calculators-data.json > "$tmp" && mv "$tmp" calculators-data.json
+          if [ -f calculators-data.json ]; then
+            if jq -e . calculators-data.json >/dev/null 2>&1; then
+              tmp=$(mktemp)
+              jq -S . calculators-data.json > "$tmp"
+              mv "$tmp" calculators-data.json
+            fi
           fi
 
-      - name: Validate sitemap.xml (well-formed XML)
+      - name: Validate sitemap.xml
         run: |
           if [ -f sitemap.xml ]; then
-            python -c "import sys,xml.etree.ElementTree as ET; ET.parse('sitemap.xml'); print('✅ sitemap.xml XML well-formed')" \
-              || { echo '❌ sitemap.xml non valido'; exit 1; }
+            python -c "import xml.etree.ElementTree as ET; ET.parse('sitemap.xml') or None; print('✅ sitemap.xml XML well-formed')" || exit 1
           else
             echo "ℹ️ sitemap.xml non presente (skipping)"
           fi
 
-      # --- Link check without heredocs ---
-      - name: Quick internal link check (write report)
+      - name: Link check - write reporter script
         if: env.RUN_LINK_CHECK == 'true'
         run: |
-          set +e
-          mkdir -p reports tools
+          mkdir -p tools
           cat > tools/_link_check.py <<'PYCODE'
 import os, re, sys, pathlib
 bad = []
@@ -98,19 +102,29 @@ for root, _, files in os.walk('.'):
                 if not os.path.exists(t):
                     bad.append((p, href))
 pathlib.Path('reports').mkdir(exist_ok=True)
-if bad:
-    print('❌ Broken internal links:')
-    for p,h in bad:
-        print(f'- {p} -> {h}')
-    sys.exit(2)  # signal "broken"
-else:
-    print('✅ No broken internal links')
+with open('reports/link-check.txt', 'w', encoding='utf-8') as fp:
+    if bad:
+        fp.write('❌ Broken internal links:\n')
+        for p,h in bad:
+            fp.write(f'- {p} -> {h}\n')
+        sys.exit(2)
+    else:
+        fp.write('✅ No broken internal links\n')
 PYCODE
-          python tools/_link_check.py > reports/link-check.txt
+
+      - name: Link check - run
+        if: env.RUN_LINK_CHECK == 'true'
+        id: linkcheck
+        run: |
+          set +e
+          mkdir -p reports
+          python tools/_link_check.py
           CODE=$?
           set -e
           if [ "$CODE" -eq 2 ]; then
-            touch reports/.broken
+            echo "broken=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "broken=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Upload link-check report
@@ -123,55 +137,44 @@ PYCODE
       - name: Link-check summary
         if: env.RUN_LINK_CHECK == 'true'
         run: |
-          echo "## 🔗 Internal Link Check" >> $GITHUB_STEP_SUMMARY
-          if [ -f reports/.broken ]; then
-            echo "Trovati link rotti. Vedi artifact **link-check-report**." >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            head -n 50 reports/link-check.txt >> $GITHUB_STEP_SUMMARY || true
+          echo "## 🔗 Internal Link Check" >> "$GITHUB_STEP_SUMMARY"
+          if grep -q "❌ Broken internal links" reports/link-check.txt; then
+            echo "Trovati link rotti. Vedi artifact **link-check-report**." >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            head -n 50 reports/link-check.txt >> "$GITHUB_STEP_SUMMARY" || true
           else
-            echo "✅ Nessun link interno rotto rilevato." >> $GITHUB_STEP_SUMMARY
+            echo "✅ Nessun link interno rotto rilevato." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Fail if broken links were found
-        if: env.RUN_LINK_CHECK == 'true'
+      - name: Fail if broken
+        if: env.RUN_LINK_CHECK == 'true' && steps.linkcheck.outputs.broken == 'true'
         run: |
-          if [ -f reports/.broken ]; then
-            echo "❌ Broken internal links found. Vedi 'link-check-report'." >&2
-            exit 1
-          fi
+          echo "❌ Broken internal links found. Vedi 'link-check-report'." >&2
+          exit 1
 
       - name: Check for changes
         id: verify-changed-files
         run: |
           if [ -n "$(git status --porcelain)" ]; then
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-            echo "✅ Rilevate modifiche nei file generati"
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
           else
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ Nessuna modifica rilevata"
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Display file stats
         if: steps.verify-changed-files.outputs.has_changes == 'true'
         id: stats
         run: |
-          echo "📊 Statistiche file aggiornati:"
           CALC_COUNT=0
           URL_COUNT=0
           if [ -f "calculators-data.json" ]; then
-            echo "calculators-data.json: $(wc -l < calculators-data.json) righe"
             CALC_COUNT=$(grep -o '"slug":' calculators-data.json | wc -l || echo "0")
-            echo "Numero calcolatori: $CALC_COUNT"
           fi
           if [ -f "sitemap.xml" ]; then
             URL_COUNT=$(grep -c '<url>' sitemap.xml || echo "0")
-            echo "sitemap.xml URL: $URL_COUNT"
           fi
-          if [ -f "robots.txt" ]; then
-            echo "robots.txt: $(wc -l < robots.txt) righe"
-          fi
-          echo "calc_count=$CALC_COUNT" >> $GITHUB_OUTPUT
-          echo "url_count=$URL_COUNT" >> $GITHUB_OUTPUT
+          echo "calc_count=$CALC_COUNT" >> "$GITHUB_OUTPUT"
+          echo "url_count=$URL_COUNT" >> "$GITHUB_OUTPUT"
 
       - name: Commit and push changes
         if: steps.verify-changed-files.outputs.has_changes == 'true'
@@ -182,11 +185,7 @@ PYCODE
           TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S %Z')
           CALC_COUNT="${{ steps.stats.outputs.calc_count }}"
           URL_COUNT="${{ steps.stats.outputs.url_count }}"
-          git commit -m "🤖 Auto-update: data refreshed
-- calculators-data.json: ${CALC_COUNT:-0}
-- sitemap.xml: ${URL_COUNT:-0}
-- ${TIMESTAMP}
-[skip ci]" || echo "No changes to commit"
+          git commit -m "🤖 Auto-update: data refreshed\n- calculators-data.json: ${CALC_COUNT:-0}\n- sitemap.xml: ${URL_COUNT:-0}\n- ${TIMESTAMP}\n[skip ci]" || echo "No changes to commit"
           git push
 
       - name: Upload artifacts
@@ -199,34 +198,14 @@ PYCODE
             sitemap.xml
             robots.txt
 
-      - name: Create deployment summary
+      - name: Summary
         if: steps.verify-changed-files.outputs.has_changes == 'true'
         run: |
-          echo "🎉 CalcDomain data update completed!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Updated Files" >> $GITHUB_STEP_SUMMARY
-          [ -f calculators-data.json ] && echo "- ✅ calculators-data.json" >> $GITHUB_STEP_SUMMARY
-          [ -f sitemap.xml ] && echo "- ✅ sitemap.xml" >> $GITHUB_STEP_SUMMARY
-          [ -f robots.txt ] && echo "- ✅ robots.txt" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f calculators-data.json ]; then
-            CALC_COUNT="${{ steps.stats.outputs.calc_count }}"
-            echo "## Statistics" >> $GITHUB_STEP_SUMMARY
-            echo "- 📊 Total calculators: ${CALC_COUNT:-0}" >> $GITHUB_STEP_SUMMARY
-          fi
-          if [ -f sitemap.xml ]; then
-            URL_COUNT="${{ steps.stats.outputs.url_count }}"
-            echo "- 🗺️ Sitemap URLs: ${URL_COUNT:-0}" >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Next Steps" >> $GITHUB_STEP_SUMMARY
-          echo "1. 🔍 Test search functionality on the site" >> $GITHUB_STEP_SUMMARY
-          echo "2. 📤 Submit updated sitemap to Google Search Console" >> $GITHUB_STEP_SUMMARY
-          echo "3. 🚀 Deploy changes to production if needed" >> $GITHUB_STEP_SUMMARY
-
-      - name: No changes notification
-        if: steps.verify-changed-files.outputs.has_changes == 'false'
-        run: |
-          echo "ℹ️ No data updates needed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "All data files are already up to date." >> $GITHUB_STEP_SUMMARY
+          echo "🎉 CalcDomain data update completed!" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Updated Files" >> "$GITHUB_STEP_SUMMARY"
+          [ -f calculators-data.json ] && echo "- ✅ calculators-data.json" >> "$GITHUB_STEP_SUMMARY"
+          [ -f sitemap.xml ] && echo "- ✅ sitemap.xml" >> "$GITHUB_STEP_SUMMARY"
+          [ -f robots.txt ] && echo "- ✅ robots.txt" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Statistics" >> "$GITHUB_STEP_SUMMARY"
+          echo "- 📊 Total calculators: ${{ steps.stats.outputs.calc_count || 0 }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- 🗺️ Sitemap URLs: ${{ steps.stats.outputs.url_count || 0 }}" >> "$GITHUB_STEP_SUMMARY"
