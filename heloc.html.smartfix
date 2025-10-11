@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>HELOC Calculator | Maximum Line, CLTV, Draw & Repayment Payments</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="description" content="Estimate HELOC maximum line (by CLTV), interest-only draw payment, amortized repayment, CLTV after draw, and total interest. Includes balance chart and CSV export. Mobile-first, accessible."/>
+  <meta name="author" content="Ugo Candido"/>
+  <link rel="canonical" href="https://calcdomain.com/heloc.html"/>
+  <meta name="theme-color" content="#ffffff"/>
+  <meta name="robots" content="index,follow"/>
+
+  <!-- Fonts + Tailwind (from blueprint) -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Chart.js (for the balance chart) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+  <!-- MathJax for formulas (used in SEO prose below) -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['\\[','\\]']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <!-- Site scripts (from blueprint) -->
+  <script src="search.js" defer></script>
+  <link rel="preload" href="/assets/js/mobile-menu.js" as="script">
+  <link rel="preload" href="/assets/js/page-enhancements.js" as="script">
+
+  <!-- Page-scoped, non-invasive styles -->
+  <style>
+    body{font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+    .prose{max-width:72ch}
+    .prose h2{font-size:1.5rem;font-weight:700;margin-top:2rem;margin-bottom:.75rem}
+    .prose h3{font-weight:700;margin-top:1.25rem}
+    .formula-box{background:#F1F5F9;border:1px solid #E2E8F0;border-radius:10px;padding:14px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+
+    /* Cards & inputs */
+    .card{background:#fff;border:1px solid #E5E7EB;border-radius:12px;box-shadow:0 4px 10px rgba(0,0,0,.06)}
+    .form-control{width:100%;padding:.75rem .9rem;border:1px solid #E5E7EB;border-radius:.5rem}
+    .form-control:focus{outline:3px solid rgba(59,130,246,.25);border-color:#3B82F6}
+    .input-unit{position:absolute;right:.6rem;top:50%;transform:translateY(-50%);color:#6B7280}
+    .error{color:#DC2626;font-size:.875rem;margin-top:.25rem}
+
+    /* Results tiles */
+    .result-grid{display:grid;grid-template-columns:1fr;gap:.75rem}
+    @media (min-width:768px){.result-grid{grid-template-columns:1fr 1fr}}
+    .result-item{display:flex;justify-content:space-between;align-items:center;padding:.85rem 1rem;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px}
+    .result-label{color:#475569}
+    .result-value{font-weight:800;color:#14532D}
+
+    /* Chart container */
+    #balanceChart{max-height:280px}
+
+    @media print{
+      header, .no-print, .actions{display:none!important}
+      body{background:#fff}
+      .card{box-shadow:none;border-color:#ddd}
+    }
+  </style>
+
+  <!-- JSON-LD (concise) -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"WebPage",
+    "name":"HELOC Calculator",
+    "url":"https://calcdomain.com/heloc.html",
+    "description":"HELOC calculator for maximum line, CLTV after draw, draw and repayment payments, and total interest. Includes balance chart and CSV export.",
+    "author":{"@type":"Person","name":"Ugo Candido"},
+    "publisher":{"@type":"Organization","name":"CalcDomain"}
+  }
+  </script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+  <!-- Header (from blueprint) -->
+  <header class="bg-white shadow-sm sticky top-0 z-50">
+    <nav class="container mx-auto px-4 lg:px-6 py-4">
+      <div class="flex justify-between items-center">
+        <a href="index.html" class="text-2xl font-bold text-blue-600">CalcDomain</a>
+
+        <!-- Desktop search -->
+        <div class="w-full max-w-md hidden md:block mx-8">
+          <div class="relative">
+            <input type="search" id="search-input" placeholder="Search for a calculator."
+                   class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                   autocomplete="off">
+            <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+            <div id="search-results" class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200"></div>
+          </div>
+        </div>
+
+        <div class="hidden md:flex items-center space-x-6">
+          <a href="search.html" class="text-gray-700 hover:text-blue-600 transition-colors">Advanced Search</a>
+          <a href="index.html#categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
+        </div>
+
+        <button id="mobile-menu-toggle" class="md:hidden p-2" aria-label="Open menu">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Mobile menu -->
+      <div id="mobile-menu" class="md:hidden mt-4 hidden">
+        <div class="mb-4">
+          <div class="relative">
+            <input type="search" id="mobile-search-input" placeholder="Search calculators."
+                   class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </div>
+        </div>
+        <div class="space-y-2">
+          <a href="search.html" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
+          <a href="#categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Main -->
+  <div class="container mx-auto px-4 py-8">
+    <div class="flex flex-col lg:flex-row gap-8">
+
+      <!-- Left: Calculator + Content -->
+      <main class="w-full lg:w-2/3">
+        <!-- Breadcrumbs -->
+        <nav class="text-sm mb-4 text-gray-600">
+            <a href="index.html" class="hover:text-blue-600">Home</a> &raquo;
+            <a href="finance.html" class="hover:text-blue-600">Finance</a> &raquo;
+            <a href="/subcategories/finance-mortgage-real-estate.html" class="hover:text-blue-600">Mortgage & Real Estate</a> &raquo;
+            <span>HELOC Calculator</span>
+        </nav>
+
+        <!-- Calculator card -->
+        <section class="bg-white p-6 rounded-lg shadow-md" aria-labelledby="calc-title">
+          <h1 id="calc-title" class="text-3xl font-extrabold mb-2 text-slate-800">HELOC Calculator</h1>
+          <p class="text-gray-600 mb-6">Estimate your maximum HELOC line (by CLTV), interest-only draw payment, amortized repayment payment, CLTV after draw, and total interest. Includes a balance chart and CSV export.</p>
+
+          <!-- Inputs -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm font-medium text-gray-800" for="homeValue">Home value *</label>
+              <div class="relative">
+                <input id="homeValue" type="number" inputmode="decimal" min="0" step="0.01" placeholder="e.g., 500000" class="form-control" aria-describedby="err-homeValue" aria-required="true">
+                <span class="input-unit">$</span>
+              </div>
+              <p id="err-homeValue" class="error min-h-[1rem]" aria-live="polite"></p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-800" for="mortgageBalance">Current mortgage balance *</label>
+              <div class="relative">
+                <input id="mortgageBalance" type="number" inputmode="decimal" min="0" step="0.01" placeholder="e.g., 300000" class="form-control" aria-describedby="err-mortgage" aria-required="true">
+                <span class="input-unit">$</span>
+              </div>
+              <p id="err-mortgage" class="error min-h-[1rem]" aria-live="polite"></p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-800" for="cltvLimit">Max combined LTV (CLTV) *</label>
+              <div class="relative">
+                <input id="cltvLimit" type="number" inputmode="decimal" min="50" max="100" step="1" value="85" class="form-control" aria-describedby="err-cltv" aria-required="true">
+                <span class="input-unit">%</span>
+              </div>
+              <p id="err-cltv" class="error min-h-[1rem]" aria-live="polite"></p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-800" for="drawAmount">Desired initial draw *</label>
+              <div class="relative">
+                <input id="drawAmount" type="number" inputmode="decimal" min="0" step="0.01" placeholder="e.g., 50000" class="form-control" aria-describedby="err-draw" aria-required="true">
+                <span class="input-unit">$</span>
+              </div>
+              <p id="err-draw" class="error min-h-[1rem]" aria-live="polite"></p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-800" for="drawYears">Draw period (years) *</label>
+              <input id="drawYears" type="number" inputmode="numeric" min="0" max="20" step="1" value="10" class="form-control" aria-describedby="err-drawYears" aria-required="true">
+              <p id="err-drawYears" class="error min-h-[1rem]" aria-live="polite"></p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-800" for="repayYears">Repayment term (years) *</label>
+              <input id="repayYears" type="number" inputmode="numeric" min="1" max="30" step="1" value="20" class="form-control" aria-describedby="err-repayYears" aria-required="true">
+              <p id="err-repayYears" class="error min-h-[1rem]" aria-live="polite"></p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-800" for="drawApr">APR during draw *</label>
+              <div class="relative">
+                <input id="drawApr" type="number" inputmode="decimal" min="0" max="100" step="0.01" value="8.25" class="form-control" aria-describedby="err-drawApr" aria-required="true">
+                <span class="input-unit">%</span>
+              </div>
+              <p id="err-drawApr" class="error min-h-[1rem]" aria-live="polite"></p>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between">
+                <label class="block text-sm font-medium text-gray-800" for="repayApr">APR during repayment *</label>
+                <label class="text-sm text-gray-700">
+                  <input id="sameRate" type="checkbox" checked class="mr-1"> Same as draw
+                </label>
+              </div>
+              <div class="relative">
+                <input id="repayApr" type="number" inputmode="decimal" min="0" max="100" step="0.01" value="8.25" class="form-control" aria-describedby="err-repayApr" aria-required="true">
+                <span class="input-unit">%</span>
+              </div>
+              <p id="err-repayApr" class="error min-h-[1rem]" aria-live="polite"></p>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex flex-wrap gap-3 mt-4 actions">
+            <button id="calcBtn" type="button" class="inline-flex items-center justify-center min-h-[44px] px-4 py-2 rounded-md bg-blue-600 text-white font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">Calculate</button>
+            <button id="resetBtn" type="button" class="inline-flex items-center justify-center min-h-[44px] px-4 py-2 rounded-md border border-blue-600 text-blue-700 font-semibold hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500">Reset</button>
+            <button id="renderChartBtn" type="button" class="inline-flex items-center justify-center min-h-[44px] px-4 py-2 rounded-md border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">Render chart</button>
+            <button id="downloadCsvBtn" type="button" class="inline-flex items-center justify-center min-h-[44px] px-4 py-2 rounded-md border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">Download CSV</button>
+          </div>
+
+          <!-- Results -->
+          <div id="results" class="mt-8 bg-blue-50 p-6 rounded-lg">
+            <h2 class="text-xl font-bold text-slate-800 mb-3">Results</h2>
+
+            <div class="result-grid">
+              <div class="result-item"><span class="result-label">Maximum HELOC line</span><span id="maxLineValue" class="result-value">$0.00</span></div>
+              <div class="result-item"><span class="result-label">CLTV after draw</span><span id="cltvAfterValue" class="result-value">0.00%</span></div>
+              <div class="result-item"><span class="result-label">Draw payment (interest-only)</span><span id="drawPaymentValue" class="result-value">$0.00</span></div>
+              <div class="result-item"><span class="result-label">Repayment payment (amortized)</span><span id="repayPaymentValue" class="result-value">$0.00</span></div>
+              <div class="result-item"><span class="result-label">Total interest (draw + repayment)</span><span id="totalInterestValue" class="result-value">$0.00</span></div>
+              <div class="result-item"><span class="result-label">Feasibility</span><span id="feasibilityValue" class="result-value"><span class="inline-flex items-center px-2 py-1 rounded-full border text-sm bg-yellow-50 border-yellow-200 text-yellow-800">Awaiting inputs</span></span></div>
+            </div>
+
+            <!-- Chart -->
+            <div class="mt-4 bg-white border border-blue-100 rounded-lg p-4">
+              <canvas id="balanceChart" height="120" aria-label="Balance over time chart"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- SEO content (kept & polished) -->
+        <article class="bg-white p-6 rounded-lg shadow-md mt-8 prose">
+          <h2>Data Source and Methodology</h2>
+          <p><strong>Authoritative Data Source:</strong> OpenStax, <em>Algebra and Trigonometry</em>, Section 6.8 “The Mathematics of Finance” (amortization formulas). All payment and total interest calculations follow these standard formulas. For product context on HELOCs, see CFPB’s overview of how HELOCs work.</p>
+
+          <h2>The Formula Explained</h2>
+          <div class="formula-box" aria-label="Mathematical formulas">
+            <div><strong>Maximum line:</strong> \( L_{\max} = \max\!\big(0,\ \text{CLTV}_{\max}\cdot V - M \big) \)</div>
+            <div style="margin-top:.5rem;"><strong>CLTV after draw:</strong> \( \text{CLTV}_{\text{after}} = \dfrac{M + D}{V} \)</div>
+            <div style="margin-top:.5rem;"><strong>Interest-only during draw:</strong> \( I_{\text{draw,m}} = D \cdot \dfrac{r_d}{12} \)</div>
+            <div style="margin-top:.5rem;"><strong>Repayment payment:</strong> \( P = \dfrac{(r_r/12)\,B}{1 - (1 + r_r/12)^{-n}} \) with \(B=D\) at repayment start</div>
+            <div style="margin-top:.5rem;"><strong>Total interest:</strong> \( I_{\text{total}} = I_{\text{draw,m}}\cdot n_d + (P\cdot n_r - B) \)</div>
+          </div>
+
+          <h2>How It Works: Example</h2>
+          <ol>
+            <li>\(L_{\max} = 0.85\cdot 500{,}000 - 300{,}000 = 125{,}000\)</li>
+            <li>\(\text{CLTV}_{\text{after}} = (300{,}000 + 50{,}000)/500{,}000 = 70\%\)</li>
+            <li>Draw payment: \(50{,}000 \times 0.0825/12 \approx \$343.75\)</li>
+            <li>Repayment payment: \( \approx \$427.39 \) for \(r=0.0825\), \(n=240\)</li>
+            <li>Total interest: \(\approx \$93{,}823.60\)</li>
+          </ol>
+
+          <h2>FAQs</h2>
+          <p><strong>Do rates change?</strong> Many HELOCs have variable rates. Model different draw and repayment rates using the separate APR fields.</p>
+          <p><strong>Are payments during draw interest-only?</strong> Often yes. Some agreements allow principal payments during draw—check your contract.</p>
+          <p><strong>Are fees and taxes included?</strong> No; closing costs, caps, and taxes are excluded in this idealized model.</p>
+
+          <div class="text-sm text-gray-500 border-t pt-4">
+            Tool developed by <strong>Ugo Candido</strong>. Content verified by the <strong>CalcDomain Editorial Team</strong>.<br/>
+            Last reviewed: September 13, 2025.
+          </div>
+        </article>
+      </main>
+
+      <!-- Right: Sidebar -->
+      <aside class="w-full lg:w-1/3">
+        <div class="sticky top-24">
+          <div class="bg-gray-200 h-96 rounded-lg mb-6 flex items-center justify-center no-print">
+            <p class="text-gray-500">Sticky Ad Unit (e.g., 300×600)</p>
+          </div>
+          <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="font-bold text-lg mb-4">Related Finance Tools</h3>
+                        <ul class="space-y-3">
+                            <li><a href="mortgage-payment.html" class="text-blue-600 hover:underline">Mortgage Payment Calculator</a></li>
+                            <li><a href="house-affordability.html" class="text-blue-600 hover:underline">House Affordability Calculator</a></li>
+                            <li><a href="mortgage-refinance.html" class="text-blue-600 hover:underline">Mortgage Refinance Calculator</a></li>
+                            <li><a href="down-payment.html" class="text-blue-600 hover:underline">Down Payment Calculator</a></li>
+                            <li><a href="mortgage-payoff.html" class="text-blue-600 hover:underline">Mortgage Payoff Calculator</a></li>
+                            <li><a href="closing-costs.html" class="text-blue-600 hover:underline">Closing Costs Calculator</a></li>
+                        </ul>
+                    </div>
+
+  <!-- Footer (from blueprint) -->
+  <!-- Footer -->
+    <footer class="bg-white border-t mt-12">
+        <div class="container mx-auto px-6 py-8">
+            <div class="text-center text-gray-600">
+                <p>&copy; 2025 CalcDomain. All Rights Reserved.</p>
+                <div class="mt-4 space-x-4">
+                    <a href="about.html" class="hover:text-blue-600">About</a>
+                    <a href="contact.html" class="hover:text-blue-600">Contact</a>
+                    <a href="privacy.html" class="hover:text-blue-600">Privacy</a>
+                    <a href="terms.html" class="hover:text-blue-600">Terms</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+  <!-- Logic -->
+  <script>
+    (function(){
+      'use strict';
+      const $ = (sel, ctx=document) => ctx.querySelector(sel);
+
+      // Inputs
+      const homeValue = $('#homeValue');
+      const mortgageBalance = $('#mortgageBalance');
+      const cltvLimit = $('#cltvLimit');
+      const drawAmount = $('#drawAmount');
+      const drawYears = $('#drawYears');
+      const repayYears = $('#repayYears');
+      const drawApr = $('#drawApr');
+      const repayApr = $('#repayApr');
+      const sameRate = $('#sameRate');
+
+      // Buttons
+      const calcBtn = $('#calcBtn');
+      const resetBtn = $('#resetBtn');
+      const renderChartBtn = $('#renderChartBtn');
+      const downloadCsvBtn = $('#downloadCsvBtn');
+
+      // Results
+      const maxLineValue = $('#maxLineValue');
+      const cltvAfterValue = $('#cltvAfterValue');
+      const drawPaymentValue = $('#drawPaymentValue');
+      const repayPaymentValue = $('#repayPaymentValue');
+      const totalInterestValue = $('#totalInterestValue');
+      const feasibilityValue = $('#feasibilityValue');
+
+      // Helpers
+      const parseNum = (el)=>{ const v=parseFloat(el.value); return Number.isFinite(v)?v:NaN; };
+      const money = (v)=> Number.isFinite(v) ? v.toLocaleString(undefined,{style:'currency',currency:'USD'}) : '$0.00';
+
+      // Errors
+      const errs = {
+        homeValue: $('#err-homeValue'),
+        mortgage: $('#err-mortgage'),
+        cltv: $('#err-cltv'),
+        draw: $('#err-draw'),
+        drawYears: $('#err-drawYears'),
+        repayYears: $('#err-repayYears'),
+        drawApr: $('#err-drawApr'),
+        repayApr: $('#err-repayApr'),
+      };
+      function setError(el, key, msg){ el?.setAttribute('aria-invalid','true'); if(errs[key]) errs[key].textContent=msg||''; }
+      function clearError(el, key){ el?.setAttribute('aria-invalid','false'); if(errs[key]) errs[key].textContent=''; }
+
+      function validate(){
+        let ok = true;
+        const hv=parseNum(homeValue); if(!(hv>0)){ setError(homeValue,'homeValue','Enter a positive home value.'); ok=false; } else clearError(homeValue,'homeValue');
+        const mb=parseNum(mortgageBalance); if(!(mb>=0)){ setError(mortgageBalance,'mortgage','Enter a non-negative mortgage balance.'); ok=false; } else if (hv && mb>hv){ setError(mortgageBalance,'mortgage','Balance cannot exceed home value.'); ok=false; } else clearError(mortgageBalance,'mortgage');
+        const cl=parseNum(cltvLimit); if(!(cl>=50&&cl<=100)){ setError(cltvLimit,'cltv','CLTV must be between 50% and 100%.'); ok=false; } else clearError(cltvLimit,'cltv');
+        const d=parseNum(drawAmount); if(!(d>=0)){ setError(drawAmount,'draw','Enter a non-negative draw amount.'); ok=false; } else clearError(drawAmount,'draw');
+        const yd=parseNum(drawYears); if(!(Number.isFinite(yd)&&yd>=0&&yd<=20)){ setError(drawYears,'drawYears','Draw years must be 0–20.'); ok=false; } else clearError(drawYears,'drawYears');
+        const yr=parseNum(repayYears); if(!(Number.isFinite(yr)&&yr>=1&&yr<=30)){ setError(repayYears,'repayYears','Repayment years must be 1–30.'); ok=false; } else clearError(repayYears,'repayYears');
+        const rd=parseNum(drawApr); if(!(rd>=0&&rd<100)){ setError(drawApr,'drawApr','Draw APR must be 0–100%.'); ok=false; } else clearError(drawApr,'drawApr');
+        const rr = sameRate.checked ? rd : parseNum(repayApr);
+        if(!sameRate.checked && !(rr>=0&&rr<100)){ setError(repayApr,'repayApr','Repayment APR must be 0–100%.'); ok=false; } else clearError(repayApr,'repayApr');
+        return ok;
+      }
+
+      // Schedule state
+      let schedule=[]; let chart=null;
+
+      function compute(){
+        if(!validate()){ schedule=[]; return; }
+
+        const V=parseNum(homeValue), M=parseNum(mortgageBalance), CL=parseNum(cltvLimit)/100,
+              D=parseNum(drawAmount), Yd=parseNum(drawYears), Yr=parseNum(repayYears),
+              Rd=parseNum(drawApr), Rr=sameRate.checked?parseNum(drawApr):parseNum(repayApr);
+
+        const Lmax = Math.max(0, CL*V - M);
+        const cltvAfter = (M + D)/V;
+
+        const rd_m = (Rd/100)/12, nDraw = Math.round(Yd*12);
+        const drawPay = D * rd_m;
+        const totalDrawInterest = drawPay * nDraw;
+
+        const rr_m = (Rr/100)/12, nRepay = Math.round(Yr*12);
+        const repayPay = rr_m>0 ? (rr_m*D)/(1 - Math.pow(1+rr_m, -nRepay)) : (nRepay>0 ? D/nRepay : 0);
+        const totalRepayInterest = nRepay>0 ? (repayPay*nRepay - D) : 0;
+
+        // KPIs
+        maxLineValue.textContent = money(Lmax);
+        cltvAfterValue.textContent = (cltvAfter*100).toFixed(2)+'%';
+        drawPaymentValue.textContent = money(drawPay);
+        repayPaymentValue.textContent = money(repayPay);
+        totalInterestValue.textContent = money(totalDrawInterest + totalRepayInterest);
+
+        // Feasibility badge
+        if (D <= Lmax && cltvAfter <= CL) {
+          feasibilityValue.innerHTML = '<span class="inline-flex items-center px-2 py-1 rounded-full border text-sm bg-emerald-50 border-emerald-200 text-emerald-800">Feasible within CLTV limit</span>';
+          if (errs.draw.textContent.startsWith('Requested')) clearError(drawAmount,'draw');
+        } else if (D <= Lmax) {
+          feasibilityValue.innerHTML = '<span class="inline-flex items-center px-2 py-1 rounded-full border text-sm bg-amber-50 border-amber-200 text-amber-800">Within line, but CLTV exceeds limit</span>';
+        } else {
+          feasibilityValue.innerHTML = '<span class="inline-flex items-center px-2 py-1 rounded-full border text-sm bg-rose-50 border-rose-200 text-rose-800">Requested draw exceeds estimated maximum line</span>';
+          errs.draw.textContent = 'Requested draw exceeds the estimated maximum line ('+money(Lmax)+').';
+        }
+
+        // Build schedule
+        schedule = [];
+        for(let k=1;k<=nDraw;k++){
+          schedule.push({period:k,phase:'Draw',payment:drawPay,interest:drawPay,principal:0,balance:D});
+        }
+        let bal=D;
+        for(let k=1;k<=nRepay && bal>1e-8;k++){
+          const interest = rr_m>0 ? bal*rr_m : 0;
+          let principal = repayPay - interest;
+          if (principal > bal) principal = bal;
+          bal = Math.max(0, bal - principal);
+          schedule.push({period:nDraw+k,phase:'Repayment',payment:principal+interest,interest,principal,balance:bal});
+        }
+      }
+
+      function downloadCSV(){
+        if(schedule.length===0){ alert('Please calculate first.'); return; }
+        const header=['Period','Phase','Payment','Interest','Principal','Balance'];
+        const rows=schedule.map(r=>[r.period,r.phase,r.payment.toFixed(2),r.interest.toFixed(2),r.principal.toFixed(2),r.balance.toFixed(2)]);
+        const csv=[header.join(','),...rows.map(r=>r.join(','))].join('\\n');
+        const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+        const a=document.createElement('a');
+        a.href=URL.createObjectURL(blob);
+        a.download='heloc-schedule.csv';
+        document.body.appendChild(a); a.click(); URL.revokeObjectURL(a.href); a.remove();
+      }
+
+      function renderChart(){
+        if(schedule.length===0){ alert('Please calculate first.'); return; }
+        const ctx = document.getElementById('balanceChart').getContext('2d');
+        const labels = schedule.map(r=>r.period);
+        const balances = schedule.map(r=>r.balance);
+        if(chart) chart.destroy();
+        chart = new Chart(ctx,{
+          type:'line',
+          data:{ labels, datasets:[{ label:'Balance', data:balances, tension:.15, pointRadius:0 }]},
+          options:{
+            responsive:true, maintainAspectRatio:false, aspectRatio:2.4,
+            scales:{ x:{ title:{display:true,text:'Month'} }, y:{ title:{display:true,text:'Balance (USD)'}, beginAtZero:true } },
+            plugins:{ legend:{display:true} }
+          }
+        });
+      }
+
+      function syncRates(){
+        if(sameRate.checked){
+          repayApr.value = drawApr.value;
+          repayApr.setAttribute('disabled','true');
+          clearError(repayApr,'repayApr');
+        }else{
+          repayApr.removeAttribute('disabled');
+        }
+      }
+
+      // Wire up
+      ['input','blur'].forEach(ev=>{
+        [homeValue,mortgageBalance,cltvLimit,drawAmount,drawYears,repayYears,drawApr,repayApr].forEach(el=>{
+          el.addEventListener(ev, ()=>{ if(el===drawApr && sameRate.checked){ repayApr.value=drawApr.value; } compute(); });
+        });
+      });
+      sameRate.addEventListener('change', ()=>{ syncRates(); compute(); });
+      calcBtn.addEventListener('click', compute);
+      resetBtn.addEventListener('click', ()=>{
+        homeValue.value=''; mortgageBalance.value=''; cltvLimit.value='85';
+        drawAmount.value=''; drawYears.value='10'; repayYears.value='20';
+        drawApr.value='8.25'; sameRate.checked=true; repayApr.value='8.25'; repayApr.setAttribute('disabled','true');
+        Object.values(errs).forEach(e=>e.textContent='');
+        schedule=[]; if(chart){ chart.destroy(); chart=null; }
+        maxLineValue.textContent='$0.00'; cltvAfterValue.textContent='0.00%'; drawPaymentValue.textContent='$0.00'; repayPaymentValue.textContent='$0.00'; totalInterestValue.textContent='$0.00';
+        feasibilityValue.innerHTML='<span class="inline-flex items-center px-2 py-1 rounded-full border text-sm bg-yellow-50 border-yellow-200 text-yellow-800">Awaiting inputs</span>';
+      });
+      renderChartBtn.addEventListener('click', renderChart);
+      downloadCsvBtn.addEventListener('click', downloadCSV);
+
+      // Defaults
+      syncRates(); compute();
+    })();
+  </script>
+
+    <script>
+        // Mobile menu toggle
+        (function() {
+            const mobileToggle = document.getElementById('mobile-menu-toggle');
+            const mobileMenu = document.getElementById('mobile-menu');
+            if (mobileToggle && mobileMenu) {
+                mobileToggle.addEventListener('click', () => {
+                    mobileMenu.classList.toggle('hidden');
+                });
+            }
+        })();
+    </script>
+</body>
+</html>

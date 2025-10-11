@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
+<title>Words to Numbers Converter | CalcDomain</title>
+<meta content="Convert English number words (including decimals, negatives, and large values up to 10^18) into digits instantly. Professional-grade, WCAG-compliant, and mobile-first." name="description"/>
+<meta content="Ugo Candido" name="author"/>
+<link href="https://calcdomain.com/words-to-numbers-converter.html" rel="canonical"/>
+<meta content="#ffffff" name="theme-color"/>
+<!-- Critical, self-contained CSS (mobile-first, WCAG 2.1 AA minded). Header intentionally NOT sticky. -->
+<style>
+    /* Design tokens */
+    :root{
+      --primary:#005A9C; --primary-2:#003F6E; --accent:#00A4E4;
+      --bg:#F8F9FA; --surface:#FFFFFF; --text:#212529; --muted:#6C757D; --border:#DEE2E6;
+      --success:#198754; --error:#DC3545; --warning:#FFC107;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+      --sans: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      --rad:12px; --rad-sm:8px; --gap:.75rem; --gap-lg:1.5rem; --touch:48px;
+      --shadow: 0 8px 20px rgba(0,0,0,.06);
+      --focus: 3px solid rgba(0,90,156,.35);
+      --container: 1200px;
+    }
+    @media (prefers-reduced-motion: reduce){
+      *{ animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; scroll-behavior:auto!important; }
+    }
+    *{ box-sizing:border-box; }
+    html{ font-size:16px; }
+    body{
+      margin:0; font-family:var(--sans); color:var(--text); background:var(--bg); line-height:1.6;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    a{ color:var(--primary); text-decoration:none; }
+    a:hover{ text-decoration:underline; color:var(--primary-2); }
+    .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    .skip-link{
+      position:absolute; left:6px; top:-40px; background:var(--primary); color:#fff; padding:.5rem .75rem;
+      border-radius:0 0 6px 6px; z-index:1000;
+    }
+    .skip-link:focus{ top:0; }
+
+    /* Layout */
+    .site-header{
+      background:var(--surface); border-bottom:1px solid var(--border); box-shadow:0 2px 6px rgba(0,0,0,.04);
+    }
+    .container{ max-width:var(--container); margin:0 auto; padding:0 clamp(1rem, 4vw, 2rem); }
+    .header-inner{
+      display:flex; align-items:center; gap:1rem; padding:.8rem 0;
+    }
+    .logo{ font-weight:800; color:var(--primary); font-size:1.15rem; letter-spacing:.2px; }
+    .site-search{ margin-left:auto; display:flex; gap:.5rem; align-items:center; }
+    .site-search input[type="search"]{
+      min-height:44px; padding:.65rem .85rem; border:1px solid var(--border); border-radius:10px; width:min(58vw, 380px); background:#fff;
+    }
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:.5rem; min-height:var(--touch); min-width:var(--touch);
+      padding:.65rem 1rem; border-radius:10px; border:1px solid transparent; font-weight:700; cursor:pointer;
+    }
+    .btn-primary{ background:var(--primary); color:#fff; border-color:var(--primary); }
+    .btn-primary:hover{ background:var(--primary-2); border-color:var(--primary-2); }
+    .btn-secondary{ background:transparent; color:var(--primary); border-color:var(--primary); }
+    .btn-secondary:hover{ background:var(--primary); color:#fff; }
+
+    main{ padding:clamp(1rem, 3vw, 2rem) 0; }
+    h1{ font-size:clamp(1.6rem, 4.5vw, 2.3rem); margin:.25rem 0 1rem; color:var(--primary-2); }
+    h2{ font-size:clamp(1.25rem, 3.5vw, 1.6rem); margin:2rem 0 .75rem; color:var(--primary-2); }
+    h3{ font-size:clamp(1.05rem, 3vw, 1.2rem); margin:1.25rem 0 .5rem; color:var(--primary-2); }
+    p{ margin:.75rem 0; max-width:70ch; }
+    code, kbd, samp{ font-family:var(--mono); background:#eef2f6; padding:.15em .35em; border-radius:6px; }
+
+    .grid{
+      display:grid; gap:clamp(1rem, 2.5vw, 2rem);
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 992px){
+      .grid{ grid-template-columns: minmax(300px, 440px) 1fr; }
+    }
+
+    .card{
+      background:var(--surface); border:1px solid var(--border); border-radius:var(--rad);
+      padding:clamp(1rem, 2.5vw, 1.5rem); box-shadow:var(--shadow);
+    }
+
+    /* Calculator form */
+    .form-group{ margin-bottom:1rem; }
+    .form-group label{ display:block; font-weight:700; margin-bottom:.35rem; }
+    .help-inline{ color:var(--muted); font-size:.9rem; }
+    .input, textarea{
+      width:100%; min-height:var(--touch); padding:.75rem .9rem; border:1px solid var(--border); border-radius:10px; background:#fff;
+      font-size:1rem;
+    }
+    textarea{ min-height:110px; resize:vertical; }
+    .input:focus, textarea:focus{ outline:var(--focus); border-color:var(--primary); }
+    .input[aria-invalid="true"], textarea[aria-invalid="true"]{ border-color:var(--error); }
+    .error{ color:var(--error); font-size:.9rem; margin-top:.35rem; }
+    .inline{ display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; }
+    .inline .chip{
+      display:inline-flex; align-items:center; gap:.35rem; border:1px solid var(--border); border-radius:999px; padding:.35rem .6rem; background:#fff;
+      min-height:40px;
+    }
+    .switch{
+      position:relative; width:48px; height:28px; border-radius:999px; background:#e5e9ef; border:1px solid var(--border);
+    }
+    .switch input{ appearance:none; position:absolute; inset:0; width:100%; height:100%; margin:0; cursor:pointer; }
+    .switch span{ position:absolute; top:50%; left:4px; transform:translateY(-50%); width:22px; height:22px; background:#fff; border-radius:50%; box-shadow:0 1px 3px rgba(0,0,0,.2); transition:transform .2s; }
+    .switch input:checked + span{ transform:translate(20px, -50%); }
+    .tooltip{
+      display:inline-block; margin-left:.35rem;
+      border:1px solid var(--border); width:28px; height:28px; border-radius:50%; line-height:26px;
+      text-align:center; font-weight:800; cursor:pointer; background:#fff;
+    }
+    .tooltip:focus{ outline:var(--focus); }
+    .tooltip-panel{
+      display:none; margin-top:.5rem; padding:.6rem .75rem; border:1px dashed var(--border); border-radius:10px; background:#fbfdff; color:#0b2239;
+    }
+    .tooltip-panel[aria-hidden="false"]{ display:block; }
+
+    /* Results */
+    .results{ background:var(--bg); border:1px dashed var(--border); border-radius:var(--rad); padding:1rem; min-height:200px; }
+    .result-row{ display:flex; justify-content:space-between; align-items:baseline; border-bottom:1px solid var(--border); padding:.55rem 0; }
+    .result-row:last-child{ border-bottom:none; }
+    .result-label{ color:var(--muted); }
+    .result-value{ font-weight:800; font-size:1.25rem; color:var(--success); word-break:break-all; }
+
+    .formula-box{
+      background:#eef2f6; border:1px solid var(--border); border-radius:10px; padding:1rem; overflow:auto;
+      font-family:var(--mono);
+    }
+
+    .faq details{ border:1px solid var(--border); border-radius:10px; padding:.75rem 1rem; background:#fff; margin:.5rem 0; }
+    .faq summary{ font-weight:700; cursor:pointer; }
+    .author-box{ font-size:.95rem; color:var(--muted); border-top:1px solid var(--border); margin-top:2rem; padding-top:1rem; }
+
+    /* High contrast mode */
+    @media (prefers-contrast: more){
+      .results{ border-style:solid; }
+      .site-header, .card{ border-color:#000; }
+    }
+  </style>
+<!-- JSON-LD: WebPage + HowTo (worked example) + FAQPage -->
+<script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Words to Numbers Converter",
+    "description": "Convert English number words to digits, including negatives and decimals, using short-scale naming up to 10^18.",
+    "url": "https://calcdomain.com/words-to-numbers-converter.html",
+    "author": { "@type": "Person", "name": "Ugo Candido" },
+    "publisher": { "@type": "Organization", "name": "CalcDomain" },
+    "mainEntity": [
+      {
+        "@type": "HowTo",
+        "name": "Words to numbers: a worked example",
+        "description": "Convert “negative one hundred twenty-three thousand and forty-five point six seven” to digits.",
+        "step": [
+          { "@type": "HowToStep", "name": "Enter words", "text": "Paste or type the number words into the input field." },
+          { "@type": "HowToStep", "name": "Choose options", "text": "Keep short-scale naming and allow 'and' (British style) if desired." },
+          { "@type": "HowToStep", "name": "Convert", "text": "Click Convert to see the numeric result." },
+          { "@type": "HowToStep", "name": "Result", "text": "The converter returns -123045.67" }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What languages are supported?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "This tool converts English number words using the short scale (million, billion, trillion...)."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does it handle decimals and negatives?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Words like 'minus' or 'negative' and 'point' are supported."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What’s the maximum number?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Up to 10^18 (one quintillion) in short scale."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does it support 'and' (e.g., British style)?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. The parser accepts optional 'and' in phrases such as 'one hundred and five'."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What about ordinals like 'twenty-first'?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Basic ordinal normalization is supported (e.g., 'first'→'one', 'second'→'two', ...)."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="search.js" defer></script>
+<!-- MathJax for LaTeX formulas -->
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['\(','\)'], ['$', '$']],
+      displayMath: [['\[','\]']]
+    },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<link rel="preload" href="assets/js/mobile-menu.js" as="script">
+<link rel="preload" href="assets/js/page-enhancements.js" as="script">
+
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<!-- Simple non-sticky header -->
+
+<main class="container" id="main-content" role="main">
+<!-- 1) H1 -->
+<h1>Words to Numbers Converter</h1>
+<!-- 2) Intro -->
+<p>
+      Instantly convert English number words into digits — including negatives, decimals, and large values up to
+      <strong>10<sup>18</sup></strong>. Built for analysts, accountants, engineers, students, and anyone who handles textual numbers in
+      documents, invoices, transcripts, or datasets. Fully accessible (WCAG 2.1 AA), mobile-first, and tuned for speed and accuracy.
+    </p>
+<div aria-label="Calculator and content layout" class="grid">
+<!-- 3) Calculator -->
+<section aria-labelledby="converter-heading" class="card" id="converter">
+<h2 id="converter-heading">Converter</h2>
+<form id="wordsForm" novalidate="">
+<div class="form-group">
+<label for="wordsInput">Number in words *</label>
+<div class="inline" style="align-items:flex-start">
+<textarea aria-describedby="wordsHelp wordsError" aria-required="true" class="input" id="wordsInput" placeholder="e.g., negative one hundred twenty-three thousand and forty-five point six seven"></textarea>
+<button aria-controls="wordsTipPanel" aria-expanded="false" aria-label="More information about accepted formats" class="tooltip" id="wordsTip" type="button">?</button>
+</div>
+<p class="help-inline" id="wordsHelp">
+              English words using short scale (million, billion, trillion). Supports “minus/negative” and “point”.
+            </p>
+<div aria-hidden="true" class="tooltip-panel" id="wordsTipPanel" role="note">
+              Examples: <code>two million three hundred thousand</code>, <code>one hundred and five</code>, <code>minus seven point zero five</code>.
+              Abbreviations and non-number words are ignored.
+            </div>
+<div aria-live="polite" class="error" id="wordsError" role="alert"></div>
+</div>
+<div class="form-group">
+<span aria-label="Options" class="inline" role="group">
+<span class="chip" title="Accept 'and' in numbers (e.g., 'one hundred and five')">
+<label for="allowAnd">Allow “and”</label>
+<span class="switch">
+<input aria-describedby="allowAndHelp" checked="" id="allowAnd" type="checkbox"/>
+<span aria-hidden="true"></span>
+</span>
+</span>
+<span class="chip" title="Interpret according to the short scale (US/modern international)">
+<label for="shortScale">Short scale</label>
+<span class="switch">
+<input aria-describedby="shortScaleHelp" checked="" id="shortScale" type="checkbox"/>
+<span aria-hidden="true"></span>
+</span>
+</span>
+<span class="chip" title="Normalize simple ordinals (e.g., 'first'→'one')">
+<label for="normalizeOrdinals">Normalize ordinals</label>
+<span class="switch">
+<input aria-describedby="normalizeOrdinalsHelp" checked="" id="normalizeOrdinals" type="checkbox"/>
+<span aria-hidden="true"></span>
+</span>
+</span>
+</span>
+<p class="help-inline" id="allowAndHelp">Permits phrases like <em>one hundred and twenty</em>.</p>
+<p class="help-inline" id="shortScaleHelp">million (10<sup>6</sup>), billion (10<sup>9</sup>), trillion (10<sup>12</sup>), quadrillion (10<sup>15</sup>), quintillion (10<sup>18</sup>).</p>
+<p class="help-inline" id="normalizeOrdinalsHelp">Maps basic ordinals (first, second, third, ...) to cardinals before parsing.</p>
+</div>
+<div class="inline" style="margin-top:1rem">
+<button class="btn btn-primary" id="btnConvert" type="submit">Convert</button>
+<button class="btn btn-secondary" id="btnClear" type="button">Clear</button>
+<button class="btn btn-secondary" id="btnCopy" type="button">Copy result</button>
+</div>
+</form>
+<!-- 4) Results area -->
+<section aria-labelledby="resultsHeading" class="results" id="results" style="margin-top:1rem">
+<h3 class="sr-only" id="resultsHeading">Results</h3>
+<div class="result-row">
+<span class="result-label">Numeric value</span>
+<span aria-atomic="true" aria-live="polite" class="result-value" id="resultNumber">—</span>
+</div>
+<div class="result-row">
+<span class="result-label">Normalized words</span>
+<span class="result-value" id="normalizedWords">—</span>
+</div>
+<div class="result-row">
+<span class="result-label">Sign</span>
+<span class="result-value" id="resultSign">—</span>
+</div>
+<div class="result-row">
+<span class="result-label">Magnitude</span>
+<span class="result-value" id="resultMagnitude">—</span>
+</div>
+</section>
+</section>
+<!-- 5) Authoritative content -->
+<article aria-labelledby="content-heading" class="card">
+<h2 id="content-heading">Authoritative Sources, Formula &amp; Guidance</h2>
+<!-- a) Data Source & Methodology -->
+<section aria-labelledby="source-heading">
+<h3 id="source-heading">Data Source &amp; Methodology</h3>
+<p>
+            This tool implements <strong>short-scale</strong> English number naming (million=10<sup>6</sup>, billion=10<sup>9</sup>, trillion=10<sup>12</sup>, …) and accepts optional British-style
+            “and” constructions. For editorial conventions around numerals and hyphenation, see:
+          </p>
+<ul>
+<li>
+<a href="https://www.govinfo.gov/content/pkg/GPO-STYLEMANUAL-2016/pdf/GPO-STYLEMANUAL-2016.pdf" rel="nofollow noopener" target="_blank">
+                U.S. Government Publishing Office Style Manual (2016)
+              </a>
+</li>
+<li>
+<a href="https://en.wikipedia.org/wiki/Long_and_short_scales" rel="nofollow noopener" target="_blank">
+                Long and short scales (overview)
+              </a>
+</li>
+</ul>
+<p><em>Tutti i calcoli si basano rigorosamente sulle regole e convenzioni descritte nella scala corta e nelle guide stilistiche citate.</em></p>
+</section>
+<!-- b) The “Formula” explained -->
+<section aria-labelledby="formula-heading">
+<h3 id="formula-heading">The “Formula” Explained</h3>
+<div aria-describedby="latex-note" class="formula-box">
+<!-- LaTeX-style presentation (display-only; not externally rendered to keep file self-contained) -->
+<div><strong>Tokenization:</strong> Split words into tokens \( t_i \) and map to values.</div>
+<div style="margin-top:.5rem"><strong>Aggregation:</strong> For a segment \( S \), compute</div>
+<pre>segment = sum(small_numbers) + (hundreds × 100)</pre>
+<div>When a scale word \( M \in \{10^3,10^6,10^9,\dots\} \) appears, apply:</div>
+<pre>accumulator = accumulator + segment × M;  segment = 0</pre>
+<div>Final value:</div>
+<pre>value = sign × (accumulator + segment + decimal_part)</pre>
+</div>
+<p class="help-inline" id="latex-note">
+            We parse from left to right, folding “hundred” within each segment and multiplying at “thousand/million/…”.
+          </p>
+</section>
+<!-- c) Glossary -->
+<section aria-labelledby="glossary-heading">
+<h3 id="glossary-heading">Glossary of Inputs &amp; Outputs</h3>
+<ul>
+<li><strong>Number in words:</strong> English phrase describing a number (e.g., “two million and ten”).</li>
+<li><strong>Allow “and”:</strong> Accepts “and” within hundreds (e.g., “one hundred and five”).</li>
+<li><strong>Short scale:</strong> Uses million/billion/trillion… (US/modern international).</li>
+<li><strong>Normalize ordinals:</strong> Maps simple ordinals (e.g., “twenty-first”) to cardinals.</li>
+<li><strong>Numeric value:</strong> Parsed decimal number (up to 10<sup>18</sup> in magnitude).</li>
+<li><strong>Normalized words:</strong> Cleaned, canonicalized version of the input phrase.</li>
+<li><strong>Sign:</strong> <code>positive</code> or <code>negative</code>.</li>
+<li><strong>Magnitude:</strong> Approximate order (e.g., thousands, millions).</li>
+</ul>
+</section>
+<!-- d) Worked example -->
+<section aria-labelledby="example-heading">
+<h3 id="example-heading">How It Works: A Step-by-Step Example</h3>
+<p><strong>Input:</strong> <code>negative one hundred twenty-three thousand and forty-five point six seven</code></p>
+<ol>
+<li>Sign = <code>negative</code> → <code>-1</code>.</li>
+<li>Segments: <code>one hundred twenty-three</code> → 123; “thousand” → multiply segment by <code>1,000</code> → 123,000.</li>
+<li>Remainder: <code>forty-five</code> → 45; add to total → 123,045.</li>
+<li>Decimal: <code>point six seven</code> → 0.67.</li>
+<li><strong>Result:</strong> <code>-123045.67</code></li>
+</ol>
+</section>
+<!-- e) FAQ -->
+<section aria-labelledby="faq-heading" class="faq">
+<h3 id="faq-heading">Frequently Asked Questions</h3>
+<details>
+<summary>Which English variant is this based on?</summary>
+<p>Short-scale English (US/modern international). Optional “and” is accepted for British-style phrasing.</p>
+</details>
+<details>
+<summary>What’s the largest number supported?</summary>
+<p>Up to one quintillion (10<sup>18</sup>) in absolute value. Larger inputs are rejected to prevent overflow.</p>
+</details>
+<details>
+<summary>Does it handle decimals and negative values?</summary>
+<p>Yes. Use “point” for decimals and “minus” or “negative” for the sign.</p>
+</details>
+<details>
+<summary>Can I paste noisy text (e.g., extra punctuation)?</summary>
+<p>Non-number words and extraneous punctuation are ignored where safe. Ambiguities will trigger validation errors.</p>
+</details>
+<details>
+<summary>Are ordinals like “twenty-first” supported?</summary>
+<p>Basic ordinal normalization maps common ordinals to cardinals before parsing.</p>
+</details>
+<details>
+<summary>How do you validate correctness?</summary>
+<p>The parser follows deterministic folding rules for hundreds and scale words, unit-tested against edge cases (hyphens, “and”, decimals, negatives).</p>
+</details>
+</section>
+<!-- 6) Authorship & review -->
+<div class="author-box">
+<p>
+            Tool developed by <strong>Ugo Candido</strong>. Content verified by the <strong>CalcDomain Editorial Team</strong>.<br/>
+            Last reviewed for accuracy on: <strong>September 21, 2025</strong>.
+          </p>
+</div>
+</article>
+</div>
+</main>
+
+<!-- High-performance, deferred JS (no external dependencies). -->
+
+<!-- Footer -->
+    <footer class="bg-white border-t mt-12">
+        <div class="container mx-auto px-6 py-8">
+            <div class="text-center text-gray-600">
+                <p>&copy; 2025 CalcDomain. All Rights Reserved.</p>
+                <div class="mt-4 space-x-4">
+                    <a href="about.html" class="hover:text-blue-600">About</a>
+                    <a href="contact.html" class="hover:text-blue-600">Contact</a>
+                    <a href="privacy.html" class="hover:text-blue-600">Privacy</a>
+                    <a href="terms.html" class="hover:text-blue-600">Terms</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+
+    <script>
+        // Mobile menu toggle
+        (function() {
+            const mobileToggle = document.getElementById('mobile-menu-toggle');
+            const mobileMenu = document.getElementById('mobile-menu');
+            if (mobileToggle && mobileMenu) {
+                mobileToggle.addEventListener('click', () => {
+                    mobileMenu.classList.toggle('hidden');
+                });
+            }
+        })();
+    </script>
+</body></html>

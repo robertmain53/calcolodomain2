@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ABV (Alcohol By Volume) Calculator | CalcDomain</title>
+  <meta name="description" content="Professional ABV calculator for brewers and hobbyists. Compute alcohol by volume from hydrometer or refractometer readings with ASBC-style temperature correction, plus ABW, real extract, attenuation, and dilution to a target ABV." />
+  <meta name="author" content="Ugo Candido" />
+  <link rel="canonical" href="https://calcdomain.com/abv-calculator.html" />
+  <meta name="theme-color" content="#0B5CAD" />
+  <meta name="robots" content="index,follow,max-image-preview:large" />
+  <!-- Site search (from blueprint) -->
+  <script src="search.js" defer></script>
+  <link rel="preload" href="/assets/js/mobile-menu.js" as="script">
+  <link rel="preload" href="/assets/js/page-enhancements.js" as="script">
+
+  <!-- Critical, mobile-first CSS (no external deps) -->
+  <style>
+    :root{
+      --primary:#0B5CAD; --primary-700:#083e73;
+      --bg:#F8FAFC; --surface:#FFFFFF; --border:#D8DEE9;
+      --text:#1E293B; --muted:#6B7280;
+      --success:#0F9D58; --danger:#DC2626;
+      --touch:48px; --radius:12px; --shadow:0 2px 8px rgba(2,6,23,.06);
+      --focus:3px solid #0B5CAD; --container:1200px; --gap:.75rem; --gap-lg:1.5rem;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,"Helvetica Neue",Arial,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
+    }
+    *{box-sizing:border-box}
+    html{font-size:16px;scroll-behavior:smooth}
+    body{
+      margin:0; font-family:var(--sans); color:var(--text);
+      background:var(--bg); line-height:1.6;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    a{color:var(--primary); text-decoration:none}
+    a:hover{text-decoration:underline}
+    a:focus{outline:var(--focus); outline-offset:2px}
+    .skip-link{
+      position:absolute; left:8px; top:-40px; background:var(--primary); color:#fff;
+      padding:.5rem .75rem; border-radius:6px; z-index:1000; text-decoration:none; font-weight:600;
+    }
+    .skip-link:focus{top:8px}
+
+    /* ===== Header styling (matches attachment visually, no Tailwind needed) ===== */
+    header.site-header{
+      position:sticky; top:0; z-index:50;
+      background:#fff; border-bottom:1px solid var(--border); box-shadow:0 1px 2px rgba(2,6,23,.04);
+    }
+    .container{max-width:var(--container); margin:0 auto; padding:0 1rem}
+    .nav-inner{
+      display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.85rem 0;
+    }
+    .brand-link{
+      font-size:1.5rem; font-weight:800; color:#2563eb; letter-spacing:.2px;
+    }
+
+    /* Desktop search */
+    .nav-search{
+      display:none; /* hidden on mobile */
+      width:100%; max-width:28rem; margin:0 1rem;
+    }
+    @media(min-width:768px){ .nav-search{ display:block } }
+    .search-wrap{ position:relative }
+    .search-input{
+      width:100%; padding:.6rem .9rem; padding-right:2.3rem;
+      border:1px solid #e5e7eb; border-radius:999px; background:#fff; font-size:1rem;
+    }
+    .search-input:focus{ outline:none; box-shadow:0 0 0 4px rgba(37,99,235,.12); border-color:#93c5fd }
+    .search-icon{
+      position:absolute; right:.8rem; top:50%; transform:translateY(-50%); color:#9ca3af;
+      width:20px; height:20px; pointer-events:none;
+    }
+    #search-results{
+      position:absolute; top:100%; left:0; right:0; margin-top:.5rem;
+      background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,.08);
+      max-height:24rem; overflow:auto; z-index:60; display:none;
+    }
+
+    /* Primary links (desktop) */
+    .primary-links{ display:none; align-items:center; gap:1.25rem }
+    @media(min-width:768px){ .primary-links{ display:flex } }
+    .primary-links a{ color:#374151; font-weight:500 }
+    .primary-links a:hover{ color:#2563eb; text-decoration:none }
+
+    /* Mobile menu toggle */
+    .mobile-toggle{
+      display:inline-flex; align-items:center; justify-content:center; padding:.4rem; border-radius:8px;
+      border:1px solid transparent; background:transparent; cursor:pointer;
+    }
+    .mobile-toggle:focus{ outline:var(--focus) }
+    @media(min-width:768px){ .mobile-toggle{ display:none } }
+
+    /* Mobile menu */
+    .mobile-menu{ display:none; margin-top:.5rem; padding-bottom:.75rem }
+    .mobile-menu.open{ display:block }
+    .mobile-menu .mobile-search .search-input{ border-radius:10px }
+    .mobile-menu a{ display:block; padding:.5rem 0; color:#374151 }
+    .mobile-menu a:hover{ color:#2563eb }
+
+    main{padding:1rem 0 2rem}
+    nav.breadcrumb{font-size:.9rem; color:var(--muted); margin:.25rem 0 1rem}
+    nav.breadcrumb a{color:inherit}
+    h1{font-size:clamp(1.7rem,4vw,2.4rem); line-height:1.2; margin:.25rem 0 .5rem; color:var(--primary-700)}
+    p.lead{color:#334155; max-width:70ch}
+
+    .layout{
+      display:grid; grid-template-columns:1fr; gap:1.25rem; margin-top:1rem;
+    }
+    @media(min-width:992px){
+      .layout{ grid-template-columns: minmax(0,480px) minmax(0,1fr);}
+    }
+
+    /* Cards */
+    .card{
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius); box-shadow:var(--shadow); padding:1rem;
+    }
+
+    /* Form */
+    .calculator h2{font-size:1.25rem; margin:0 0 .5rem}
+    .form-group{margin-bottom:1rem}
+    .form-group label{display:flex; align-items:center; gap:.5rem; font-weight:700; margin-bottom:.35rem}
+    .help-btn{
+      border:1px solid var(--border); background:#fff; color:#0f172a;
+      width:var(--touch); height:var(--touch); border-radius:10px; cursor:pointer;
+      display:inline-flex; align-items:center; justify-content:center; font-weight:800; line-height:1;
+    }
+    .help-btn:hover{background:#f3f4f6}
+    .help-btn:focus{outline:var(--focus)}
+    .tooltip{
+      background:#eef2ff; border:1px solid #c7d2fe; color:#111827;
+      border-radius:8px; padding:.6rem .75rem; font-size:.95rem; margin:.25rem 0 0;
+    }
+    .input-wrap{position:relative}
+    .control{
+      width:100%; min-height:var(--touch); padding:.7rem .85rem; font-size:1rem;
+      border:1px solid var(--border); border-radius:10px; background:#fff;
+    }
+    .control:focus{outline:none; box-shadow:0 0 0 4px rgba(11,92,173,.15); border-color:#94a3b8}
+    .unit{
+      position:absolute; right:.75rem; top:50%; transform:translateY(-50%);
+      color:#475569; font-weight:600; pointer-events:none;
+    }
+    .row{display:grid; grid-template-columns:1fr 1fr; gap:.75rem}
+    .row-3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:.75rem}
+    @media(max-width:480px){ .row, .row-3{ grid-template-columns:1fr } }
+
+    .radio-group{display:flex; gap:.5rem; flex-wrap:wrap}
+    .chip{
+      position:relative; display:flex; align-items:center; justify-content:center;
+      border:1px solid var(--border); border-radius:999px; min-height:var(--touch);
+      padding:.25rem .75rem; background:#fff; cursor:pointer; font-weight:700; color:#0f172a;
+    }
+    .chip input{position:absolute; inset:0; opacity:0}
+    .chip:has(input:checked){background:var(--primary); color:#fff; border-color:var(--primary)}
+    .chip:has(input:focus-visible){outline:var(--focus)}
+    .checkbox{display:flex; align-items:center; gap:.5rem; min-height:var(--touch)}
+
+    .error{color:var(--danger); font-size:.9rem; margin-top:.25rem; min-height:1.1rem}
+    .hint{color:var(--muted); font-size:.9rem; margin-top:.25rem}
+
+    /* Results */
+    .results{ background:#f1f5f9; border:1px solid var(--border); border-radius:12px; padding:1rem; min-height:260px }
+    .results h3{margin:.25rem 0 1rem; color:#0f172a}
+    .result{
+      display:flex; align-items:flex-start; justify-content:space-between; gap:.75rem;
+      padding:.6rem 0; border-bottom:1px solid var(--border);
+    }
+    .result:last-child{border-bottom:none}
+    .result .label{color:#475569}
+    .result .value{font-weight:800; color:var(--success); font-size:1.25rem}
+    .mono{font-family:var(--mono)}
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
+      border:1px solid var(--primary); color:var(--primary); background:#fff; border-radius:10px;
+      min-height:var(--touch); min-width:var(--touch); padding:.6rem .9rem; font-weight:700; cursor:pointer;
+    }
+    .btn.primary{background:var(--primary); color:#fff}
+    .btn:focus{outline:var(--focus); outline-offset:2px}
+
+    /* Advanced analysis */
+    .advanced-tools{display:grid; gap:1.5rem; margin-top:1.75rem}
+    .advanced-tools h3{margin:.25rem 0 .75rem; color:#0f172a}
+    .table-wrapper{overflow-x:auto; border:1px solid var(--border); border-radius:10px; background:#fff}
+    .methods-table{width:100%; border-collapse:collapse; min-width:480px}
+    .methods-table th,.methods-table td{padding:.65rem .85rem; border-bottom:1px solid var(--border); text-align:left; font-size:.95rem}
+    .methods-table thead th{background:#f8fafc; font-size:.75rem; letter-spacing:.05em; text-transform:uppercase; color:#475569}
+    .methods-table tbody tr.highlight{background:#eff6ff}
+    .metrics-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:.85rem}
+    .metric-card{background:#ffffff; border:1px solid var(--border); border-radius:10px; padding:.85rem}
+    .metric-label{font-size:.8rem; color:#64748b; text-transform:uppercase; letter-spacing:.05em}
+    .metric-value{font-weight:700; font-size:1.2rem; color:#0f172a}
+    .metric-sub{font-size:.85rem; color:#475569; margin-top:.15rem}
+    .trend-note{font-size:.9rem; color:#334155; margin-top:.35rem}
+    .planner-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1rem; align-items:end}
+    .planner-grid label{font-size:.9rem; color:#334155; display:flex; flex-direction:column; gap:.35rem}
+    .planner-grid input{font:inherit; padding:.5rem .65rem; border:1px solid var(--border); border-radius:8px}
+    .planner-grid input:focus{outline:none; box-shadow:0 0 0 3px rgba(11,92,173,.18); border-color:#93c5fd}
+    .profile-controls{display:flex; flex-wrap:wrap; gap:1rem; align-items:flex-end}
+    .profile-controls label{font-size:.9rem; color:#334155; display:flex; flex-direction:column; gap:.35rem; min-width:220px}
+    .profile-controls input,.profile-controls select{font:inherit; padding:.5rem .65rem; border:1px solid var(--border); border-radius:8px}
+    .profile-controls input:focus,.profile-controls select:focus{outline:none; box-shadow:0 0 0 3px rgba(11,92,173,.18); border-color:#93c5fd}
+    .profile-actions{display:flex; flex-wrap:wrap; gap:.6rem; margin-top:.5rem}
+    .profile-actions .btn{min-width:auto}
+    #profileStatus{font-size:.8rem; color:#475569; margin-top:.4rem}
+    #brewSheetPreview{background:#0f172a; color:#e2e8f0; border-radius:10px; padding:1rem; font-family:var(--mono); font-size:.8rem; line-height:1.5; max-height:18rem; overflow:auto; margin-top:.75rem}
+
+    /* Content */
+    .content h2{margin-top:1.25rem; padding-top:.25rem; border-top:1px solid var(--border)}
+    .formula-box{background:#e2e8f0; border:1px solid #cbd5e1; border-radius:10px; padding:1rem; overflow:auto}
+    .latex{font-family:var(--mono); display:block; padding:.25rem .5rem; background:#f8fafc; border-radius:6px; margin:.25rem 0; white-space:pre; overflow:auto}
+    ul,ol{padding-left:1.25rem}
+    .definition-list{display:grid; grid-template-columns:1fr; gap:.35rem}
+    @media(min-width:720px){ .definition-list{ grid-template-columns: 1fr 2fr } .definition-list dt{font-weight:700} }
+    .author-box{font-size:.95rem; color:#475569; border-top:1px solid var(--border); margin-top:1.5rem; padding-top:.75rem}
+
+    .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0}
+    @media(prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important;scroll-behavior:auto!important} }
+    @media(prefers-contrast:more){ :root{ --primary:#000080; --text:#000; --border:#000; --bg:#fff } }
+  </style>
+
+  <!-- JSON-LD: WebPage + HowTo + FAQ -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "ABV (Alcohol By Volume) Calculator",
+    "description": "Compute Alcohol by Volume (ABV) and Alcohol by Weight (ABW) from hydrometer or refractometer inputs. Includes ASBC-style hydrometer temperature correction, Plato conversions, attenuation, real extract, and dilution to target ABV.",
+    "url": "https://calcdomain.com/abv-calculator.html",
+    "inLanguage": "en",
+    "author": { "@type": "Person", "name": "Ugo Candido" },
+    "publisher": { "@type": "Organization", "name": "CalcDomain" },
+    "mainEntity": [
+      {
+        "@type": "HowTo",
+        "name": "How it works: a step-by-step ABV example",
+        "description": "Hydrometer example using OG/FG with ASBC temperature correction and advanced brewing formula.",
+        "step": [
+          { "@type": "HowToStep", "name": "Enter OG", "text": "Original Gravity (OG), e.g., 1.060." },
+          { "@type": "HowToStep", "name": "Enter FG", "text": "Final Gravity (FG), e.g., 1.012 after fermentation stabilizes." },
+          { "@type": "HowToStep", "name": "Temperature correction", "text": "If sample temperature differs from hydrometer calibration, enable correction and provide temperatures." },
+          { "@type": "HowToStep", "name": "Choose formula", "text": "Standard (131.25×ΔSG) or Advanced brewing equation for improved accuracy." },
+          { "@type": "HowToStep", "name": "Read results", "text": "ABV, ABW, extracts in °P, real extract, attenuation; dilution tab estimates water to reach a target ABV." }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Which ABV method should I choose?", "acceptedAnswer": { "@type": "Answer", "text": "Use the Advanced equation for improved accuracy (especially at higher OG). The Standard factor is simple and close for moderate gravities." } },
+          { "@type": "Question", "name": "Do I need hydrometer temperature correction?", "acceptedAnswer": { "@type": "Answer", "text": "Yes, when sample temperature differs from hydrometer calibration (often 20 °C or 60 °F). Use the built-in ASBC-style correction." } },
+          { "@type": "Question", "name": "Can FG be higher than OG?", "acceptedAnswer": { "@type": "Answer", "text": "No. If FG ≥ OG, re-check measurements and temperature inputs. The calculator enforces FG < OG for typical fermentation." } },
+          { "@type": "Question", "name": "Does it handle refractometers?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Use the Refractometer tab with Original and Final Brix and a wort correction factor." } },
+          { "@type": "Question", "name": "How can I dilute to a target ABV?", "acceptedAnswer": { "@type": "Answer", "text": "Use the Dilution tab: V2 = V1 × (ABV1 / ABV2); water to add = V2 − V1, in your chosen volume unit." } }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <!-- Header (rebuilt to match attachment's style/UX without Tailwind) -->
+  <header class="site-header" role="banner">
+    <nav class="container" aria-label="Primary">
+      <div class="nav-inner">
+        <a href="index.html" class="brand-link">CalcDomain</a>
+
+        <!-- Desktop search -->
+        <div class="nav-search" role="search">
+          <div class="search-wrap">
+            <input type="search" id="search-input" placeholder="Search calculators…" autocomplete="off"
+              class="search-input" aria-label="Search calculators">
+            <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <div id="search-results" role="listbox" aria-label="Search results"></div>
+          </div>
+        </div>
+
+        <!-- Desktop links -->
+        <div class="primary-links">
+          <a href="search.html">Advanced Search</a>
+          <a href="index.html#categories">Categories</a>
+        </div>
+
+        <!-- Mobile menu toggle -->
+        <button id="mobile-menu-toggle" class="mobile-toggle" aria-expanded="false" aria-controls="mobile-menu" aria-label="Open menu">
+          <svg width="24" height="24" fill="none" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Mobile menu -->
+      <div id="mobile-menu" class="mobile-menu" hidden>
+        <div class="mobile-search" role="search" style="margin-bottom:.5rem">
+          <div class="search-wrap">
+            <input type="search" id="mobile-search-input" placeholder="Search calculators…" class="search-input" aria-label="Search calculators on mobile">
+            <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+          </div>
+        </div>
+        <a href="search.html">Advanced Search</a>
+        <a href="index.html#categories">Categories</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main-content" role="main">
+    <div class="container">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a> / <a href="/everyday-life.html">Everyday Life</a> / <a href="/everyday-life/hobbies.html">Hobbies</a> / ABV (Alcohol By Volume) Calculator
+      </nav>
+
+      <h1>ABV (Alcohol By Volume) Calculator</h1>
+      <p class="lead">
+        A precise, accessibility-first tool to estimate alcohol strength from hydrometer or refractometer readings. Choose between Standard or Advanced methods,
+        apply ASBC-style hydrometer temperature correction, and get ABW, °Plato analytics, attenuation, real extract, and optional dilution to a target ABV.
+      </p>
+
+      <div class="layout">
+        <!-- Calculator -->
+        <aside class="card calculator" aria-labelledby="calc-heading">
+          <h2 id="calc-heading">Calculator</h2>
+
+          <!-- Mode selection -->
+          <div class="form-group" role="group" aria-labelledby="mode-label">
+            <div id="mode-label" class="sr-only">Select input mode</div>
+            <div class="radio-group" role="radiogroup" aria-label="Input mode">
+              <label class="chip">
+                <input type="radio" name="mode" value="hydro" checked />
+                Hydrometer (OG &amp; FG)
+              </label>
+              <label class="chip">
+                <input type="radio" name="mode" value="refrac" />
+                Refractometer (°Brix)
+              </label>
+              <label class="chip">
+                <input type="radio" name="mode" value="dilution" />
+                Dilution (target ABV)
+              </label>
+            </div>
+          </div>
+
+          <!-- Hydrometer block -->
+          <section id="hydro-block" role="region" aria-labelledby="hydro-h">
+            <h3 id="hydro-h" class="sr-only">Hydrometer Inputs</h3>
+
+            <!-- Formula -->
+            <div class="form-group" role="group" aria-labelledby="method-label">
+              <div id="method-label" class="sr-only">Select ABV formula</div>
+              <div class="radio-group" role="radiogroup" aria-label="ABV formula">
+                <label class="chip">
+                  <input type="radio" name="formula" value="standard" checked />
+                  Standard (131.25 × ΔSG)
+                </label>
+                <label class="chip">
+                  <input type="radio" name="formula" value="advanced" />
+                  Advanced (brewing equation)
+                </label>
+              </div>
+              <p class="hint">Standard: ABV = (OG − FG) × 131.25. Advanced: 76.08 × (OG − FG)/(1.775 − OG) × (FG/0.794).</p>
+            </div>
+
+            <!-- OG / FG -->
+            <div class="row">
+              <div class="form-group">
+                <label for="og">
+                  Original Gravity (OG) *
+                  <button id="ogInfoBtn" type="button" class="help-btn" aria-label="What is OG?" aria-controls="ogTip" aria-expanded="false">?</button>
+                </label>
+                <div class="input-wrap">
+                  <input id="og" class="control" type="number" inputmode="decimal" step="0.001" min="0.98" max="1.2" placeholder="e.g., 1.060" aria-required="true" aria-describedby="ogTip ogError" />
+                  <span class="unit" aria-hidden="true">SG</span>
+                </div>
+                <div id="ogTip" class="tooltip" role="tooltip" hidden>OG: SG before fermentation. Typical beer range ~1.030–1.120.</div>
+                <div id="ogError" class="error" role="alert" aria-live="polite"></div>
+              </div>
+
+              <div class="form-group">
+                <label for="fg">
+                  Final Gravity (FG) *
+                  <button id="fgInfoBtn" type="button" class="help-btn" aria-label="What is FG?" aria-controls="fgTip" aria-expanded="false">?</button>
+                </label>
+                <div class="input-wrap">
+                  <input id="fg" class="control" type="number" inputmode="decimal" step="0.001" min="0.98" max="1.2" placeholder="e.g., 1.012" aria-required="true" aria-describedby="fgTip fgError" />
+                  <span class="unit" aria-hidden="true">SG</span>
+                </div>
+                <div id="fgTip" class="tooltip" role="tooltip" hidden>FG: SG when fermentation has finished (stable readings 2–3 days). Must be less than OG.</div>
+                <div id="fgError" class="error" role="alert" aria-live="polite"></div>
+              </div>
+            </div>
+
+            <!-- Temperature correction -->
+            <div class="form-group">
+              <div class="checkbox">
+                <input id="tempToggle" type="checkbox" aria-controls="tempBlock" aria-describedby="tempHelp" />
+                <label for="tempToggle"><strong>Apply hydrometer temperature correction</strong></label>
+              </div>
+              <p class="hint" id="tempHelp">Correct SG if sample temperature differs from hydrometer calibration temperature.</p>
+            </div>
+
+            <div id="tempBlock" class="card" hidden aria-live="polite" style="padding:.75rem; margin-top:.25rem;">
+              <div class="row">
+                <div class="form-group">
+                  <label for="sampleTemp">
+                    Sample temperature
+                    <button id="tInfoBtn" type="button" class="help-btn" aria-label="Temperature help" aria-controls="tTip" aria-expanded="false">?</button>
+                  </label>
+                  <div class="row">
+                    <div class="input-wrap">
+                      <input id="sampleTemp" class="control" type="number" step="0.1" min="0" max="100" value="20" aria-describedby="tTip tError" />
+                    </div>
+                    <div>
+                      <select id="sampleTempUnit" class="control" aria-label="Sample temperature unit">
+                        <option value="C" selected>°C</option>
+                        <option value="F">°F</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div id="tTip" class="tooltip" role="tooltip" hidden>Use the actual temperature at which you read OG/FG.</div>
+                  <div id="tError" class="error" role="alert" aria-live="polite"></div>
+                </div>
+
+                <div class="form-group">
+                  <label for="calTemp">Hydrometer calibration temperature</label>
+                  <div class="row">
+                    <div class="input-wrap">
+                      <input id="calTemp" class="control" type="number" step="0.1" min="0" max="100" value="20" />
+                    </div>
+                    <div>
+                      <select id="calTempUnit" class="control" aria-label="Calibration temperature unit">
+                        <option value="C" selected>°C</option>
+                        <option value="F">°F</option>
+                      </select>
+                    </div>
+                  </div>
+                  <p class="hint">Common calibrations: 20&nbsp;°C or 60&nbsp;°F (check your hydrometer).</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Refractometer block -->
+          <section id="refrac-block" role="region" aria-labelledby="refrac-h" hidden>
+            <h3 id="refrac-h" class="sr-only">Refractometer Inputs</h3>
+            <div class="row">
+              <div class="form-group">
+                <label for="brixO">Original Brix (°Bx) *</label>
+                <input id="brixO" class="control" type="number" step="0.01" min="0" max="40" placeholder="e.g., 14.7" aria-required="true" aria-describedby="brixOError" />
+                <div id="brixOError" class="error" role="alert" aria-live="polite"></div>
+              </div>
+              <div class="form-group">
+                <label for="brixF">Final Brix (°Bx) *</label>
+                <input id="brixF" class="control" type="number" step="0.01" min="0" max="40" placeholder="e.g., 7.2" aria-required="true" aria-describedby="brixFError" />
+                <div id="brixFError" class="error" role="alert" aria-live="polite"></div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="wcf">Wort correction factor</label>
+              <div class="row">
+                <input id="wcf" class="control" type="number" step="0.001" value="1.04" aria-describedby="wcfHelp" />
+                <div class="hint" id="wcfHelp">Typical 1.02–1.06 depending on instrument.</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Dilution block -->
+          <section id="dilution-block" role="region" aria-labelledby="dilution-h" hidden>
+            <h3 id="dilution-h" class="sr-only">Dilution Inputs</h3>
+            <div class="row-3">
+              <div class="form-group">
+                <label for="v1">Current volume *</label>
+                <input id="v1" class="control" type="number" step="0.001" min="0.001" placeholder="e.g., 20" aria-required="true" aria-describedby="v1Error vunitHelp" />
+                <div id="v1Error" class="error" role="alert" aria-live="polite"></div>
+              </div>
+              <div class="form-group">
+                <label for="abv1">Current ABV (%) *</label>
+                <input id="abv1" class="control" type="number" step="0.01" min="0" max="100" placeholder="e.g., 7.2" aria-required="true" aria-describedby="abv1Error" />
+                <div id="abv1Error" class="error" role="alert" aria-live="polite"></div>
+              </div>
+              <div class="form-group">
+                <label for="abv2">Target ABV (%) *</label>
+                <input id="abv2" class="control" type="number" step="0.01" min="0.1" max="100" placeholder="e.g., 5.0" aria-required="true" aria-describedby="abv2Error" />
+                <div id="abv2Error" class="error" role="alert" aria-live="polite"></div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="vunit">Volume unit</label>
+              <select id="vunit" class="control" aria-describedby="vunitHelp">
+                <option value="L" selected>Liters (L)</option>
+                <option value="gal">US gallons (gal)</option>
+                <option value="bbl">Beer barrels (US bbl)</option>
+              </select>
+              <div id="vunitHelp" class="hint">Result uses the same unit.</div>
+            </div>
+          </section>
+
+          <!-- Actions -->
+          <div style="display:flex; gap:.75rem; flex-wrap:wrap; align-items:center; margin-top:.5rem">
+            <button id="calcBtn" class="btn primary" type="button" aria-describedby="calcHelp">Calculate</button>
+            <button id="resetBtn" class="btn" type="button">Reset</button>
+            <span id="calcHelp" class="hint" aria-live="polite">Auto-compute is on; the button is provided for accessibility and form flow.</span>
+          </div>
+        </aside>
+
+        <!-- Results -->
+        <section class="card results" aria-labelledby="results-heading" aria-live="polite" aria-atomic="true">
+          <h3 id="results-heading">Results</h3>
+          <div class="result">
+            <div class="label">Alcohol by Volume (ABV)</div>
+            <div class="value"><span id="out-abv" class="mono">—</span>%</div>
+          </div>
+          <div class="result">
+            <div class="label">Alcohol by Weight (ABW)</div>
+            <div class="value"><span id="out-abw" class="mono">—</span>%</div>
+          </div>
+          <div class="result">
+            <div class="label">Original Extract</div>
+            <div class="value"><span id="out-ogp" class="mono">—</span> °P</div>
+          </div>
+          <div class="result">
+            <div class="label">Final Extract (Apparent)</div>
+            <div class="value"><span id="out-fgp" class="mono">—</span> °P</div>
+          </div>
+          <div class="result">
+            <div class="label">Real Extract</div>
+            <div class="value"><span id="out-re" class="mono">—</span> °P</div>
+          </div>
+          <div class="result">
+            <div class="label">Apparent Attenuation</div>
+            <div class="value"><span id="out-aa" class="mono">—</span>%</div>
+          </div>
+          <div class="result" id="dilution-only" hidden>
+            <div class="label">Water to add</div>
+            <div class="value"><span id="out-water" class="mono">—</span></div>
+          </div>
+          <p class="hint" style="margin-top:.75rem">Values are rounded for readability.</p>
+        </section>
+      </div>
+
+      <!-- Authoritative Content Ecosystem -->
+      <section class="content" aria-labelledby="content-heading">
+        <h2 id="content-heading">Data Source &amp; Methodology</h2>
+        <p><strong>Authoritative Data Source:</strong> American Society of Brewing Chemists (ASBC), Methods of Analysis. Wort-12: Extract—Specific Gravity and Plato; Beer-4/Beer-6: Alcohol in Beer. Official resource: <em>asbcnet.org — Methods of Analysis</em>. “Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.”</p>
+        <p>ABV is legally defined as volume percent of ethanol at 20&nbsp;°C. For compliance/labeling, use accredited laboratory methods (e.g., distillation, oscillating U-tube density). The calculator implements widely adopted brewing relationships for practical estimation.</p>
+
+        <h2>The Formula Explained</h2>
+        <div class="formula-box" aria-describedby="formula-note">
+          <div class="hint" id="formula-note">LaTeX-like notation is shown; variables are defined below.</div>
+          <span class="latex">ABV_{\%} = (OG - FG)\times 131.25</span>
+          <span class="latex">ABV_{\%} = \frac{76.08 \times (OG - FG)}{1.775 - OG} \times \frac{FG}{0.794}</span>
+          <span class="latex">P = -616.868 + 1111.14\,SG - 630.272\,SG^{2} + 135.997\,SG^{3}</span>
+          <span class="latex">RE = 0.1808 \times P_{OG} + 0.8192 \times P_{FG}</span>
+          <span class="latex">AA_{\%} = \frac{P_{OG} - P_{FG}}{P_{OG}} \times 100</span>
+          <span class="latex">ABW_{\%} \approx ABV_{\%} \times \frac{FG}{0.794}</span>
+          <span class="latex">SG_{corr} = SG_{obs} \times \frac{CF(T_{sample})}{CF(T_{cal})}</span>
+          <span class="latex">CF(T) = 1.00130346 - 1.34722124\cdot10^{-4}T + 2.04052596\cdot10^{-6}T^{2} - 2.32820948\cdot10^{-9}T^{3}</span>
+          <span class="latex">V_2 = V_1 \times \frac{ABV_1}{ABV_2}\quad\Rightarrow\quad \text{Water to add} = V_2 - V_1</span>
+        </div>
+
+        <h2>Glossary of Variables</h2>
+        <dl class="definition-list">
+          <dt>OG</dt><dd>Original Gravity (SG) before fermentation (e.g., 1.060).</dd>
+          <dt>FG</dt><dd>Final Gravity (SG) after fermentation completes (e.g., 1.012).</dd>
+          <dt>°P</dt><dd>Degrees Plato (mass percent extract); computed from SG.</dd>
+          <dt>ABV (%)</dt><dd>Alcohol by Volume.</dd>
+          <dt>ABW (%)</dt><dd>Alcohol by Weight (estimated).</dd>
+          <dt>Real Extract (°P)</dt><dd>Approximation adjusting for alcohol presence.</dd>
+          <dt>Apparent Attenuation (%)</dt><dd>Percentage of extract apparently consumed.</dd>
+          <dt>WCF</dt><dd>Wort Correction Factor for refractometer readings.</dd>
+        </dl>
+
+        <h2>How It Works: A Step-by-Step Example</h2>
+        <ol>
+          <li><strong>Inputs:</strong> OG = 1.060, FG = 1.012, sample 20&nbsp;°C, calibration 20&nbsp;°C (no temp bias).</li>
+          <li><strong>Choose formula:</strong> Advanced brewing equation.</li>
+          <li><strong>Compute ABV:</strong> \( 76.08(1.060-1.012)/(1.775-1.060) \times (1.012/0.794) \approx 6.3\% \).</li>
+          <li><strong>ABW:</strong> \( \approx 6.3\% \times (1.012/0.794) \approx 5.0\% \).</li>
+          <li><strong>Attenuation &amp; °P:</strong> Using Plato conversion and Balling relationships.</li>
+        </ol>
+
+        <h2>Frequently Asked Questions (FAQ)</h2>
+        <details><summary>Which ABV method should I choose?</summary><p>The Advanced equation is preferred for accuracy, especially at higher OG. The Standard factor is simple and close for moderate gravities.</p></details>
+        <details><summary>Do I need hydrometer temperature correction?</summary><p>Yes, when sample temperature differs from hydrometer calibration (often 20&nbsp;°C/60&nbsp;°F). Enable correction and enter both temperatures.</p></details>
+        <details><summary>Can FG be higher than OG?</summary><p>No. If FG ≥ OG, re-check readings and temperature compensation; fermentation may not have started or measurements may be off.</p></details>
+        <details><summary>Does it handle refractometers?</summary><p>Yes. Use the Refractometer tab with Original and Final Brix and a wort correction factor (typ. 1.02–1.06).</p></details>
+        <details><summary>How can I dilute to a target ABV?</summary><p>Use the Dilution tab: V2 = V1 × (ABV1/ABV2); water to add = V2 − V1, in your chosen unit.</p></details>
+        <div class="author-box">
+          Tool developed by <strong>Ugo Candido</strong>. Content verified by the <strong>CalcDomain Editorial Team</strong>.
+          <br/>Last reviewed for accuracy on: <time datetime="2025-10-09">October 9, 2025</time>.
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Footer -->
+    <footer class="bg-white border-t mt-12">
+        <div class="container mx-auto px-6 py-8">
+            <div class="text-center text-gray-600">
+                <p>&copy; 2025 CalcDomain. All Rights Reserved.</p>
+                <div class="mt-4 space-x-4">
+                    <a href="about.html" class="hover:text-blue-600">About</a>
+                    <a href="contact.html" class="hover:text-blue-600">Contact</a>
+                    <a href="privacy.html" class="hover:text-blue-600">Privacy</a>
+                    <a href="terms.html" class="hover:text-blue-600">Terms</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+  <!-- Header mobile menu toggle (no external deps) -->
+  <script>
+    (function(){
+      const btn = document.getElementById('mobile-menu-toggle');
+      const menu = document.getElementById('mobile-menu');
+      if(btn && menu){
+        btn.addEventListener('click', ()=>{
+          const open = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!open));
+          menu.hidden = open;
+          menu.classList.toggle('open', !open);
+        });
+      }
+    })();
+  </script>
+
+  <!-- Calculator logic (no external libraries). Auto-compute + Calculate button. -->
+  <script defer>
+    (function(){
+      'use strict';
+      // Shortcuts
+      const $ = (s)=>document.querySelector(s);
+      const $$ = (s)=>Array.from(document.querySelectorAll(s));
+
+      // Mode blocks
+      const blocks = {
+        hydro: $('#hydro-block'),
+        refrac: $('#refrac-block'),
+        dilution: $('#dilution-block')
+      };
+      const modeRadios = $$('input[name="mode"]');
+
+      function setMode(val){
+        Object.entries(blocks).forEach(([k,el])=> el.hidden = (k!==val));
+        $('#dilution-only').hidden = (val!=='dilution');
+        clearResults();
+        autoCompute();
+      }
+      modeRadios.forEach(r=> r.addEventListener('change', ()=>setMode(r.value)));
+      setMode('hydro');
+
+      // Tooltips
+      function attachTooltip(btnId, tipId){
+        const btn = document.getElementById(btnId);
+        const tip = document.getElementById(tipId);
+        if(!btn || !tip) return;
+        btn.addEventListener('click', ()=>{
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          tip.hidden = expanded;
+        });
+        btn.addEventListener('keydown', (e)=>{
+          if(e.key === 'Escape'){
+            btn.setAttribute('aria-expanded','false');
+            tip.hidden = true;
+            btn.focus();
+          }
+        });
+      }
+      attachTooltip('ogInfoBtn','ogTip');
+      attachTooltip('fgInfoBtn','fgTip');
+      attachTooltip('tInfoBtn','tTip');
+
+      // Elements - Hydrometer
+      const formulaRadios = $$('input[name="formula"]');
+      const ogEl = $('#og'), fgEl = $('#fg');
+      const tempToggle = $('#tempToggle');
+      const tempBlock = $('#tempBlock');
+      const sampleTemp = $('#sampleTemp'), sampleTempUnit = $('#sampleTempUnit');
+      const calTemp = $('#calTemp'), calTempUnit = $('#calTempUnit');
+      const ogError = $('#ogError'), fgError = $('#fgError'), tError = $('#tError');
+
+      // Elements - Refractometer
+      const brixO = $('#brixO'), brixF = $('#brixF'), wcf = $('#wcf');
+      const brixOError = $('#brixOError'), brixFError = $('#brixFError');
+
+      // Elements - Dilution
+      const v1 = $('#v1'), abv1 = $('#abv1'), abv2 = $('#abv2'), vunit = $('#vunit');
+      const v1Error = $('#v1Error'), abv1Error = $('#abv1Error'), abv2Error = $('#abv2Error');
+
+      // Results
+      const outABV = $('#out-abv'), outABW = $('#out-abw'), outOGP = $('#out-ogp'),
+            outFGP = $('#out-fgp'), outRE = $('#out-re'), outAA = $('#out-aa'),
+            outWater = $('#out-water');
+
+      const calcBtn = $('#calcBtn'), resetBtn = $('#resetBtn');
+
+      // Temperature conversion and ASBC-style CF(T) cubic
+      const toC = (val, unit) => unit === 'F' ? (val - 32) * 5/9 : val;
+      function cfCelsius(Tc){
+        return 1.00130346 - 1.34722124e-4*Tc + 2.04052596e-6*Tc*Tc - 2.32820948e-9*Tc*Tc*Tc;
+      }
+      function correctedSG(sg, sampT, sampUnit, calT, calUnit){
+        const Ts = toC(sampT, sampUnit);
+        const Tc = toC(calT, calUnit);
+        return sg * (cfCelsius(Ts) / cfCelsius(Tc));
+      }
+
+      // Plato conversions
+      function sgToPlato(sg){
+        return -616.868 + 1111.14*sg - 630.272*sg*sg + 135.997*sg*sg*sg;
+      }
+
+      // Refractometer model (Terrill-like)
+      function refracModel(brixOG, brixFG, wcfVal){
+        const obc = brixOG * wcfVal;
+        const fbc = brixFG * wcfVal;
+        const og = 1.0000 + (obc/(258.6 - ((obc/258.2)*227.1)));
+        const fg = 1.0000 - 0.00085683*obc + 0.0034941*fbc;
+        const abv = 76.08*(og - fg)/(1.775 - og) * (fg/0.794);
+        const ogP = sgToPlato(og), fgP = sgToPlato(fg);
+        const RE = 0.1808*ogP + 0.8192*fgP;
+        const AA = (ogP>0)? ((ogP - fgP)/ogP)*100 : NaN;
+        const ABW = abv * (fg/0.794);
+        return {og, fg, abv, ogP, fgP, RE, AA, ABW};
+      }
+
+      // Hydrometer ABV
+      function hydroModel(og, fg, method){
+        const ogP = sgToPlato(og), fgP = sgToPlato(fg);
+        const RE = 0.1808*ogP + 0.8192*fgP;
+        const AA = (ogP>0)? ((ogP - fgP)/ogP)*100 : NaN;
+        const abv = (method==='advanced')
+          ? (76.08*(og - fg)/(1.775 - og)) * (fg/0.794)
+          : (og - fg) * 131.25;
+        const ABW = abv * (fg/0.794);
+        return {abv, ogP, fgP, RE, AA, ABW};
+      }
+
+      // Dilution water to add
+      function waterToAdd(V1, A1, A2){ const V2 = V1*(A1/A2); return Math.max(0, V2 - V1); }
+
+      // Validation helpers
+      function setErr(node, msg){ node.textContent = msg || ''; }
+      function reqNum(el, errNode, {min=null,max=null}={}){
+        const v = el.value.trim();
+        if(!v){ setErr(errNode,'Required.'); el.setAttribute('aria-invalid','true'); return null; }
+        const n = Number(v);
+        if(!Number.isFinite(n)){ setErr(errNode,'Enter a valid number.'); el.setAttribute('aria-invalid','true'); return null; }
+        if(min!==null && n<min){ setErr(errNode, `Must be \u2265 ${min}.`); el.setAttribute('aria-invalid','true'); return null; }
+        if(max!==null && n>max){ setErr(errNode, `Must be \u2264 ${max}.`); el.setAttribute('aria-invalid','true'); return null; }
+        setErr(errNode,''); el.setAttribute('aria-invalid','false'); return n;
+      }
+
+      // Wire temp toggle
+      tempToggle.addEventListener('change', ()=>{
+        tempBlock.hidden = !tempToggle.checked;
+        autoCompute();
+      });
+
+      // Clear results
+      function clearResults(){
+        [outABV,outABW,outOGP,outFGP,outRE,outAA,outWater].forEach(n=> n.textContent='—');
+      }
+
+      // Compute dispatcher
+      function compute(){
+        clearResults();
+        const mode = document.querySelector('input[name="mode"]:checked').value;
+
+        if(mode==='hydro'){
+          const vOG = reqNum(ogEl, ogError, {min:0.98,max:1.2});
+          const vFG = reqNum(fgEl, fgError, {min:0.98,max:1.2});
+          if(vOG===null || vFG===null) return;
+          let og = vOG, fg = vFG;
+
+          if(tempToggle.checked){
+            const st = reqNum(sampleTemp, tError, {min:0,max:100});
+            const ct = reqNum(calTemp, tError, {min:0,max:100});
+            if(st===null || ct===null) return;
+            og = correctedSG(og, st, sampleTempUnit.value, ct, calTempUnit.value);
+            fg = correctedSG(fg, st, sampleTempUnit.value, ct, calTempUnit.value);
+            if(!(og>0 && fg>0)){ setErr(tError,'Temperature correction produced invalid SG. Check inputs.'); return; }
+            setErr(tError,'');
+          }
+
+          if(fg >= og){ setErr(fgError,'FG must be less than OG for a typical fermentation.'); fgEl.setAttribute('aria-invalid','true'); return; }
+
+          const method = (document.querySelector('input[name="formula"]:checked')?.value)||'standard';
+          const r = hydroModel(og, fg, method);
+          outABV.textContent = Number.isFinite(r.abv)? r.abv.toFixed(2): '—';
+          outABW.textContent = Number.isFinite(r.ABW)? r.ABW.toFixed(2): '—';
+          outOGP.textContent = Number.isFinite(r.ogP)? r.ogP.toFixed(2): '—';
+          outFGP.textContent = Number.isFinite(r.fgP)? r.fgP.toFixed(2): '—';
+          outRE.textContent  = Number.isFinite(r.RE)?  r.RE.toFixed(2):  '—';
+          outAA.textContent  = Number.isFinite(r.AA)?  r.AA.toFixed(1):  '—';
+
+        } else if(mode==='refrac'){
+          const bo = reqNum(brixO, brixOError, {min:0,max:40});
+          const bf = reqNum(brixF, brixFError, {min:0,max:40});
+          const wc = Number(wcf.value || '1.04');
+          if(bo===null || bf===null) return;
+          if(bf >= bo){ setErr(brixFError,'Final Brix is typically less than Original Brix after fermentation.'); brixF.setAttribute('aria-invalid','true'); return; }
+          const r = refracModel(bo, bf, wc);
+          outABV.textContent = Number.isFinite(r.abv)? r.abv.toFixed(2): '—';
+          outABW.textContent = Number.isFinite(r.ABW)? r.ABW.toFixed(2): '—';
+          outOGP.textContent = Number.isFinite(r.ogP)? r.ogP.toFixed(2): '—';
+          outFGP.textContent = Number.isFinite(r.fgP)? r.fgP.toFixed(2): '—';
+          outRE.textContent  = Number.isFinite(r.RE)?  r.RE.toFixed(2):  '—';
+          outAA.textContent  = Number.isFinite(r.AA)?  r.AA.toFixed(1):  '—';
+
+        } else { // dilution
+          const V1 = reqNum(v1, v1Error, {min:0.001});
+          const A1 = reqNum(abv1, abv1Error, {min:0,max:100});
+          const A2 = reqNum(abv2, abv2Error, {min:0.1,max:100});
+          if(V1===null || A1===null || A2===null) return;
+          if(A2 >= A1){ setErr(abv2Error,'Target ABV must be less than current ABV for dilution.'); abv2.setAttribute('aria-invalid','true'); return; }
+          const add = waterToAdd(V1, A1, A2);
+          outWater.textContent = Number.isFinite(add)? add.toFixed(3) + ' ' + vunit.value : '—';
+          outABV.textContent='—'; outABW.textContent='—'; outOGP.textContent='—'; outFGP.textContent='—'; outRE.textContent='—'; outAA.textContent='—';
+        }
+      }
+
+      function autoCompute(){
+        clearTimeout(autoCompute._t);
+        autoCompute._t = setTimeout(compute, 0);
+      }
+
+      ['input','change'].forEach(ev=>{
+        [ogEl, fgEl, sampleTemp, sampleTempUnit, calTemp, calTempUnit].forEach(el=> el && el.addEventListener(ev, autoCompute));
+        const formulaRadios = document.querySelectorAll('input[name="formula"]');
+        formulaRadios.forEach(r=> r.addEventListener(ev, autoCompute));
+        [brixO, brixF, wcf].forEach(el=> el && el.addEventListener(ev, autoCompute));
+        [v1, abv1, abv2, vunit].forEach(el=> el && el.addEventListener(ev, autoCompute));
+        const modeRadios = document.querySelectorAll('input[name="mode"]');
+        modeRadios.forEach(r=> r.addEventListener(ev, autoCompute));
+      });
+
+      calcBtn.addEventListener('click', compute);
+      resetBtn.addEventListener('click', ()=>{
+        [ogEl, fgEl, sampleTemp, calTemp, brixO, brixF, v1, abv1, abv2].forEach(el=>{ if(el) el.value=''; });
+        sampleTemp.value = 20; calTemp.value = 20; sampleTempUnit.value='C'; calTempUnit.value='C';
+        wcf.value='1.04'; vunit.value='L';
+        document.querySelector('input[name="mode"][value="hydro"]').checked = true;
+        document.querySelector('input[name="formula"][value="standard"]').checked = true;
+        tempToggle.checked = false; tempBlock.hidden = true;
+        [ogError, fgError, tError, brixOError, brixFError, v1Error, abv1Error, abv2Error].forEach(n=> n && (n.textContent=''));
+        $$('input,select').forEach(i=> i.setAttribute('aria-invalid','false'));
+        setMode('hydro');
+      });
+
+      compute();
+    })();
+  </script>
+
+    <script>
+        // Mobile menu toggle
+        (function() {
+            const mobileToggle = document.getElementById('mobile-menu-toggle');
+            const mobileMenu = document.getElementById('mobile-menu');
+            if (mobileToggle && mobileMenu) {
+                mobileToggle.addEventListener('click', () => {
+                    mobileMenu.classList.toggle('hidden');
+                });
+            }
+        })();
+    </script>
+</body>
+</html>
