@@ -7,6 +7,8 @@
     class CalcDomainSearch {
         constructor() {
             this.calculators = [];
+            this.searchInputs = [];
+            this.activeInput = null;
             this.searchInput = null;
             this.searchResults = null;
             this.isInitialized = false;
@@ -45,36 +47,51 @@
 
         getEmbeddedCalculators() {
             return [
-                { slug: "mortgage-payment-calculator", title: "Mortgage Payment Calculator", category: "Finance", subcategory: "Mortgage & Real Estate", description: "Calculate monthly mortgage payments" },
-                { slug: "bmi-calculator", title: "BMI Calculator", category: "Health & Fitness", subcategory: "Health Metrics", description: "Calculate Body Mass Index" },
-                { slug: "percentage-calculator", title: "Percentage Calculator", category: "Math & Conversions", subcategory: "Core Math & Algebra", description: "Calculate percentages" },
-                { slug: "auto-loan-calculator", title: "Auto Loan Calculator", category: "Finance", subcategory: "Loans & Debt", description: "Calculate car loan payments" },
-                { slug: "loan-payoff-calculator", title: "Loan Payoff Calculator", category: "Finance", subcategory: "Loans & Debt", description: "Calculate loan payoff strategies" }
+                { slug: "mortgage-payment", url: "/mortgage-payment.html", title: "Mortgage Payment Calculator", category: "Finance", subcategory: "Mortgage & Real Estate", description: "Calculate monthly mortgage payments" },
+                { slug: "bmi", url: "/bmi.html", title: "BMI Calculator", category: "Health & Fitness", subcategory: "Health Metrics", description: "Calculate Body Mass Index" },
+                { slug: "percentage", url: "/percentage.html", title: "Percentage Calculator", category: "Math & Conversions", subcategory: "Core Math & Algebra", description: "Calculate percentages" },
+                { slug: "auto-loan", url: "/auto-loan.html", title: "Auto Loan Calculator", category: "Finance", subcategory: "Loans & Debt", description: "Calculate car loan payments" },
+                { slug: "loan-payoff", url: "/loan-payoff.html", title: "Loan Payoff Calculator", category: "Finance", subcategory: "Loans & Debt", description: "Calculate loan payoff strategies" }
             ];
         }
 
         setupSearchElements() {
-            this.searchInput = document.getElementById('search-input');
-            this.searchResults = document.getElementById('search-results');
-            
-            if (!this.searchInput) {
-                console.warn('search-input non trovato');
+            const candidates = Array.from(document.querySelectorAll('[data-search-input="true"], #search-input, input[type="search"]'))
+                .filter(input => !input.hasAttribute('data-search-ignore'));
+
+            if (!candidates.length) {
+                console.warn('CalcDomainSearch: nessun input di ricerca trovato.');
+                return;
             }
+
+            this.searchInputs = candidates;
+            this.searchInput = candidates[0];
+            this.activeInput = this.searchInput;
+
+            this.searchResults = document.getElementById('search-results');
             if (!this.searchResults) {
-                console.warn('search-results non trovato, creando...');
-                this.createSearchResultsContainer();
+                this.createSearchResultsContainer(this.searchInput);
+            } else {
+                const parent = this.searchInput.closest('.relative') || this.searchInput.parentElement;
+                if (parent && !this.searchResults.parentElement) {
+                    parent.style.position = parent.style.position || 'relative';
+                    parent.appendChild(this.searchResults);
+                }
             }
         }
 
-        createSearchResultsContainer() {
+        createSearchResultsContainer(targetInput) {
             const container = document.createElement('div');
             container.id = 'search-results';
             container.className = 'absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden';
             
-            if (this.searchInput) {
-                const parent = this.searchInput.closest('.relative') || this.searchInput.parentElement;
+            const input = targetInput || this.searchInput;
+            if (input) {
+                const parent = input.closest('.relative') || input.parentElement;
                 if (parent) {
-                    parent.style.position = 'relative';
+                    if (!parent.style.position || parent.style.position === 'static') {
+                        parent.style.position = 'relative';
+                    }
                     parent.appendChild(container);
                     this.searchResults = container;
                 }
@@ -82,18 +99,24 @@
         }
 
         bindEvents() {
-            if (!this.searchInput) return;
+            if (!this.searchInputs.length) return;
 
-            this.searchInput.addEventListener('input', (e) => {
-                const query = e.target.value.trim();
-                this.handleSearch(query);
-            });
+            this.searchInputs.forEach(input => {
+                input.addEventListener('input', (e) => {
+                    this.activeInput = e.target;
+                    const query = e.target.value.trim();
+                    this.handleSearch(query);
+                });
 
-            this.searchInput.addEventListener('focus', (e) => {
-                const query = e.target.value.trim();
-                if (query.length >= 2) {
-                    this.showResults();
-                }
+                input.addEventListener('focus', (e) => {
+                    this.activeInput = e.target;
+                    this.moveResultsContainer(e.target);
+                    const query = e.target.value.trim();
+                    if (query.length >= 2) {
+                        this.handleSearch(query);
+                        this.showResults();
+                    }
+                });
             });
 
             document.addEventListener('click', (e) => {
@@ -102,9 +125,20 @@
                 }
             });
 
-            this.searchInput.addEventListener('keydown', (e) => {
-                this.handleKeyboardNavigation(e);
+            this.searchInputs.forEach(input => {
+                input.addEventListener('keydown', (e) => this.handleKeyboardNavigation(e));
             });
+        }
+
+        moveResultsContainer(targetInput) {
+            if (!this.searchResults || !targetInput) return;
+            const parent = targetInput.closest('.relative') || targetInput.parentElement;
+            if (parent && parent !== this.searchResults.parentElement) {
+                if (!parent.style.position || parent.style.position === 'static') {
+                    parent.style.position = 'relative';
+                }
+                parent.appendChild(this.searchResults);
+            }
         }
 
         handleSearch(query) {
@@ -161,9 +195,10 @@
             const html = results.map(calc => {
                 const highlightedTitle = this.highlightMatches(calc.title, query);
                 const highlightedDesc = this.highlightMatches(calc.description, query);
+                const href = this.resolveCalculatorUrl(calc);
                 
                 return `
-                    <a href="${calc.slug}.html" class="block p-4 hover:bg-gray-50 border-b border-gray-100 last:border-b-0">
+                    <a href="${href}" class="block p-4 hover:bg-gray-50 border-b border-gray-100 last:border-b-0">
                         <div class="flex items-start justify-between">
                             <div class="flex-1">
                                 <h3 class="font-semibold text-gray-900 mb-1">${highlightedTitle}</h3>
@@ -186,6 +221,21 @@
             if (!query) return text;
             const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
             return text.replace(regex, '<mark class="bg-yellow-200 text-yellow-900">$1</mark>');
+        }
+
+        resolveCalculatorUrl(calc) {
+            if (calc.url) {
+                return calc.url;
+            }
+            if (!calc.slug) {
+                return '#';
+            }
+
+            const normalized = calc.slug.replace(/^\//, '');
+            if (normalized.endsWith('.html')) {
+                return `/${normalized}`;
+            }
+            return `/${normalized}.html`;
         }
 
         showResults() {
