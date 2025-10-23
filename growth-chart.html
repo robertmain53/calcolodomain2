@@ -18,6 +18,7 @@
   <script>
     window.MathJax = { tex: {inlineMath: [['\\(','\\)'], ['$', '$']],displayMath: [['$','$'], ['\\[','\\]']]},svg: { fontCache: 'global' } };
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-900">
   <!-- Header -->
@@ -196,6 +197,37 @@
     </div>
   </footer>
   <script>
+    // CDC LMS percentiles: Weight-for-height using wtstat.csv
+    let wtStatLMS = { male: {}, female: {} };
+
+    Papa.parse('wtstat.csv', {
+      header: true,
+      download: true,
+      dynamicTyping: true,
+      complete: function(results) {
+        results.data.forEach(row => {
+          if(!row.Height || !row.Sex) return;
+          const sex = row.Sex == 1 ? 'male' : row.Sex == 2 ? 'female' : null;
+          if (!sex) return;
+          const height = parseFloat(row.Height).toFixed(1);
+          if (!wtStatLMS[sex][height]) {
+            wtStatLMS[sex][height] = { L: +row.L, M: +row.M, S: +row.S };
+          }
+        });
+      }
+    });
+
+    function lmsZ(x, l, m, s) {
+      return l === 0 ? Math.log(x / m) / s : (Math.pow(x / m, l) - 1) / (l * s);
+    }
+    function erf(x) {
+      var a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911,sign=1;
+      if (x < 0) sign = -1; x = Math.abs(x);
+      var t=1/(1+p*x),y=1-((((a5*t+a4)*t+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+      return sign*y;
+    }
+    function normalCdf(z) { return 0.5 * (1 + erf(z / Math.sqrt(2))); }
+
     function setImperialMetricLabels() {
       const sys = document.getElementById('unitSystem').value;
       document.getElementById('weight-label').textContent = sys === 'imperial' ? 'Weight (lb) *' : 'Weight (kg) *';
@@ -207,38 +239,43 @@
     setImperialMetricLabels();
 
     document.getElementById('calcBtn').addEventListener('click', function() {
-      // Mock calculation logic, outputs random plausible percentiles
-      function randomInt(min, max) {
-        return Math.floor(Math.random() * (max - min + 1)) + min;
+      const sex = document.getElementById('gender').value;
+      let height = parseFloat(document.getElementById('height').value || 0);
+      let weight = parseFloat(document.getElementById('weight').value || 0);
+      const sys = document.getElementById('unitSystem').value;
+      // Convert imperial to metric if needed
+      if (sys === 'imperial') {
+        height = height * 2.54; // in → cm
+        weight = weight * 0.453592; // lb → kg
       }
-      const weightPct = randomInt(5, 95);
-      const heightPct = randomInt(5, 95);
-      const bmiPct = randomInt(5, 95);
-      const weight = parseFloat(document.getElementById('weight').value || 0);
-      const height = parseFloat(document.getElementById('height').value || 0);
       let bmi = '';
       if (weight > 0 && height > 0) {
-        if (document.getElementById('unitSystem').value === 'imperial') {
-          bmi = (703 * weight / (height * height)).toFixed(1);
-        } else {
-          bmi = (weight / Math.pow(height/100, 2)).toFixed(1);
-        }
+        bmi = (weight / Math.pow(height/100, 2)).toFixed(1);
       } else {
         bmi = '--';
       }
-      document.getElementById('weightPct').textContent = weightPct + 'th';
-      document.getElementById('heightPct').textContent = heightPct + 'th';
-      document.getElementById('bmiPct').textContent = bmiPct + 'th';
+      const heightStr = (+height).toFixed(1);
+      const lms = (wtStatLMS[sex] && wtStatLMS[sex][heightStr]) ? wtStatLMS[sex][heightStr] : null;
+      let weightPct = '--', zscore = '--', pctText = '', interp = '';
+      if(lms && weight > 0) {
+        const z = lmsZ(weight, lms.L, lms.M, lms.S);
+        zscore = z.toFixed(2);
+        weightPct = Math.round(100 * normalCdf(z));
+        pctText = `${weightPct}th percentile (z = ${zscore})`;
+        interp = `Your child's weight-for-height is at the <strong>${weightPct}th percentile</strong>. This means that compared to children of the same sex and height, your child weighs more than about ${weightPct} out of 100.<br>(Z-score: <strong>${zscore}</strong>)`;
+      } else if (heightStr && weight > 0) {
+        interp = 'Height not supported by CDC tables, or no data for this sex.';
+      } else {
+        interp = '';
+      }
+      document.getElementById('weightPct').textContent = weightPct !== '--' ? pctText : '--';
+      document.getElementById('heightPct').textContent = '--';
+      document.getElementById('bmiPct').textContent = '--';
       document.getElementById('bmiValue').textContent = bmi;
-      // Interpretation feedback
-      let interp = '';
-      if (bmiPct < 5) interp = '<span class="text-red-600">Underweight zone: consult pediatrician</span>';
-      else if (bmiPct < 85) interp = '<span class="text-green-700">Healthy weight range</span>';
-      else if (bmiPct < 95) interp = '<span class="text-yellow-600">At risk of overweight</span>';
-      else interp = '<span class="text-red-600">Overweight/obese: consult pediatrician</span>';
       document.getElementById('interpretation').innerHTML = interp;
       document.getElementById('results-card').classList.remove('hidden');
     });
+
     document.getElementById('mobile-menu-toggle')?.addEventListener('click', () => {
       const menu = document.getElementById('mobile-menu');
       menu?.classList.toggle('hidden');
@@ -246,4 +283,3 @@
   </script>
 </body>
 </html>
-
