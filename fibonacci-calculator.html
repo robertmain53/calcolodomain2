@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Basic -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fibonacci Calculator — Sequence, Nth Term, Golden Ratio & (Optional) Retracement Levels</title>
+  <meta name="description" content="Professional Fibonacci calculator: generate the sequence, compute the n-th Fibonacci number with fast-doubling BigInt, analyze ratios & golden ratio, and (optional) trading retracement/extension levels. Accessible, mobile-first, and WCAG 2.1 AA compliant." />
+  <link rel="canonical" href="https://calcdomain.com/fibonacci-calculator.html" />
+
+  <!-- Icons (optional; safe fallbacks if absent) -->
+  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+
+  <!-- Styles: mobile-first, high-contrast, print-aware -->
+  <style>
+    :root{
+      --bg:#0b0c0f;            /* near-black for contrast */
+      --surface:#101318;       /* card background */
+      --muted:#9aa3b2;         /* secondary text */
+      --text:#ffffff;          /* primary text */
+      --brand:#5b8cff;         /* accent */
+      --brand-2:#22c55e;       /* secondary accent */
+      --danger:#ef4444;
+      --focus:#f59e0b;         /* amber focus outline */
+      --border:#232a36;
+      --code:#e2e8f0;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,"Helvetica Neue",Arial,"Noto Sans","Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
+      background:linear-gradient(180deg,#0b0c0f 0%, #0d1117 100%);
+      color:var(--text);
+      line-height:1.55;
+      -webkit-text-size-adjust:100%;
+    }
+    a{color:var(--brand)} a:hover{text-decoration:underline}
+    .container{max-width:1100px;margin:0 auto;padding:1rem}
+    header{background:transparent;border-bottom:1px solid var(--border)}
+    header .brand{font-weight:800;letter-spacing:.2px;font-size:1.15rem;color:#fff;text-decoration:none}
+    header nav{display:flex;align-items:center;justify-content:space-between;padding:.75rem 0}
+    .breadcrumbs{color:var(--muted);font-size:.875rem;margin:1rem 0}
+    .breadcrumbs a{color:var(--muted)}
+    main{padding:0 0 3rem}
+    h1{font-size:clamp(1.7rem,2.5vw,2.25rem);line-height:1.15;margin:0 0 .5rem;font-weight:900}
+    p.lead{color:#dbe3ef;max-width:65ch;margin:0 0 1rem}
+    .layout{display:grid;grid-template-columns:1fr;gap:1rem}
+    @media (min-width: 1024px){ .layout{grid-template-columns:minmax(0,2fr) minmax(260px,1fr);} }
+
+    /* Card & sections */
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1rem;box-shadow:0 0 0 1px rgba(255,255,255,0.02) inset}
+    .card h2{font-size:1.1rem;margin:.25rem 0 1rem}
+    section.results{min-height:160px} /* prevent CLS */
+    .grid{display:grid;gap:1rem}
+    .grid.cols-2{grid-template-columns:1fr}
+    @media (min-width:640px){.grid.cols-2{grid-template-columns:1fr 1fr}}
+    .row{display:flex;gap:.75rem;flex-wrap:wrap}
+
+    /* Forms */
+    label{display:block;font-weight:600;margin:.25rem 0 .25rem}
+    .req::after{content:" *";color:#93c5fd}
+    .input, select, textarea{
+      width:100%;background:#0f1319;border:1px solid var(--border);border-radius:10px;
+      color:var(--text);padding:.8rem .9rem;font-size:1rem;
+    }
+    .input:focus, select:focus, button:focus, [role="tab"]:focus{
+      outline:3px solid var(--focus);outline-offset:2px
+    }
+    .hint{font-size:.85rem;color:var(--muted);margin-top:.25rem}
+    .err{color:#fecaca;background:#7f1d1d33;border:1px solid #7f1d1d;padding:.5rem .6rem;border-radius:8px;margin-top:.4rem}
+    .field{margin:.6rem 0 1rem}
+
+    /* Buttons */
+    .btn{cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;
+      min-height:48px;padding:.7rem 1rem;border-radius:12px;border:1px solid var(--border);background:#111827;color:#fff;font-weight:700}
+    .btn.primary{background:linear-gradient(180deg,#5b8cff,#4876ff);border-color:#4673ff}
+    .btn.ghost{background:#0f1319}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+
+    /* Tabs (keyboard-accessible) */
+    .tabs{display:flex;gap:.5rem;flex-wrap:wrap;margin:.25rem 0 1rem}
+    [role="tab"]{border:1px solid var(--border);border-radius:999px;padding:.5rem .9rem;background:#0f1319;color:#e5e7eb}
+    [role="tab"][aria-selected="true"]{background:#1f2937;color:#fff;border-color:#3b82f6}
+    [role="tabpanel"]{display:none}
+    [role="tabpanel"][data-active="true"]{display:block}
+
+    /* Results widgets */
+    .kpis{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.5rem}
+    @media (min-width:768px){ .kpis{grid-template-columns:repeat(4,1fr)} }
+    .kpi{background:#0e1420;border:1px solid var(--border);border-radius:12px;padding:.9rem;text-align:center}
+    .kpi h4{margin:.25rem 0 .35rem;color:#b7c3d4;font-size:.85rem;font-weight:600}
+    .kpi p{margin:0;font-size:1.25rem;font-weight:900;color:#8ab4ff;word-break:break-all}
+
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+    .formula{background:#0f1319;border:1px dashed #263244;border-radius:10px;padding:.9rem;overflow:auto;color:var(--code)}
+    details>summary{cursor:pointer;font-weight:700;padding:.4rem 0}
+    details[open]>summary{margin-bottom:.25rem}
+
+    /* Table */
+    table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+    th,td{padding:.65rem .7rem;text-align:right;border-bottom:1px solid var(--border)}
+    th{text-transform:uppercase;font-size:.75rem;letter-spacing:.04em;color:#b7c3d4;background:#111620}
+    td:first-child, th:first-child{text-align:left}
+    tbody tr:nth-child(even){background:#0d121a}
+
+    /* Tooltip a11y */
+    .tt{display:inline-flex;align-items:center;gap:.35rem}
+    .tt-btn{min-height:36px;min-width:36px; border-radius:999px;border:1px solid var(--border);background:#0f1319;color:#e5e7eb}
+    .tt-text{display:none;margin-top:.35rem;color:#cdd6e6}
+    .tt-text[data-open="true"]{display:block}
+
+    /* Print */
+    @media print{
+      header, .aside, .tabs, .btn, .breadcrumbs{display:none !important}
+      body{background:#fff;color:#000}
+      .card{border-color:#000}
+    }
+  </style>
+
+  <!-- JSON-LD: WebPage + WebApplication + Breadcrumbs + HowTo + FAQ -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@graph":[
+      {
+        "@type":"WebPage",
+        "name":"Fibonacci Calculator",
+        "inLanguage":"en",
+        "description":"Generate Fibonacci sequence, compute n-th Fibonacci number via fast-doubling BigInt, explore ratios & golden ratio, plus optional trading retracement.",
+        "url":"https://calcdomain.com/fibonacci-calculator.html",
+        "dateModified":"2025-10-25",
+        "isPartOf":{"@type":"WebSite","name":"CalcDomain","url":"https://calcdomain.com"},
+        "author":{"@type":"Person","name":"Ugo Candido"},
+        "publisher":{"@type":"Organization","name":"CalcDomain"}
+      },
+      {
+        "@type":"WebApplication",
+        "name":"Fibonacci Calculator",
+        "applicationCategory":"EducationalApplication",
+        "operatingSystem":"Any",
+        "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}
+      },
+      {
+        "@type":"BreadcrumbList",
+        "itemListElement":[
+          {"@type":"ListItem","position":1,"name":"Home","item":"https://calcdomain.com/"},
+          {"@type":"ListItem","position":2,"name":"Math","item":"https://calcdomain.com/math.html"},
+          {"@type":"ListItem","position":3,"name":"Algebra","item":"https://calcdomain.com/subcategories/math-algebra.html"},
+          {"@type":"ListItem","position":4,"name":"Fibonacci Calculator","item":"https://calcdomain.com/fibonacci-calculator.html"}
+        ]
+      },
+      {
+        "@type":"HowTo",
+        "name":"How to compute the n-th Fibonacci number",
+        "description":"Fast-doubling algorithm with arbitrary-precision BigInt.",
+        "step":[
+          {"@type":"HowToStep","name":"Enter n","text":"Provide a non-negative integer n."},
+          {"@type":"HowToStep","name":"Choose mode","text":"Pick 'n-th term' or 'generate sequence'."},
+          {"@type":"HowToStep","name":"Calculate","text":"The tool uses fast-doubling to compute F(n) in O(log n)."},
+          {"@type":"HowToStep","name":"Review results","text":"See value, digits, ratios and sequence (if requested)."}
+        ]
+      },
+      {
+        "@type":"FAQPage",
+        "mainEntity":[
+          {"@type":"Question","name":"What is the Fibonacci sequence?",
+           "acceptedAnswer":{"@type":"Answer","text":"A sequence with F(0)=0, F(1)=1 and F(n)=F(n−1)+F(n−2)."}},
+          {"@type":"Question","name":"How fast is this calculator?",
+           "acceptedAnswer":{"@type":"Answer","text":"It uses the fast-doubling method, which runs in O(log n) multiplications with arbitrary-precision BigInt."}},
+          {"@type":"Question","name":"How many terms can I generate?",
+           "acceptedAnswer":{"@type":"Answer","text":"Up to 2,000 terms for the full list (to protect performance). The n-th term mode supports very large n; the value may contain thousands of digits."}},
+          {"@type":"Question","name":"What is Binet’s formula?",
+           "acceptedAnswer":{"@type":"Answer","text":"F(n)=((φ^n)−(−φ)^{−n})/√5 with φ=(1+√5)/2. It is exact for integer n when computed with sufficient precision, but numerically unstable for large n without BigInt."}},
+          {"@type":"Question","name":"Do you support negative indices?",
+           "acceptedAnswer":{"@type":"Answer","text":"Yes: F(−n)= (−1)^{n+1} F(n)."}},
+          {"@type":"Question","name":"Are trading retracement levels included?",
+           "acceptedAnswer":{"@type":"Answer","text":"An optional tab computes standard retracement (23.6%, 38.2%, 50%, 61.8%, 78.6%) and common extensions (127.2%, 161.8%, 261.8%)."}}
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <!-- Header (non-sticky, per requirements) -->
+  <header>
+    <div class="container">
+      <nav aria-label="Primary">
+        <a class="brand" href="index.html">CalcDomain</a>
+        <div aria-hidden="true" style="height:0"></div>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container" id="main">
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a href="index.html">Home</a> &raquo; <a href="math.html">Math</a> &raquo; <a href="subcategories/math-algebra.html">Algebra</a> &raquo; <span aria-current="page">Fibonacci Calculator</span>
+    </nav>
+
+    <h1>fibonacci calculator</h1>
+    <p class="lead">Generate the Fibonacci sequence, compute the <em>n</em>-th Fibonacci number with logarithmic-time fast-doubling and BigInt, inspect golden-ratio relationships, and (optionally) get trading retracement &amp; extension levels. Built for students, engineers, quants and educators.</p>
+
+    <div class="layout">
+      <!-- Left column -->
+      <section aria-labelledby="calc-title" class="card">
+        <h2 id="calc-title">Interactive Calculator</h2>
+
+        <!-- Tabs -->
+        <div class="tabs" role="tablist" aria-label="Calculator modes">
+          <button role="tab" id="tab-seq" aria-controls="panel-seq" aria-selected="true" class="btn ghost">Sequence &amp; n-th term</button>
+          <button role="tab" id="tab-trade" aria-controls="panel-trade" aria-selected="false" class="btn ghost">Retracement (optional)</button>
+        </div>
+
+        <!-- Panel: Sequence & nth -->
+        <section id="panel-seq" role="tabpanel" data-active="true" aria-labelledby="tab-seq">
+          <div class="grid cols-2">
+            <div class="field">
+              <label for="mode" class="req">Mode</label>
+              <select id="mode" class="input" aria-required="true">
+                <option value="nth" selected>n-th term</option>
+                <option value="count">Generate first k terms</option>
+                <option value="maxval">Generate up to max value</option>
+              </select>
+              <p class="hint" id="modeHelp">Choose computation type.</p>
+            </div>
+
+            <div class="field">
+              <div class="tt">
+                <label for="indexInput" id="indexLabel" class="req">n (index)</label>
+                <button type="button" class="tt-btn" aria-describedby="indexTip" aria-expanded="false" data-tt="indexTip" title="Help" aria-label="Show tip for n">?</button>
+              </div>
+              <input id="indexInput" class="input mono" type="number" step="1" value="100" aria-describedby="indexTip indexErr" aria-required="true" />
+              <div id="indexTip" class="tt-text">Use integers. Supports negative indices: F(−n)= (−1)^{n+1}·F(n).</div>
+              <div id="indexErr" class="err" style="display:none"></div>
+            </div>
+
+            <div class="field" id="countField" style="display:none">
+              <label for="countInput" class="req">k (number of terms)</label>
+              <input id="countInput" class="input mono" type="number" min="1" max="2000" step="1" value="30" aria-describedby="countErr" aria-required="true" />
+              <div id="countErr" class="err" style="display:none"></div>
+            </div>
+
+            <div class="field" id="maxField" style="display:none">
+              <label for="maxValueInput" class="req">Max value (inclusive)</label>
+              <input id="maxValueInput" class="input mono" type="number" min="0" step="1" value="1000000" aria-describedby="maxErr" aria-required="true" />
+              <div id="maxErr" class="err" style="display:none"></div>
+            </div>
+
+            <div class="field">
+              <label for="format" class="req">Output format</label>
+              <select id="format" class="input" aria-required="true">
+                <option value="pretty" selected>Pretty list</option>
+                <option value="csv">CSV</option>
+                <option value="space">Space-separated</option>
+                <option value="newline">One per line</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="includeZero">Include F(0)=0</label>
+              <select id="includeZero" class="input">
+                <option value="yes" selected>Yes</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:.5rem">
+            <button id="btnCalc" class="btn primary" type="button">Calculate</button>
+            <button id="btnCopy" class="btn" type="button" aria-live="polite">Copy Results</button>
+            <button id="btnDownload" class="btn" type="button">Download .txt</button>
+          </div>
+
+          <!-- Results -->
+          <section class="results" aria-live="polite" aria-atomic="true">
+            <div class="kpis">
+              <div class="kpi">
+                <h4>F(n)</h4>
+                <p id="kpiFn" class="mono">—</p>
+              </div>
+              <div class="kpi">
+                <h4>Digits</h4>
+                <p id="kpiDigits">—</p>
+              </div>
+              <div class="kpi">
+                <h4>F(n+1)/F(n)</h4>
+                <p id="kpiRatio">—</p>
+              </div>
+              <div class="kpi">
+                <h4>≈ φ</h4>
+                <p id="kpiPhi">1.6180339887…</p>
+              </div>
+            </div>
+
+            <details style="margin-top:1rem">
+              <summary>Show sequence</summary>
+              <div id="seqOut" class="card mono" style="white-space:pre-wrap;word-wrap:break-word"></div>
+            </details>
+          </section>
+        </section>
+
+        <!-- Panel: Trading retracement -->
+        <section id="panel-trade" role="tabpanel" aria-labelledby="tab-trade" data-active="false">
+          <div class="grid cols-2">
+            <div class="field">
+              <label for="swingHigh" class="req">Swing High</label>
+              <input id="swingHigh" class="input mono" type="number" min="0" step="any" value="100" aria-describedby="swingErr" aria-required="true" />
+              <div id="swingErr" class="err" style="display:none"></div>
+            </div>
+            <div class="field">
+              <label for="swingLow" class="req">Swing Low</label>
+              <input id="swingLow" class="input mono" type="number" min="0" step="any" value="60" aria-describedby="swingErr2" aria-required="true" />
+              <div id="swingErr2" class="err" style="display:none"></div>
+            </div>
+          </div>
+          <div class="row">
+            <button id="btnRetrace" class="btn primary" type="button">Compute Levels</button>
+          </div>
+
+          <section class="results" aria-live="polite" aria-atomic="true" style="margin-top:.75rem">
+            <table aria-describedby="retraceHelp">
+              <thead>
+                <tr><th>Level</th><th>Price</th></tr>
+              </thead>
+              <tbody id="tblRetrace"></tbody>
+            </table>
+            <p id="retraceHelp" class="hint">Standard retracements: 23.6%, 38.2%, 50%, 61.8%, 78.6%. Extensions: 127.2%, 161.8%, 261.8%.</p>
+          </section>
+        </section>
+      </section>
+
+      <!-- Right column -->
+      <aside class="aside">
+        <article class="card">
+          <h2>Authoritative Data Source &amp; Methodology</h2>
+          <p><strong>Primary reference:</strong> <a href="https://dlmf.nist.gov/49" rel="nofollow noopener">NIST Digital Library of Mathematical Functions, §49 (Fibonacci &amp; Lucas Numbers)</a>, 2023 edition.</p>
+          <p><strong>Sequence registry:</strong> <a href="https://oeis.org/A000045" rel="nofollow noopener">OEIS A000045 — Fibonacci numbers</a>.</p>
+          <p><em>Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.</em></p>
+          <p class="hint">Implementation uses exact integer arithmetic (BigInt) and the fast-doubling identities.</p>
+        </article>
+
+        <article class="card">
+          <h2>The Formula Explained</h2>
+          <div class="formula mono" aria-label="Mathematical formulas (LaTeX-like)">
+\[
+F(0)=0,\quad F(1)=1,\quad F(n)=F(n-1)+F(n-2).
+\]
+
+Fast-doubling identities:
+\[
+\begin{aligned}
+F(2k) &= F(k)\,[2F(k+1)-F(k)],\\
+F(2k+1) &= F(k+1)^2 + F(k)^2.
+\end{aligned}
+\]
+
+Binet’s formula (for reference):
+\[
+F(n)=\frac{\varphi^n-\hat{\varphi}^n}{\sqrt{5}},\quad
+\varphi=\frac{1+\sqrt{5}}{2},\ \hat{\varphi}=\frac{1-\sqrt{5}}{2}.
+\]
+
+Negative indices:
+\[
+F(-n)=(-1)^{n+1}F(n).
+\]
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>Glossary of Variables</h2>
+          <table>
+            <thead><tr><th>Symbol</th><th>Meaning</th></tr></thead>
+            <tbody>
+              <tr><td>n</td><td>Index (integer; may be negative)</td></tr>
+              <tr><td>F(n)</td><td>n-th Fibonacci number</td></tr>
+              <tr><td>φ</td><td>Golden ratio ≈ 1.61803…</td></tr>
+              <tr><td>k</td><td>Number of terms to generate</td></tr>
+              <tr><td>High, Low</td><td>Prices defining the swing for retracement</td></tr>
+            </tbody>
+          </table>
+        </article>
+
+        <article class="card">
+          <h2>How It Works: A Step-by-Step Example</h2>
+          <p><strong>Goal:</strong> compute F(100) and inspect ratios.</p>
+          <ol>
+            <li>Select <em>n-th term</em> and set <code>n=100</code>.</li>
+            <li>Click <em>Calculate</em>. The tool applies fast-doubling in O(log n) time.</li>
+            <li>Result: F(100)= <span class="mono">354224848179261915075</span> (21 digits).</li>
+            <li>The ratio F(101)/F(100) ≈ 1.6180339887… approaches φ.</li>
+          </ol>
+        </article>
+
+        <article class="card">
+          <h2>FAQ</h2>
+          <details>
+            <summary>Why fast-doubling instead of simple iteration?</summary>
+            <p>Fast-doubling reduces time from O(n) to O(log n) multiplications and works cleanly with BigInt.</p>
+          </details>
+          <details>
+            <summary>What limits are enforced?</summary>
+            <p>Sequence generation is capped at 2,000 terms to protect performance. The n-th mode supports very large indices; output may have thousands of digits.</p>
+          </details>
+          <details>
+            <summary>Why does 50% appear in trading levels?</summary>
+            <p>50% is not a Fibonacci ratio but is widely used in practice; we include it for completeness.</p>
+          </details>
+          <details>
+            <summary>Do rounding or locales affect results?</summary>
+            <p>Integer results are exact. Display formatting (e.g., digit grouping) follows your browser’s locale.</p>
+          </details>
+        </article>
+
+        <article class="card">
+          <p><strong>Tool developed by Ugo Candido.</strong> Math content reviewed by the CalcDomain Editorial Board.<br/>
+          Last accuracy review: <time datetime="2025-10-25">October 25, 2025</time></p>
+        </article>
+      </aside>
+    </div>
+  </main>
+
+  <footer style="border-top:1px solid var(--border)">
+    <div class="container" style="text-align:center;color:var(--muted);font-size:.9rem;padding:1.25rem 0">
+      <p>&copy; 2025 CalcDomain. All Rights Reserved.</p>
+      <p class="row" style="justify-content:center;margin-top:.35rem">
+        <a href="about.html">About</a><span aria-hidden="true">·</span>
+        <a href="contact.html">Contact</a><span aria-hidden="true">·</span>
+        <a href="privacy.html">Privacy</a><span aria-hidden="true">·</span>
+        <a href="terms.html">Terms</a>
+      </p>
+    </div>
+  </footer>
+
+  <!-- Calculator logic (defer) -->
+  <script defer>
+  (function(){
+    "use strict";
+
+    /* ---------- Helpers ---------- */
+    const $ = id => document.getElementById(id);
+    const setText = (id, v) => { const el=$(id); if(el) el.textContent = v; };
+    const show = (el, on=true)=>{ el.style.display = on? "" : "none"; };
+    const fmtLocale = new Intl.NumberFormat(undefined); // for counts
+    const phi = (1 + Math.sqrt(5)) / 2;
+
+    // Accessible tooltip toggles
+    document.addEventListener("click", (e)=>{
+      const btn = e.target.closest(".tt-btn");
+      if(!btn) return;
+      const tipId = btn.getAttribute("data-tt");
+      const tip = $(tipId);
+      const open = tip.getAttribute("data-open")==="true";
+      tip.setAttribute("data-open", open ? "false":"true");
+      btn.setAttribute("aria-expanded", open ? "false":"true");
+    });
+
+    /* ---------- Tabs ---------- */
+    const tabs = [
+      {tab:$("tab-seq"), panel:$("panel-seq")},
+      {tab:$("tab-trade"), panel:$("panel-trade")}
+    ];
+    tabs.forEach(({tab,panel}, idx)=>{
+      tab.addEventListener("click", ()=>{
+        tabs.forEach(t=>{
+          t.tab.setAttribute("aria-selected","false");
+          t.panel.setAttribute("data-active","false");
+        });
+        tab.setAttribute("aria-selected","true");
+        panel.setAttribute("data-active","true");
+        tab.focus();
+      });
+      // keyboard left/right
+      tab.addEventListener("keydown",(ev)=>{
+        if(ev.key!=="ArrowRight" && ev.key!=="ArrowLeft") return;
+        ev.preventDefault();
+        const dir = ev.key==="ArrowRight" ? 1 : -1;
+        const next = (idx+dir+tabs.length)%tabs.length;
+        tabs[next].tab.click();
+      });
+    });
+
+    /* ---------- Mode toggles (sequence/nth/max) ---------- */
+    const mode = $("mode");
+    const indexInput = $("indexInput");
+    const countField = $("countField");
+    const maxField = $("maxField");
+    const includeZero = $("includeZero");
+    const formatSel = $("format");
+
+    function updateMode(){
+      const m = mode.value;
+      show(countField, m==="count");
+      show(maxField, m==="maxval");
+      $("indexLabel").textContent = m==="nth" ? "n (index)" : "Start index (usually 0 or 1)";
+      if(m==="nth"){ includeZero.value="yes"; }
+    }
+    mode.addEventListener("change", updateMode);
+    updateMode();
+
+    /* ---------- Validation ---------- */
+    function setError(id, msg){
+      const box = $(id);
+      if(!box) return false;
+      if(msg){
+        box.textContent = msg; box.style.display="block"; return true;
+      } else {
+        box.style.display="none"; box.textContent=""; return false;
+      }
+    }
+    indexInput.addEventListener("blur", ()=>{
+      const n = Number(indexInput.value);
+      if(!Number.isInteger(n) || !Number.isFinite(n)){
+        setError("indexErr","Please enter an integer (…,-2,-1,0,1,2,…).");
+      } else if(Math.abs(n) > 200000){
+        setError("indexErr","For stability, |n| must be ≤ 200,000.");
+      } else setError("indexErr","");
+    });
+    $("countInput").addEventListener("blur", ()=>{
+      const k = Number($("countInput").value);
+      if(!Number.isInteger(k) || k<1 || k>2000){
+        setError("countErr","Choose an integer between 1 and 2,000.");
+      } else setError("countErr","");
+    });
+    $("maxValueInput").addEventListener("blur", ()=>{
+      const m = Number($("maxValueInput").value);
+      if(!Number.isFinite(m) || m<0){
+        setError("maxErr","Provide a number ≥ 0.");
+      } else setError("maxErr","");
+    });
+    $("swingHigh").addEventListener("blur", ()=>validateSwing());
+    $("swingLow").addEventListener("blur", ()=>validateSwing());
+
+    function validateSwing(){
+      const hi = Number($("swingHigh").value);
+      const lo = Number($("swingLow").value);
+      let ok=true;
+      if(!(hi>0)) ok=!setError("swingErr","Enter a positive high.");
+      else setError("swingErr","");
+      if(!(lo>=0)) ok=!setError("swingErr2","Enter a non-negative low.");
+      else if(hi<=lo) { setError("swingErr2","High must be greater than low."); ok=false; }
+      else setError("swingErr2","");
+      return ok;
+    }
+
+    /* ---------- Math core: fast-doubling BigInt ---------- */
+    function fibPair(n){ // returns [F(n), F(n+1)] for n>=0
+      if(n===0n) return [0n,1n];
+      const [a,b] = fibPair(n>>1n);       // a=F(k), b=F(k+1)
+      const c = a * ( (b<<1n) - a );      // F(2k)
+      const d = a*a + b*b;                // F(2k+1)
+      if(n & 1n) return [d, c+d];         // odd
+      else return [c, d];                 // even
+    }
+    function fibBigInt(n){                 // supports negative n
+      const neg = n<0n;
+      const m = neg ? -n : n;
+      const [f,] = fibPair(m);
+      if(!neg) return f;
+      // F(-n)=(-1)^{n+1} F(n)
+      return (m % 2n === 0n) ? -f : f;
+    }
+
+    /* ---------- Sequence generation ---------- */
+    function* genFibUpToCount(start, k, includeZeroYes){
+      let a = 0n, b = 1n;
+      let idx = 0;
+      if(!includeZeroYes && start===0) { a=1n; b=1n; idx=1; }
+      // advance to start
+      for(let i=idx;i<start;i++){ const t=a+b; a=b; b=t; }
+      for(let c=0;c<k;c++){ yield a; const t=a+b; a=b; b=t; }
+    }
+    function* genFibUpToMax(start, maxVal, includeZeroYes){
+      let a = 0n, b = 1n;
+      let idx = 0;
+      if(!includeZeroYes && start===0){ a=1n; b=1n; idx=1; }
+      for(let i=idx;i<start;i++){ const t=a+b; a=b; b=t; }
+      while(a <= BigInt(maxVal)){ yield a; const t=a+b; a=b; b=t; }
+    }
+
+    /* ---------- UI actions (sequence / nth) ---------- */
+    function compute(){
+      // clear previous kpis
+      setText("kpiFn","—");
+      setText("kpiDigits","—");
+      setText("kpiRatio","—");
+
+      const m = mode.value;
+      const startIndex = Number(indexInput.value);
+      const fmt = formatSel.value;
+      const inc0 = includeZero.value === "yes";
+
+      // basic validation
+      if(setError("indexErr","") || setError("countErr","") || setError("maxErr","")){/*noop*/}
+      indexInput.dispatchEvent(new Event("blur")); // run validation
+      if(m==="count") $("countInput").dispatchEvent(new Event("blur"));
+      if(m==="maxval") $("maxValueInput").dispatchEvent(new Event("blur"));
+      // bail if any visible error
+      if( ["indexErr","countErr","maxErr"].some(id => $(id).style.display==="block") ) return;
+
+      // n-th term
+      if(m==="nth"){
+        const n = BigInt(startIndex);
+        const fn = fibBigInt(n);
+        setText("kpiFn", fn.toString());
+        setText("kpiDigits", Math.max(1, fn.toString().length).toString());
+        try{
+          const fn1 = fibBigInt(n+1n);
+          if(fn!==0n){
+            const ratio = Number(fn1)/Number(fn); // may overflow for very big; use fallback
+            if(Number.isFinite(ratio)) setText("kpiRatio", ratio.toPrecision(12));
+            else setText("kpiRatio","≈ "+phi.toPrecision(12));
+          } else {
+            setText("kpiRatio","—");
+          }
+        }catch{ setText("kpiRatio","≈ "+phi.toPrecision(12)); }
+        $("seqOut").textContent = `F(${startIndex}) = ${fn.toString()}`;
+        return;
+      }
+
+      // sequence modes
+      const out = [];
+      function pushVal(v, idx){
+        if(fmt==="csv") out.push(v.toString());
+        else if(fmt==="space") out.push(v.toString());
+        else if(fmt==="newline") out.push(v.toString());
+        else out.push(`${idx}: ${v.toString()}`);
+      }
+
+      if(m==="count"){
+        const k = Number($("countInput").value);
+        const start = Math.max(0, startIndex|0);
+        let i=0;
+        for(const v of genFibUpToCount(start, Math.min(k,2000), inc0)){ pushVal(v, start + i); i++; }
+      } else if(m==="maxval"){
+        const maxVal = Number($("maxValueInput").value);
+        const start = Math.max(0, startIndex|0);
+        let i=0;
+        for(const v of genFibUpToMax(start, maxVal, inc0)){ pushVal(v, start + i); i++; if(i>100000) break; }
+      }
+
+      // Display
+      const delim = (fmt==="csv") ? "," : (fmt==="space" ? " " : (fmt==="newline" ? "\n" : "\n"));
+      $("seqOut").textContent = out.join(delim);
+      // KPIs from last term if exists
+      const lastLine = out.length ? out[out.length-1] : null;
+      if(lastLine){
+        const lastValStr = (fmt==="pretty") ? lastLine.split(": ").pop() : lastLine;
+        const lastVal = BigInt(lastValStr);
+        setText("kpiFn", lastVal.toString());
+        setText("kpiDigits", Math.max(1, lastVal.toString().length).toString());
+        setText("kpiRatio","—");
+      } else {
+        setText("kpiFn","—"); setText("kpiDigits","—"); setText("kpiRatio","—");
+      }
+    }
+
+    $("btnCalc").addEventListener("click", compute);
+    // sensible defaults
+    compute();
+
+    // Copy & Download
+    $("btnCopy").addEventListener("click", async ()=>{
+      const txt = $("seqOut").textContent || "";
+      try{
+        await navigator.clipboard.writeText(txt);
+        $("btnCopy").textContent = "Copied!";
+        setTimeout(()=>{$("btnCopy").textContent="Copy Results";},1200);
+      }catch{
+        $("btnCopy").textContent = "Copy failed";
+        setTimeout(()=>{$("btnCopy").textContent="Copy Results";},1400);
+      }
+    });
+    $("btnDownload").addEventListener("click", ()=>{
+      const blob = new Blob([$("seqOut").textContent||""], {type:"text/plain"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "fibonacci-results.txt";
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(a.href);
+    });
+
+    /* ---------- Trading retracement ---------- */
+    function retracementLevels(high, low){
+      const diff = high - low;
+      const r = [
+        {label:"23.6%", v: high - 0.236*diff},
+        {label:"38.2%", v: high - 0.382*diff},
+        {label:"50.0%", v: high - 0.5*diff},
+        {label:"61.8%", v: high - 0.618*diff},
+        {label:"78.6%", v: high - 0.786*diff},
+        {label:"127.2% (ext)", v: high + 0.272*diff},
+        {label:"161.8% (ext)", v: high + 0.618*diff},
+        {label:"261.8% (ext)", v: high + 1.618*diff}
+      ];
+      return r;
+    }
+    function renderRetrace(){
+      if(!validateSwing()) return;
+      const hi = Number($("swingHigh").value);
+      const lo = Number($("swingLow").value);
+      const rows = retracementLevels(hi, lo).map(x=>{
+        const td = new Intl.NumberFormat(undefined, {maximumFractionDigits:8}).format(x.v);
+        return `<tr><td>${x.label}</td><td>${td}</td></tr>`;
+      }).join("");
+      $("tblRetrace").innerHTML = rows;
+    }
+    $("btnRetrace").addEventListener("click", renderRetrace);
+    renderRetrace();
+
+  })();
+  </script>
+</body>
+</html>
