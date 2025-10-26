@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Latency Calculator — RAM & Network Latency (ns/ms)</title>
+  <meta name="description" content="Calculate RAM true latency from data rate and CAS, estimate network latency by distance and medium, and build end-to-end latency budgets. Mobile-first, accessible, and accurate."/>
+  <link rel="canonical" href="https://calcdomain.com/latency-calculator.html"/>
+
+  <!-- Favicons & manifest -->
+  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96"/>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+  <link rel="shortcut icon" href="/favicon.ico"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
+  <link rel="manifest" href="/site.webmanifest"/>
+
+  <!-- Fonts & Tailwind -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com" defer></script>
+
+  <!-- Chart.js for breakdown charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+
+  <!-- MathJax for LaTeX -->
+  <script>
+    window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] }, svg: { fontCache: 'global' } };
+  </script>
+  <script id="mathjax" defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+  <style>
+    :root { --focus: #2563eb; }
+    body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji"; }
+    /* Accessible focus ring */
+    :where(a, button, input, select, details, summary, [role="tab"]) :focus, 
+    :where(a, button, input, select, details, summary, [role="tab"]):focus, 
+    :where(.focusable):focus {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    /* Content prose */
+    .prose { max-width: 70ch; }
+    .prose h2 { font-size: 1.5rem; font-weight: 700; margin-top: 1.75rem; margin-bottom: .75rem; }
+    .prose h3 { font-size: 1.125rem; font-weight: 600; margin-top: 1.25rem; margin-bottom: .5rem; }
+    .prose p, .prose li { line-height: 1.7; }
+    .formula-box {
+      background: #f3f4f6; border: 1px solid #d1d5db; border-radius: .75rem; padding: 1rem; overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    details > summary { cursor: pointer; font-weight: 600; padding: .5rem 0; }
+    details[open] > summary { margin-bottom: .5rem; }
+    .result-card { background: #fff; border: 1px solid #e5e7eb; border-radius: .75rem; padding: 1rem; text-align: center; }
+    .result-card h4 { font-size: .9rem; color: #6b7280; margin-bottom: .125rem; }
+    .result-card p { font-size: 1.5rem; font-weight: 800; color: #111827; }
+    /* Prevent CLS in results area */
+    #results-container { min-height: 360px; }
+    /* Touch target min size */
+    .touch-target { min-width: 48px; min-height: 48px; }
+    /* Tabs */
+    .tab-btn[aria-selected="true"] { background: #1d4ed8; color: #fff; }
+    .tab-btn[aria-selected="false"] { background: #e5e7eb; color: #111827; }
+    @media print {
+      body * { visibility: hidden; }
+      #print-section, #print-section * { visibility: visible; }
+      #print-section { position: absolute; left: 0; top: 0; width: 100%; }
+      #charts { display:none !important; }
+    }
+  </style>
+
+  <!-- JSON-LD: WebPage -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Latency Calculator — RAM & Network",
+    "description": "Compute DRAM true latency (ns), estimate network latency (ms) by distance/medium, and build end-to-end latency budgets.",
+    "url": "https://calcdomain.com/latency-calculator.html",
+    "inLanguage": "en",
+    "author": { "@type": "Person", "name": "Ugo Candido" },
+    "publisher": { "@type": "Organization", "name": "CalcDomain" }
+  }
+  </script>
+
+  <!-- JSON-LD: Breadcrumbs (Lifestyle > Everyday > Miscellaneous > Latency Calculator) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://calcdomain.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Lifestyle", "item": "https://calcdomain.com/lifestyle.html" },
+      { "@type": "ListItem", "position": 3, "name": "Everyday", "item": "https://calcdomain.com/subcategories/everyday.html" },
+      { "@type": "ListItem", "position": 4, "name": "Miscellaneous", "item": "https://calcdomain.com/subcategories/everyday-misc.html" },
+      { "@type": "ListItem", "position": 5, "name": "Latency Calculator", "item": "https://calcdomain.com/latency-calculator.html" }
+    ]
+  }
+  </script>
+
+  <!-- JSON-LD: HowTo -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"HowTo",
+    "name":"How to Estimate RAM and Network Latency",
+    "description":"Step-by-step guide to compute DRAM true latency (ns) and network path latency (ms).",
+    "step":[
+      {"@type":"HowToStep","name":"Choose calculator","text":"Pick DRAM, Network, or End-to-End tabs."},
+      {"@type":"HowToStep","name":"Enter inputs","text":"Provide data rate & CAS for DRAM; distance, medium, and packet size for Network; or component latencies for End-to-End."},
+      {"@type":"HowToStep","name":"Review results","text":"See latency cards and breakdown chart."},
+      {"@type":"HowToStep","name":"Export","text":"Print or copy results for documentation."}
+    ]
+  }
+  </script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+  <!-- Header (non-sticky per requirement) -->
+  <header class="bg-white border-b">
+    <nav class="container mx-auto px-4 lg:px-6 py-4 flex items-center justify-between">
+      <a href="index.html" class="text-2xl font-extrabold text-blue-600">CalcDomain</a>
+      <div class="hidden md:flex items-center gap-6 text-sm">
+        <a href="search.html" class="hover:text-blue-600">Advanced Search</a>
+        <a href="index.html#categories" class="hover:text-blue-600">Categories</a>
+      </div>
+      <button class="md:hidden p-2 touch-target" aria-label="Open menu">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+      </button>
+    </nav>
+  </header>
+
+  <main class="container mx-auto px-4 lg:px-6 py-8">
+    <div id="print-section" class="bg-white p-6 rounded-lg shadow-md">
+
+      <!-- Breadcrumb -->
+      <nav class="text-sm text-gray-600 mb-4" aria-label="Breadcrumb">
+        <a href="index.html" class="hover:text-blue-600">Home</a> &raquo;
+        <a href="lifestyle.html" class="hover:text-blue-600">Lifestyle</a> &raquo;
+        <a href="subcategories/everyday.html" class="hover:text-blue-600">Everyday</a> &raquo;
+        <a href="subcategories/everyday-misc.html" class="hover:text-blue-600">Miscellaneous</a> &raquo;
+        <span class="text-gray-900">Latency Calculator</span>
+      </nav>
+
+      <!-- 1) H1 -->
+      <h1 class="text-3xl font-extrabold mb-2">latency calculator</h1>
+
+      <!-- 2) Intro -->
+      <p class="text-gray-700 mb-6">
+        Quickly compute <strong>DRAM true latency</strong> (nanoseconds), estimate <strong>network path latency</strong> (milliseconds),
+        and assemble an <strong>end-to-end latency budget</strong> across system components. Designed for engineers, SREs, and power users validating “what-ifs.”
+      </p>
+
+      <!-- 3) Calculator -->
+      <section aria-labelledby="calculatorTitle" class="mb-8">
+        <h2 id="calculatorTitle" class="sr-only">Interactive Latency Calculator</h2>
+
+        <!-- Tabs -->
+        <div role="tablist" aria-label="Calculator modes" class="flex gap-2 mb-4">
+          <button id="tab-ram" role="tab" aria-controls="panel-ram" aria-selected="true" class="tab-btn px-4 py-2 rounded-lg touch-target">DRAM</button>
+          <button id="tab-net" role="tab" aria-controls="panel-net" aria-selected="false" class="tab-btn px-4 py-2 rounded-lg touch-target">Network</button>
+          <button id="tab-e2e" role="tab" aria-controls="panel-e2e" aria-selected="false" class="tab-btn px-4 py-2 rounded-lg touch-target">End-to-End</button>
+        </div>
+
+        <!-- Panels -->
+        <div id="panel-ram" role="tabpanel" aria-labelledby="tab-ram" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label for="ramRate" class="block text-sm font-medium text-gray-800">Data Rate (MT/s) <span aria-hidden="true" class="text-red-600">*</span></label>
+            <div class="flex items-start gap-2">
+              <input type="number" id="ramRate" inputmode="decimal" min="1" step="1" value="3200" aria-required="true"
+                     aria-describedby="ramRate-help ramRate-error"
+                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500"/>
+              <button type="button" class="touch-target px-3 py-2 rounded-md bg-gray-200"
+                      aria-expanded="false" aria-controls="ramRate-help" aria-label="What is data rate?">?</button>
+            </div>
+            <p id="ramRate-help" class="text-sm text-gray-600 mt-1 hidden">
+              Effective DDR transfer rate in mega-transfers per second (e.g., 3200, 5200, 6000 MT/s).
+            </p>
+            <p id="ramRate-error" class="text-sm text-red-700 mt-1" aria-live="polite"></p>
+          </div>
+
+          <div>
+            <label for="ramCL" class="block text-sm font-medium text-gray-800">CAS Latency (CL) <span aria-hidden="true" class="text-red-600">*</span></label>
+            <div class="flex items-start gap-2">
+              <input type="number" id="ramCL" inputmode="decimal" min="1" step="1" value="16" aria-required="true"
+                     aria-describedby="ramCL-help ramCL-error"
+                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500"/>
+              <button type="button" class="touch-target px-3 py-2 rounded-md bg-gray-200"
+                      aria-expanded="false" aria-controls="ramCL-help" aria-label="What is CAS?">?</button>
+            </div>
+            <p id="ramCL-help" class="text-sm text-gray-600 mt-1 hidden">
+              Number of memory clock cycles between READ command and first data word (e.g., CL16).
+            </p>
+            <p id="ramCL-error" class="text-sm text-red-700 mt-1" aria-live="polite"></p>
+          </div>
+
+          <div>
+            <label for="ramExtras" class="block text-sm font-medium text-gray-800">Include Additional Timings</label>
+            <select id="ramExtras" aria-describedby="ramExtras-help"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500">
+              <option value="none" selected>CL only (first-word latency)</option>
+              <option value="cl_trcd_trp">CL + tRCD + tRP (row miss rough estimate)</option>
+            </select>
+            <p id="ramExtras-help" class="text-sm text-gray-600 mt-1">
+              A rough upper-bound adds activate (tRCD) and precharge (tRP) to CAS for a row miss scenario.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label for="ramTRCD" class="block text-sm font-medium text-gray-800">tRCD (cycles)</label>
+              <input type="number" id="ramTRCD" inputmode="decimal" min="0" step="1" value="16"
+                     aria-describedby="ramTRCD-help"
+                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500"/>
+              <p id="ramTRCD-help" class="text-sm text-gray-600 mt-1">Row to column delay cycles.</p>
+            </div>
+            <div>
+              <label for="ramTRP" class="block text-sm font-medium text-gray-800">tRP (cycles)</label>
+              <input type="number" id="ramTRP" inputmode="decimal" min="0" step="1" value="16"
+                     aria-describedby="ramTRP-help"
+                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500"/>
+              <p id="ramTRP-help" class="text-sm text-gray-600 mt-1">Precharge time cycles.</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="panel-net" role="tabpanel" aria-labelledby="tab-net" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label for="distanceKm" class="block text-sm font-medium text-gray-800">Path Distance (km) <span class="text-red-600" aria-hidden="true">*</span></label>
+            <div class="flex items-start gap-2">
+              <input type="number" id="distanceKm" inputmode="decimal" min="0" step="0.1" value="1000" aria-required="true"
+                     aria-describedby="distance-help distance-error"
+                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500"/>
+              <button type="button" class="touch-target px-3 py-2 rounded-md bg-gray-200"
+                      aria-expanded="false" aria-controls="distance-help" aria-label="What is path distance?">?</button>
+            </div>
+            <p id="distance-help" class="text-sm text-gray-600 mt-1 hidden">
+              Approximate fiber route or great-circle distance. Backhauls and detours increase real path length.
+            </p>
+            <p id="distance-error" class="text-sm text-red-700 mt-1" aria-live="polite"></p>
+          </div>
+
+          <div>
+            <label for="medium" class="block text-sm font-medium text-gray-800">Transmission Medium</label>
+            <select id="medium" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500"
+                    aria-describedby="medium-help">
+              <option value="fiber" selected>Optical fiber (~200,000 km/s)</option>
+              <option value="copper">Copper (~200,000 km/s)</option>
+              <option value="air">Air (~290,000 km/s)</option>
+              <option value="vacuum">Vacuum (299,792 km/s)</option>
+            </select>
+            <p id="medium-help" class="text-sm text-gray-600 mt-1">
+              Effective propagation speed depends on refractive index and path engineering.
+            </p>
+          </div>
+
+          <div>
+            <label for="packetBytes" class="block text-sm font-medium text-gray-800">Packet Size (bytes)</label>
+            <input type="number" id="packetBytes" inputmode="decimal" min="1" step="1" value="1500"
+                   aria-describedby="packet-help"
+                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500"/>
+            <p id="packet-help" class="text-sm text-gray-600 mt-1">
+              Used to compute <em>serialization delay</em> at the given link rate.
+            </p>
+          </div>
+
+          <div>
+            <label for="linkGbps" class="block text-sm font-medium text-gray-800">Link Rate (Gb/s)</label>
+            <input type="number" id="linkGbps" inputmode="decimal" min="0.001" step="0.001" value="10"
+                   aria-describedby="link-help"
+                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500"/>
+            <p id="link-help" class="text-sm text-gray-600 mt-1">
+              Line rate to estimate serialization (packetization) delay.
+            </p>
+          </div>
+
+          <div>
+            <label for="queueingMs" class="block text-sm font-medium text-gray-800">Queueing + Processing (ms)</label>
+            <input type="number" id="queueingMs" inputmode="decimal" min="0" step="0.01" value="0.40"
+                   aria-describedby="queue-help"
+                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500"/>
+            <p id="queue-help" class="text-sm text-gray-600 mt-1">
+              Router/switch pipeline, buffers, and OS stack overhead (estimate).
+            </p>
+          </div>
+
+          <div>
+            <label for="direction" class="block text-sm font-medium text-gray-800">Direction</label>
+            <select id="direction" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500">
+              <option value="oneway" selected>One-way</option>
+              <option value="rtt">Round-trip (RTT)</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="panel-e2e" role="tabpanel" aria-labelledby="tab-e2e" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label for="hostNs" class="block text-sm font-medium text-gray-800">Host Stack (ns)</label>
+            <input type="number" id="hostNs" inputmode="decimal" min="0" step="1" value="900"
+                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500"/>
+          </div>
+          <div>
+            <label for="dramNs" class="block text-sm font-medium text-gray-800">Memory Access (ns)</label>
+            <input type="number" id="dramNs" inputmode="decimal" min="0" step="0.1" value="10.0"
+                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500"/>
+          </div>
+          <div>
+            <label for="netMsE2E" class="block text-sm font-medium text-gray-800">Network Path (ms)</label>
+            <input type="number" id="netMsE2E" inputmode="decimal" min="0" step="0.001" value="5.000"
+                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500"/>
+          </div>
+          <div>
+            <label for="appNs" class="block text-sm font-medium text-gray-800">Application Processing (ns)</label>
+            <input type="number" id="appNs" inputmode="decimal" min="0" step="1" value="2000"
+                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500"/>
+          </div>
+          <div class="md:col-span-2">
+            <label for="e2eDirection" class="block text-sm font-medium text-gray-800">Direction</label>
+            <select id="e2eDirection" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-500">
+              <option value="oneway" selected>One-way</option>
+              <option value="rtt">Round-trip (RTT)</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4) Results -->
+      <section id="results-container" class="bg-blue-50 border border-blue-100 rounded-lg p-6 mb-8">
+        <div class="flex flex-col md:flex-row gap-6">
+          <div class="w-full md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="result-card">
+              <h4>Primary Result</h4>
+              <p id="primaryResult">—</p>
+              <p class="text-xs text-gray-500" id="primaryLabel">Latency</p>
+            </div>
+            <div class="result-card">
+              <h4>Breakdown #1</h4>
+              <p id="breakA">—</p>
+              <p class="text-xs text-gray-500" id="breakALabel">Component A</p>
+            </div>
+            <div class="result-card">
+              <h4>Breakdown #2</h4>
+              <p id="breakB">—</p>
+              <p class="text-xs text-gray-500" id="breakBLabel">Component B</p>
+            </div>
+            <div class="result-card">
+              <h4>Total (Normalized)</h4>
+              <p id="totalNormalized">—</p>
+              <p class="text-xs text-gray-500">Comparable unit</p>
+            </div>
+          </div>
+          <div class="w-full md:w-1/3" id="charts">
+            <canvas id="latencyChart" aria-label="Latency breakdown chart"></canvas>
+          </div>
+        </div>
+
+        <details class="mt-6 bg-white rounded-lg" id="tableDetails">
+          <summary class="font-semibold text-gray-800">View Calculation Table</summary>
+          <div class="mt-4 overflow-x-auto border border-gray-200 rounded-lg">
+            <table class="min-w-full text-sm text-right">
+              <thead class="bg-gray-100 text-gray-700 uppercase">
+                <tr>
+                  <th class="px-4 py-2 text-left">Component</th>
+                  <th class="px-4 py-2">Value</th>
+                  <th class="px-4 py-2">Unit</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+        </details>
+      </section>
+
+      <!-- 5) Authoritative content -->
+      <section class="prose">
+        <h2>Data Source & Methodology</h2>
+        <ul>
+          <li><strong>NIST CODATA:</strong> Speed of light in vacuum, <em>c = 299,792,458 m/s</em>. See NIST constants (CODATA). <a href="https://physics.nist.gov/cgi-bin/cuu/Value?c" rel="nofollow">Direct source</a>. <br/>“Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.”</li>
+          <li><strong>Optical Fiber Refractive Index:</strong> Typical ITU-T G.652 single-mode fiber refractive index ~1.468 → ~204,000 km/s effective speed. See ITU-T G.652. <a href="https://www.itu.int/rec/T-REC-G.652" rel="nofollow">Direct source</a>. <br/>“Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.”</li>
+          <li><strong>JEDEC DDR timing:</strong> Mapping data rate (MT/s), memory clock, and cycle time (tCK), plus CAS (CL). See JEDEC JESD79 series (DDR). <a href="https://www.jedec.org/standards-documents/docs/jesd79-4" rel="nofollow">Direct source</a>. <br/>“Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.”</li>
+        </ul>
+
+        <h2>The Formula Explained</h2>
+        <div class="formula-box">
+          <p><strong>DRAM true (first-word) latency</strong> (nanoseconds):</p>
+          <p>$$ t_{CK} \;(\mathrm{ns}) = \frac{2000}{\text{DataRate (MT/s)}} $$
+             $$ t_{CL} \;(\mathrm{ns}) \approx \text{CL} \times t_{CK} = \text{CL} \cdot \frac{2000}{\text{MT/s}} $$</p>
+          <p>For a row miss rough upper bound:</p>
+          <p>$$ t_{\text{row-miss}} \;(\mathrm{ns}) \approx (\text{CL}+\text{tRCD}+\text{tRP}) \cdot \frac{2000}{\text{MT/s}} $$</p>
+          <hr/>
+          <p><strong>Network propagation delay</strong> (milliseconds):</p>
+          <p>$$ v = \frac{c}{n} \quad,\quad t_{\text{prop}}(\mathrm{ms}) = \frac{\text{distance (km)}}{v(\mathrm{km/s})} \times 1000 $$</p>
+          <p>Typical engineering constants: vacuum \(v\!\approx\!299{,}792\), air \(\approx\!290{,}000\), fiber/copper \(\approx\!200{,}000\) km/s.</p>
+          <p><strong>Serialization delay</strong> (ms):</p>
+          <p>$$ t_{\text{ser}}(\mathrm{ms}) = \frac{\text{bytes}\times 8}{\text{Gb/s}\times 10^9} \times 1000 $$</p>
+          <p><strong>Total (one-way)</strong>:</p>
+          <p>$$ t_{\text{net,one-way}} = t_{\text{prop}} + t_{\text{ser}} + t_{\text{queue}} \quad;\quad t_{\text{RTT}} = 2 \cdot t_{\text{net,one-way}} $$</p>
+          <hr/>
+          <p><strong>End-to-End budget</strong> normalizes units to ms:</p>
+          <p>$$ t_{\mathrm{e2e}}(\mathrm{ms}) = \frac{t_{\mathrm{host}}(\mathrm{ns})}{10^6} + \frac{t_{\mathrm{dram}}(\mathrm{ns})}{10^6} + t_{\mathrm{net}}(\mathrm{ms}) + \frac{t_{\mathrm{app}}(\mathrm{ns})}{10^6} $$</p>
+          <p>RTT doubles the one-way components.</p>
+        </div>
+
+        <h2>Glossary of Variables</h2>
+        <ul>
+          <li><strong>MT/s</strong> — Mega-transfers per second (DDR effective rate).</li>
+          <li><strong>CL, tRCD, tRP</strong> — DRAM timing parameters in cycles.</li>
+          <li><strong>Distance (km)</strong> — Approximate path length through the medium.</li>
+          <li><strong>Medium</strong> — Transmission environment (vacuum, air, fiber, copper) → sets propagation speed.</li>
+          <li><strong>Packet Size</strong> — Number of bytes serialized onto the link.</li>
+          <li><strong>Link Rate</strong> — Physical layer bit rate (Gb/s).</li>
+          <li><strong>Queueing + Processing</strong> — Router/switch/OS delays, in ms.</li>
+          <li><strong>Direction</strong> — One-way vs round-trip (RTT).</li>
+        </ul>
+
+        <h2>How It Works: A Step-by-Step Example</h2>
+        <h3>Example A — DRAM</h3>
+        <p>MT/s = 6000, CL = 30. Cycle time \(t_{CK} = 2000/6000 = 0.333\) ns → \(t_{CL} \approx 30 \times 0.333 = 10\) ns.</p>
+        <h3>Example B — Network</h3>
+        <p>Distance = 1000 km on fiber: \(t_{prop} \approx 1000/200{,}000 \times 1000 = 5\) ms. 1500 bytes @ 10 Gb/s → \(t_{ser} \approx 0.0012\) ms. Add 0.4 ms queueing → total one-way \(\approx 5.4012\) ms; RTT \(\approx 10.8024\) ms.</p>
+        <h3>Example C — End-to-End</h3>
+        <p>Host 900 ns, DRAM 10 ns, Net 5.401 ms, App 2000 ns → \(t_{\mathrm{e2e}} \approx 0.0009 + 0.00001 + 5.401 + 0.002 = 5.40391\) ms (one-way).</p>
+
+        <h2>FAQ</h2>
+        <details><summary>Is DRAM “true latency” the same as access time?</summary>
+          <p>True (first-word) latency converts CL cycles to nanoseconds at the data rate. Actual access can be higher with row misses (tRCD/tRP) and controller effects.</p>
+        </details>
+        <details><summary>Why does fiber add about 5 µs per km?</summary>
+          <p>Propagation in fiber is ~200,000 km/s, so \(1000/200{,}000 \times 1000 = 5\) ms for 1000 km → 0.005 ms per km (5 µs/km).</p>
+        </details>
+        <details><summary>Do switches and routers add more than queueing delay?</summary>
+          <p>Yes—store-and-forward, cut-through, pipeline depth, and buffers all contribute. The “Queueing + Processing” field captures these in aggregate.</p>
+        </details>
+        <details><summary>What about FEC and PHY overheads?</summary>
+          <p>They can add microseconds depending on technology. Model them as part of serialization or queueing for a conservative estimate.</p>
+        </details>
+        <details><summary>Is RTT always exactly double one-way?</summary>
+          <p>No. Asymmetry in paths, shaping, or server processing can make RTT differ. Doubling is a first-order approximation.</p>
+        </details>
+        <details><summary>How precise is the DRAM row-miss estimate?</summary>
+          <p>It’s an upper-bound heuristic; real behavior depends on bank state, scheduling, prefetch, and controller policies.</p>
+        </details>
+      </section>
+
+      <!-- 6) Author & Review -->
+      <section class="mt-8">
+        <div class="p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+          <p><strong>Tool developed by Ugo Candido.</strong> Content reviewed by the CalcDomain Editorial Board.</p>
+          <p>Last accuracy review: <time datetime="2025-10-26">October 26, 2025</time></p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="bg-white border-t">
+    <div class="container mx-auto px-6 py-8 text-center text-gray-600 text-sm">
+      <p>&copy; 2025 CalcDomain. All Rights Reserved.</p>
+      <div class="mt-4 space-x-4">
+        <a href="about.html" class="hover:text-blue-600">About</a>
+        <a href="contact.html" class="hover:text-blue-600">Contact</a>
+        <a href="privacy.html" class="hover:text-blue-600">Privacy</a>
+        <a href="terms.html" class="hover:text-blue-600">Terms</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Calculator Logic (defer) -->
+  <script defer>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Elements
+      const tabs = {
+        ram: { tab: document.getElementById('tab-ram'), panel: document.getElementById('panel-ram') },
+        net: { tab: document.getElementById('tab-net'), panel: document.getElementById('panel-net') },
+        e2e: { tab: document.getElementById('tab-e2e'), panel: document.getElementById('panel-e2e') }
+      };
+
+      const outputs = {
+        primaryResult: document.getElementById('primaryResult'),
+        primaryLabel: document.getElementById('primaryLabel'),
+        breakA: document.getElementById('breakA'),
+        breakALabel: document.getElementById('breakALabel'),
+        breakB: document.getElementById('breakB'),
+        breakBLabel: document.getElementById('breakBLabel'),
+        totalNormalized: document.getElementById('totalNormalized'),
+        tableBody: document.getElementById('tableBody')
+      };
+
+      // RAM inputs & helpers
+      const ram = {
+        rate: document.getElementById('ramRate'),
+        cl: document.getElementById('ramCL'),
+        extras: document.getElementById('ramExtras'),
+        trcd: document.getElementById('ramTRCD'),
+        trp: document.getElementById('ramTRP')
+      };
+
+      // Network inputs
+      const net = {
+        distanceKm: document.getElementById('distanceKm'),
+        medium: document.getElementById('medium'),
+        packetBytes: document.getElementById('packetBytes'),
+        linkGbps: document.getElementById('linkGbps'),
+        queueingMs: document.getElementById('queueingMs'),
+        direction: document.getElementById('direction')
+      };
+
+      // End to End
+      const e2e = {
+        hostNs: document.getElementById('hostNs'),
+        dramNs: document.getElementById('dramNs'),
+        netMs: document.getElementById('netMsE2E'),
+        appNs: document.getElementById('appNs'),
+        direction: document.getElementById('e2eDirection')
+      };
+
+      // Tooltips toggles (buttons with aria-controls)
+      document.querySelectorAll('button[aria-controls]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('aria-controls');
+          const el = document.getElementById(id);
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          el.classList.toggle('hidden', expanded);
+        });
+      });
+
+      // Tabs
+      function switchTab(target) {
+        for (const key of Object.keys(tabs)) {
+          const active = key === target;
+          tabs[key].tab.setAttribute('aria-selected', String(active));
+          tabs[key].panel.classList.toggle('hidden', !active);
+        }
+        recalc(); // update results when switching
+      }
+      tabs.ram.tab.addEventListener('click', () => switchTab('ram'));
+      tabs.net.tab.addEventListener('click', () => switchTab('net'));
+      tabs.e2e.tab.addEventListener('click', () => switchTab('e2e'));
+
+      // Validation helpers
+      function setError(inputId, message) {
+        const input = document.getElementById(inputId);
+        const err = document.getElementById(inputId + '-error');
+        if (!err) return;
+        err.textContent = message || '';
+        if (message) {
+          input.setAttribute('aria-invalid', 'true');
+          input.setAttribute('aria-describedby', (input.getAttribute('aria-describedby') || '') + ' ' + err.id);
+        } else {
+          input.removeAttribute('aria-invalid');
+        }
+      }
+      function validateNumber(id, { min = -Infinity, required = false } = {}) {
+        const el = document.getElementById(id);
+        const val = parseFloat(el.value);
+        if (required && (isNaN(val) || el.value.trim() === '')) {
+          setError(id, 'Please enter a valid number.');
+          return null;
+        }
+        if (!isNaN(val) && val < min) {
+          setError(id, `Value must be ≥ ${min}.`);
+          return null;
+        }
+        setError(id, '');
+        return val;
+      }
+
+      // On-blur inline validation
+      ['ramRate','ramCL','distanceKm','packetBytes','linkGbps','queueingMs']
+        .forEach(id => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.addEventListener('blur', () => {
+            const rules = (id === 'ramRate' || id === 'ramCL' || id === 'distanceKm')
+              ? { min: 0, required: true } : { min: 0, required: false };
+            validateNumber(id, rules);
+          });
+        });
+
+      // Charts
+      let chart = null;
+      function renderChart(labels, values) {
+        const ctx = document.getElementById('latencyChart');
+        if (!ctx) return;
+        const data = {
+          labels,
+          datasets: [{ data: values }]
+        };
+        if (chart) {
+          chart.data = data;
+          chart.update();
+          return;
+        }
+        chart = new Chart(ctx, {
+          type: 'doughnut',
+          data,
+          options: {
+            plugins: { legend: { position: 'bottom' } },
+            responsive: true,
+            maintainAspectRatio: false
+          }
+        });
+      }
+
+      // Formatters
+      const fmt = {
+        ns: v => isFinite(v) ? `${(v).toFixed(2)} ns` : '—',
+        ms: v => isFinite(v) ? `${(v).toFixed(3)} ms` : '—'
+      };
+
+      // Calculations
+      function calcRAM() {
+        const rate = validateNumber('ramRate', { min: 1, required: true });
+        const cl = validateNumber('ramCL', { min: 1, required: true });
+        if (rate === null || cl === null) return null;
+
+        const tCK_ns = 2000 / rate;                 // ns per cycle
+        let cycles = cl;
+        if (ram.extras.value === 'cl_trcd_trp') {
+          const trcd = parseFloat(ram.trcd.value) || 0;
+          const trp  = parseFloat(ram.trp.value)  || 0;
+          cycles += trcd + trp;
+        }
+        const latency_ns = cycles * tCK_ns;
+        const result = {
+          primary: latency_ns,
+          breakdown: [
+            { name: 'Cycle Time tCK', value: tCK_ns, unit: 'ns' },
+            { name: 'Cycles (effective)', value: cycles, unit: 'cycles' }
+          ],
+          normalizedMs: latency_ns / 1e6
+        };
+        return result;
+      }
+
+      function mediumSpeedKmPerS(medium) {
+        switch (medium) {
+          case 'vacuum': return 299792.458;
+          case 'air':    return 290000;
+          case 'fiber':  return 200000;
+          case 'copper': return 200000;
+          default:       return 200000;
+        }
+      }
+
+      function calcNetwork() {
+        const distanceKm = validateNumber('distanceKm', { min: 0, required: true });
+        if (distanceKm === null) return null;
+        const packetBytes = Math.max(1, parseFloat(net.packetBytes.value) || 0);
+        const linkGbps = Math.max(0.000001, parseFloat(net.linkGbps.value) || 0.000001);
+        const queueMs = Math.max(0, parseFloat(net.queueingMs.value) || 0);
+        const speed = mediumSpeedKmPerS(net.medium.value);
+
+        const tPropMs = (distanceKm / speed) * 1000;
+        const tSerMs  = ((packetBytes * 8) / (linkGbps * 1e9)) * 1000;
+        let oneWayMs  = tPropMs + tSerMs + queueMs;
+        let totalMs   = (net.direction.value === 'rtt') ? oneWayMs * 2 : oneWayMs;
+
+        const result = {
+          primary: totalMs,
+          breakdown: [
+            { name: 'Propagation', value: tPropMs, unit: 'ms' },
+            { name: 'Serialization', value: tSerMs, unit: 'ms' },
+            { name: 'Queue/Processing', value: queueMs, unit: 'ms' }
+          ],
+          normalizedMs: totalMs
+        };
+        return result;
+      }
+
+      function calcE2E() {
+        const hostNs = Math.max(0, parseFloat(e2e.hostNs.value) || 0);
+        const dramNs = Math.max(0, parseFloat(e2e.dramNs.value) || 0);
+        const netMs  = Math.max(0, parseFloat(e2e.netMs.value) || 0);
+        const appNs  = Math.max(0, parseFloat(e2e.appNs.value) || 0);
+
+        let oneWayMs = (hostNs + dramNs + appNs) / 1e6 + netMs;
+        let totalMs = (e2e.direction.value === 'rtt') ? oneWayMs * 2 : oneWayMs;
+
+        const result = {
+          primary: totalMs,
+          breakdown: [
+            { name: 'Host Stack', value: hostNs / 1e6, unit: 'ms' },
+            { name: 'Memory', value: dramNs / 1e6, unit: 'ms' },
+            { name: 'Network', value: netMs, unit: 'ms' },
+            { name: 'Application', value: appNs / 1e6, unit: 'ms' }
+          ],
+          normalizedMs: totalMs
+        };
+        return result;
+      }
+
+      function updateUI(res, mode) {
+        if (!res) return;
+
+        // Primary label by mode
+        let primaryLabel = 'Latency';
+        if (mode === 'ram') primaryLabel = 'True Latency (ns)';
+        if (mode === 'net') primaryLabel = (net.direction.value === 'rtt') ? 'Network RTT (ms)' : 'Network Latency (ms)';
+        if (mode === 'e2e') primaryLabel = (e2e.direction.value === 'rtt') ? 'End-to-End RTT (ms)' : 'End-to-End Latency (ms)';
+
+        outputs.primaryLabel.textContent = primaryLabel;
+        outputs.primaryResult.textContent =
+          (mode === 'ram') ? fmt.ns(res.primary) : fmt.ms(res.primary);
+
+        // Two breakdown cards
+        const a = res.breakdown[0] || { name: '—', value: NaN, unit: '' };
+        const b = res.breakdown[1] || { name: '—', value: NaN, unit: '' };
+        outputs.breakALabel.textContent = a.name;
+        outputs.breakA.textContent = (a.unit === 'ns' ? fmt.ns(a.value) : fmt.ms(a.value));
+        outputs.breakBLabel.textContent = b.name;
+        outputs.breakB.textContent = (b.unit === 'ns' ? fmt.ns(b.value) : fmt.ms(b.value));
+
+        outputs.totalNormalized.textContent = fmt.ms(res.normalizedMs);
+
+        // Table
+        outputs.tableBody.innerHTML = '';
+        res.breakdown.forEach(row => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="px-4 py-2 text-left">${row.name}</td>
+            <td class="px-4 py-2">${row.value.toFixed(6)}</td>
+            <td class="px-4 py-2">${row.unit}</td>
+          `;
+          outputs.tableBody.appendChild(tr);
+        });
+
+        // Chart
+        renderChart(
+          res.breakdown.map(d => d.name),
+          res.breakdown.map(d => Math.max(0, d.value))
+        );
+      }
+
+      function activeMode() {
+        if (tabs.ram.panel.classList.contains('hidden') === false) return 'ram';
+        if (tabs.net.panel.classList.contains('hidden') === false) return 'net';
+        return 'e2e';
+      }
+
+      function recalc() {
+        const mode = activeMode();
+        let res = null;
+        if (mode === 'ram') res = calcRAM();
+        if (mode === 'net') res = calcNetwork();
+        if (mode === 'e2e') res = calcE2E();
+        updateUI(res, mode);
+      }
+
+      // Attach input listeners
+      [
+        ram.rate, ram.cl, ram.extras, ram.trcd, ram.trp,
+        net.distanceKm, net.medium, net.packetBytes, net.linkGbps, net.queueingMs, net.direction,
+        e2e.hostNs, e2e.dramNs, e2e.netMs, e2e.appNs, e2e.direction
+      ].forEach(el => el && el.addEventListener('input', recalc));
+
+      // Initial compute
+      recalc();
+    });
+  </script>
+</body>
+</html>

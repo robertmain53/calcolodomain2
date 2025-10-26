@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Packet Loss Calculator — Measure Loss, Throughput & Confidence Intervals</title>
+  <meta name="description" content="Compute packet loss rate, lost packets, packets per second, and estimated throughput. Includes 95% confidence interval (Wilson), TCP goodput estimate, and clear methodology." />
+  <link rel="canonical" href="https://calcdomain.com/packet-loss-calculator.html" />
+
+  <!-- Favicons / PWA (optional placeholders; safe to keep) -->
+  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- MathJax for LaTeX (deferred, performant CHTML output) -->
+  <script defer id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"
+          integrity="sha256-0wHnQmh/9ij3KxQbV5WOuXcVYtb8i3wKwhY1kQf9n9E=" crossorigin="anonymous"></script>
+
+  <style>
+    /* Base */
+    :root { --focus: #2563eb; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji"; }
+    .container { max-width: 1100px; }
+    .prose { max-width: 70ch; }
+    .formula-box{ background:#f3f4f6; border:1px solid #d1d5db; border-radius:10px; padding:1rem; overflow:auto; }
+    /* Visible focus for WCAG 2.1 AA */
+    :focus-visible{ outline:3px solid var(--focus); outline-offset:2px; border-radius:6px; }
+    /* Buttons & targets comfortable for touch */
+    .btn{ min-height:48px; min-width:48px; }
+    .icon-btn{ inline-size:48px; block-size:48px; display:inline-grid; place-items:center; border-radius:8px; }
+    /* Prevent CLS in results */
+    #results-cards{ min-height: 208px; } /* ~4 small cards row */
+    /* Error text */
+    .err{ color:#b91c1c; }
+    /* Tables */
+    table{ border-collapse:separate; border-spacing:0; }
+    th,td{ border-bottom:1px solid #e5e7eb; }
+    /* Print clean */
+    @media print {
+      header, nav, aside, .no-print { display: none !important; }
+      main { padding: 0 !important; }
+      #print-section { margin:0 }
+    }
+  </style>
+
+  <!-- Schema.org JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Packet Loss Calculator",
+    "description": "Calculate packet loss percentage, lost packets, packets per second, throughput, and 95% confidence intervals with TCP goodput estimation.",
+    "url": "https://calcdomain.com/packet-loss-calculator.html",
+    "inLanguage": "en",
+    "author": { "@type": "Person", "name": "Ugo Candido" },
+    "publisher": { "@type": "Organization", "name": "CalcDomain" }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"BreadcrumbList",
+    "itemListElement":[
+      { "@type":"ListItem","position":1,"name":"Home","item":"https://calcdomain.com/" },
+      { "@type":"ListItem","position":2,"name":"Lifestyle","item":"https://calcdomain.com/lifestyle.html" },
+      { "@type":"ListItem","position":3,"name":"Everyday","item":"https://calcdomain.com/subcategories/everyday.html" },
+      { "@type":"ListItem","position":4,"name":"Packet Loss Calculator","item":"https://calcdomain.com/packet-loss-calculator.html" }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"HowTo",
+    "name":"How to calculate packet loss",
+    "description":"Step-by-step guide to compute packet loss percentage, packets per second, and throughput.",
+    "step":[
+      {"@type":"HowToStep","name":"Enter counts","text":"Provide packets sent and packets received from your test."},
+      {"@type":"HowToStep","name":"Add timing & size","text":"Enter test duration (seconds) and average packet size (bytes) to compute throughput."},
+      {"@type":"HowToStep","name":"(Optional) Confidence","text":"Enable 95% confidence interval to get a Wilson interval for the loss rate."},
+      {"@type":"HowToStep","name":"Review results","text":"See loss %, lost packets, pps, throughput, and a TCP goodput estimate if RTT is provided."}
+    ]
+  }
+  </script>
+</head>
+
+<body class="bg-gray-50 text-gray-900">
+  <!-- Header (non-sticky per requirement) -->
+  <header class="bg-white border-b">
+    <div class="container mx-auto px-4 py-4 flex items-center justify-between">
+      <a href="index.html" class="text-2xl font-bold text-blue-600">CalcDomain</a>
+      <nav class="hidden md:flex gap-6 text-sm">
+        <a href="search.html" class="hover:text-blue-600">Advanced Search</a>
+        <a href="index.html#categories" class="hover:text-blue-600">Categories</a>
+      </nav>
+      <button class="md:hidden icon-btn" aria-label="Open menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 py-8">
+    <!-- Breadcrumb -->
+    <nav class="text-sm text-gray-600 mb-4" aria-label="Breadcrumb">
+      <a href="index.html" class="hover:text-blue-600">Home</a> &raquo;
+      <a href="lifestyle.html" class="hover:text-blue-600">Lifestyle</a> &raquo;
+      <a href="subcategories/everyday.html" class="hover:text-blue-600">Everyday</a> &raquo;
+      <span class="text-gray-900">Packet Loss Calculator</span>
+    </nav>
+
+    <div id="print-section" class="bg-white p-6 rounded-xl shadow-sm">
+      <!-- 1) H1 -->
+      <h1 class="text-3xl font-extrabold mb-2">packet loss calculator</h1>
+
+      <!-- 2) Intro -->
+      <p class="text-gray-700 mb-6">
+        This tool computes packet loss percentage, lost packets, packets per second, and estimated throughput from your test results.
+        It’s designed for network engineers, SREs, gamers, and anyone troubleshooting connectivity and quality of service.
+      </p>
+
+      <!-- 3) Interactive Calculator -->
+      <section aria-labelledby="calc-title" class="space-y-6">
+        <h2 id="calc-title" class="sr-only">Calculator</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Packets Sent -->
+          <div>
+            <label for="sent" class="block text-sm font-medium text-gray-800">Packets Sent <span aria-hidden="true" class="text-red-600">*</span></label>
+            <div class="flex items-start gap-2">
+              <input type="number" id="sent" inputmode="numeric" min="1" step="1" value="1000"
+                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                     aria-required="true" aria-describedby="sent-help sent-err" />
+              <button type="button" class="icon-btn border border-gray-300 text-gray-600 btn"
+                      aria-label="What is Packets Sent?" aria-controls="sent-help" aria-expanded="false" data-tooltip>
+                ?
+              </button>
+            </div>
+            <p id="sent-help" class="text-sm text-gray-600 mt-1">
+              Total probe packets your sender attempted to transmit during the test.
+            </p>
+            <p id="sent-err" class="text-sm err mt-1"></p>
+          </div>
+
+          <!-- Packets Received -->
+          <div>
+            <label for="received" class="block text-sm font-medium text-gray-800">Packets Received <span aria-hidden="true" class="text-red-600">*</span></label>
+            <div class="flex items-start gap-2">
+              <input type="number" id="received" inputmode="numeric" min="0" step="1" value="985"
+                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                     aria-required="true" aria-describedby="received-help received-err" />
+              <button type="button" class="icon-btn border border-gray-300 text-gray-600 btn"
+                      aria-label="What is Packets Received?" aria-controls="received-help" aria-expanded="false" data-tooltip>
+                ?
+              </button>
+            </div>
+            <p id="received-help" class="text-sm text-gray-600 mt-1">
+              Packets successfully observed at the receiver (one-way) or echoed back (round-trip).
+            </p>
+            <p id="received-err" class="text-sm err mt-1"></p>
+          </div>
+
+          <!-- Test Duration -->
+          <div>
+            <label for="duration" class="block text-sm font-medium text-gray-800">Test Duration (seconds) <span aria-hidden="true" class="text-red-600">*</span></label>
+            <div class="flex items-start gap-2">
+              <input type="number" id="duration" inputmode="decimal" min="0.1" step="0.1" value="10"
+                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                     aria-required="true" aria-describedby="duration-help duration-err" />
+              <button type="button" class="icon-btn border border-gray-300 text-gray-600 btn"
+                      aria-label="Why duration?" aria-controls="duration-help" aria-expanded="false" data-tooltip>
+                ?
+              </button>
+            </div>
+            <p id="duration-help" class="text-sm text-gray-600 mt-1">
+              Used to compute packets per second and throughput (bits per second).
+            </p>
+            <p id="duration-err" class="text-sm err mt-1"></p>
+          </div>
+
+          <!-- Packet Size -->
+          <div>
+            <label for="pktSize" class="block text-sm font-medium text-gray-800">Average Packet Size (bytes) <span aria-hidden="true" class="text-red-600">*</span></label>
+            <div class="flex items-start gap-2">
+              <input type="number" id="pktSize" inputmode="numeric" min="1" step="1" value="1400"
+                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                     aria-required="true" aria-describedby="size-help size-err" />
+              <button type="button" class="icon-btn border border-gray-300 text-gray-600 btn"
+                      aria-label="What size is this?" aria-controls="size-help" aria-expanded="false" data-tooltip>
+                ?
+              </button>
+            </div>
+            <p id="size-help" class="text-sm text-gray-600 mt-1">
+              Average payload size. If unsure, ~1200–1400 B is common for UDP probes with headers stripped by tools.
+            </p>
+            <p id="size-err" class="text-sm err mt-1"></p>
+          </div>
+
+          <!-- Optional: RTT for TCP estimate -->
+          <div>
+            <label for="rtt" class="block text-sm font-medium text-gray-800">RTT (ms, optional for TCP estimate)</label>
+            <div class="flex items-start gap-2">
+              <input type="number" id="rtt" inputmode="decimal" min="0" step="0.1" placeholder="e.g., 40"
+                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                     aria-describedby="rtt-help rtt-err" />
+              <button type="button" class="icon-btn border border-gray-300 text-gray-600 btn"
+                      aria-label="What is RTT?" aria-controls="rtt-help" aria-expanded="false" data-tooltip>?</button>
+            </div>
+            <p id="rtt-help" class="text-sm text-gray-600 mt-1">
+              Round-trip time helps estimate TCP goodput from loss (Mathis model).
+            </p>
+            <p id="rtt-err" class="text-sm err mt-1"></p>
+          </div>
+
+          <!-- Options -->
+          <div class="mt-1">
+            <fieldset class="border border-gray-200 rounded-md p-3">
+              <legend class="text-sm font-medium text-gray-800 px-1">Options</legend>
+              <label class="inline-flex items-center gap-2 mt-1">
+                <input id="opt-ci" type="checkbox" class="w-5 h-5" />
+                <span class="text-sm text-gray-700">Compute 95% CI (Wilson) for loss %</span>
+              </label>
+            </fieldset>
+          </div>
+        </div>
+
+        <div class="flex gap-4 pt-2">
+          <button id="btn-calc" class="btn px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md shadow-sm"
+                  type="button">Calculate</button>
+          <button id="btn-reset" class="btn px-5 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-900 rounded-md"
+                  type="button">Reset</button>
+        </div>
+      </section>
+
+      <!-- 4) Results -->
+      <section aria-labelledby="results-title" class="mt-8">
+        <h2 id="results-title" class="text-xl font-bold mb-3">Results</h2>
+        <div id="results-cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="border rounded-lg p-4 text-center">
+            <h3 class="text-sm text-gray-600 mb-1">Loss Percentage</h3>
+            <p id="out-loss-pct" class="text-2xl font-bold text-blue-700">—</p>
+          </div>
+          <div class="border rounded-lg p-4 text-center">
+            <h3 class="text-sm text-gray-600 mb-1">Lost Packets</h3>
+            <p id="out-lost" class="text-2xl font-bold text-blue-700">—</p>
+          </div>
+          <div class="border rounded-lg p-4 text-center">
+            <h3 class="text-sm text-gray-600 mb-1">Sent Rate (pps)</h3>
+            <p id="out-sent-pps" class="text-2xl font-bold text-blue-700">—</p>
+          </div>
+          <div class="border rounded-lg p-4 text-center">
+            <h3 class="text-sm text-gray-600 mb-1">Recv Rate (pps)</h3>
+            <p id="out-recv-pps" class="text-2xl font-bold text-blue-700">—</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+          <div class="border rounded-lg p-4 text-center">
+            <h3 class="text-sm text-gray-600 mb-1">Sent Throughput</h3>
+            <p id="out-sent-bps" class="text-xl font-semibold text-gray-900">—</p>
+            <p class="text-xs text-gray-500">bits/s (approx)</p>
+          </div>
+          <div class="border rounded-lg p-4 text-center">
+            <h3 class="text-sm text-gray-600 mb-1">Recv Throughput</h3>
+            <p id="out-recv-bps" class="text-xl font-semibold text-gray-900">—</p>
+            <p class="text-xs text-gray-500">bits/s (approx)</p>
+          </div>
+          <div class="border rounded-lg p-4 text-center">
+            <h3 class="text-sm text-gray-600 mb-1">TCP Goodput Estimate</h3>
+            <p id="out-tcp" class="text-xl font-semibold text-gray-900">—</p>
+            <p class="text-xs text-gray-500">Requires RTT</p>
+          </div>
+        </div>
+
+        <div id="out-ci" class="mt-4 text-sm text-gray-700"></div>
+      </section>
+
+      <!-- 5) Authoritative Ecosystem -->
+      <section class="prose mt-10">
+        <h2>Data Source & Methodology</h2>
+        <p class="text-sm">
+          <strong>AuthoritativeDataSource:</strong><br>
+          1) IETF IPPM: <em>RFC 2680 — A One-way Packet Loss Metric for IPPM</em> (Sept 1999).<br>
+          2) IETF IPPM: <em>RFC 6673 — Round-trip Packet Loss</em> (Aug 2012).<br>
+          3) ITU-T: <em>Y.1540 — Internet protocol data communication service—IP packet transfer and availability performance parameters</em> (2016+).<br>
+          All three documents formalize loss definitions and performance parameters used by industry and measurement systems.
+        </p>
+        <p><em>“Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.”</em></p>
+
+        <h2>The Formula Explained</h2>
+        <div class="formula-box">
+          Loss rate (fraction): \\( p = \\frac{\\text{lost}}{\\text{sent}} = \\frac{\\text{sent} - \\text{received}}{\\text{sent}} \\) <br/>
+          Loss percentage: \\( 100\\,p\\% = 100\\times\\frac{\\text{sent}-\\text{received}}{\\text{sent}} \\) <br/><br/>
+          Packets per second: \\( \\mathrm{pps} = \\frac{\\text{packets}}{\\text{duration (s)}} \\) <br/>
+          Throughput (bits/s): \\( \\mathrm{bps} \\approx \\frac{\\text{packets}\\times\\text{size (bytes)}\\times 8}{\\text{s}} \\) <br/><br/>
+          95% Wilson interval for \\(p\\):<br/>
+          \\[
+            \\hat{p}_W = \\frac{\\hat{p} + \\frac{z^2}{2n}}{1+\\frac{z^2}{n}} \\pm
+            \\frac{z}{1+\\frac{z^2}{n}}\\sqrt{\\frac{\\hat{p}(1-\\hat{p})}{n} + \\frac{z^2}{4n^2}}
+          \\]
+          where \\(\\hat{p} = \\frac{\\text{lost}}{\\text{sent}},\\; n=\\text{sent},\\; z=1.96\\).
+          <br/><br/>
+          TCP goodput (Mathis model, rough): \\( T \\approx \\frac{1.22\\cdot \\mathrm{MSS}}{\\mathrm{RTT}\\,\\sqrt{p}} \\)
+          (units: bytes/s with MSS in bytes and RTT in seconds).
+        </div>
+
+        <h2>Glossary of Variables</h2>
+        <ul>
+          <li><strong>Packets Sent</strong> (input): total probes attempted by the sender.</li>
+          <li><strong>Packets Received</strong> (input): packets successfully received/returned.</li>
+          <li><strong>Lost Packets</strong> (result): <code>sent - received</code>.</li>
+          <li><strong>Loss Percentage</strong> (result): <code>(lost / sent) × 100</code>.</li>
+          <li><strong>Test Duration</strong> (input): total seconds for the measurement window.</li>
+          <li><strong>Average Packet Size</strong> (input): payload size in bytes used for bps estimate.</li>
+          <li><strong>Sent/Recv pps</strong> (result): packets per second.</li>
+          <li><strong>Sent/Recv Throughput</strong> (result): estimated bits per second.</li>
+          <li><strong>RTT</strong> (optional input): round-trip time (ms) used for TCP goodput estimation.</li>
+          <li><strong>TCP Goodput Estimate</strong> (result): theoretical upper-bound from Mathis model (uses MSS=1460 B by default).</li>
+        </ul>
+
+        <h2>How It Works: A Step-by-Step Example</h2>
+        <p><strong>Inputs:</strong> sent = 1,000; received = 985; duration = 10 s; size = 1,400 B; RTT = 40 ms (optional).</p>
+        <ol>
+          <li>Lost = 1,000 − 985 = 15.</li>
+          <li>Loss % = (15 / 1,000) × 100 = 1.5%.</li>
+          <li>Sent pps = 1,000 / 10 = 100 pps; Recv pps = 985 / 10 = 98.5 pps.</li>
+          <li>Sent bps ≈ (1,000 × 1,400 × 8) / 10 = 1,120,000 bps (≈1.12 Mb/s).</li>
+          <li>Recv bps ≈ (985 × 1,400 × 8) / 10 ≈ 1,103,200 bps (≈1.10 Mb/s).</li>
+          <li>(Optional) TCP goodput with p=0.015, MSS=1460 B, RTT=0.040 s:
+              \(T \approx \frac{1.22\cdot1460}{0.040\sqrt{0.015}} \approx 11,5\\text{ MB/s}\) ≈ 92 Mb/s (very rough upper bound).</li>
+        </ol>
+
+        <h2>FAQ</h2>
+        <details>
+          <summary>Is packet loss measured one-way or round-trip?</summary>
+          <p>Both exist. RFC 2680 defines one-way loss; RFC 6673 defines round-trip loss. Your tool or test mode determines which applies.</p>
+        </details>
+        <details>
+          <summary>What is an acceptable packet loss percentage?</summary>
+          <p>For real-time apps (VoIP/gaming), <1% is desirable; 1–2% may be noticeable; >2–5% often impacts quality. Context matters (codec, jitter, FEC).</p>
+        </details>
+        <details>
+          <summary>Why don’t my throughput numbers match my speed test?</summary>
+          <p>This calculator uses your supplied packet size and counts; speed tests often use large TCP flows, multiple streams, and include protocol overheads.</p>
+        </details>
+        <details>
+          <summary>Should I include headers in the packet size?</summary>
+          <p>Use your tool’s reported payload size unless you explicitly want link-layer inclusive throughput. Payload-only keeps results consistent.</p>
+        </details>
+        <details>
+          <summary>How reliable is the 95% CI?</summary>
+          <p>Wilson intervals are robust for proportions even at low counts, but wider tests (bigger n) give tighter intervals.</p>
+        </details>
+        <details>
+          <summary>Does loss imply congestion?</summary>
+          <p>Not always. Loss can come from wireless interference, policing/shaping, buffer drops, or path MTU issues. Pair this with latency/jitter metrics.</p>
+        </details>
+        <details>
+          <summary>Can I use this for QoS acceptance tests?</summary>
+          <p>Yes—record inputs/outputs alongside test conditions (tool, direction, protocol, time of day) for traceability against SLAs (see ITU-T Y.1540).</p>
+        </details>
+
+        <div class="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+          <p><strong>Tool developed by Ugo Candido.</strong> Content verified by CalcDomain Editorial Board.<br/>
+          Last accuracy review: <time datetime="2025-10-26">October 26, 2025</time></p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="bg-white border-t">
+    <div class="container mx-auto px-4 py-8 text-center text-gray-600 text-sm">
+      <p>&copy; 2025 CalcDomain. All Rights Reserved.</p>
+      <div class="mt-3 space-x-4">
+        <a href="about.html" class="hover:text-blue-600">About</a>
+        <a href="contact.html" class="hover:text-blue-600">Contact</a>
+        <a href="privacy.html" class="hover:text-blue-600">Privacy</a>
+        <a href="terms.html" class="hover:text-blue-600">Terms</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Calculator Logic (defer by placement) -->
+  <script>
+    (function(){
+      const $ = (id)=>document.getElementById(id);
+      const fields = {
+        sent: $('sent'),
+        received: $('received'),
+        duration: $('duration'),
+        pktSize: $('pktSize'),
+        rtt: $('rtt'),
+        optCI: $('opt-ci')
+      };
+      const errs = {
+        sent: $('sent-err'),
+        received: $('received-err'),
+        duration: $('duration-err'),
+        pktSize: $('size-err'),
+        rtt: $('rtt-err')
+      };
+      const outs = {
+        lossPct: $('out-loss-pct'),
+        lost: $('out-lost'),
+        sentPps: $('out-sent-pps'),
+        recvPps: $('out-recv-pps'),
+        sentBps: $('out-sent-bps'),
+        recvBps: $('out-recv-bps'),
+        tcp: $('out-tcp'),
+        ci: $('out-ci')
+      };
+
+      // Accessible tooltips
+      document.querySelectorAll('[data-tooltip]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const id = btn.getAttribute('aria-controls');
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          // We keep help text always visible (no hidden). The button just toggles aria state for SR context.
+          // If you want to actually toggle visibility, you can add a hidden class toggle on the target element.
+        });
+        btn.addEventListener('keydown',(e)=>{
+          if(e.key==='Enter' || e.key===' '){ e.preventDefault(); btn.click(); }
+        });
+      });
+
+      // Validation helpers
+      function setErr(el, msg){
+        errs[el].textContent = msg || '';
+      }
+      function validate(){
+        let ok = true;
+        const sent = Number(fields.sent.value);
+        const rcv = Number(fields.received.value);
+        const dur = Number(fields.duration.value);
+        const sz = Number(fields.pktSize.value);
+        const rtt = fields.rtt.value === '' ? null : Number(fields.rtt.value);
+
+        setErr('sent','');
+        setErr('received','');
+        setErr('duration','');
+        setErr('pktSize','');
+        setErr('rtt','');
+
+        if(!Number.isFinite(sent) || sent < 1 || !Number.isInteger(sent)){
+          setErr('sent','Enter an integer ≥ 1.');
+          ok = false;
+        }
+        if(!Number.isFinite(rcv) || rcv < 0 || !Number.isInteger(rcv)){
+          setErr('received','Enter an integer ≥ 0.');
+          ok = false;
+        }
+        if(ok && rcv > sent){
+          setErr('received','Packets received cannot exceed packets sent.');
+          ok = false;
+        }
+        if(!Number.isFinite(dur) || dur <= 0){
+          setErr('duration','Enter test duration in seconds (> 0).');
+          ok = false;
+        }
+        if(!Number.isFinite(sz) || sz <= 0){
+          setErr('pktSize','Enter average packet size in bytes (> 0).');
+          ok = false;
+        }
+        if(rtt !== null){
+          if(!Number.isFinite(rtt) || rtt < 0){
+            setErr('rtt','Enter RTT in ms (≥ 0) or leave blank.');
+            ok = false;
+          }
+        }
+        return ok;
+      }
+
+      // Inline on-blur validation
+      ['sent','received','duration','pktSize','rtt'].forEach(id=>{
+        fields[id].addEventListener('blur', validate);
+      });
+
+      // Calculation
+      function calc(){
+        if(!validate()){
+          renderPlaceholders();
+          return;
+        }
+        const sent = Number(fields.sent.value);
+        const rcv = Number(fields.received.value);
+        const dur = Number(fields.duration.value);
+        const size = Number(fields.pktSize.value);
+        const rttMs = fields.rtt.value === '' ? null : Number(fields.rtt.value);
+
+        const lost = sent - rcv;
+        const p = sent > 0 ? lost / sent : 0;
+        const lossPct = p * 100;
+
+        const sentPps = sent / dur;
+        const recvPps = rcv / dur;
+
+        const sentBps = (sent * size * 8) / dur;
+        const recvBps = (rcv * size * 8) / dur;
+
+        // Wilson 95% CI if requested
+        let ciHtml = '';
+        if(fields.optCI.checked && sent > 0){
+          const z = 1.96;
+          const n = sent;
+          const denom = 1 + (z*z)/n;
+          const center = (p + (z*z)/(2*n)) / denom;
+          const spread = (z/denom) * Math.sqrt( (p*(1-p))/n + (z*z)/(4*n*n) );
+          const lo = Math.max(0, center - spread);
+          const hi = Math.min(1, center + spread);
+          ciHtml = `<div class="border rounded-md p-3 bg-gray-50">
+            <strong>95% CI (Wilson) for loss %:</strong> ${fmtPct(lo)} to ${fmtPct(hi)}
+            <div class="text-xs text-gray-500 mt-1">Based on n=${n}, z=1.96</div>
+          </div>`;
+        }
+
+        // TCP goodput (Mathis). Use MSS=1460 by default.
+        let tcpStr = '—';
+        if(rttMs !== null && p > 0){
+          const MSS = 1460; // bytes
+          const RTTs = rttMs / 1000;
+          const T_bytes_per_s = (1.22 * MSS) / (RTTs * Math.sqrt(p));
+          const T_bits_per_s = T_bytes_per_s * 8;
+          tcpStr = humanBits(T_bits_per_s) + ' (rough)';
+        } else if (rttMs !== null && p === 0) {
+          tcpStr = 'Not defined at p=0 (use upper bound by interface/sender)';
+        }
+
+        // Render
+        outs.lossPct.textContent = fmtPct(p);
+        outs.lost.textContent = fmtInt(lost);
+        outs.sentPps.textContent = fmtNum(sentPps);
+        outs.recvPps.textContent = fmtNum(recvPps);
+        outs.sentBps.textContent = humanBits(sentBps);
+        outs.recvBps.textContent = humanBits(recvBps);
+        outs.tcp.textContent = tcpStr;
+        outs.ci.innerHTML = ciHtml;
+      }
+
+      function renderPlaceholders(){
+        outs.lossPct.textContent = '—';
+        outs.lost.textContent = '—';
+        outs.sentPps.textContent = '—';
+        outs.recvPps.textContent = '—';
+        outs.sentBps.textContent = '—';
+        outs.recvBps.textContent = '—';
+        outs.tcp.textContent = '—';
+        outs.ci.innerHTML = '';
+      }
+
+      // Formatters
+      function fmtNum(x){ return Number.isFinite(x) ? new Intl.NumberFormat(undefined,{maximumFractionDigits:2}).format(x) : '—'; }
+      function fmtInt(x){ return Number.isFinite(x) ? new Intl.NumberFormat().format(Math.round(x)) : '—'; }
+      function fmtPct(f){ return Number.isFinite(f) ? new Intl.NumberFormat(undefined,{maximumFractionDigits:3}).format(f*100) + '%' : '—'; }
+      function humanBits(bps){
+        if(!Number.isFinite(bps) || bps < 0) return '—';
+        const units = ['b/s','Kb/s','Mb/s','Gb/s','Tb/s'];
+        let i=0, v=bps;
+        while(v>=1000 && i<units.length-1){ v/=1000; i++; }
+        return new Intl.NumberFormat(undefined,{maximumFractionDigits:2}).format(v)+' '+units[i];
+      }
+
+      // Bind buttons
+      $('btn-calc').addEventListener('click', calc);
+      $('btn-reset').addEventListener('click', ()=>{
+        fields.sent.value = 1000;
+        fields.received.value = 985;
+        fields.duration.value = 10;
+        fields.pktSize.value = 1400;
+        fields.rtt.value = '';
+        fields.optCI.checked = false;
+        Object.keys(errs).forEach(k=>errs[k].textContent='');
+        renderPlaceholders();
+      });
+
+      // Auto-calc on input (but keep on-blur validation)
+      ['sent','received','duration','pktSize','rtt','optCI'].forEach(id=>{
+        fields[id].addEventListener('input', calc, { passive: true });
+      });
+
+      // Initial render
+      calc();
+    })();
+  </script>
+</body>
+</html>
