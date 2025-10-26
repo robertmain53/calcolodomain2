@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Split Bill Calculator - Easily Divide Costs with Tip &amp; Tax</title>
+<meta name="description" content="Quickly split a bill among friends. Our calculator handles any subtotal, tax, and tip (pre- or post-tax) to find the exact amount per person.">
+<link rel="canonical" href="https://calcdomain.com/split-bill-calculator.html"/>
+<meta name="author" content="Ugo Candido">
+
+<link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="shortcut icon" href="/favicon.ico" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<link rel="manifest" href="/site.webmanifest" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script> <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+body { font-family: 'Inter', sans-serif; }
+.prose { max-width: 65ch; }
+.prose h2 { font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; }
+.prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+.prose p { margin-bottom: 1rem; line-height: 1.6; }
+.prose ul, .prose ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+.prose li { margin-bottom: 0.5rem; }
+.prose code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background: #f3f4f6; padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.9em; }
+.formula-box {
+background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; padding: 1.5rem;
+overflow-x: auto; font-family: 'Inter', sans-serif; font-size: 1.1rem;
+line-height: 1.8;
+}
+details > summary { cursor: pointer; font-weight: 600; padding: 0.5rem 0; }
+details[open] > summary { margin-bottom: 0.5rem; }
+
+/* Risultati */
+.result-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 1.25rem; text-align: center; }
+.result-card h4 { font-size: 0.95rem; color: #6b7280; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.result-card p { font-size: 1.75rem; font-weight: 700; color: #2563eb; }
+/* Stile per risultato principale */
+.result-card-primary { background: #eff6ff; border-color: #bfdbfe; }
+.result-card-primary h4 { color: #1e40af; }
+.result-card-primary p { font-size: 2.25rem; color: #1d4ed8; }
+
+/* Stili Accessibilità e Form */
+/* Stile di focus visibile personalizzato per WCAG 2.1 AA */
+*:focus-visible {
+outline: 3px solid #2563eb;
+outline-offset: 2px;
+border-radius: 4px;
+}
+/* Rimuove l'outline per i focus non-visibili (mouse click) */
+:focus:not(:focus-visible) {
+outline: none;
+}
+/* Assicura che i campi di input di Tailwind ricevano lo stile di focus-visible */
+.form-input:focus-visible {
+border-color: #2563eb;
+box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+outline: none; /* L'outline personalizzato è già gestito sopra */
+}
+.form-label {
+display: block;
+text-sm font-medium text-gray-700 mb-1;
+}
+.form-input {
+display: block;
+width: 100%;
+padding: 0.75rem;
+border: 1px solid #d1d5db;
+border-radius: 8px;
+box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+-webkit-appearance: none;
+-moz-appearance: none;
+appearance: none;
+}
+.form-input:focus {
+border-color: #2563eb;
+box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+outline: none;
+}
+.form-error {
+color: #dc2626;
+font-size: 0.875rem;
+margin-top: 0.5rem;
+}
+.radio-label {
+display: flex;
+align-items: center;
+padding: 0.75rem;
+border: 1px solid #d1d5db;
+border-radius: 8px;
+cursor: pointer;
+background-color: #fff;
+transition: border-color 0.2s, box-shadow 0.2s;
+}
+.radio-label:hover {
+border-color: #9ca3af;
+}
+.radio-label input {
+opacity: 0;
+width: 0;
+height: 0;
+}
+.radio-label span {
+margin-left: 0.5rem;
+}
+input[type="radio"]:checked + .radio-label {
+border-color: #2563eb;
+background-color: #eff6ff;
+box-shadow: 0 0 0 2px #2563eb;
+}
+input[type="radio"]:focus-visible + .radio-label {
+outline: 3px solid #2563eb;
+outline-offset: 2px;
+}
+
+/* Stampa */
+@media print {
+body * { visibility: hidden; }
+#print-section, #print-section * { visibility: visible; }
+#print-section { position: absolute; left: 0; top: 0; width: 100%; }
+}
+</style>
+
+<script type="application/ld+json">
+{
+"@context": "https://schema.org",
+"@type": "WebPage",
+"name": "Split Bill Calculator",
+"description": "Quickly split a bill among friends. Our calculator handles any subtotal, tax, and tip (pre- or post-tax) to find the exact amount per person.",
+"url": "https://calcdomain.com/split-bill-calculator.html",
+"inLanguage": "en",
+"author": {
+"@type": "Person",
+"name": "Ugo Candido",
+"url": "https://calcdomain.com/about-author.html"
+},
+"publisher": {
+"@type": "Organization",
+"name": "CalcDomain",
+"logo": {
+"@type": "ImageObject",
+"url": "https://calcdomain.com/logo.png"
+}
+}
+}
+</script>
+<script type="application/ld+json">
+{
+"@context": "https://schema.org",
+"@type": "BreadcrumbList",
+"itemListElement": [
+{ "@type": "ListItem", "position": 1, "name": "Home", "item": "https://calcdomain.com/" },
+{ "@type": "ListItem", "position": 2, "name": "Lifestyle Everyday", "item": "https://calcdomain.com/lifestyle-everyday.html" },
+{ "@type": "ListItem", "position": 3, "name": "Miscellaneous", "item": "https://calcdomain.com/subcategories/miscellaneous.html" },
+{ "@type": "ListItem", "position": 4, "name": "Split Bill Calculator", "item": "https://calcdomain.com/split-bill-calculator.html" }
+]
+}
+</script>
+<script type="application/ld+json">
+{
+"@context": "https://schema.org",
+"@type": "HowTo",
+"name": "How to Split a Bill with Tax and Tip",
+"description": "A step-by-step guide to accurately calculating each person's share of a bill, including tax and gratuity.",
+"step": [
+{
+"@type": "HowToStep",
+"name": "Enter Bill Subtotal",
+"text": "Input the total cost of all items before any tax or tip is applied.",
+"url": "https://calcdomain.com/split-bill-calculator.html#subtotal"
+},
+{
+"@type": "HowToStep",
+"name": "Enter Tax",
+"text": "Input the tax either as a percentage (%) or a flat dollar amount ($).",
+"url": "https://calcdomain.com/split-bill-calculator.html#taxPercent"
+},
+{
+"@type": "HowToStep",
+"name": "Enter Tip",
+"text": "Input the tip either as a percentage (%) or a flat dollar amount ($).",
+"url": "https://calcdomain.com/split-bill-calculator.html#tipPercent"
+},
+{
+"@type": "HowToStep",
+"name": "Choose Tip Base",
+"text": "Select whether the tip percentage should be calculated based on the 'Subtotal' or the 'Subtotal + Tax'.",
+"url": "https://calcdomain.com/split-bill-calculator.html#tipBase"
+},
+{
+"@type": "HowToStep",
+"name": "Enter Number of People",
+"text": "Input the total number of people splitting the bill.",
+"url": "https://calcdomain.com/split-bill-calculator.html#people"
+},
+{
+"@type": "HowToStep",
+"name": "Review Results",
+"text": "The calculator instantly displays the Total Tip, Grand Total, and the final Amount Per Person.",
+"url": "https://calcdomain.com/split-bill-calculator.html#results"
+}
+]
+}
+</script>
+<script type="application/ld+json">
+{
+"@context": "https://schema.org",
+"@type": "FAQPage",
+"mainEntity": [
+{
+"@type": "Question",
+"name": "Should I tip on the pre-tax subtotal or the post-tax amount?",
+"acceptedAnswer": {
+"@type": "Answer",
+"text": "In the United States, standard tipping etiquette is to calculate the tip based on the pre-tax subtotal. However, some people prefer to tip on the post-tax amount as a simpler calculation or an extra show of generosity. Our calculator provides an explicit option for both methods to ensure accuracy based on your preference."
+}
+},
+{
+"@type": "Question",
+"name": "What if someone paid for part of the bill already (e.g., a deposit)?",
+"acceptedAnswer": {
+"@type": "Answer",
+"text": "This calculator is designed for splitting the final, remaining bill. If a deposit was paid, subtract that amount from the 'Bill Subtotal' *before* entering it into the calculator. For example, if the total bill was $150 and someone paid a $20 deposit, you would enter $130 as the subtotal."
+}
+},
+{
+"@type": "Question",
+"name": "How do I split a bill if we didn't order items of equal value?",
+"acceptedAnswer": {
+"@type": "Answer",
+"text": "This calculator is for splitting the *total* bill equally. If you need to split the bill based on who ordered specific items, you would need an itemized bill splitter. The best method for that is to calculate the tax and tip percentage, apply it to each person's individual subtotal, and then add their share of any shared items."
+}
+},
+{
+"@type": "Question",
+"name": "What is a standard tip percentage?",
+"acceptedAnswer": {
+"@type": "Answer",
+"text": "In the U.S., a standard tip for full table service at a restaurant is typically between 15% and 20% of the pre-tax subtotal. 15% is often considered average, 18% good, and 20% or higher for excellent service. For other services like delivery or counter service, percentages may differ."
+}
+},
+{
+"@type": "Question",
+"name": "Does this calculator round the amounts?",
+"acceptedAnswer": {
+"@type": "Answer",
+"text": "All calculations are performed using precise floating-point arithmetic. The final results (Total Tip, Grand Total, and Amount Per Person) are rounded to the nearest cent ($0.01) for practical, real-world payment, which is standard financial practice."
+}
+}
+]
+}
+</script>
+
+<script src="search.js" defer></script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+<header class="bg-white shadow-sm">
+<nav class="container mx-auto px-4 lg:px-6 py-4">
+<div class="flex justify-between items-center">
+<a href="index.html" class="text-2xl font-bold text-blue-600">CalcDomain</a>
+<div class="w-full max-w-md hidden md:block mx-8">
+<div class="relative">
+<input type="search" id="search-input" placeholder="Search for a calculator..."
+class="w-full py-2 px-4 pr-12 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+autocomplete="off">
+<svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
+fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+</svg>
+<div id="search-results" class="absolute top-full left-0 right-0 hidden bg-white border border-gray-200 rounded-lg shadow-lg mt-2 max-h-96 overflow-y-auto z-50"></div>
+</div>
+</div>
+<div class="hidden md:flex items-center space-x-6 text-sm">
+<a href="search.html" class="text-gray-700 hover:text-blue-600">Advanced Search</a>
+<a href="index.html#categories" class="text-gray-700 hover:text-blue-600">Categories</a>
+</div>
+<button id="mobile-menu-toggle" class="md:hidden p-2" aria-label="Open menu">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+d="M4 6h16M4 12h16M4 18h16"></path>
+</svg>
+</button>
+</div>
+<div id="mobile-menu" class="md:hidden mt-4 hidden">
+<div class="space-y-2">
+<a href="search.html" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
+<a href="index.html#categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
+</div>
+</div>
+</nav>
+</header>
+
+<main class="container mx-auto px-4 lg:px-6 py-10">
+<div class="flex flex-col lg:flex-row gap-8">
+
+<section class="w-full lg:w-2/3">
+<nav class="text-sm text-gray-600 mb-4" aria-label="Breadcrumb">
+<a href="index.html" class="hover:text-blue-600">Home</a> &raquo;
+<a href="lifestyle-everyday.html" class="hover:text-blue-600">Lifestyle Everyday</a> &raquo;
+<a href="subcategories/miscellaneous.html" class="hover:text-blue-600">Miscellaneous</a> &raquo;
+<span class="text-gray-900">Split Bill Calculator</span>
+</nav>
+
+<div id="print-section" class="bg-white p-6 rounded-lg shadow-md">
+<h1 class="text-3xl font-extrabold text-gray-900 mb-2">Split Bill Calculator</h1>
+<p class="text-gray-600 mb-6">Quickly and accurately divide a restaurant bill, including tax and tip, among any number of people. This tool ensures a fair split, whether you tip on the pre-tax subtotal or the final amount.</p>
+
+<form id="calculator-ui" class="space-y-6">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div>
+<label for="subtotal" class="form-label">Bill Subtotal ($) <span class="text-red-600">*</span></label>
+<input type="number" id="subtotal" class="form-input" min="0" step="0.01" placeholder="e.g., 120.50" aria-required="true" aria-describedby="subtotal-error">
+<div id="subtotal-error" class="form-error" role="alert" aria-live="assertive" style="display: none;"></div>
+</div>
+<div>
+<label for="people" class="form-label">Number of People <span class="text-red-600">*</span></label>
+<input type="number" id="people" class="form-input" min="1" step="1" value="1" aria-required="true" aria-describedby="people-error">
+<div id="people-error" class="form-error" role="alert" aria-live="assertive" style="display: none;"></div>
+</div>
+</div>
+
+<fieldset class="border border-gray-200 rounded-lg p-4 pt-2">
+<legend class="text-base font-semibold text-gray-800 px-2">Tax</legend>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div>
+<label for="taxPercent" class="form-label">Tax (%)</label>
+<input type="number" id="taxPercent" class="form-input" min="0" step="0.01" placeholder="e.g., 8.5">
+</div>
+<div>
+<label for="taxAmount" class="form-label">Tax ($)</label>
+<input type="number" id="taxAmount" class="form-input" min="0" step="0.01" placeholder="e.g., 10.24">
+</div>
+</div>
+</fieldset>
+
+<fieldset class="border border-gray-200 rounded-lg p-4 pt-2">
+<legend class="text-base font-semibold text-gray-800 px-2">Tip / Gratuity</legend>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div>
+<label for="tipPercent" class="form-label">Tip (%)</label>
+<input type="number" id="tipPercent" class="form-input" min="0" step="0.01" placeholder="e.g., 18">
+</div>
+<div>
+<label for="tipAmount" class="form-label">Tip ($)</label>
+<input type="number" id="tipAmount" class="form-input" min="0" step="0.01" placeholder="e.g., 21.69">
+</div>
+</div>
+<fieldset class="mt-4" id="tipBase">
+<legend class="form-label mb-2">Calculate Tip On:</legend>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+<div>
+<input type="radio" id="tipBaseSubtotal" name="tipBase" value="subtotal" checked>
+<label for="tipBaseSubtotal" class="radio-label">
+<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+<span>Subtotal (Pre-Tax)</span>
+</label>
+</div>
+<div>
+<input type="radio" id="tipBaseWithTax" name="tipBase" value="withTax">
+<label for="tipBaseWithTax" class="radio-label">
+<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+<span>Subtotal + Tax</span>
+</label>
+</div>
+</div>
+</fieldset>
+</fieldset>
+</form>
+
+<section id="results" class="mt-8 bg-blue-50 border border-blue-100 rounded-lg p-6 min-h-[100px]" role="region" aria-live="polite" aria-atomic="true">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+<div class="result-card result-card-primary sm:col-span-2 lg:col-span-1">
+<h4>Amount Per Person</h4>
+<p id="perPersonResult">$0.00</p>
+</div>
+<div class="result-card">
+<h4>Total Tip</h4>
+<p id="totalTipResult">$0.00</p>
+</div>
+<div class="result-card">
+<h4>Grand Total</h4>
+<p id="grandTotalResult">$0.00</p>
+</div>
+</div>
+</section>
+</div>
+
+<article class="bg-white p-6 rounded-lg shadow-md mt-8 prose prose-blue">
+<h2>Data Source and Methodology</h2>
+<p>This calculator uses standard arithmetic formulas to ensure an accurate and fair bill split. All calculations are based on fundamental principles of percentage and division.</p>
+<ul class="text-sm text-gray-600">
+<li><strong>Data Source:</strong> Standard U.S. Tipping and Taxation Conventions.</li>
+<li><strong>Methodology:</strong> All calculations are based rigorously on the formulas provided below. The tool provides options for calculating gratuity on either the pre-tax subtotal or the post-tax amount, reflecting common practices and user preference. All final currency values are rounded to the nearest cent.</li>
+</ul>
+
+<h2>The Formula Explained</h2>
+<p>The calculation follows a clear, step-by-step process to determine the final amount each person owes. The formulas are presented here using LaTeX for clarity.</p>
+
+<div class="formula-box" aria-label="Mathematical formulas for splitting a bill">
+<p><strong>1. Calculate Tax Amount:</strong><br>
+If tax is entered as a percentage (%):
+$$ \text{Tax Amount} = \text{Subtotal} \times \left( \frac{\text{Tax \%}}{100} \right) $$
+</p>
+<p><strong>2. Determine Tip Base:</strong><br>
+The base for the tip calculation depends on your selection:
+$$ \text{Tip Base} = \begin{cases} \text{Subtotal} & \text{if tipping on subtotal} \\ \text{Subtotal} + \text{Tax Amount} & \text{if tipping on subtotal + tax} \end{cases} $$
+</p>
+<p><strong>3. Calculate Tip Amount:</strong><br>
+If tip is entered as a percentage (%):
+$$ \text{Tip Amount} = \text{Tip Base} \times \left( \frac{\text{Tip \%}}{100} \right) $$
+</p>
+<p><strong>4. Calculate Grand Total:</strong><br>
+$$ \text{Grand Total} = \text{Subtotal} + \text{Tax Amount} + \text{Tip Amount} $$
+</p>
+<p><strong>5. Calculate Amount Per Person:</strong><br>
+$$ \text{Amount Per Person} = \frac{\text{Grand Total}}{\text{Number of People}} $$
+</p>
+</div>
+
+<h2>Glossary of Variables</h2>
+<ul class="list-disc pl-5 space-y-2">
+<li><strong>Bill Subtotal:</strong> The total cost of all items ordered, before any tax or tip is applied. This is the foundational number for all calculations.</li>
+<li><strong>Tax (% or $):</strong> The sales tax applied to the subtotal. You can enter this as a percentage (e.g., 8.5) or a fixed dollar amount.</li>
+<li><strong>Tip (% or $):</strong> The gratuity left for service. You can enter this as a percentage (e.g., 18) or a fixed dollar amount.</li>
+<li><strong>Calculate Tip On:</strong> The setting that determines the base for the tip percentage calculation—either the subtotal alone or the subtotal plus tax.</li>
+<li><strong>Number of People:</strong> The total number of individuals who are splitting the bill.</li>
+<li><strong>Amount Per Person:</strong> The final, equal share that each person owes, including their portion of the subtotal, tax, and tip.</li>
+<li><strong>Grand Total:</strong> The final, total cost of the bill (Subtotal + Tax + Tip).</li>
+</ul>
+
+<h2>How It Works: A Step-by-Step Example</h2>
+<p>Let's walk through a common scenario to see the calculator in action.</p>
+<p>Imagine <strong>4 friends</strong> dine out. Their bill details are:</p>
+<ul>
+<li><strong>Bill Subtotal:</strong> $120.00</li>
+<li><strong>Tax:</strong> 8%</li>
+<li><strong>Tip:</strong> 20%</li>
+<li><strong>Number of People:</strong> 4</li>
+<li><strong>Tip Base Selection:</strong> 'Subtotal (Pre-Tax)'</li>
+</ul>
+<hr class="my-4">
+<p><strong>Step 1: Calculate the Tax Amount</strong><br>
+The calculator first determines the tax owed.
+$$ \text{Tax Amount} = $120.00 \times \left( \frac{8}{100} \right) = $9.60 $$
+</p>
+<p><strong>Step 2: Calculate the Tip Amount</strong><br>
+Since the group chose to tip on the pre-tax subtotal, the base is $120.00.
+$$ \text{Tip Amount} = $120.00 \times \left( \frac{20}{100} \right) = $24.00 $$
+</p>
+<p><strong>Step 3: Calculate the Grand Total</strong><br>
+This is the sum of the subtotal, tax, and tip.
+$$ \text{Grand Total} = $120.00 + $9.60 + $24.00 = $153.60 $$
+</p>
+<p><strong>Step 4: Calculate the Amount Per Person</strong><br>
+The grand total is divided equally among the 4 friends.
+$$ \text{Amount Per Person} = \frac{$153.60}{4} = $38.40 $$
+</p>
+<p><strong>Result:</strong> Each person owes <strong>$38.40</strong>.</p>
+
+<h2>Frequently Asked Questions (FAQ)</h2>
+<details>
+<summary>Should I tip on the pre-tax subtotal or the post-tax amount?</summary>
+<p>In the United States, standard tipping etiquette is to calculate the tip based on the <strong>pre-tax subtotal</strong>. However, some people prefer to tip on the post-tax amount as a simpler calculation or an extra show of generosity. Our calculator provides an explicit option for both methods to ensure accuracy based on your preference.</p>
+</details>
+<details>
+<summary>What if someone paid for part of the bill already (e.g., a deposit)?</summary>
+<p>This calculator is designed for splitting the final, remaining bill. If a deposit was paid, subtract that amount from the 'Bill Subtotal' <em>before</em> entering it into the calculator. For example, if the total bill was $150 and someone paid a $20 deposit, you would enter <strong>$130</strong> as the subtotal.</p>
+</details>
+<details>
+<summary>How do I split a bill if we didn't order items of equal value?</summary>
+<p>This calculator is for splitting the <em>total</em> bill equally. If you need to split the bill based on who ordered specific items, you would need an itemized bill splitter. The best manual method is to calculate the tax and tip percentage (e.g., total tax + tip divided by subtotal), apply that percentage to each person's individual subtotal, and then add their share of any shared items.</p>
+</details>
+<details>
+<summary>What is a standard tip percentage?</summary>
+<p>In the U.S., a standard tip for full table service at a restaurant is typically between <strong>15% and 20%</strong> of the pre-tax subtotal. 15% is often considered average, 18% good, and 20% or higher for excellent service. For other services like delivery or counter service, percentages may differ.</p>
+</details>
+<details>
+<summary>Does this calculator round the amounts?</summary>
+<p>Yes. All calculations are performed using precise floating-point arithmetic. The final results (Total Tip, Grand Total, and Amount Per Person) are rounded to the nearest cent ($0.01) for practical, real-world payment, which is standard financial practice.</p>
+</details>
+<details>
+<summary>What if the total "per person" amount doesn't add up perfectly?</summary>
+<p>Because of rounding to the nearest cent, it's possible for the sum of the "per person" shares to be a cent or two off from the Grand Total (e.g., 3 people splitting $10.00 would be $3.33 each, totaling $9.99). This is a normal artifact of rounding. Often, one person will volunteer to pay the extra cent to cover the difference.</p>
+</details>
+
+<div class="mt-8 pt-6 border-t border-gray-200 text-sm text-gray-600">
+<p><strong>Tool developed by Ugo Candido.</strong> Lifestyle and finance content reviewed by the CalcDomain Editorial Board.<br>
+Last accuracy review: <time datetime="2025-10-26">October 26, 2025</time>.</p>
+</div>
+</article>
+</section>
+
+<aside class="w-full lg:w-1/3">
+<div class="sticky top-24 space-y-6">
+<div class="bg-gray-200 h-64 rounded-lg flex items-center justify-center text-gray-500">
+Ad Placement (300×250)
+</div>
+<div class="bg-white p-6 rounded-lg shadow-md">
+<h3 class="font-bold text-lg mb-3">Why Use This Calculator</h3>
+<ul class="list-disc list-inside text-sm text-gray-600 space-y-2">
+<li>Get an instant, accurate split for any bill.</li>
+<li>Avoid manual math errors and awkward conversations.</li>
+<li>Fairly handles tax and tip based on your preference (pre- or post-tax).</li>
+<li>Mobile-first design works perfectly at the restaurant table.</li>
+</ul>
+</div>
+<div class="bg-white p-6 rounded-lg shadow-md">
+<h3 class="font-bold text-lg mb-4">Related Lifestyle Tools</h3>
+<ul class="space-y-3 text-sm">
+<li><a href="tip-calculator.html" class="text-blue-600 hover:underline">Tip Calculator</a></li>
+<li><a href="salary-calculator.html" class="text-blue-600 hover:underline">Salary Calculator</a></li>
+<li><a href="budget-planner.html" class="text-blue-600 hover:underline">Monthly Budget Planner</a></li>
+<li><a href="savings-calculator.html" class="text-blue-600 hover:underline">Savings Goal Calculator</a></li>
+</ul>
+</div>
+</div>
+</aside>
+
+</div>
+</main>
+
+<footer class="bg-white border-t mt-12">
+<div class="container mx-auto px-6 py-8 text-center text-gray-600 text-sm">
+<p>&copy; 2025 CalcDomain. All Rights Reserved.</p>
+<div class="mt-4 space-x-4">
+<a href="about.html" class="hover:text-blue-600">About</a>
+<a href="contact.html" class="hover:text-blue-600">Contact</a>
+<a href="privacy.html" class="hover:text-blue-600">Privacy</a>
+<a href="terms.html" class="hover:text-blue-600">Terms</a>
+</div>
+</div>
+</footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+// --- Elementi DOM ---
+const elements = {
+subtotal: document.getElementById('subtotal'),
+people: document.getElementById('people'),
+taxPercent: document.getElementById('taxPercent'),
+taxAmount: document.getElementById('taxAmount'),
+tipPercent: document.getElementById('tipPercent'),
+tipAmount: document.getElementById('tipAmount'),
+tipBaseSubtotal: document.getElementById('tipBaseSubtotal'),
+tipBaseWithTax: document.getElementById('tipBaseWithTax'),
+
+// Elementi di errore
+subtotalError: document.getElementById('subtotal-error'),
+peopleError: document.getElementById('people-error'),
+
+// Elementi dei risultati
+perPersonResult: document.getElementById('perPersonResult'),
+totalTipResult: document.getElementById('totalTipResult'),
+grandTotalResult: document.getElementById('grandTotalResult')
+};
+
+// Flag per prevenire loop di update
+let isUpdating = false;
+
+// --- Formattatori ---
+const fmtCurrency = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
+const fmtNumber = (val) => (Math.round(val * 100) / 100).toFixed(2);
+
+// --- Gestione Validazione e Errori ---
+/**
+* Mostra o nasconde un messaggio di errore per un campo.
+* @param {HTMLElement} el - L'elemento input.
+* @param {HTMLElement} errorEl - L'elemento per il messaggio di errore.
+* @param {string} message - Il messaggio da mostrare.
+* @param {boolean} show - True per mostrare, false per nascondere.
+*/
+function toggleError(el, errorEl, message, show) {
+if (show) {
+errorEl.textContent = message;
+errorEl.style.display = 'block';
+el.setAttribute('aria-invalid', 'true');
+el.setAttribute('aria-describedby', errorEl.id);
+} else {
+errorEl.textContent = '';
+errorEl.style.display = 'none';
+el.setAttribute('aria-invalid', 'false');
+el.removeAttribute('aria-describedby');
+}
+}
+
+// --- Funzione Principale di Calcolo ---
+function calculate(sourceId) {
+if (isUpdating) return; // Previene chiamate ricorsive
+isUpdating = true;
+
+// 1. Leggi Valori e Valida
+const subtotal = parseFloat(elements.subtotal.value) || 0;
+const people = parseInt(elements.people.value) || 0;
+
+let isSubtotalValid = subtotal > 0;
+let isPeopleValid = people >= 1;
+
+toggleError(elements.subtotal, elements.subtotalError, 'Subtotal must be a positive number.', !isSubtotalValid);
+toggleError(elements.people, elements.peopleError, 'Must be at least 1 person.', !isPeopleValid);
+
+if (!isSubtotalValid || !isPeopleValid) {
+updateOutputs(0, 0, 0); // Resetta i risultati
+isUpdating = false;
+return;
+}
+
+// 2. Calcola Tasse
+let taxPct = parseFloat(elements.taxPercent.value) || 0;
+let taxAmt = parseFloat(elements.taxAmount.value) || 0;
+
+if (sourceId === 'taxPercent') {
+taxAmt = subtotal * (taxPct / 100);
+elements.taxAmount.value = fmtNumber(taxAmt);
+} else if (sourceId === 'taxAmount') {
+taxPct = (subtotal > 0) ? (taxAmt / subtotal) * 100 : 0;
+elements.taxPercent.value = fmtNumber(taxPct);
+} else {
+// Default: ricalcola tax amount da tax percent (se entrambi sono 0)
+taxAmt = subtotal * (taxPct / 100);
+if (taxAmt > 0) elements.taxAmount.value = fmtNumber(taxAmt);
+}
+if (taxAmt < 0) taxAmt = 0; // Assicura che non sia negativo
+
+// 3. Calcola Mancia
+let tipPct = parseFloat(elements.tipPercent.value) || 0;
+let tipAmt = parseFloat(elements.tipAmount.value) || 0;
+const tipBase = elements.tipBaseSubtotal.checked ? subtotal : (subtotal + taxAmt);
+
+if (sourceId === 'tipPercent' || sourceId === 'tipBaseSubtotal' || sourceId === 'tipBaseWithTax') {
+tipAmt = tipBase * (tipPct / 100);
+elements.tipAmount.value = fmtNumber(tipAmt);
+} else if (sourceId === 'tipAmount') {
+tipPct = (tipBase > 0) ? (tipAmt / tipBase) * 100 : 0;
+elements.tipPercent.value = fmtNumber(tipPct);
+} else {
+// Default: ricalcola tip amount da tip percent
+tipAmt = tipBase * (tipPct / 100);
+if (tipAmt > 0) elements.tipAmount.value = fmtNumber(tipAmt);
+}
+if (tipAmt < 0) tipAmt = 0; // Assicura che non sia negativo
+
+// 4. Calcola Totali
+const grandTotal = subtotal + taxAmt + tipAmt;
+const perPerson = grandTotal / people;
+
+// 5. Aggiorna Output
+updateOutputs(tipAmt, grandTotal, perPerson);
+
+isUpdating = false;
+}
+
+// --- Funzione di Aggiornamento UI ---
+/**
+* Aggiorna i campi dei risultati con i valori formattati.
+* @param {number} tip - Totale mancia
+* @param {number} total - Totale generale
+* @param {number} perPerson - Totale per persona
+*/
+function updateOutputs(tip, total, perPerson) {
+elements.totalTipResult.textContent = fmtCurrency(tip);
+elements.grandTotalResult.textContent = fmtCurrency(total);
+elements.perPersonResult.textContent = fmtCurrency(perPerson);
+}
+
+// --- Event Listeners ---
+const inputsToWatch = [
+elements.subtotal,
+elements.people,
+elements.taxPercent,
+elements.taxAmount,
+elements.tipPercent,
+elements.tipAmount,
+elements.tipBaseSubtotal,
+elements.tipBaseWithTax
+];
+
+inputsToWatch.forEach(el => {
+el.addEventListener('input', (e) => {
+calculate(e.target.id);
+});
+});
+
+// Calcolo iniziale (se ci sono valori di default, es. 1 persona)
+calculate(null);
+});
+</script>
+
+</body>
+</html>
