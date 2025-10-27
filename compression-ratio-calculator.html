@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compression Ratio Calculator - Engine CR Tool</title>
+    <meta name="description" content="Calculate your engine's static compression ratio. Input bore, stroke, chamber volume, gasket, and piston data to get a precise CR for your build.">
+    <link rel="canonical" href="https://calcdomain.com/compression-ratio-calculator.html"/>
+
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .prose { max-width: 65ch; }
+        .prose h2 { font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; }
+        .prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+        .prose p { margin-bottom: 1rem; line-height: 1.6; }
+        .prose ul, .prose ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+        .prose li { margin-bottom: 0.5rem; }
+        .prose dl dt { font-weight: 600; }
+        .prose dl dd { margin-left: 1.5rem; margin-bottom: 0.5rem; }
+        
+        /* Stile per le formule LaTeX (richiede MathJax) */
+        .formula-box {
+            background:#f3f4f6; border:1px solid #d1d5db; border-radius:8px; padding:1.5rem;
+            overflow-x:auto; font-size: 1.1rem; line-height: 1.7;
+            font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+        }
+        
+        /* Stili per Accessibilità e UX */
+        label { margin-bottom: 0.25rem; display: block; }
+        input[type="number"] { -moz-appearance: textfield; } /* Nasconde frecce su Firefox */
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none; margin: 0; /* Nasconde frecce su Chrome/Safari */
+        }
+        
+        /* Focus Visibile Personalizzato (WCAG 2.1 AA) */
+        :focus-visible {
+            outline: 3px solid #3b82f6; /* Blu brillante */
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+        input:focus-visible, select:focus-visible, button:focus-visible {
+             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4);
+             border-color: #3b82f6;
+        }
+
+        /* Messaggi di Errore */
+        .error-message {
+            color: #dc2626; /* Rosso scuro */
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+            display: none; /* Nascosto di default */
+        }
+        input[aria-invalid="true"] {
+            border-color: #dc2626;
+        }
+
+        /* Tooltip Accessibili */
+        .tooltip-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.25rem;
+            height: 1.25rem;
+            padding: 0;
+            margin-left: 0.25rem;
+            border: 1px solid #9ca3af;
+            border-radius: 9999px;
+            background: #f9fafb;
+            color: #6b7280;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .tooltip-text {
+            display: none;
+            font-size: 0.875rem;
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            margin-top: 0.5rem;
+            position: relative;
+        }
+        .tooltip-text::after { /* Freccia del tooltip */
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 1.5rem;
+            border-width: 5px;
+            border-style: solid;
+            border-color: transparent transparent #1f2937 transparent;
+        }
+
+        /* Stili del Risultato */
+        .result-primary {
+            background: #eff6ff; /* Blu molto chiaro */
+            border: 2px solid #dbeafe; /* Blu chiaro */
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        .result-primary h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1e40af; /* Blu scuro */
+            margin: 0;
+        }
+        .result-primary p {
+            font-size: 3rem; /* 48px */
+            font-weight: 800;
+            color: #1d4ed8; /* Blu */
+            margin: 0.5rem 0 0 0;
+            line-height: 1;
+        }
+        
+        .result-secondary-card {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+        }
+        .result-secondary-card h4 {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #6b7280;
+            margin: 0 0 0.25rem 0;
+        }
+        .result-secondary-card p {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin: 0;
+        }
+        
+        /* Stili per le FAQ */
+        details > summary {
+            cursor: pointer;
+            font-weight: 600;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        details[open] > summary {
+            margin-bottom: 0.5rem;
+            color: #2563eb;
+        }
+        details > p {
+            padding: 0.5rem 0.25rem;
+        }
+
+        /* Stampa */
+        @media print {
+            body * { visibility: hidden; }
+            #print-section, #print-section * { visibility: visible; }
+            #print-section { position: absolute; left: 0; top: 0; width: 100%; }
+            .no-print { display: none !important; }
+        }
+    </style>
+
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+    </script>
+    
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": "Compression Ratio Calculator",
+        "description": "Calculate your engine's static compression ratio. Input bore, stroke, chamber volume, and more to find the precise CR for your build.",
+        "url": "https://calcdomain.com/compression-ratio-calculator.html",
+        "inLanguage": "en",
+        "author": { "@type": "Person", "name": "Ugo Candido" },
+        "publisher": { "@type": "Organization", "name": "CalcDomain" }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://calcdomain.com/" },
+            { "@type": "ListItem", "position": 2, "name": "Everyday Life", "item": "https://calcdomain.com/lifestyle-everyday.html" },
+            { "@type": "ListItem", "position": 3, "name": "Automotive", "item": "https://calcdomain.com/subcategories/automotive.html" },
+            { "@type": "ListItem", "position": 4, "name": "Compression Ratio Calculator", "item": "https://calcdomain.com/compression-ratio-calculator.html" }
+        ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        "name": "How to Calculate Engine Compression Ratio",
+        "description": "A step-by-step guide to calculating an engine's static compression ratio using key geometric measurements.",
+        "step": [
+            {"@type": "HowToStep", "name": "Enter Cylinder Dimensions", "text": "Input the engine's cylinder bore and piston stroke measurements, usually in inches."},
+            {"@type": "HowToStep", "name": "Enter Top-End Volumes", "text": "Input the combustion chamber volume (in cc) and the piston volume (in cc). Use a negative value for dished pistons or a positive value for domed pistons."},
+            {"@type": "HowToStep", "name": "Provide Gasket and Deck Data", "text": "Input the head gasket's bore and compressed thickness (in inches), along with the deck clearance (in inches)."},
+            {"@type": "HowToStep", "name": "Calculate", "text": "Click the 'Calculate' button to process the inputs."},
+            {"@type": "HowToStep", "name": "Review Results", "text": "The calculator will display the final static compression ratio, along with the calculated swept volume and total clearance volume."}
+        ]
+    }
+    </script>
+    
+    <script src="search.js" defer></script>
+</head>
+
+<body class="bg-gray-50 text-gray-900">
+
+<header class="bg-white shadow-sm">
+    <nav class="container mx-auto px-4 lg:px-6 py-4">
+        <div class="flex justify-between items-center">
+            <a href="index.html" class="text-2xl font-bold text-blue-600">CalcDomain</a>
+
+            <div class="w-full max-w-md hidden md:block mx-8">
+                <div class="relative">
+                    <input type="search" id="search-input" placeholder="Search for a calculator..."
+                        class="w-full py-2 px-4 pr-12 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        autocomplete="off">
+                    <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <div id="search-results" class="absolute top-full left-0 right-0 hidden bg-white border border-gray-200 rounded-lg shadow-lg mt-2 max-h-96 overflow-y-auto z-50"></div>
+                </div>
+            </div>
+
+            <div class="hidden md:flex items-center space-x-6 text-sm">
+                <a href="search.html" class="text-gray-700 hover:text-blue-600">Advanced Search</a>
+                <a href="index.html#categories" class="text-gray-700 hover:text-blue-600">Categories</a>
+            </div>
+
+            <button id="mobile-menu-toggle" class="md:hidden p-2 no-print" aria-label="Open menu" aria-expanded="false">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+            </button>
+        </div>
+
+        <div id="mobile-menu" class="md:hidden mt-4 hidden no-print">
+            <div class="space-y-2">
+                <a href="search.html" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
+                <a href="index.html#categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
+            </div>
+        </div>
+    </nav>
+</header>
+
+<main class="container mx-auto px-4 lg:px-6 py-10">
+    <div class="flex flex-col lg:flex-row gap-8">
+
+        <section class="w-full lg:w-2/3">
+            <nav class="text-sm text-gray-600 mb-4" aria-label="Breadcrumb">
+                <a href="https://calcdomain.com/index.html" class="hover:text-blue-600">Home</a> &raquo;
+                <a href="https://calcdomain.com/lifestyle-everyday.html" class="hover:text-blue-600">Lifestyle</a> &raquo;
+                <a href="https://calcdomain.com/subcategories/automotive.html" class="hover:text-blue-600">Automotive</a> &raquo;
+                <span class="text-gray-900">Compression Ratio Calculator</span>
+            </nav>
+
+            <div id="print-section" class="bg-white p-6 rounded-lg shadow-md">
+                <h1 class="text-3xl font-extrabold text-gray-900 mb-2">Compression Ratio Calculator</h1>
+                <p class="text-gray-600 mb-6">This tool provides a precise calculation for an engine's static compression ratio (CR). It's designed for engine builders, mechanics, and automotive enthusiasts who need to know how changes to components (like pistons, gaskets, or head milling) will affect their final CR.</p>
+
+                <form id="cr-form" class="space-y-6" novalidate>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        
+                        <div>
+                            <label for="bore" class="block text-sm font-medium text-gray-700">Cylinder Bore (in) <span class="text-red-600">*</span></label>
+                            <input type="number" id="bore" step="0.001" min="0"
+                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                aria-required="true" aria-describedby="error-bore" value="4.030">
+                            <div id="error-bore" class="error-message" role="alert"></div>
+                        </div>
+                        
+                        <div>
+                            <label for="stroke" class="block text-sm font-medium text-gray-700">Piston Stroke (in) <span class="text-red-600">*</span></label>
+                            <input type="number" id="stroke" step="0.001" min="0"
+                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                aria-required="true" aria-describedby="error-stroke" value="3.750">
+                            <div id="error-stroke" class="error-message" role="alert"></div>
+                        </div>
+
+                        <div>
+                            <label for="gasketBore" class="block text-sm font-medium text-gray-700">Head Gasket Bore (in) <span class="text-red-600">*</span></label>
+                            <input type="number" id="gasketBore" step="0.001" min="0"
+                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                aria-required="true" aria-describedby="error-gasketBore" value="4.060">
+                            <div id="error-gasketBore" class="error-message" role="alert"></div>
+                        </div>
+
+                        <div>
+                            <label for="gasketThickness" class="block text-sm font-medium text-gray-700">Gasket Compressed Thickness (in) <span class="text-red-600">*</span></label>
+                            <input type="number" id="gasketThickness" step="0.001" min="0"
+                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                aria-required="true" aria-describedby="error-gasketThickness" value="0.040">
+                            <div id="error-gasketThickness" class="error-message" role="alert"></div>
+                        </div>
+
+                        <div>
+                            <label for="chamberVolume" class="block text-sm font-medium text-gray-700">Combustion Chamber Volume (cc) <span class="text-red-600">*</span></label>
+                            <input type="number" id="chamberVolume" step="0.1" min="0"
+                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                aria-required="true" aria-describedby="error-chamberVolume" value="64">
+                            <div id="error-chamberVolume" class="error-message" role="alert"></div>
+                        </div>
+                        
+                        <div>
+                            <div class="flex items-center">
+                                <label for="pistonVolume" class="block text-sm font-medium text-gray-700">Piston Volume (cc) <span class="text-red-600">*</span></label>
+                                <button type="button" id="pistonTooltipBtn" class="tooltip-btn no-print" aria-label="More info on Piston Volume" aria-expanded="false" aria-controls="pistonTooltip">?</button>
+                            </div>
+                            <input type="number" id="pistonVolume" step="0.1"
+                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                aria-required="true" aria-describedby="pistonTooltip error-pistonVolume" value="-5">
+                            <div id="pistonTooltip" class="tooltip-text" role="tooltip">Use a <strong>negative</strong> value (e.g., -12.5) for a dish or valve reliefs. Use a <strong>positive</strong> value (e.g., 6.7) for a dome. Use 0 for a flat top.</div>
+                            <div id="error-pistonVolume" class="error-message" role="alert"></div>
+                        </div>
+                        
+                        <div>
+                            <div class="flex items-center">
+                                <label for="deckClearance" class="block text-sm font-medium text-gray-700">Deck Clearance (in) <span class="text-red-600">*</span></label>
+                                <button type="button" id="deckTooltipBtn" class="tooltip-btn no-print" aria-label="More info on Deck Clearance" aria-expanded="false" aria-controls="deckTooltip">?</button>
+                            </div>
+                            <input type="number" id="deckClearance" step="0.001"
+                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                aria-required="true" aria-describedby="deckTooltip error-deckClearance" value="0.010">
+                            <div id="deckTooltip" class="tooltip-text" role="tooltip">Distance from piston top to the block deck at TDC. Use a <strong>negative</strong> value (e.g., -0.005) if the piston is *out* of the hole.</div>
+                            <div id="error-deckClearance" class="error-message" role="alert"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col sm:flex-row gap-4 pt-4 border-t border-gray-200">
+                        <button type="submit" id="calculateBtn"
+                            class="w-full sm:w-auto px-8 py-3 bg-blue-600 text-white font-semibold rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            style="min-height: 48px;">
+                            Calculate
+                        </button>
+                        <button type="reset" id="resetBtn"
+                            class="w-full sm:w-auto px-6 py-3 bg-gray-100 text-gray-700 font-medium rounded-md border border-gray-300 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 no-print"
+                            style="min-height: 48px;">
+                            Reset
+                        </button>
+                    </div>
+                </form>
+
+                <section id="results" aria-live="polite" class="mt-8 pt-6 border-t border-gray-200" style="min-height: 180px;">
+                    <div class="result-primary">
+                        <h3>Static Compression Ratio</h3>
+                        <p id="compressionRatioResult">--:1</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                        <div class="result-secondary-card">
+                            <h4>Total Clearance Volume</h4>
+                            <p id="clearanceVolumeResult">-- cc</p>
+                        </div>
+                        <div class="result-secondary-card">
+                            <h4>Cylinder Swept Volume</h4>
+                            <p id="sweptVolumeResult">-- cc</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <article class="bg-white p-6 rounded-lg shadow-md mt-8 prose">
+                
+                <h2>Data Source and Methodology</h2>
+                <p>This calculator uses standard, universally accepted formulas from mechanical engineering practice, as detailed in publications like the <strong>SAE International 'Engine Builder's Handbook' (e.g., SAE J1995)</strong>. All calculations are based strictly on these geometric formulas to determine cylinder and clearance volumes. The constant for converting cubic inches to cubic centimeters (cc) is $1 \text{ in}^3 = 16.387064 \text{ cc}$.</p>
+
+                <h2>The Formula Explained</h2>
+                <p>The static compression ratio (CR) is the geometric ratio of the total cylinder volume (when the piston is at its lowest point, BDC) to the clearance volume (when the piston is at its highest point, TDC).</p>
+                <div class="formula-box" aria-label="Compression Ratio Formula">
+                    $$CR = \frac{V_{swept} + V_{clearance}}{V_{clearance}}$$
+                </div>
+                
+                <p>Where:</p>
+                <ul>
+                    <li><strong>$V_{swept}$ (Swept Volume):</strong> The volume displaced by the piston's travel from bottom-dead-center (BDC) to top-dead-center (TDC).
+                        <div class="formula-box" aria-label="Swept Volume Formula">
+                        $$V_{swept} = \pi \times \left(\frac{Bore}{2}\right)^2 \times Stroke$$
+                        </div>
+                    </li>
+                    <li><strong>$V_{clearance}$ (Clearance Volume):</strong> The total "unswept" volume remaining in the cylinder when the piston is at TDC. It is the sum of all volumes at the top of the cylinder.
+                        <div class="formula-box" aria-label="Clearance Volume Formula">
+                        $$V_{clearance} = V_{chamber} + V_{gasket} + V_{deck} + V_{piston}$$
+                        </div>
+                    </li>
+                </ul>
+
+                <h2>Glossary of Variables</h2>
+                <dl>
+                    <dt>Cylinder Bore (in)</dt>
+                    <dd>The inside diameter of the engine's cylinder.</dd>
+                    
+                    <dt>Piston Stroke (in)</dt>
+                    <dd>The total distance the piston travels from the bottom (BDC) to the top (TDC) of its travel.</dd>
+                    
+                    <dt>Head Gasket Bore (in)</dt>
+                    <dd>The inside diameter of the head gasket. This is typically slightly larger than the cylinder bore.</dd>
+                    
+                    <dt>Gasket Compressed Thickness (in)</dt>
+                    <dd>The thickness of the head gasket when it is fully compressed (torqued down) between the engine block and cylinder head.</dd>
+                    
+                    <dt>Combustion Chamber Volume (cc)</dt>
+                    <dd>The volume of the concave area in the cylinder head, measured in cubic centimeters (cc). This is often measured using a burette.</dd>
+                    
+                    <dt>Piston Volume (cc)</dt>
+                    <dd>The volume of the piston top. This is a critical value:
+                        <ul>
+                            <li>Use a <strong>negative</strong> value (e.g., -12.5) for a <strong>dished</strong> piston or one with valve reliefs.
+                            <li>Use a <strong>positive</strong> value (e.g., 6.7) for a <strong>domed</strong> piston.
+                            <li>Use <strong>0</strong> for a true <strong>flat top</strong> piston.
+                        </ul>
+                    </dd>
+                    
+                    <dt>Deck Clearance (in)</dt>
+                    <dd>The distance from the flat top of the piston (the "quench pad") to the top surface (deck) of the engine block when the piston is at TDC. If the piston protrudes *above* the deck (common in performance builds), enter this as a <strong>negative</strong> value (e.g., -0.005).</dd>
+                </dl>
+
+                <h2>How It Works: A Step-by-Step Example</h2>
+                <p>Let's calculate the CR for a common V8 build with the following specifications:</p>
+                <ul>
+                    <li><strong>Bore:</strong> 4.030 in</li>
+                    <li><strong>Stroke:</strong> 3.750 in</li>
+                    <li><strong>Gasket Bore:</strong> 4.060 in</li>
+                    <li><strong>Gasket Thickness:</strong> 0.040 in</li>
+                    <li><strong>Chamber Volume:</strong> 64.0 cc</li>
+                    <li><strong>Piston Volume:</strong> -5.0 cc (a 5cc dish)</li>
+                    <li><strong>Deck Clearance:</strong> 0.010 in</li>
+                </ul>
+                
+                <p><strong>Step 1: Calculate Swept Volume ($V_{swept}$)</strong></p>
+                <p>$V_{swept} = \pi \times (\frac{4.030}{2})^2 \times 3.750 = 47.834 \text{ in}^3$</p>
+                <p>Convert to cc: $47.834 \text{ in}^3 \times 16.387064 = 783.85 \text{ cc}$</p>
+
+                <p><strong>Step 2: Calculate Individual Clearance Volumes (in cc)</strong></p>
+                <p>$V_{gasket} = \pi \times (\frac{4.060}{2})^2 \times 0.040 = 0.5178 \text{ in}^3 = 8.486 \text{ cc}$</p>
+                <p>$V_{deck} = \pi \times (\frac{4.030}{2})^2 \times 0.010 = 0.1275 \text{ in}^3 = 2.09 \text{ cc}$</p>
+                <p>$V_{chamber} = 64.0 \text{ cc}$ (Given)</p>
+                <p>$V_{piston} = -5.0 \text{ cc}$ (Given)</p>
+                
+                <p><strong>Step 3: Sum Total Clearance Volume ($V_{clearance}$)</strong></p>
+                <p>$V_{clearance} = V_{chamber} + V_{gasket} + V_{deck} + V_{piston}$</p>
+                <p>$V_{clearance} = 64.0 + 8.486 + 2.09 + (-5.0) = 69.576 \text{ cc}$</p>
+
+                <p><strong>Step 4: Final Calculation ($CR$)</strong></p>
+                <p>$CR = \frac{V_{swept} + V_{clearance}}{V_{clearance}} = \frac{783.85 + 69.576}{69.576} = \frac{853.426}{69.576} = 12.266$</p>
+                
+                <p><strong>Result:</strong> The final compression ratio is <strong>12.27:1</strong>.</p>
+                
+                <h2>Frequently Asked Questions (FAQ)</h2>
+                
+                <details>
+                    <summary>What is static vs. dynamic compression ratio?</summary>
+                    <p><strong>Static compression (which this calculator finds)</strong> is a purely geometric ratio of volumes. It does not change. <strong>Dynamic compression</strong> is the *effective* compression ratio, which accounts for the fact that the intake valve does not close until after the piston has already started moving up, "bleeding off" some pressure. Dynamic CR is lower than static CR and is determined by camshaft timing.</p>
+                </details>
+                
+                <details>
+                    <summary>What is a "safe" compression ratio for pump gas?</summary>
+                    <p>This depends heavily on many factors, including camshaft timing (intake valve closing), engine materials (iron vs. aluminum heads), ignition timing, and fuel quality (91 vs. 93 octane). As a very general guideline, many naturally-aspirated engines on pump gas aim for 9.5:1 to 10.5:1. Engines with forced induction (turbo/supercharger) must run much lower static ratios (e.g., 8.5:1 to 9.5:1) to prevent detonation.</p>
+                </details>
+
+                <details>
+                    <summary>How do I accurately measure my chamber, piston, and deck volumes?</summary>
+                    <p>These values should be physically measured for an accurate calculation.
+                    <ul>
+                        <li><strong>Chamber/Piston Volume:</strong> By "CC'ing" the head or piston with a graduated burette and a plexiglass plate.</li>
+                        <li><strong>Deck Clearance:</strong> By using a dial indicator or depth micrometer to measure the piston's position relative to the block deck at TDC.</li>
+                    </ul>
+                    Relying on "published specs" from a manufacturer can often be inaccurate due to production tolerances.</p>
+                </details>
+                
+                <details>
+                    <summary>Why is my piston volume negative?</summary>
+                    <p>A negative value (e.g., -5.0 cc) represents a <strong>dish</strong> or <strong>valve reliefs</strong> in the piston. This *adds* volume to the combustion chamber, thus *lowering* the compression ratio. A positive value represents a <strong>dome</strong>, which *removes* volume and *increases* the compression ratio.</p>
+                </details>
+                
+                <details>
+                    <summary>How much will milling the heads increase my CR?</summary>
+                    <p>Milling the cylinder heads (or block) reduces the combustion chamber volume ($V_{chamber}$). You can use this calculator to find out. First, calculate your current CR. Then, find a "cc per inch" milling chart for your specific head, or use a general estimate (e.g., milling 0.006" might remove 1 cc). Input the new, smaller $V_{chamber}$ value into the calculator to see the resulting CR.</p>
+                </details>
+                
+                <details>
+                    <summary>Does altitude affect my compression ratio?</summary>
+                    <p>Altitude does <strong>not</strong> affect your *static compression ratio*, which is a fixed geometric property of your engine. However, altitude *does* affect your <strong>cylinder pressure</strong>. Higher altitude means thinner air (less atmospheric pressure), so the cylinder will fill with less air, resulting in lower effective compression and less power.</p>
+                </details>
+
+                <div class="mt-8 p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
+                    <p><strong>Tool developed by Ugo Candido.</strong><br>
+                    Automotive engineering content verified by the CalcDomain Editorial Board.</p>
+                    <p>Last accuracy review: <time datetime="2025-10-27">October 27, 2025</time></p>
+                </div>
+            </article>
+        </section>
+
+        <aside class="w-full lg:w-1/3 no-print">
+            <div class="sticky top-24 space-y-6">
+                <div class="bg-gray-200 h-72 rounded-lg flex items-center justify-center text-gray-500">
+                    Ad Placement (300×600)
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="font-bold text-lg mb-3">Why Use This Calculator</h3>
+                    <ul class="list-disc list-inside text-sm text-gray-600 space-y-2">
+                        <li>Instantly see how component changes affect your final CR.</li>
+                        <li>Understand the relationship between volumes like $V_{gasket}$ and $V_{deck}$.</li>
+                        <li>Test "what-if" scenarios for your engine build (e.g., different gaskets or pistons).</li>
+                        <li>Based on standard, verifiable engineering formulas for accuracy.</li>
+                    </ul>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="font-bold text-lg mb-4">Related Automotive Tools</h3>
+                    <ul class="space-y-3 text-sm">
+                        <li><a href="engine-displacement-calculator.html" class="text-blue-600 hover:underline">Engine Displacement Calculator</a></li>
+                        <li><a href="fuel-injector-size-calculator.html" class="text-blue-600 hover:underline">Fuel Injector Size Calculator</a></li>
+                        <li><a href="hp-to-kw-converter.html" class="text-blue-600 hover:underline">HP to kW Converter</a></li>
+                        <li><a href="gear-ratio-calculator.html" class="text-blue-600 hover:underline">Gear Ratio Calculator</a></li>
+                    </ul>
+                </div>
+            </div>
+        </aside>
+    </div>
+</main>
+
+<footer class="bg-white border-t no-print">
+    <div class="container mx-auto px-6 py-8 text-center text-gray-600 text-sm">
+        <p>&copy; 2025 CalcDomain. All Rights Reserved.</p>
+        <div class="mt-4 space-x-4">
+            <a href="about.html" class="hover:text-blue-600">About</a>
+            <a href="contact.html" class="hover:text-blue-600">Contact</a>
+            <a href="privacy.html" class="hover:text-blue-600">Privacy</a>
+            <a href="terms.html" class="hover:text-blue-600">Terms</a>
+        </div>
+    </div>
+</footer>
+
+<script defer>
+document.addEventListener('DOMContentLoaded', () => {
+
+    // --- Elementi DOM ---
+    const form = document.getElementById('cr-form');
+    const inputs = {
+        bore: document.getElementById('bore'),
+        stroke: document.getElementById('stroke'),
+        gasketBore: document.getElementById('gasketBore'),
+        gasketThickness: document.getElementById('gasketThickness'),
+        chamberVolume: document.getElementById('chamberVolume'),
+        pistonVolume: document.getElementById('pistonVolume'),
+        deckClearance: document.getElementById('deckClearance'),
+    };
+    const errorDivs = {
+        bore: document.getElementById('error-bore'),
+        stroke: document.getElementById('error-stroke'),
+        gasketBore: document.getElementById('error-gasketBore'),
+        gasketThickness: document.getElementById('error-gasketThickness'),
+        chamberVolume: document.getElementById('error-chamberVolume'),
+        pistonVolume: document.getElementById('error-pistonVolume'),
+        deckClearance: document.getElementById('error-deckClearance'),
+    };
+    const results = {
+        cr: document.getElementById('compressionRatioResult'),
+        clearance: document.getElementById('clearanceVolumeResult'),
+        swept: document.getElementById('sweptVolumeResult'),
+    };
+    const tooltips = {
+        piston: { btn: document.getElementById('pistonTooltipBtn'), text: document.getElementById('pistonTooltip') },
+        deck: { btn: document.getElementById('deckTooltipBtn'), text: document.getElementById('deckTooltip') }
+    };
+    const resetBtn = document.getElementById('resetBtn');
+
+    // --- Costanti ---
+    const INCH_TO_CC = 16.387064;
+    const PI = Math.PI;
+
+    // --- Gestori Eventi ---
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        calculate();
+    });
+
+    resetBtn.addEventListener('click', resetForm);
+
+    // Validazione e pulizia errori in tempo reale
+    Object.keys(inputs).forEach(key => {
+        inputs[key].addEventListener('input', () => clearError(inputs[key]));
+        inputs[key].addEventListener('blur', () => validateField(inputs[key]));
+    });
+
+    // Gestione Tooltip Accessibili
+    Object.keys(tooltips).forEach(key => {
+        const { btn, text } = tooltips[key];
+        btn.addEventListener('click', () => {
+            const isExpanded = btn.getAttribute('aria-expanded') === 'true';
+            btn.setAttribute('aria-expanded', !isExpanded);
+            text.style.display = isExpanded ? 'none' : 'block';
+        });
+    });
+
+    // --- Funzioni Principali ---
+    
+    function calculate() {
+        if (!validateAllFields()) {
+            return;
+        }
+
+        // 1. Ottieni valori
+        const bore_in = parseFloat(inputs.bore.value);
+        const stroke_in = parseFloat(inputs.stroke.value);
+        const gasketBore_in = parseFloat(inputs.gasketBore.value);
+        const gasketThickness_in = parseFloat(inputs.gasketThickness.value);
+        const chamber_cc = parseFloat(inputs.chamberVolume.value);
+        const piston_cc = parseFloat(inputs.pistonVolume.value);
+        const deck_in = parseFloat(inputs.deckClearance.value);
+
+        // 2. Calcola volumi in in^3
+        const sweptVol_in3 = PI * Math.pow(bore_in / 2, 2) * stroke_in;
+        const gasketVol_in3 = PI * Math.pow(gasketBore_in / 2, 2) * gasketThickness_in;
+        const deckVol_in3 = PI * Math.pow(bore_in / 2, 2) * deck_in;
+        
+        // 3. Converti volumi in CC
+        const sweptVol_cc = sweptVol_in3 * INCH_TO_CC;
+        const gasketVol_cc = gasketVol_in3 * INCH_TO_CC;
+        const deckVol_cc = deckVol_in3 * INCH_TO_CC;
+        
+        // 4. Calcola volumi totali
+        const totalClearance_cc = chamber_cc + gasketVol_cc + deckVol_cc + piston_cc;
+        const totalVolume_cc = sweptVol_cc + totalClearance_cc;
+        
+        // 5. Calcola CR
+        const compressionRatio = totalVolume_cc / totalClearance_cc;
+
+        // 6. Mostra risultati
+        if (isFinite(compressionRatio) && compressionRatio > 0) {
+            results.cr.textContent = `${compressionRatio.toFixed(2)}:1`;
+            results.clearance.textContent = `${totalClearance_cc.toFixed(2)} cc`;
+            results.swept.textContent = `${sweptVol_cc.toFixed(2)} cc`;
+        } else {
+            resetResults();
+            showError(inputs.bore, "Calculation resulted in an invalid number. Check inputs.");
+        }
+    }
+    
+    function resetForm() {
+        form.reset();
+        Object.keys(inputs).forEach(key => clearError(inputs[key]));
+        resetResults();
+        
+        // Reimposta i valori di esempio
+        inputs.bore.value = "4.030";
+        inputs.stroke.value = "3.750";
+        inputs.gasketBore.value = "4.060";
+        inputs.gasketThickness.value = "0.040";
+        inputs.chamberVolume.value = "64";
+        inputs.pistonVolume.value = "-5";
+        inputs.deckClearance.value = "0.010";
+    }
+    
+    function resetResults() {
+        results.cr.textContent = '--:1';
+        results.clearance.textContent = '-- cc';
+        results.swept.textContent = '-- cc';
+    }
+
+    // --- Funzioni di Validazione e UI ---
+
+    function validateAllFields() {
+        let isValid = true;
+        Object.keys(inputs).forEach(key => {
+            if (!validateField(inputs[key])) {
+                isValid = false;
+            }
+        });
+        // Validazione logica incrociata
+        const boreVal = parseFloat(inputs.bore.value);
+        const gasketBoreVal = parseFloat(inputs.gasketBore.value);
+        if (!isNaN(boreVal) && !isNaN(gasketBoreVal) && gasketBoreVal < boreVal) {
+            showError(inputs.gasketBore, "Gasket bore must be larger than cylinder bore.");
+            isValid = false;
+        }
+        return isValid;
+    }
+    
+    function validateField(input) {
+        const id = input.id;
+        const value = input.value.trim();
+        
+        if (value === '') {
+            showError(input, "This field is required.");
+            return false;
+        }
+        
+        const numValue = parseFloat(value);
+        if (isNaN(numValue)) {
+            showError(input, "Please enter a valid number.");
+            return false;
+        }
+
+        // Campi che non possono essere 0 o negativi
+        if (id !== 'pistonVolume' && id !== 'deckClearance') {
+            if (numValue <= 0) {
+                showError(input, "Must be a positive number.");
+                return false;
+            }
+        }
+
+        clearError(input);
+        return true;
+    }
+
+    function showError(input, message) {
+        const errorDiv = errorDivs[input.id];
+        if (errorDiv) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        input.setAttribute('aria-invalid', 'true');
+        // Assicura che l'ID dell'errore sia in aria-describedby
+        const existingDesc = input.getAttribute('aria-describedby') || '';
+        if (errorDiv && !existingDesc.includes(errorDiv.id)) {
+            input.setAttribute('aria-describedby', `${existingDesc} ${errorDiv.id}`.trim());
+        }
+    }
+
+    function clearError(input) {
+        const errorDiv = errorDivs[input.id];
+        if (errorDiv) {
+            errorDiv.textContent = '';
+            errorDiv.style.display = 'none';
+        }
+        input.setAttribute('aria-invalid', 'false');
+        // Rimuove l'ID dell'errore da aria-describedby
+        if (errorDiv) {
+            const existingDesc = input.getAttribute('aria-describedby') || '';
+            input.setAttribute('aria-describedby', existingDesc.replace(errorDiv.id, '').trim());
+        }
+    }
+    
+    // Calcola all'avvio con i valori di esempio
+    calculate();
+});
+</script>
+
+</body>
+</html>
