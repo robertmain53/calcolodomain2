@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Meta & Basics -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Balloon Payment Calculator – Regular Payment, Final Balloon, Total Interest</title>
+  <meta name="description" content="Compute regular payments and the final balloon for a loan with a large amount due at maturity. Get payment, balloon, total interest, and a printable schedule." />
+  <link rel="canonical" href="https://calcdomain.com/balloon-payment-calculator.html" />
+
+  <!-- Icons / PWA (optional paths kept for site-wide consistency) -->
+  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+
+  <!-- Fonts & CSS -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { --focus: #1d4ed8; }
+    body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Liberation Sans', sans-serif; }
+    /* Prose helpers */
+    .prose { max-width: 70ch; }
+    .prose h2 { font-size: 1.5rem; font-weight: 700; margin-top: 2rem; margin-bottom: 0.75rem; }
+    .prose h3 { font-size: 1.25rem; font-weight: 700; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+    .prose p, .prose li { line-height: 1.65; }
+    .formula-box { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 10px; padding: 1rem; overflow-x: auto; }
+    /* Focus (WCAG 2.1 AA visible focus) */
+    :is(a,button,input,select,summary,[role="button"]):focus {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    /* Touch targets */
+    button, .btn { min-height: 48px; min-width: 48px; }
+    label { font-weight: 600; }
+    /* Error text */
+    .error-text { color: #b91c1c; }
+    /* Result area min-height to prevent CLS */
+    #results { min-height: 280px; }
+    /* Result cards */
+    .result-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1rem; text-align: center; }
+    .result-card h4 { font-size: 0.95rem; color: #374151; margin-bottom: 0.35rem; }
+    .result-card p { font-size: 1.6rem; font-weight: 800; color: #1d4ed8; }
+    /* Print */
+    @media print {
+      header, nav, aside, .no-print, footer { display: none !important; }
+      #print-section { padding: 0; box-shadow: none; }
+      #results-chart-container { display: none !important; }
+      table { page-break-inside: auto; }
+      tr { page-break-inside: avoid; page-break-after: auto; }
+    }
+  </style>
+
+  <!-- Charts & Math -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- MathJax for LaTeX rendering -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" defer></script>
+
+  <!-- JSON-LD (E-E-A-T, Breadcrumbs, HowTo, FAQ) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Balloon Payment Calculator",
+    "description": "Calculate regular payments and the final balloon amount for loans with a large lump sum due at maturity. Includes schedule and printable results.",
+    "url": "https://calcdomain.com/balloon-payment-calculator.html",
+    "inLanguage": "en",
+    "author": { "@type": "Person", "name": "Ugo Candido" },
+    "publisher": { "@type": "Organization", "name": "CalcDomain" }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"BreadcrumbList",
+    "itemListElement":[
+      {"@type":"ListItem","position":1,"name":"Home","item":"https://calcdomain.com/"},
+      {"@type":"ListItem","position":2,"name":"Finance","item":"https://calcdomain.com/finance.html"},
+      {"@type":"ListItem","position":3,"name":"Loans & Debt","item":"https://calcdomain.com/subcategories/finance-loans-debt.html"},
+      {"@type":"ListItem","position":4,"name":"Balloon Payment Calculator","item":"https://calcdomain.com/balloon-payment-calculator.html"}
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"HowTo",
+    "name":"How to Calculate a Balloon Loan Payment",
+    "description":"Step-by-step for finding the regular payment and final balloon on a loan.",
+    "step":[
+      {"@type":"HowToStep","name":"Enter Loan Details","text":"Input principal, APR, term, and payment frequency."},
+      {"@type":"HowToStep","name":"Choose Balloon Type","text":"Select percentage of principal or a fixed balloon amount."},
+      {"@type":"HowToStep","name":"Compute Payment","text":"Calculator applies the balloon annuity formula to find the periodic payment."},
+      {"@type":"HowToStep","name":"Review Results","text":"See payment, balloon, total interest, and the schedule with the final balloon at maturity."}
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"FAQPage",
+    "mainEntity":[
+      {"@type":"Question","name":"What is a balloon loan?","acceptedAnswer":{"@type":"Answer","text":"A balloon loan has smaller regular payments and a large final lump sum (the balloon) due at maturity."}},
+      {"@type":"Question","name":"How is the payment calculated with a balloon?","acceptedAnswer":{"@type":"Answer","text":"We discount the balloon back to present value and solve for the payment so that the present value of the payment stream plus the discounted balloon equals the principal."}},
+      {"@type":"Question","name":"Is a balloon loan cheaper than a fully amortizing loan?","acceptedAnswer":{"@type":"Answer","text":"Regular payments are lower, but total interest is usually higher because more principal remains outstanding until maturity."}},
+      {"@type":"Question","name":"Can I set a balloon as a percentage or a fixed amount?","acceptedAnswer":{"@type":"Answer","text":"Yes. Pick percentage of principal or enter a fixed balloon amount. The tool adapts automatically."}},
+      {"@type":"Question","name":"What happens at maturity?","acceptedAnswer":{"@type":"Answer","text":"You must pay the balloon in full, refinance it, or sell the asset to cover it—subject to lender terms."}},
+      {"@type":"Question","name":"What if APR is 0%?","acceptedAnswer":{"@type":"Answer","text":"The payment is simply (Principal − Balloon) divided by the number of periods, with the balloon due at the end."}},
+      {"@type":"Question","name":"Does payment frequency matter?","acceptedAnswer":{"@type":"Answer","text":"Yes. APR is converted to a per-period rate based on monthly, biweekly, or weekly payments."}}
+    ]
+  }
+  </script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <!-- Header (non-sticky per directive) -->
+  <header class="bg-white border-b">
+    <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
+      <div class="flex justify-between items-center">
+        <a href="index.html" class="text-2xl font-extrabold text-blue-600">CalcDomain</a>
+        <div class="hidden md:flex items-center space-x-6 text-sm">
+          <a href="search.html" class="text-gray-700 hover:text-blue-600">Advanced Search</a>
+          <a href="index.html#categories" class="text-gray-700 hover:text-blue-600">Categories</a>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="container mx-auto px-4 lg:px-6 py-8">
+    <div class="flex flex-col lg:flex-row gap-8">
+      <!-- Main column -->
+      <section class="w-full lg:w-2/3">
+        <nav class="text-sm text-gray-600 mb-4" aria-label="Breadcrumb">
+          <a href="index.html" class="hover:text-blue-600">Home</a> &raquo;
+          <a href="finance.html" class="hover:text-blue-600">Finance</a> &raquo;
+          <a href="subcategories/finance-loans-debt.html" class="hover:text-blue-600">Loans &amp; Debt</a> &raquo;
+          <span class="text-gray-900">Balloon Payment Calculator</span>
+        </nav>
+
+        <div id="print-section" class="bg-white p-6 rounded-lg shadow-md">
+          <h1 class="text-3xl font-extrabold text-gray-900 mb-2">Balloon Payment Calculator</h1>
+          <p class="text-gray-700 mb-6">
+            Enter your loan details and choose a balloon as a percentage of the principal or a fixed amount.
+            The calculator instantly computes the regular payment, final balloon due at maturity, total interest,
+            and a printable schedule. Ideal for auto, commercial, and short-term loans with a lump sum at the end.
+          </p>
+
+          <!-- Calculator UI -->
+          <section id="calculator-ui" aria-labelledby="calcTitle" class="space-y-6">
+            <h2 id="calcTitle" class="sr-only">Calculator Inputs</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+              <!-- Loan Amount -->
+              <div>
+                <div class="flex items-center justify-between">
+                  <label for="loanAmount" class="block text-sm font-medium text-gray-800">Loan amount <span class="text-red-600" aria-hidden="true">*</span></label>
+                  <button type="button" class="text-sm text-blue-700 hover:underline" id="tt-loanAmount-btn" aria-controls="tt-loanAmount" aria-expanded="false">?</button>
+                </div>
+                <input type="number" id="loanAmount" inputmode="decimal" min="0" step="100" value="25000"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+                       aria-required="true" aria-describedby="err-loanAmount tt-loanAmount">
+                <p id="tt-loanAmount" class="mt-1 text-xs text-gray-600 hidden">Principal borrowed before fees and taxes.</p>
+                <p id="err-loanAmount" class="mt-1 text-xs error-text" aria-live="polite"></p>
+              </div>
+
+              <!-- APR -->
+              <div>
+                <div class="flex items-center justify-between">
+                  <label for="apr" class="block text-sm font-medium text-gray-800">Annual interest rate (APR %) <span class="text-red-600" aria-hidden="true">*</span></label>
+                  <button type="button" class="text-sm text-blue-700 hover:underline" id="tt-apr-btn" aria-controls="tt-apr" aria-expanded="false">?</button>
+                </div>
+                <input type="number" id="apr" inputmode="decimal" min="0" max="100" step="0.01" value="6.5"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+                       aria-required="true" aria-describedby="err-apr tt-apr">
+                <p id="tt-apr" class="mt-1 text-xs text-gray-600 hidden">Nominal annual percentage rate; fees not included.</p>
+                <p id="err-apr" class="mt-1 text-xs error-text" aria-live="polite"></p>
+              </div>
+
+              <!-- Term value -->
+              <div>
+                <div class="flex items-center justify-between">
+                  <label for="termValue" class="block text-sm font-medium text-gray-800">Loan term <span class="text-red-600" aria-hidden="true">*</span></label>
+                  <button type="button" class="text-sm text-blue-700 hover:underline" id="tt-term-btn" aria-controls="tt-term" aria-expanded="false">?</button>
+                </div>
+                <input type="number" id="termValue" inputmode="decimal" min="0.25" step="0.25" value="5"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+                       aria-required="true" aria-describedby="err-term tt-term termUnits">
+                <p id="tt-term" class="mt-1 text-xs text-gray-600 hidden">Total loan length in years or months.</p>
+                <p id="err-term" class="mt-1 text-xs error-text" aria-live="polite"></p>
+              </div>
+
+              <!-- Term units -->
+              <div>
+                <label for="termUnits" class="block text-sm font-medium text-gray-800">Term unit</label>
+                <select id="termUnits"
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+                        aria-describedby="tt-term">
+                  <option value="years" selected>Years</option>
+                  <option value="months">Months</option>
+                </select>
+              </div>
+
+              <!-- Frequency -->
+              <div>
+                <label for="frequency" class="block text-sm font-medium text-gray-800">Payment frequency</label>
+                <select id="frequency"
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-600 focus:ring-1 focus:ring-blue-600">
+                  <option value="monthly" selected>Monthly</option>
+                  <option value="biweekly">Biweekly (26/yr)</option>
+                  <option value="weekly">Weekly (52/yr)</option>
+                </select>
+              </div>
+
+              <!-- Balloon Type -->
+              <div>
+                <label for="balloonType" class="block text-sm font-medium text-gray-800">Balloon type</label>
+                <select id="balloonType"
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-600 focus:ring-1 focus:ring-blue-600">
+                  <option value="percent" selected>% of principal</option>
+                  <option value="amount">Fixed amount</option>
+                </select>
+              </div>
+
+              <!-- Balloon % -->
+              <div id="balloonPercentWrap">
+                <div class="flex items-center justify-between">
+                  <label for="balloonPercent" class="block text-sm font-medium text-gray-800">Balloon (% of principal) <span class="text-red-600" aria-hidden="true">*</span></label>
+                  <button type="button" class="text-sm text-blue-700 hover:underline" id="tt-bp-btn" aria-controls="tt-bp" aria-expanded="false">?</button>
+                </div>
+                <input type="number" id="balloonPercent" inputmode="decimal" min="0" max="100" step="0.5" value="40"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+                       aria-required="true" aria-describedby="err-balloonPercent tt-bp">
+                <p id="tt-bp" class="mt-1 text-xs text-gray-600 hidden">Final lump sum as a percentage of the original principal.</p>
+                <p id="err-balloonPercent" class="mt-1 text-xs error-text" aria-live="polite"></p>
+              </div>
+
+              <!-- Balloon amount -->
+              <div id="balloonAmountWrap" class="hidden">
+                <div class="flex items-center justify-between">
+                  <label for="balloonAmount" class="block text-sm font-medium text-gray-800">Balloon amount <span class="text-red-600" aria-hidden="true">*</span></label>
+                  <button type="button" class="text-sm text-blue-700 hover:underline" id="tt-ba-btn" aria-controls="tt-ba" aria-expanded="false">?</button>
+                </div>
+                <input type="number" id="balloonAmount" inputmode="decimal" min="0" step="100" value="10000"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+                       aria-required="true" aria-describedby="err-balloonAmount tt-ba">
+                <p id="tt-ba" class="mt-1 text-xs text-gray-600 hidden">Fixed lump sum due at maturity.</p>
+                <p id="err-balloonAmount" class="mt-1 text-xs error-text" aria-live="polite"></p>
+              </div>
+
+              <!-- First payment date (optional, for schedule dates) -->
+              <div>
+                <div class="flex items-center justify-between">
+                  <label for="firstDate" class="block text-sm font-medium text-gray-800">First payment date</label>
+                  <button type="button" class="text-sm text-blue-700 hover:underline" id="tt-date-btn" aria-controls="tt-date" aria-expanded="false">?</button>
+                </div>
+                <input type="month" id="firstDate"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+                       aria-describedby="tt-date">
+                <p id="tt-date" class="mt-1 text-xs text-gray-600 hidden">Used to render payment dates; it does not affect calculation.</p>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap gap-3 pt-2">
+              <button id="calcBtn" class="btn px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 focus:outline-none">Calculate</button>
+              <button id="resetBtn" class="btn px-4 py-2 rounded-md bg-gray-200 text-gray-800 hover:bg-gray-300 focus:outline-none">Reset</button>
+              <button id="printBtn" class="btn px-4 py-2 rounded-md bg-white border border-gray-300 text-gray-800 hover:bg-gray-50 focus:outline-none">Print</button>
+            </div>
+          </section>
+
+          <!-- Results -->
+          <section id="results" class="mt-8 bg-blue-50 border border-blue-100 rounded-lg p-6" aria-labelledby="resultsTitle">
+            <h2 id="resultsTitle" class="sr-only">Results</h2>
+            <div class="flex flex-col md:flex-row gap-6">
+              <div class="w-full md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="result-card">
+                  <h4>Payment per period</h4>
+                  <p id="paymentPerPeriod">$0.00</p>
+                </div>
+                <div class="result-card">
+                  <h4>Balloon at maturity</h4>
+                  <p id="balloonDue">$0.00</p>
+                </div>
+                <div class="result-card">
+                  <h4>Total interest</h4>
+                  <p id="totalInterest">$0.00</p>
+                </div>
+                <div class="result-card">
+                  <h4>Total cost</h4>
+                  <p id="totalCost">$0.00</p>
+                </div>
+              </div>
+              <div class="w-full md:w-1/3">
+                <div id="results-chart-container" class="h-44">
+                  <canvas id="resultsChart" aria-label="Principal versus interest chart"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <details class="mt-6 bg-white rounded-lg" id="scheduleDetails">
+              <summary class="font-semibold text-gray-900 px-2 py-2">View payment schedule (includes final balloon)</summary>
+              <div class="mt-4 overflow-x-auto border border-gray-200 rounded-lg" id="scheduleContainer">
+                <table class="min-w-full text-sm text-right">
+                  <thead class="bg-gray-100 text-gray-700 uppercase">
+                    <tr>
+                      <th class="px-4 py-2 text-left">#</th>
+                      <th class="px-4 py-2 text-left">Date</th>
+                      <th class="px-4 py-2">Payment</th>
+                      <th class="px-4 py-2">Interest</th>
+                      <th class="px-4 py-2">Principal</th>
+                      <th class="px-4 py-2">Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody id="scheduleBody"></tbody>
+                </table>
+              </div>
+            </details>
+          </section>
+        </div>
+
+        <!-- Authoritative Content -->
+        <article class="bg-white p-6 rounded-lg shadow-md mt-8 prose">
+          <h2>Authoritative data source & methodology</h2>
+          <p>
+            <strong>AuthoritativeDataSource:</strong> Consumer Financial Protection Bureau (CFPB), “<em>Paying Back Your Loan</em>”
+            guidance and lender disclosure standards (Regulation Z, Truth in Lending Act, 12 CFR Part 1026), latest consolidated version.
+            All computations follow time-value-of-money identities used broadly in banking and finance.
+            <br>
+            <em>Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.</em>
+          </p>
+
+          <h2>The formula explained</h2>
+          <div class="formula-box">
+            For a loan with principal $P$, periodic rate $i$ (APR converted to per-period), number of periods $n$, and a balloon $B$ due at maturity, the present value identity is:<br>
+            $$P = A \cdot \frac{1-(1+i)^{-n}}{i} + \frac{B}{(1+i)^n}$$
+            Solving for the regular payment $A$:
+            $$A = \left(P - \frac{B}{(1+i)^n}\right)\cdot \frac{i}{1-(1+i)^{-n}}$$
+            Special case if $i=0$:
+            $$A = \frac{P - B}{n}$$
+          </div>
+
+          <h2>Glossary of variables</h2>
+          <ul>
+            <li><strong>P</strong> — Principal (original loan amount).</li>
+            <li><strong>APR</strong> — Annual Percentage Rate (nominal, not including fees).</li>
+            <li><strong>i</strong> — Periodic interest rate ($i=\text{APR}/m$ where $m$ is payments per year).</li>
+            <li><strong>n</strong> — Total number of payments (term × payments per year).</li>
+            <li><strong>A</strong> — Regular payment per period before the final balloon.</li>
+            <li><strong>B</strong> — Balloon (lump sum) due at maturity.</li>
+            <li><strong>Total interest</strong> — Sum of all periodic interest plus any interest implicit in the balloon.</li>
+            <li><strong>Total cost</strong> — Principal plus total interest.</li>
+          </ul>
+
+          <h2>How it works: a step-by-step example</h2>
+          <p><strong>Inputs:</strong> P = $25,000, APR = 6.5%, Term = 5 years, Frequency = monthly, Balloon = 40% of principal ($10,000).</p>
+          <ol>
+            <li>Payments/year $m=12 \Rightarrow i=0.065/12$.</li>
+            <li>$n=5\times 12=60$.</li>
+            <li>Discount the balloon: $B/(1+i)^n$.</li>
+            <li>Compute $A = \Big(P - B/(1+i)^n\Big)\cdot \dfrac{i}{1-(1+i)^{-n}}$.</li>
+            <li>Schedule shows 60 regular payments and a final line for the balloon $B$.</li>
+          </ol>
+
+          <h2>Frequently asked questions</h2>
+          <details>
+            <summary>Is the balloon included in the regular payment?</summary>
+            <p>No. The balloon is a separate lump sum due at maturity in addition to the regular payments.</p>
+          </details>
+          <details>
+            <summary>Why is total interest often higher with a balloon?</summary>
+            <p>More principal remains outstanding for longer, so interest accrues on a larger balance.</p>
+          </details>
+          <details>
+            <summary>Can I model a 0% APR balloon?</summary>
+            <p>Yes. The payment becomes (P − B)/n and the balloon is paid at the end.</p>
+          </details>
+          <details>
+            <summary>What balloon percentage is typical?</summary>
+            <p>Auto/commercial loans often range 20–50%, but it depends on collateral, credit, and lender policy.</p>
+          </details>
+          <details>
+            <summary>Does late payment change the math?</summary>
+            <p>Some lenders accrue daily interest. Always check your agreement; results here assume a nominal APR per fixed period.</p>
+          </details>
+
+          <div class="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+            <p><strong>Tool developed by Ugo Candido.</strong> Content verified by the CalcDomain Editorial Board.<br>
+               Last accuracy review: <time datetime="2025-10-30">October 30, 2025</time></p>
+          </div>
+        </article>
+      </section>
+
+      <!-- Sidebar -->
+      <aside class="w-full lg:w-1/3">
+        <div class="sticky top-24 space-y-6 no-print">
+          <div class="bg-white p-6 rounded-lg shadow-md">
+            <h3 class="font-bold text-lg mb-3">Why use this calculator</h3>
+            <ul class="list-disc list-inside text-sm text-gray-700 space-y-2">
+              <li>Supports balloon as % of principal or fixed amount.</li>
+              <li>Clear schedule with final balloon line for printing.</li>
+              <li>Mobile-first, WCAG-aligned, and fast.</li>
+            </ul>
+          </div>
+          <div class="bg-white p-6 rounded-lg shadow-md">
+            <h3 class="font-bold text-lg mb-4">Related loan tools</h3>
+            <ul class="space-y-3 text-sm">
+              <li><a class="text-blue-700 hover:underline" href="loan-amortization.html">Loan Amortization Schedule</a></li>
+              <li><a class="text-blue-700 hover:underline" href="apr.html">APR Calculator</a></li>
+              <li><a class="text-blue-700 hover:underline" href="loan-prepayment.html">Loan Prepayment Planner</a></li>
+              <li><a class="text-blue-700 hover:underline" href="loan-comparison.html">Loan Comparison</a></li>
+            </ul>
+          </div>
+          <div class="bg-gray-200 h-64 rounded-lg flex items-center justify-center text-gray-500">Ad Placement (300×600)</div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="bg-white border-t">
+    <div class="container mx-auto px-6 py-8 text-center text-gray-600 text-sm">
+      <p>&copy; 2025 CalcDomain. All rights reserved.</p>
+      <div class="mt-4 space-x-4">
+        <a href="about.html" class="hover:text-blue-600">About</a>
+        <a href="contact.html" class="hover:text-blue-600">Contact</a>
+        <a href="privacy.html" class="hover:text-blue-600">Privacy</a>
+        <a href="terms.html" class="hover:text-blue-600">Terms</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- App Logic (placed before </body>; inline handlers + on-blur validation). -->
+  <script defer>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Elements
+      const els = {
+        loanAmount: document.getElementById('loanAmount'),
+        apr: document.getElementById('apr'),
+        termValue: document.getElementById('termValue'),
+        termUnits: document.getElementById('termUnits'),
+        frequency: document.getElementById('frequency'),
+        balloonType: document.getElementById('balloonType'),
+        balloonPercentWrap: document.getElementById('balloonPercentWrap'),
+        balloonAmountWrap: document.getElementById('balloonAmountWrap'),
+        balloonPercent: document.getElementById('balloonPercent'),
+        balloonAmount: document.getElementById('balloonAmount'),
+        firstDate: document.getElementById('firstDate'),
+        paymentPerPeriod: document.getElementById('paymentPerPeriod'),
+        balloonDue: document.getElementById('balloonDue'),
+        totalInterest: document.getElementById('totalInterest'),
+        totalCost: document.getElementById('totalCost'),
+        scheduleBody: document.getElementById('scheduleBody'),
+        calcBtn: document.getElementById('calcBtn'),
+        resetBtn: document.getElementById('resetBtn'),
+        printBtn: document.getElementById('printBtn'),
+        scheduleDetails: document.getElementById('scheduleDetails')
+      };
+
+      // Tooltips
+      function bindTooltip(btnId, panelId) {
+        const b = document.getElementById(btnId);
+        const p = document.getElementById(panelId);
+        if (!b || !p) return;
+        b.addEventListener('click', () => {
+          const open = p.classList.toggle('hidden');
+          b.setAttribute('aria-expanded', String(!open));
+        });
+        b.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); b.click(); }
+        });
+      }
+      bindTooltip('tt-loanAmount-btn', 'tt-loanAmount');
+      bindTooltip('tt-apr-btn', 'tt-apr');
+      bindTooltip('tt-term-btn', 'tt-term');
+      bindTooltip('tt-bp-btn', 'tt-bp');
+      bindTooltip('tt-ba-btn', 'tt-ba');
+      bindTooltip('tt-date-btn', 'tt-date');
+
+      // Helpers
+      const fmtCurrency = (val) => new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(+val || 0);
+      const fmtNum = (val) => new Intl.NumberFormat().format(+val || 0);
+
+      function periodsPerYear(freq) {
+        if (freq === 'weekly') return 52;
+        if (freq === 'biweekly') return 26;
+        return 12;
+      }
+
+      function toYears(value, units) {
+        const v = parseFloat(value) || 0;
+        return units === 'months' ? v / 12 : v;
+      }
+
+      // Validation (on blur)
+      function setError(id, msg) {
+        const elt = document.getElementById(`err-${id}`);
+        if (elt) elt.textContent = msg || '';
+      }
+      function validate() {
+        let ok = true;
+        // Loan amount
+        const P = parseFloat(els.loanAmount.value);
+        if (!(P > 0)) { setError('loanAmount', 'Enter a loan amount greater than 0.'); ok = false; } else setError('loanAmount', '');
+        // APR
+        const apr = parseFloat(els.apr.value);
+        if (!(apr >= 0 && apr <= 100)) { setError('apr', 'APR must be between 0% and 100%.'); ok = false; } else setError('apr', '');
+        // Term
+        const t = parseFloat(els.termValue.value);
+        if (!(t > 0)) { setError('term', 'Enter a positive loan term.'); ok = false; } else setError('term', '');
+        // Balloon
+        if (els.balloonType.value === 'percent') {
+          const bp = parseFloat(els.balloonPercent.value);
+          if (!(bp >= 0 && bp <= 100)) { setError('balloonPercent', 'Balloon % must be from 0 to 100.'); ok = false; } else setError('balloonPercent','');
+        } else {
+          const ba = parseFloat(els.balloonAmount.value);
+          if (!(ba >= 0)) { setError('balloonAmount', 'Balloon amount must be 0 or more.'); ok = false; } else setError('balloonAmount','');
+        }
+        return ok;
+      }
+
+      ['loanAmount','apr','termValue','balloonPercent','balloonAmount'].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) input.addEventListener('blur', validate);
+      });
+
+      // Toggle balloon type UI
+      els.balloonType.addEventListener('change', () => {
+        const type = els.balloonType.value;
+        if (type === 'percent') {
+          els.balloonPercentWrap.classList.remove('hidden');
+          els.balloonAmountWrap.classList.add('hidden');
+        } else {
+          els.balloonPercentWrap.classList.add('hidden');
+          els.balloonAmountWrap.classList.remove('hidden');
+        }
+        compute();
+      });
+
+      // Chart
+      let chartInstance = null;
+      function renderChart(principal, interest) {
+        const ctx = document.getElementById('resultsChart');
+        if (!ctx) return;
+        const data = {
+          labels: ['Principal', 'Interest'],
+          datasets: [{ data: [Math.max(0, principal), Math.max(0, interest)] }]
+        };
+        if (chartInstance) {
+          chartInstance.data = data;
+          chartInstance.update();
+        } else {
+          chartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data,
+            options: { plugins: { legend: { position: 'bottom' } }, responsive: true, maintainAspectRatio: false }
+          });
+        }
+      }
+
+      // Compute schedule
+      function compute() {
+        if (!validate()) return;
+
+        const P = parseFloat(els.loanAmount.value) || 0;
+        const apr = (parseFloat(els.apr.value) || 0) / 100;
+        const termYears = toYears(els.termValue.value, els.termUnits.value);
+        const m = periodsPerYear(els.frequency.value);
+        const n = Math.round(termYears * m);
+        if (n <= 0) { setError('term','Term is too short for selected frequency.'); return; }
+
+        const i = apr / m;
+
+        // Balloon amount
+        let B;
+        if (els.balloonType.value === 'percent') {
+          const bp = Math.min(100, Math.max(0, parseFloat(els.balloonPercent.value) || 0));
+          B = P * (bp / 100);
+        } else {
+          B = Math.max(0, parseFloat(els.balloonAmount.value) || 0);
+          if (B > P) B = P;
+        }
+
+        // Payment A
+        let A;
+        if (i === 0) {
+          A = (P - B) / n;
+        } else {
+          const v = Math.pow(1 + i, -n);
+          A = (P - B * v) * (i / (1 - v));
+        }
+
+        // Build schedule
+        const schedule = [];
+        let balance = P;
+        let totalInterest = 0;
+        const start = els.firstDate.value ? new Date(els.firstDate.value + '-01') : new Date();
+
+        function addDate(start, k) {
+          const dt = new Date(start);
+          const factor = 365 / m;
+          dt.setDate(start.getDate() + Math.round(k * factor));
+          return dt;
+        }
+
+        for (let k = 1; k <= n; k++) {
+          const interest = i === 0 ? 0 : balance * i;
+          let principalPay = A - interest;
+          // Guard against overpaying principal before maturity
+          if (balance - principalPay < B) {
+            principalPay = Math.max(0, balance - B);
+          }
+          balance = balance - principalPay;
+
+          schedule.push({
+            period: k,
+            date: addDate(start, k),
+            payment: A,
+            interest,
+            principal: principalPay,
+            balance: Math.max(0, balance)
+          });
+          totalInterest += interest;
+        }
+
+        // Final balloon line
+        if (B > 0) {
+          const lastDate = addDate(start, n);
+          // Interest does not accrue beyond the last regular period in this schedule line; balloon is principal payoff
+          schedule.push({
+            period: n + 1,
+            date: lastDate,
+            payment: B,
+            interest: 0,
+            principal: B,
+            balance: 0,
+            isBalloon: true
+          });
+        }
+
+        const totalPaid = schedule.reduce((s, r) => s + r.payment, 0);
+        const totalCost = totalPaid; // equals P + totalInterest (numerically)
+        // Outputs
+        els.paymentPerPeriod.textContent = fmtCurrency(A);
+        els.balloonDue.textContent = fmtCurrency(B);
+        els.totalInterest.textContent = fmtCurrency(totalInterest);
+        els.totalCost.textContent = fmtCurrency(totalCost);
+
+        renderSchedule(schedule);
+        renderChart(P, totalInterest);
+      }
+
+      function renderSchedule(rows) {
+        const tbody = els.scheduleBody;
+        tbody.innerHTML = '';
+        if (!rows.length) return;
+        const df = new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short' });
+        rows.forEach(r => {
+          const tr = document.createElement('tr');
+          tr.className = r.isBalloon ? 'bg-yellow-50 font-semibold' : '';
+          tr.innerHTML = `
+            <td class="px-4 py-2 text-left">${r.isBalloon ? 'Balloon' : r.period}</td>
+            <td class="px-4 py-2 text-left">${df.format(r.date)}</td>
+            <td class="px-4 py-2">${fmtCurrency(r.payment)}</td>
+            <td class="px-4 py-2">${fmtCurrency(r.interest)}</td>
+            <td class="px-4 py-2">${fmtCurrency(r.principal)}</td>
+            <td class="px-4 py-2">${fmtCurrency(r.balance)}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      // Wire events
+      ['loanAmount','apr','termValue','termUnits','frequency','balloonType','balloonPercent','balloonAmount','firstDate']
+        .forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.addEventListener('input', compute);
+        });
+
+      els.calcBtn.addEventListener('click', (e) => { e.preventDefault(); compute(); els.scheduleDetails.open = true; });
+      els.resetBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        els.loanAmount.value = 25000;
+        els.apr.value = 6.5;
+        els.termValue.value = 5;
+        els.termUnits.value = 'years';
+        els.frequency.value = 'monthly';
+        els.balloonType.value = 'percent';
+        els.balloonPercent.value = 40;
+        els.balloonAmount.value = 10000;
+        els.firstDate.value = '';
+        document.querySelectorAll('[id^="err-"]').forEach(n => n.textContent = '');
+        els.balloonPercentWrap.classList.remove('hidden');
+        els.balloonAmountWrap.classList.add('hidden');
+        compute();
+      });
+      els.printBtn.addEventListener('click', (e) => { e.preventDefault(); window.print(); });
+
+      // Initial compute
+      compute();
+    });
+  </script>
+</body>
+</html>
