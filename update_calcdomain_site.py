@@ -283,9 +283,9 @@ document.addEventListener('DOMContentLoaded', function() {
         # 5. Aggiorna link relativi per sottocartelle
         if '/subcategories/' in str(file_path):
             # Aggiusta i path per le sottocartelle
-            content = content.replace('href="index.html"', 'href="../index.html"')
-            content = content.replace('href="search.html"', 'href="../search.html"')
-            content = content.replace('src="search.js"', 'src="../search.js"')
+            content = content.replace('href="index.html"', 'href="https://calcdomain.com/index.html"')
+            content = content.replace('href="search.html"', 'href="https://calcdomain.com/search.html"')
+            content = content.replace('src="search.js"', 'src="https://calcdomain.com/search.js"')
         
         # Salva il file aggiornato
         with open(file_path, 'w', encoding='utf-8') as f:

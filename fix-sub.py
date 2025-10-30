@@ -13,7 +13,7 @@ if subcategories_dir.exists():
             content = f.read()
         
         # Fix search.js path
-        content = content.replace('src="search.js"', 'src="../search.js"')
+        content = content.replace('src="search.js"', 'src="https://calcdomain.com/search.js"')
         
         with open(file, 'w', encoding='utf-8') as f:
             f.write(content)

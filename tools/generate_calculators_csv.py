@@ -108,11 +108,11 @@ def slug_from_href(base_path: Path, href: str) -> Optional[str]:
         return None
     base_rel = base_path.relative_to(ROOT).as_posix()
     base_dir = posixpath.dirname(base_rel)
-    if href.startswith("/"):
-        norm = posixpath.normpath(href.lstrip("/"))
+    if href.startswith("https://calcdomain.com/"):
+        norm = posixpath.normpath(href.lstrip("https://calcdomain.com/"))
     else:
         norm = posixpath.normpath(posixpath.join(base_dir, href))
-    if norm.startswith("../"):
+    if norm.startswith("https://calcdomain.com/"):
         return None
     return posixpath.splitext(posixpath.basename(norm))[0]
 

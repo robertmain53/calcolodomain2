@@ -47,11 +47,11 @@
 
         getEmbeddedCalculators() {
             return [
-                { slug: "mortgage-payment", url: "/mortgage-payment.html", title: "Mortgage Payment Calculator", category: "Finance", subcategory: "Mortgage & Real Estate", description: "Calculate monthly mortgage payments" },
-                { slug: "bmi", url: "/bmi.html", title: "BMI Calculator", category: "Health & Fitness", subcategory: "Health Metrics", description: "Calculate Body Mass Index" },
-                { slug: "percentage", url: "/percentage.html", title: "Percentage Calculator", category: "Math & Conversions", subcategory: "Core Math & Algebra", description: "Calculate percentages" },
-                { slug: "auto-loan", url: "/auto-loan.html", title: "Auto Loan Calculator", category: "Finance", subcategory: "Loans & Debt", description: "Calculate car loan payments" },
-                { slug: "loan-payoff", url: "/loan-payoff.html", title: "Loan Payoff Calculator", category: "Finance", subcategory: "Loans & Debt", description: "Calculate loan payoff strategies" }
+                { slug: "mortgage-payment", url: "https://calcdomain.com/mortgage-payment.html", title: "Mortgage Payment Calculator", category: "Finance", subcategory: "Mortgage & Real Estate", description: "Calculate monthly mortgage payments" },
+                { slug: "bmi", url: "https://calcdomain.com/bmi.html", title: "BMI Calculator", category: "Health & Fitness", subcategory: "Health Metrics", description: "Calculate Body Mass Index" },
+                { slug: "percentage", url: "https://calcdomain.com/percentage.html", title: "Percentage Calculator", category: "Math & Conversions", subcategory: "Core Math & Algebra", description: "Calculate percentages" },
+                { slug: "auto-loan", url: "https://calcdomain.com/auto-loan.html", title: "Auto Loan Calculator", category: "Finance", subcategory: "Loans & Debt", description: "Calculate car loan payments" },
+                { slug: "loan-payoff", url: "https://calcdomain.com/loan-payoff.html", title: "Loan Payoff Calculator", category: "Finance", subcategory: "Loans & Debt", description: "Calculate loan payoff strategies" }
             ];
         }
 

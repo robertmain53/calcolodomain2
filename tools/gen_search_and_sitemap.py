@@ -11,7 +11,7 @@ except ImportError:  # fallback when bs4 isn't available
     BeautifulSoup = None
 
 ROOT = Path(__file__).resolve().parents[1] if (Path(__file__).name == "gen_search_and_sitemap.py") else Path.cwd()
-# If you move this file, set ROOT = Path("/home/yeahupsrl/calcdomain2")
+# If you move this file, set ROOT = Path("https://calcdomain.com/home/yeahupsrl/calcdomain2")
 
 OUT_SEARCH = ROOT / "search.json"
 OUT_CALCS  = ROOT / "calculators-data.json"
@@ -129,7 +129,7 @@ def collect_pages(root: Path):
             desc = get_meta_description(soup) or ""
             cat, sub = infer_category_subcategory(soup)
             slug = slug_from_path(p)
-            url  = f"/{p.relative_to(root).as_posix()}"
+            url  = f"https://calcdomain.com/{p.relative_to(root).as_posix()}"
             pages.append({
                 "slug": slug,
                 "url": url,
@@ -155,7 +155,7 @@ def write_sitemap(root: Path, pages):
     # Host isn’t strictly required in local generation; search engines accept relative, but we’ll allow DOMAIN env in hook.
     domain = (root / ".sitemap_domain").read_text(encoding="utf-8").strip() if (root / ".sitemap_domain").exists() else ""
     def full(u):
-        if domain and u.startswith("/"):
+        if domain and u.startswith("https://calcdomain.com/"):
             return f"{domain.rstrip('/')}{u}"
         return u
 
@@ -168,7 +168,7 @@ def write_sitemap(root: Path, pages):
     idx = root / "index.html"
     if idx.exists():
         urls.append({
-            "loc": full("/index.html"),
+            "loc": full("https://calcdomain.com/index.html"),
             "lastmod": iso(idx.stat().st_mtime),
             "changefreq": "weekly",
             "priority": "1.0"
@@ -176,7 +176,7 @@ def write_sitemap(root: Path, pages):
     # include all pages
     for r in pages:
         rel = r["url"]
-        fp = root / rel.lstrip("/")
+        fp = root / rel.lstrip("https://calcdomain.com/")
         if not fp.exists():
             continue
         urls.append({

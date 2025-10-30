@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 HEADER_TEMPLATE = """    <header class="bg-white shadow-sm sticky top-0 z-50">
         <nav class="container mx-auto px-4 lg:px-6 py-4">
             <div class="flex justify-between items-center">
-                <a href="/index.html" class="text-2xl font-bold text-blue-600">CalcDomain</a>
+                <a href="https://calcdomain.com/index.html" class="text-2xl font-bold text-blue-600">CalcDomain</a>
 
                 <div class="w-full max-w-md hidden md:block mx-8">
                     <div class="relative">
@@ -46,8 +46,8 @@ HEADER_TEMPLATE = """    <header class="bg-white shadow-sm sticky top-0 z-50">
                 </div>
 
                 <div class="hidden md:flex items-center space-x-6 text-sm">
-                    <a href="/search.html" class="text-gray-700 hover:text-blue-600">Advanced Search</a>
-                    <a href="/index.html#categories" class="text-gray-700 hover:text-blue-600">Categories</a>
+                    <a href="https://calcdomain.com/search.html" class="text-gray-700 hover:text-blue-600">Advanced Search</a>
+                    <a href="https://calcdomain.com/index.html#categories" class="text-gray-700 hover:text-blue-600">Categories</a>
                 </div>
 
                 <button id="mobile-menu-toggle" class="md:hidden p-2" aria-label="Open menu">
@@ -60,8 +60,8 @@ HEADER_TEMPLATE = """    <header class="bg-white shadow-sm sticky top-0 z-50">
 
             <div id="mobile-menu" class="md:hidden mt-4 hidden">
                 <div class="space-y-2">
-                    <a href="/search.html" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
-                    <a href="/index.html#categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
+                    <a href="https://calcdomain.com/search.html" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
+                    <a href="https://calcdomain.com/index.html#categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
                 </div>
             </div>
         </nav>
@@ -71,10 +71,10 @@ FOOTER_TEMPLATE = """    <footer class="bg-white border-t mt-12">
         <div class="container mx-auto px-6 py-8 text-center text-gray-600 text-sm">
             <p>&copy; 2025 CalcDomain. All Rights Reserved.</p>
             <div class="mt-4 space-x-4">
-                <a href="/about.html" class="hover:text-blue-600">About</a>
-                <a href="/contact.html" class="hover:text-blue-600">Contact</a>
-                <a href="/privacy.html" class="hover:text-blue-600">Privacy</a>
-                <a href="/terms.html" class="hover:text-blue-600">Terms</a>
+                <a href="https://calcdomain.com/about.html" class="hover:text-blue-600">About</a>
+                <a href="https://calcdomain.com/contact.html" class="hover:text-blue-600">Contact</a>
+                <a href="https://calcdomain.com/privacy.html" class="hover:text-blue-600">Privacy</a>
+                <a href="https://calcdomain.com/terms.html" class="hover:text-blue-600">Terms</a>
             </div>
         </div>
     </footer>"""
@@ -108,11 +108,11 @@ TAILWIND_STYLE = """
 """.strip("\n")
 
 HEAD_SNIPPET = """<head>
-<link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
-<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-<link rel="shortcut icon" href="/favicon.ico" />
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-<link rel="manifest" href="/site.webmanifest" />
+<link rel="icon" type="image/png" href="https://calcdomain.com/favicon-96x96.png" sizes="96x96" />
+<link rel="icon" type="image/svg+xml" href="https://calcdomain.com/favicon.svg" />
+<link rel="shortcut icon" href="https://calcdomain.com/favicon.ico" />
+<link rel="apple-touch-icon" sizes="180x180" href="https://calcdomain.com/apple-touch-icon.png" />
+<link rel="manifest" href="https://calcdomain.com/site.webmanifest" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {title_tag}
@@ -135,10 +135,10 @@ HEAD_SNIPPET = """<head>
       }};
     </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-    <link rel="preload" href="/assets/js/mobile-menu.js" as="script">
-    <link rel="preload" href="/assets/js/page-enhancements.js" as="script">
+    <link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
+    <link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
 {head_scripts}
-    <script src="/search.js" defer></script>
+    <script src="https://calcdomain.com/search.js" defer></script>
 </head>"""
 
 BODY_TEMPLATE = """<body class="bg-gray-50 text-gray-900">
@@ -169,8 +169,8 @@ SHARED_SCRIPTS = """    <script>
             menu?.classList.toggle('hidden');
         });
     </script>
-    <script defer src="/assets/js/mobile-menu.js"></script>
-    <script defer src="/assets/js/page-enhancements.js"></script>"""
+    <script defer src="https://calcdomain.com/assets/js/mobile-menu.js"></script>
+    <script defer src="https://calcdomain.com/assets/js/page-enhancements.js"></script>"""
 
 EXCLUDE_FILES = {
     # Templates should be edited manually.
@@ -301,9 +301,9 @@ def make_aside(meta_desc: str, title_text: str) -> str:
                     <div class="bg-white p-6 rounded-lg shadow-md">
                         <h2 class="text-lg font-semibold text-gray-900 mb-3">Explore more</h2>
                         <ul class="space-y-2 text-sm text-blue-600">
-                            <li><a href="/index.html#categories" class="hover:underline">Browse all categories</a></li>
-                            <li><a href="/search.html" class="hover:underline">Launch advanced search</a></li>
-                            <li><a href="/about.html" class="hover:underline">About CalcDomain</a></li>
+                            <li><a href="https://calcdomain.com/index.html#categories" class="hover:underline">Browse all categories</a></li>
+                            <li><a href="https://calcdomain.com/search.html" class="hover:underline">Launch advanced search</a></li>
+                            <li><a href="https://calcdomain.com/about.html" class="hover:underline">About CalcDomain</a></li>
                         </ul>
                     </div>"""
 
@@ -321,8 +321,8 @@ def normalize_links(html: str, page_path: Path) -> str:
         clean = raw.split("#")[0].split("?")[0]
 
         target_path: Path
-        if clean.startswith("/"):
-            target_path = ROOT / clean.lstrip("/")
+        if clean.startswith("https://calcdomain.com/"):
+            target_path = ROOT / clean.lstrip("https://calcdomain.com/")
         else:
             target_path = (page_path.parent / clean).resolve()
 
@@ -330,26 +330,26 @@ def normalize_links(html: str, page_path: Path) -> str:
             # Try removing "-calculator" before .html
             if clean.endswith("-calculator.html"):
                 alt = clean.replace("-calculator.html", ".html")
-                candidate = (ROOT / alt.lstrip("/")) if alt.startswith("/") else (page_path.parent / alt).resolve()
+                candidate = (ROOT / alt.lstrip("https://calcdomain.com/")) if alt.startswith("https://calcdomain.com/") else (page_path.parent / alt).resolve()
                 if candidate.exists():
-                    new_href = "/" + candidate.relative_to(ROOT).as_posix()
+                    new_href = "https://calcdomain.com/" + candidate.relative_to(ROOT).as_posix()
                     return match.group(0).replace(href, new_href)
             # Try removing duplicated "-calc"
             if clean.endswith("-calc.html"):
                 alt = clean.replace("-calc.html", ".html")
-                candidate = (ROOT / alt.lstrip("/")) if alt.startswith("/") else (page_path.parent / alt).resolve()
+                candidate = (ROOT / alt.lstrip("https://calcdomain.com/")) if alt.startswith("https://calcdomain.com/") else (page_path.parent / alt).resolve()
                 if candidate.exists():
-                    new_href = "/" + candidate.relative_to(ROOT).as_posix()
+                    new_href = "https://calcdomain.com/" + candidate.relative_to(ROOT).as_posix()
                     return match.group(0).replace(href, new_href)
             # Try resolving by adding leading slash if file lives at root
-            root_candidate = ROOT / clean.lstrip("/")
+            root_candidate = ROOT / clean.lstrip("https://calcdomain.com/")
             if root_candidate.exists():
-                new_href = "/" + root_candidate.relative_to(ROOT).as_posix()
+                new_href = "https://calcdomain.com/" + root_candidate.relative_to(ROOT).as_posix()
                 return match.group(0).replace(href, new_href)
             return match.group(0)
 
         # Found an existing file
-        new_href = "/" + target_path.relative_to(ROOT).as_posix()
+        new_href = "https://calcdomain.com/" + target_path.relative_to(ROOT).as_posix()
         return match.group(0).replace(href, new_href)
 
     return re.sub(r'href="([^"]+)"', replacement, html)
@@ -402,7 +402,7 @@ def normalize_file(path: Path, dry_run: bool = False) -> bool:
     if breadcrumb_html:
         breadcrumb_block = indent_html(breadcrumb_html, 12)
     else:
-        breadcrumb_block = '                <nav class="text-sm text-gray-600 mb-4" aria-label="Breadcrumb">\n                    <a href="/index.html" class="hover:text-blue-600">Home</a> &raquo;\n                    <span class="text-gray-900">{}</span>\n                </nav>'.format(title_text or "Calculator")
+        breadcrumb_block = '                <nav class="text-sm text-gray-600 mb-4" aria-label="Breadcrumb">\n                    <a href="https://calcdomain.com/index.html" class="hover:text-blue-600">Home</a> &raquo;\n                    <span class="text-gray-900">{}</span>\n                </nav>'.format(title_text or "Calculator")
 
     aside_block = make_aside(desc_tag, title_text)
 
