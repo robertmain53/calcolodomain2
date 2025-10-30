@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Capital Gains Tax Calculator</title>
+  <meta name="description" content="Compute capital gains tax with country presets (US, UK, Australia, Ireland, South Africa) or custom rules. Includes basis, exemptions, losses, and holding period." />
+  <link rel="canonical" href="https://calcdomain.com/capital-gains-tax.html" />
+  <meta name="author" content="Ugo Candido" />
+
+  <!-- Favicons / PWA -->
+  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js (for simple breakdown chart) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- MathJax for LaTeX formulas -->
+  <script defer id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root { --focus: #2563eb; }
+    body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji','Segoe UI Emoji'; }
+    .prose { max-width: 70ch; }
+    .prose h2 { font-size: 1.5rem; font-weight: 700; margin-top: 2rem; margin-bottom: 0.75rem; }
+    .prose h3 { font-size: 1.125rem; font-weight: 700; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+    .formula-box { background:#f3f4f6; border:1px solid #d1d5db; border-radius:0.75rem; padding:1rem; overflow:auto; }
+    .result-card { background:#fff; border:1px solid #e5e7eb; border-radius:0.75rem; padding:1rem; text-align:center; }
+    .result-card h4 { font-size:0.95rem; color:#374151; margin-bottom:0.25rem; }
+    .result-card p { font-size:1.6rem; font-weight:800; color:#1d4ed8; }
+    .sr-tooltip { display:none; }
+    .help-btn { inline-size: 2.25rem; block-size: 2.25rem; border:1.5px solid #9ca3af; border-radius:9999px; display:inline-grid; place-items:center; font-weight:700; }
+    .help-btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+    .field-error { color:#b91c1c; font-size:0.875rem; margin-top:0.375rem; }
+    input, select, button, details, summary { color:#111827; }
+    input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible { outline:3px solid var(--focus); outline-offset:2px; }
+    /* Prevent CLS where results render */
+    #results { min-height: 18rem; }
+    @media (prefers-reduced-motion: no-preference) {
+      .fade-in { animation: fade-in .25s ease-out; }
+      @keyframes fade-in { from { opacity:0; transform: translateY(4px)} to { opacity:1; transform:none } }
+    }
+    @media print {
+      body * { visibility: hidden; }
+      #print-section, #print-section * { visibility: visible; }
+      #print-section { position: absolute; inset: 0; width: 100%; }
+      #chartWrap { display: none !important; }
+    }
+  </style>
+
+  <!-- JSON-LD: WebPage -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"WebPage",
+    "name":"Capital Gains Tax Calculator",
+    "url":"https://calcdomain.com/capital-gains-tax.html",
+    "inLanguage":"en",
+    "description":"Compute capital gains tax with country presets (US, UK, Australia, Ireland, South Africa) or custom rules. Includes basis, exemptions, losses, and holding period.",
+    "author":{"@type":"Person","name":"Ugo Candido"},
+    "publisher":{"@type":"Organization","name":"CalcDomain"}
+  }
+  </script>
+
+  <!-- JSON-LD: Breadcrumbs -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"BreadcrumbList",
+    "itemListElement":[
+      {"@type":"ListItem","position":1,"name":"Home","item":"https://calcdomain.com/"},
+      {"@type":"ListItem","position":2,"name":"Finance","item":"https://calcdomain.com/finance.html"},
+      {"@type":"ListItem","position":3,"name":"Taxes","item":"https://calcdomain.com/subcategories/finance-taxes.html"},
+      {"@type":"ListItem","position":4,"name":"Capital Gains Tax Calculator","item":"https://calcdomain.com/capital-gains-tax.html"}
+    ]
+  }
+  </script>
+
+  <!-- JSON-LD: FAQPage -->
+  <script type="application/ld+json" id="faq-json">
+  {
+    "@context":"https://schema.org",
+    "@type":"FAQPage",
+    "mainEntity":[
+      {"@type":"Question","name":"What is a capital gain?","acceptedAnswer":{"@type":"Answer","text":"It is the profit on the disposal of a capital asset (sale, gift, exchange), usually calculated as proceeds minus cost basis and allowable costs."}},
+      {"@type":"Question","name":"Do I pay tax on the full sale price?","acceptedAnswer":{"@type":"Answer","text":"No. Capital gains tax generally applies to the gain only (after subtracting basis, selling costs, exemptions, and losses)."}},
+      {"@type":"Question","name":"How do holding periods affect tax?","acceptedAnswer":{"@type":"Answer","text":"Many jurisdictions tax short-term gains like ordinary income and offer concessional rates or discounts for long-term holdings. This tool lets you set holding period and jurisdiction to apply rules."}},
+      {"@type":"Question","name":"Can I offset losses?","acceptedAnswer":{"@type":"Answer","text":"Yes, most systems allow realized capital losses to offset gains (sometimes with carryovers). Enter losses in the calculator to reduce your taxable gain."}},
+      {"@type":"Question","name":"What about main residence or primary home exclusions?","acceptedAnswer":{"@type":"Answer","text":"Rules vary. Use the Exclusions input to model country-specific reliefs such as US Section 121, UK Private Residence Relief, AU Main Residence exemption, etc."}},
+      {"@type":"Question","name":"Are the presets legal advice?","acceptedAnswer":{"@type":"Answer","text":"No. Presets are for educational modeling and are editable. Always verify current rates and rules with official sources or a qualified tax professional."}}
+    ]
+  }
+  </script>
+
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <!-- Header (non-sticky per spec) -->
+  <header class="bg-white border-b">
+    <nav class="container mx-auto px-4 lg:px-6 py-4 flex items-center justify-between">
+      <a href="index.html" class="text-2xl font-extrabold text-blue-700">CalcDomain</a>
+      <a href="search.html" class="text-sm text-gray-700 hover:text-blue-700 underline-offset-4 hover:underline">Advanced Search</a>
+    </nav>
+  </header>
+
+  <main class="container mx-auto px-4 lg:px-6 py-8">
+    <div class="flex flex-col lg:flex-row gap-8">
+
+      <section class="w-full lg:w-2/3" id="print-section">
+        <nav class="text-sm text-gray-600 mb-4" aria-label="Breadcrumb">
+          <a href="index.html" class="hover:text-blue-700">Home</a> &raquo;
+          <a href="finance.html" class="hover:text-blue-700">Finance</a> &raquo;
+          <a href="subcategories/finance-taxes.html" class="hover:text-blue-700">Taxes</a> &raquo;
+          <span class="text-gray-900">Capital Gains Tax Calculator</span>
+        </nav>
+
+        <div class="bg-white p-6 rounded-lg shadow-md">
+          <h1 class="text-3xl font-extrabold mb-2">Capital Gains Tax Calculator</h1>
+          <p class="text-gray-700 mb-6">
+            Estimate capital gains tax with editable presets for major jurisdictions (US, UK, Australia, Ireland, South Africa) or define your own custom rates. 
+            Ideal for quick “what-if” planning: basis, improvements, exemptions, losses, holding period, and after-tax proceeds.
+          </p>
+
+          <!-- Calculator UI -->
+          <section id="calc" class="space-y-6" aria-labelledby="calc-heading">
+            <h2 id="calc-heading" class="text-xl font-bold">Calculator</h2>
+
+            <!-- Jurisdiction & rule set -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label for="country" class="block text-sm font-medium text-gray-800">Jurisdiction preset *</label>
+                <div class="flex items-center gap-2">
+                  <select id="country" aria-required="true" class="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md" aria-describedby="countryHelp countryErr">
+                    <option value="US">United States (US)</option>
+                    <option value="UK">United Kingdom (UK)</option>
+                    <option value="AU">Australia (AU)</option>
+                    <option value="IE">Ireland (IE)</option>
+                    <option value="ZA">South Africa (ZA)</option>
+                    <option value="CUSTOM" selected>Custom</option>
+                  </select>
+                  <button type="button" class="help-btn" aria-expanded="false" aria-controls="countryHelp">?</button>
+                </div>
+                <p id="countryHelp" class="text-sm text-gray-600 mt-2 hidden">
+                  Presets load common high-level rules (e.g., long-term discount or inclusion). All rate fields remain editable. Always verify with official guidance.
+                </p>
+                <p id="countryErr" class="field-error" role="alert" aria-live="polite"></p>
+              </div>
+
+              <div>
+                <label for="assetType" class="block text-sm font-medium text-gray-800">Asset type *</label>
+                <div class="flex items-center gap-2">
+                  <select id="assetType" aria-required="true" class="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md" aria-describedby="assetHelp assetErr">
+                    <option value="other" selected>Other assets (stocks, funds, crypto, etc.)</option>
+                    <option value="residential">Residential property (non-primary residence)</option>
+                  </select>
+                  <button type="button" class="help-btn" aria-expanded="false" aria-controls="assetHelp">?</button>
+                </div>
+                <p id="assetHelp" class="text-sm text-gray-600 mt-2 hidden">
+                  Some countries use different CGT rates for residential property vs other assets. Choose the closest match; rates remain editable below.
+                </p>
+                <p id="assetErr" class="field-error" role="alert" aria-live="polite"></p>
+              </div>
+            </div>
+
+            <!-- Economics -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label for="salePrice" class="block text-sm font-medium text-gray-800">Sale proceeds *</label>
+                <input id="salePrice" type="number" min="0" step="0.01" value="25000" class="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md" aria-required="true" aria-describedby="saleErr" />
+                <p id="saleErr" class="field-error" role="alert" aria-live="polite"></p>
+              </div>
+
+              <div>
+                <label for="basis" class="block text-sm font-medium text-gray-800">Cost basis (purchase + improvements) *</label>
+                <input id="basis" type="number" min="0" step="0.01" value="12000" class="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md" aria-required="true" aria-describedby="basisErr" />
+                <p id="basisErr" class="field-error" role="alert" aria-live="polite"></p>
+              </div>
+
+              <div>
+                <label for="sellingCosts" class="block text-sm font-medium text-gray-800">Selling costs (commissions, fees)</label>
+                <input id="sellingCosts" type="number" min="0" step="0.01" value="0" class="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md" />
+              </div>
+
+              <div>
+                <label for="exclusions" class="block text-sm font-medium text-gray-800">Exclusions / main residence relief</label>
+                <div class="flex items-center gap-2">
+                  <input id="exclusions" type="number" min="0" step="0.01" value="0" class="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md" aria-describedby="exHelp" />
+                  <button type="button" class="help-btn" aria-expanded="false" aria-controls="exHelp">?</button>
+                </div>
+                <p id="exHelp" class="text-sm text-gray-600 mt-2 hidden">
+                  Use to model country-specific reliefs (e.g., US §121 exclusion, UK Private Residence Relief, AU Main Residence exemption). Enter the excluded amount.
+                </p>
+              </div>
+
+              <div>
+                <label for="losses" class="block text-sm font-medium text-gray-800">Losses to offset (this year + carryover)</label>
+                <input id="losses" type="number" min="0" step="0.01" value="0" class="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md" />
+              </div>
+
+              <div>
+                <label for="allowance" class="block text-sm font-medium text-gray-800">Annual CGT allowance</label>
+                <div class="flex items-center gap-2">
+                  <input id="allowance" type="number" min="0" step="0.01" value="0" class="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md" aria-describedby="allowHelp" />
+                  <button type="button" class="help-btn" aria-expanded="false" aria-controls="allowHelp">?</button>
+                </div>
+                <p id="allowHelp" class="text-sm text-gray-600 mt-2 hidden">
+                  Some systems have an annual tax-free amount (e.g., UK annual exempt amount). Set to 0 if not applicable.
+                </p>
+              </div>
+            </div>
+
+            <!-- Holding period / rate model -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <label for="holding" class="block text-sm font-medium text-gray-800">Holding period *</label>
+                <select id="holding" aria-required="true" class="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md" aria-describedby="holdHelp holdErr">
+                  <option value="LT" selected>Long-term (≥ 1 year)</option>
+                  <option value="ST">Short-term (&lt; 1 year)</option>
+                </select>
+                <p id="holdHelp" class="text-sm text-gray-600 mt-2 hidden">
+                  Some jurisdictions give discounts or different rates for long-term holdings.
+                </p>
+                <p id="holdErr" class="field-error" role="alert" aria-live="polite"></p>
+              </div>
+
+              <div>
+                <label for="ltRate" class="block text-sm font-medium text-gray-800">Long-term CGT rate (editable)</label>
+                <input id="ltRate" type="number" min="0" max="100" step="0.1" value="15" class="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md" aria-describedby="rateHelp" />
+              </div>
+
+              <div>
+                <label for="stRate" class="block text-sm font-medium text-gray-800">Short-term rate / marginal rate (editable)</label>
+                <input id="stRate" type="number" min="0" max="100" step="0.1" value="24" class="mt-1 block w-full px-3 py-3 border border-gray-300 rounded-md" aria-describedby="rateHelp" />
+              </div>
+            </div>
+            <p id="rateHelp" class="text-sm text-gray-600">
+              UK: choose 18%/24% depending on band & asset; AU: long-term often 50% discount then taxed at marginal rate; IE: typically 33% flat; ZA: apply inclusion to income (preset sets an effective approach). All fields stay editable.
+            </p>
+
+            <!-- AU / ZA rule toggles -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label class="block text-sm font-medium text-gray-800">Australia discount (≥12 months)</label>
+                <div class="flex items-center gap-3 mt-1">
+                  <input type="checkbox" id="auDiscount" class="w-5 h-5" />
+                  <label for="auDiscount">Apply 50% discount to long-term gain (AU individuals)</label>
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-800">South Africa inclusion (individuals)</label>
+                <div class="flex items-center gap-3 mt-1">
+                  <input type="checkbox" id="zaInclusion" class="w-5 h-5" />
+                  <label for="zaInclusion">Include 40% of gain in taxable income (ZA), then apply <em>Short-term / marginal</em> rate</label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action row -->
+            <div class="flex flex-wrap items-center gap-3 pt-2">
+              <button id="calcBtn" class="px-5 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 focus-visible:outline-4" aria-label="Calculate capital gains tax">Calculate</button>
+              <button id="resetBtn" class="px-5 py-3 rounded-lg bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200 focus-visible:outline-4">Reset</button>
+              <button id="printBtn" class="px-5 py-3 rounded-lg bg-white border text-gray-900 font-semibold hover:bg-gray-50 focus-visible:outline-4">Print</button>
+            </div>
+          </section>
+
+          <!-- Results -->
+          <section id="results" class="mt-8 bg-blue-50 border border-blue-100 rounded-lg p-6 fade-in" aria-live="polite" aria-labelledby="results-heading">
+            <h2 id="results-heading" class="text-xl font-bold mb-4">Results</h2>
+
+            <div class="flex flex-col md:flex-row gap-6">
+              <div class="w-full md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="result-card"><h4>Realized Gain</h4><p id="gainOut">—</p></div>
+                <div class="result-card"><h4>Taxable Gain</h4><p id="taxableOut">—</p></div>
+                <div class="result-card"><h4>Estimated Tax Due</h4><p id="taxOut">—</p></div>
+                <div class="result-card"><h4>After-Tax Proceeds</h4><p id="netOut">—</p></div>
+              </div>
+              <div class="w-full md:w-1/3" id="chartWrap">
+                <canvas id="breakdownChart" aria-label="Tax vs Net proceeds chart"></canvas>
+              </div>
+            </div>
+
+            <details class="mt-6 bg-white rounded-lg">
+              <summary class="font-semibold text-gray-800 px-4 py-3 cursor-pointer">Show detailed steps</summary>
+              <div class="p-4 border-t text-sm text-gray-700 space-y-2" id="detailSteps"></div>
+            </details>
+          </section>
+        </div>
+
+        <!-- Authoritative ecosystem -->
+        <article class="bg-white p-6 rounded-lg shadow-md mt-8 prose">
+          <h2>Authoritative Data Source & Methodology</h2>
+          <p>
+            This tool models widely used CGT frameworks: cost-basis approach, allowances, loss offset, and jurisdiction-specific treatments for holding period discounts or inclusion.
+            Official references include:
+          </p>
+          <ul>
+            <li>United States — IRS Publication 550 & Schedule D instructions: <a href="https://www.irs.gov/publications/p550" target="_blank" rel="noopener">Publication 550</a>, <a href="https://www.irs.gov/pub/irs-pdf/i1040sd.pdf" target="_blank" rel="noopener">Schedule D Instructions</a></li>
+            <li>United Kingdom — GOV.UK CGT rates & allowances: <a href="https://www.gov.uk/capital-gains-tax/rates" target="_blank" rel="noopener">Rates</a>, <a href="https://www.gov.uk/guidance/capital-gains-tax-rates-and-allowances" target="_blank" rel="noopener">Guidance</a></li>
+            <li>Australia — ATO: <a href="https://www.ato.gov.au/individuals-and-families/investments-and-assets/capital-gains-tax/calculating-your-cgt" target="_blank" rel="noopener">Calculating your CGT</a>, <a href="https://www.ato.gov.au/forms-and-instructions/guide-to-capital-gains-tax-2025" target="_blank" rel="noopener">Guide to CGT 2025</a></li>
+            <li>Ireland — Revenue: <a href="https://www.revenue.ie/en/gains-gifts-and-inheritance/transfering-an-asset/how-to-calculate-cgt.aspx" target="_blank" rel="noopener">How to calculate CGT</a></li>
+            <li>South Africa — SARS: <a href="https://www.sars.gov.za/types-of-tax/capital-gains-tax/" target="_blank" rel="noopener">Capital Gains Tax overview</a> and <a href="https://www.sars.gov.za/tax-rates/income-tax/capital-gains-tax-cgt/" target="_blank" rel="noopener">rates</a></li>
+          </ul>
+          <p><em>“Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.”</em></p>
+
+          <h2>The Formula Explained</h2>
+          <div class="formula-box">
+            \[
+              \textbf{Gain} = P_{\text{sale}} - \big( B_{\text{cost}} + C_{\text{sell}} \big)
+            \]
+            \[
+              \textbf{Net Gain Before Reliefs} = \max(0,\ \text{Gain} - E_{\text{exclusions}} )
+            \]
+            \[
+              \textbf{Taxable Gain} =
+              \max\big(0,\ \text{Net Gain Before Reliefs} - A_{\text{allowance}} - L_{\text{losses}}\big)
+            \]
+            \[
+              \textbf{Jurisdiction Adjustments} =
+              \begin{cases}
+                \text{US: } \text{ST} \to t_{\text{ST}},\ \text{LT} \to t_{\text{LT}} \\
+                \text{UK: } t_{\text{asset,band}} \\
+                \text{AU: } \text{if LT} \Rightarrow 50\% \text{ discount} \\
+                \text{IE: } 33\% \ (\text{typical}) \\
+                \text{ZA: } \text{include } 40\% \text{ of gain then apply marginal rate}
+              \end{cases}
+            \]
+            \[
+              \textbf{Tax} = \text{Taxable Gain}_{\text{(after adjustments)}} \times t
+              \quad ; \quad
+              \textbf{After-Tax Proceeds} = P_{\text{sale}} - \text{Tax}
+            \]
+          </div>
+
+          <h2>Glossary of Variables</h2>
+          <ul>
+            <li><strong>Sale proceeds</strong> (\(P_{\text{sale}}\)): total consideration received.</li>
+            <li><strong>Cost basis</strong> (\(B_{\text{cost}}\)): purchase price plus capital improvements.</li>
+            <li><strong>Selling costs</strong> (\(C_{\text{sell}}\)): commissions, legal fees, transfer taxes.</li>
+            <li><strong>Exclusions</strong> (\(E_{\text{exclusions}}\)): jurisdiction-specific relief amounts (e.g., main residence).</li>
+            <li><strong>Annual allowance</strong> (\(A_{\text{allowance}}\)): yearly tax-free gain amount where applicable.</li>
+            <li><strong>Losses</strong> (\(L_{\text{losses}}\)): realized losses available to offset gains.</li>
+            <li><strong>LT/ST rates</strong> (\(t_{\text{LT}}, t_{\text{ST}}\)): effective tax rates for long/short-term gains.</li>
+          </ul>
+
+          <h2>How It Works: A Step-by-Step Example</h2>
+          <p><strong>Scenario:</strong> You sell shares for $25,000. Basis + improvements $12,000; selling costs $200; no exclusions; losses $1,000; allowance $0. Long-term; US preset with \(t_{\text{LT}}=15\%\).</p>
+          <ol>
+            <li>Gain: \(25{,}000 - (12{,}000 + 200) = 12{,}800\).</li>
+            <li>Net before reliefs: \(12{,}800 - 0 = 12{,}800\).</li>
+            <li>Taxable: \(12{,}800 - 0 - 1{,}000 = 11{,}800\).</li>
+            <li>Tax: \(11{,}800 \times 0.15 = 1{,}770\).</li>
+            <li>After-tax proceeds: \(25{,}000 - 1{,}770 = 23{,}230\).</li>
+          </ol>
+
+          <h2>Frequently Asked Questions</h2>
+          <details><summary>Does the tool handle different countries?</summary><p>Yes — pick a preset to load typical rules (editable), or choose Custom and set your own rates/allowances.</p></details>
+          <details><summary>How precise are the presets?</summary><p>They are educational defaults. Exact tax depends on full circumstances (income bands, relief tests, timing). Always verify with official guidance.</p></details>
+          <details><summary>Can I model main residence relief?</summary><p>Enter the excluded amount in “Exclusions”. See links above for the detailed conditions per jurisdiction.</p></details>
+          <details><summary>What about UK bands?</summary><p>Select UK preset, set asset type, then set rates 18%/24% accordingly based on your band. This tool keeps them editable for transparency.</p></details>
+          <details><summary>Australia discount vs rate?</summary><p>If held ≥12 months, many individuals can discount the gain by 50%, then apply their marginal rate. Toggle “Australia discount”.</p></details>
+          <details><summary>South Africa inclusion?</summary><p>Individuals include a portion (commonly 40%) of the gain in taxable income and then apply their marginal rate. Toggle “South Africa inclusion”.</p></details>
+
+          <div class="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+            <p><strong>Tool developed by Ugo Candido.</strong> Content reviewed by the CalcDomain Editorial Board.<br>
+              Last accuracy review: <time datetime="2025-10-30">October 30, 2025</time>
+            </p>
+          </div>
+        </article>
+      </section>
+
+      <aside class="w-full lg:w-1/3">
+        <div class="space-y-6">
+          <div class="bg-gray-200 h-72 rounded-lg flex items-center justify-center text-gray-600">Ad Placement (300×600)</div>
+
+          <div class="bg-white p-6 rounded-lg shadow-md">
+            <h3 class="font-bold text-lg mb-3">Why this calculator</h3>
+            <ul class="list-disc list-inside text-sm text-gray-700 space-y-2">
+              <li>Country presets with fully editable rates for transparency.</li>
+              <li>Models basis, costs, exemptions, allowances, and losses.</li>
+              <li>Clear formulas, sources, and a printable summary.</li>
+            </ul>
+          </div>
+
+          <div class="bg-white p-6 rounded-lg shadow-md">
+            <h3 class="font-bold text-lg mb-4">Related tax tools</h3>
+            <ul class="space-y-3 text-sm">
+              <li><a href="tax-withholding.html" class="text-blue-700 hover:underline">Tax Withholding Estimator</a></li>
+              <li><a href="self-employment-tax.html" class="text-blue-700 hover:underline">Self-Employment Tax</a></li>
+              <li><a href="ira-traditional.html" class="text-blue-700 hover:underline">Traditional IRA Calculator</a></li>
+            </ul>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="bg-white border-t">
+    <div class="container mx-auto px-6 py-8 text-center text-gray-600 text-sm">
+      <p>&copy; 2025 CalcDomain. All Rights Reserved.</p>
+      <div class="mt-4 space-x-4">
+        <a href="about.html" class="hover:text-blue-700">About</a>
+        <a href="contact.html" class="hover:text-blue-700">Contact</a>
+        <a href="privacy.html" class="hover:text-blue-700">Privacy</a>
+        <a href="terms.html" class="hover:text-blue-700">Terms</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- App Logic (defer) -->
+  <script defer>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+
+      const els = {
+        country: $('country'), assetType: $('assetType'),
+        salePrice: $('salePrice'), basis: $('basis'), sellingCosts: $('sellingCosts'),
+        exclusions: $('exclusions'), losses: $('losses'), allowance: $('allowance'),
+        holding: $('holding'), ltRate: $('ltRate'), stRate: $('stRate'),
+        auDiscount: $('auDiscount'), zaInclusion: $('zaInclusion'),
+        calcBtn: $('calcBtn'), resetBtn: $('resetBtn'), printBtn: $('printBtn'),
+        // errors
+        countryErr: $('countryErr'), assetErr: $('assetErr'), saleErr: $('saleErr'), basisErr: $('basisErr'), holdErr: $('holdErr'),
+        // results
+        gainOut: $('gainOut'), taxableOut: $('taxableOut'), taxOut: $('taxOut'), netOut: $('netOut'),
+        detailSteps: $('detailSteps')
+      };
+
+      // Accessible tooltips toggling
+      document.querySelectorAll('.help-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('aria-controls');
+          const target = document.getElementById(id);
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          target.classList.toggle('hidden', expanded);
+        });
+      });
+
+      // Keyboard sizes: ensure hit targets (done via Tailwind sizing on buttons)
+
+      // Preset loader (kept simple, editable)
+      function applyPreset() {
+        const c = els.country.value;
+        const asset = els.assetType.value;
+
+        // Defaults (Custom)
+        let lt = 15, st = 24, allow = 0, auDisc = false, zaInc = false;
+
+        if (c === 'US') {
+          // User picks LT bracket; provide a reasonable mid default.
+          lt = 15; st = 24; allow = 0; auDisc = false; zaInc = false;
+        } else if (c === 'UK') {
+          // Use 18%/24% guidance; property may share same headline in late 2024/25.
+          if (asset === 'residential') { lt = 24; st = 24; }
+          else { lt = 18; st = 24; }
+          allow = 3000; // annual exempt amount (editable)
+          auDisc = false; zaInc = false;
+        } else if (c === 'AU') {
+          // Marginal rate for ST; LT: 50% discount then marginal rate
+          lt = 0; st = 32.5; // LT field unused if discount box is on; keep 0 for clarity
+          allow = 0; auDisc = true; zaInc = false;
+        } else if (c === 'IE') {
+          lt = 33; st = 33; allow = 0; auDisc = false; zaInc = false;
+        } else if (c === 'ZA') {
+          // Inclusion 40% then marginal rate
+          lt = 0; st = 36; allow = 0; auDisc = false; zaInc = true; // stRate ~ marginal example; editable
+        } else { // CUSTOM
+          lt = 15; st = 24; allow = 0; auDisc = false; zaInc = false;
+        }
+
+        els.ltRate.value = String(lt);
+        els.stRate.value = String(st);
+        els.allowance.value = String(allow);
+        els.auDiscount.checked = auDisc;
+        els.zaInclusion.checked = zaInc;
+      }
+
+      // Validation (on blur)
+      function validateNum(el, errEl) {
+        const v = parseFloat(el.value);
+        if (Number.isNaN(v) || v < 0) {
+          errEl.textContent = 'Please enter a valid non-negative number.';
+          return false;
+        }
+        errEl.textContent = '';
+        return true;
+      }
+
+      ['salePrice','basis'].forEach(id=>{
+        $(id).addEventListener('blur', ()=> validateNum($(id), $(id==='salePrice'?'saleErr':'basisErr')));
+      });
+      els.country.addEventListener('blur', ()=> { els.countryErr.textContent = els.country.value ? '' : 'Please choose a preset.'; });
+      els.assetType.addEventListener('blur', ()=> { els.assetErr.textContent = els.assetType.value ? '' : 'Please choose an asset type.'; });
+      els.holding.addEventListener('blur', ()=> { els.holdErr.textContent = els.holding.value ? '' : 'Please set the holding period.'; });
+
+      // Preset reactions
+      els.country.addEventListener('change', applyPreset);
+      els.assetType.addEventListener('change', applyPreset);
+
+      // Initial preset
+      applyPreset();
+
+      const fmtMoney = (n) => new Intl.NumberFormat(undefined,{style:'currency',currency:'USD',maximumFractionDigits:2}).format(n||0);
+      const fmt = (n) => new Intl.NumberFormat().format(n||0);
+
+      let chart;
+
+      function compute() {
+        // Basic validation
+        const okSale = validateNum(els.salePrice, els.saleErr);
+        const okBasis = validateNum(els.basis, els.basisErr);
+        if (!okSale || !okBasis) return;
+
+        const sale = parseFloat(els.salePrice.value)||0;
+        const basis = parseFloat(els.basis.value)||0;
+        const costs = parseFloat(els.sellingCosts.value)||0;
+        const excl = parseFloat(els.exclusions.value)||0;
+        const losses = parseFloat(els.losses.value)||0;
+        const allowance = parseFloat(els.allowance.value)||0;
+
+        const holding = els.holding.value;
+        const ltRate = (parseFloat(els.ltRate.value)||0)/100;
+        const stRate = (parseFloat(els.stRate.value)||0)/100;
+
+        // Step 1: raw gain
+        const gain = Math.max(0, sale - (basis + costs));
+
+        // Step 2: exclusions then allowance then losses
+        let netBefore = Math.max(0, gain - excl);
+        let taxable = Math.max(0, netBefore - allowance - losses);
+
+        // Step 3: jurisdiction adjustments
+        const isLT = holding === 'LT';
+        const country = els.country.value;
+
+        let effectiveTaxable = taxable;
+        let appliedRate = isLT ? ltRate : stRate;
+        let stepNotes = [];
+
+        stepNotes.push(`Gain = ${fmtMoney(sale)} − (${fmtMoney(basis)} + ${fmtMoney(costs)}) = ${fmtMoney(gain)}.`);
+        stepNotes.push(`After exclusions: ${fmtMoney(netBefore)}; after allowance and losses: ${fmtMoney(taxable)}.`);
+
+        if (country === 'AU' && isLT && els.auDiscount.checked) {
+          effectiveTaxable = taxable * 0.5; // 50% discount
+          appliedRate = stRate; // use marginal rate field
+          stepNotes.push('AU long-term discount: 50% of taxable gain.');
+        }
+
+        if (country === 'ZA' && els.zaInclusion.checked) {
+          // Include 40% of gain in taxable income; then apply marginal rate
+          effectiveTaxable = taxable * 0.40;
+          appliedRate = stRate;
+          stepNotes.push('ZA inclusion: 40% of gain included, then taxed at marginal rate.');
+        }
+
+        // UK note (rates chosen manually by user per band/asset)
+        if (country === 'UK') {
+          stepNotes.push('UK rates are band/asset dependent; editable rates applied as set.');
+        }
+
+        // US note (LT vs ST)
+        if (country === 'US') {
+          stepNotes.push(`US ${isLT?'long-term':'short-term'} rate applied as set.`);
+        }
+
+        const tax = effectiveTaxable * appliedRate;
+        const net = sale - tax;
+
+        // Outputs
+        els.gainOut.textContent = fmtMoney(gain);
+        els.taxableOut.textContent = fmtMoney(effectiveTaxable);
+        els.taxOut.textContent = fmtMoney(tax);
+        els.netOut.textContent = fmtMoney(net);
+
+        // Steps
+        els.detailSteps.innerHTML = `
+          <p>${stepNotes.join(' ')}</p>
+          <p>Applied rate: ${(appliedRate*100).toFixed(2)}% → Estimated tax = ${fmtMoney(tax)}.</p>
+          <p>After-tax proceeds = ${fmtMoney(sale)} − ${fmtMoney(tax)} = <strong>${fmtMoney(net)}</strong>.</p>
+        `;
+
+        // Chart
+        const ctx = document.getElementById('breakdownChart');
+        const data = {
+          labels: ['Tax', 'Net proceeds'],
+          datasets: [{ data: [tax, Math.max(0, net)], backgroundColor: ['#ef4444','#1d4ed8'] }]
+        };
+        if (chart) { chart.data = data; chart.update(); }
+        else {
+          chart = new Chart(ctx, { type: 'doughnut', data, options: { plugins:{legend:{position:'bottom'}}, responsive:true, maintainAspectRatio:false }});
+        }
+      }
+
+      function resetAll() {
+        document.querySelector('form')?.reset();
+        // revert numeric fields to defaults
+        els.salePrice.value = 25000;
+        els.basis.value = 12000;
+        els.sellingCosts.value = 0;
+        els.exclusions.value = 0;
+        els.losses.value = 0;
+        els.allowance.value = 0;
+        els.holding.value = 'LT';
+        els.country.value = 'CUSTOM';
+        els.assetType.value = 'other';
+        applyPreset();
+        compute();
+      }
+
+      els.calcBtn.addEventListener('click', compute);
+      // Calculate on input for instant feedback, throttled enough by browser
+      document.querySelectorAll('#calc input, #calc select').forEach(el=>{
+        el.addEventListener('input', compute, { passive:true });
+      });
+      els.resetBtn.addEventListener('click', (e)=>{ e.preventDefault(); resetAll(); });
+      els.printBtn.addEventListener('click', ()=> window.print());
+
+      // Initial render
+      compute();
+    })();
+  </script>
+</body>
+</html>

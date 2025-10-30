@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sugar Intake Calculator — Daily Added & Free Sugars Limits</title>
+  <meta name="description" content="Calculate your recommended daily sugar limits (added and free sugars) per WHO, AHA, FDA. Log foods and drinks, see teaspoons, %DV, and get guidance to cut back." />
+  <link rel="canonical" href="https://calcdomain.com/sugar-intake-calculator.html" />
+  <meta name="author" content="Ugo Candido" />
+
+  <!-- Icons / PWA hooks (safe fallbacks if absent) -->
+  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Chart.js for small donut chart -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+  
+  <!-- MathJax for LaTeX formulas -->
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  <style>
+    :root { --focus: #0ea5e9; }
+    body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+    .prose { max-width: 70ch; }
+    .prose h2 { font-size: 1.5rem; font-weight: 700; margin-top: 2rem; margin-bottom: 0.75rem; }
+    .prose h3 { font-size: 1.2rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; }
+    .prose p { line-height: 1.7; margin: 0.75rem 0; }
+    .prose ul, .prose ol { margin-left: 1.25rem; }
+    .kbd { border:1px solid #d1d5db; border-bottom-width:2px; border-radius:6px; padding:0 .4rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:.85rem; background:#f8fafc; }
+    .formula-box { background:#f3f4f6; border:1px solid #d1d5db; border-radius:10px; padding:1rem; overflow-x:auto; }
+    .result-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1rem; text-align:center; }
+    .result-card h4 { font-size:.9rem; color:#6b7280; }
+    .result-card p { font-size:1.5rem; font-weight:800; color:#0f766e; }
+    .field-help { font-size:.85rem; color:#374151; }
+    .err { color:#b91c1c; font-size:.85rem; margin-top:.25rem; }
+    .minh-results { min-height: 320px; } /* prevent CLS when results render */
+    /* Focus visible */
+    :where(button, [role="button"], input, select, a, summary, details) { outline: 0; }
+    :where(button, [role="button"], input, select, a, summary, details):focus-visible { box-shadow: 0 0 0 3px var(--focus); border-radius: 8px; }
+    /* 48x48 touch targets */
+    .tt { min-height: 48px; min-width: 48px; }
+    @media print { body * { visibility: hidden; } #print-section, #print-section * { visibility: visible; } #print-section { position: absolute; inset: 0; } #donut-wrap { display:none!important; } }
+  </style>
+
+  <!-- JSON-LD: WebPage + SoftwareApplication (Calculator) + Breadcrumb + FAQ -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Sugar Intake Calculator",
+    "description": "Compute recommended daily limits for added and free sugars from WHO, AHA, and FDA; log your foods, convert to teaspoons, and see %DV.",
+    "url": "https://calcdomain.com/sugar-intake-calculator.html",
+    "inLanguage": "en",
+    "isPartOf": {"@type":"WebSite","name":"CalcDomain","url":"https://calcdomain.com/"},
+    "author": {"@type":"Person","name":"Ugo Candido"},
+    "publisher": {"@type":"Organization","name":"CalcDomain"}
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"SoftwareApplication",
+    "name":"Sugar Intake Calculator",
+    "applicationCategory":"HealthApplication",
+    "operatingSystem":"Web",
+    "offers": {"@type":"Offer","price":"0","priceCurrency":"USD"}
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"BreadcrumbList",
+    "itemListElement":[
+      {"@type":"ListItem","position":1,"name":"Home","item":"https://calcdomain.com/"},
+      {"@type":"ListItem","position":2,"name":"Health & Fitness","item":"https://calcdomain.com/health-fitness.html"},
+      {"@type":"ListItem","position":3,"name":"Diet & Nutrition","item":"https://calcdomain.com/subcategories/health-diet-nutrition.html"},
+      {"@type":"ListItem","position":4,"name":"Sugar Intake Calculator","item":"https://calcdomain.com/sugar-intake-calculator.html"}
+    ]
+  }
+  </script>
+  <script type="application/ld+json" id="faq-ld"></script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <!-- Header (non-sticky per spec) -->
+  <header class="bg-white border-b">
+    <nav class="container mx-auto px-4 lg:px-6 py-4 flex items-center justify-between">
+      <a href="index.html" class="text-2xl font-extrabold text-emerald-700">CalcDomain</a>
+      <div class="hidden md:flex items-center gap-6 text-sm">
+        <a class="hover:text-emerald-700" href="search.html">Search</a>
+        <a class="hover:text-emerald-700" href="index.html#categories">Categories</a>
+      </div>
+      <button id="menuBtn" class="md:hidden tt p-2" aria-label="Open menu">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+    </nav>
+    <div id="mobileNav" class="container mx-auto px-4 lg:px-6 pb-4 hidden md:hidden">
+      <a class="block py-2 hover:text-emerald-700" href="search.html">Search</a>
+      <a class="block py-2 hover:text-emerald-700" href="index.html#categories">Categories</a>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 lg:px-6 py-8">
+    <nav class="text-sm text-gray-600 mb-4" aria-label="Breadcrumb">
+      <a href="index.html" class="hover:text-emerald-700">Home</a> &raquo;
+      <a href="health-fitness.html" class="hover:text-emerald-700">Health &amp; Fitness</a> &raquo;
+      <a href="subcategories/health-diet-nutrition.html" class="hover:text-emerald-700">Diet &amp; Nutrition</a> &raquo;
+      <span class="text-gray-900">Sugar Intake Calculator</span>
+    </nav>
+
+    <div class="flex flex-col lg:flex-row gap-8">
+      <section class="w-full lg:w-2/3" id="print-section">
+        <h1 class="text-3xl font-extrabold mb-2">sugar intake calculator</h1>
+        <p class="text-gray-700 mb-6">Estimate your recommended daily limits for <strong>added sugars</strong> and <strong>free sugars</strong> using WHO, AHA and FDA guidance. Log drinks and foods, convert to teaspoons, and see if you are within your targets. Designed for clinicians, dietitians, athletes and anyone optimizing nutrition.</p>
+
+        <!-- CALCULATOR UI -->
+        <section class="bg-white p-6 rounded-lg shadow-sm border" aria-labelledby="calcHeading">
+          <h2 id="calcHeading" class="text-xl font-bold mb-4">Calculator</h2>
+
+          <form id="calcForm" novalidate>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Calories input OR estimate -->
+              <div>
+                <label for="dailyCalories" class="block text-sm font-medium">Daily calories *</label>
+                <div class="flex items-center gap-2">
+                  <input type="number" inputmode="decimal" id="dailyCalories" name="dailyCalories" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm tt" placeholder="e.g., 2000" min="1000" max="5000" step="10" aria-required="true" aria-describedby="calHelp calErr" />
+                  <button type="button" id="estBMRBtn" class="px-3 py-2 border rounded-md tt" aria-controls="estimator" aria-expanded="false">?</button>
+                </div>
+                <p id="calHelp" class="field-help mt-1">Enter your target daily energy (kcal). 1 g sugar = 4 kcal.</p>
+                <p id="calErr" class="err" role="alert" aria-live="polite"></p>
+
+                <!-- Accessible tooltip / estimator -->
+                <div id="estimator" class="mt-3 hidden border rounded-md p-3 bg-gray-50" role="region" aria-label="Quick calorie estimator">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label for="sex" class="block text-sm font-medium">Sex</label>
+                      <select id="sex" class="mt-1 block w-full px-3 py-2 border rounded-md tt" aria-describedby="estTip">
+                        <option value="female">Female</option>
+                        <option value="male">Male</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label for="age" class="block text-sm font-medium">Age</label>
+                      <input type="number" id="age" min="14" max="90" value="35" class="mt-1 block w-full px-3 py-2 border rounded-md tt" />
+                    </div>
+                    <div>
+                      <label for="height" class="block text-sm font-medium">Height (cm)</label>
+                      <input type="number" id="height" min="120" max="230" value="175" class="mt-1 block w-full px-3 py-2 border rounded-md tt" />
+                    </div>
+                    <div>
+                      <label for="weight" class="block text-sm font-medium">Weight (kg)</label>
+                      <input type="number" id="weight" min="35" max="200" value="70" class="mt-1 block w-full px-3 py-2 border rounded-md tt" />
+                    </div>
+                    <div class="sm:col-span-2">
+                      <label for="activity" class="block text-sm font-medium">Activity level</label>
+                      <select id="activity" class="mt-1 block w-full px-3 py-2 border rounded-md tt">
+                        <option value="1.2">Sedentary</option>
+                        <option value="1.375">Lightly active</option>
+                        <option value="1.55">Moderately active</option>
+                        <option value="1.725">Very active</option>
+                        <option value="1.9">Extra active</option>
+                      </select>
+                    </div>
+                  </div>
+                  <p id="estTip" class="field-help mt-2">Quick estimate via Mifflin–St Jeor. Click <span class="kbd">Use</span> to fill the calories field.</p>
+                  <div class="mt-2 flex gap-3">
+                    <button type="button" id="estimateBtn" class="bg-emerald-600 text-white px-4 py-2 rounded-md tt">Estimate</button>
+                    <button type="button" id="useEstBtn" class="border px-4 py-2 rounded-md tt">Use</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Standards selector -->
+              <div>
+                <label for="standard" class="block text-sm font-medium">Guideline standard *</label>
+                <select id="standard" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm tt" aria-required="true" aria-describedby="stdHelp stdErr">
+                  <option value="who10" selected>WHO free sugars &lt; 10% kcal</option>
+                  <option value="who5">WHO free sugars &lt; 5% kcal (stricter)</option>
+                  <option value="aha">AHA added sugar cap (men 36g / women 25g)</option>
+                  <option value="fda">FDA Added Sugars Daily Value (50g @ 2000 kcal)</option>
+                  <option value="nhs">NHS free sugars cap (30g adult)</option>
+                </select>
+                <p id="stdHelp" class="field-help mt-1">Pick the framework you want to check against. You can also toggle sex below for AHA caps.</p>
+                <p id="stdErr" class="err" role="alert" aria-live="polite"></p>
+              </div>
+
+              <!-- Sex for AHA cap selection -->
+              <div>
+                <label for="ahaSex" class="block text-sm font-medium">Sex (for AHA)</label>
+                <select id="ahaSex" class="mt-1 block w-full px-3 py-2 border rounded-md tt" aria-describedby="ahaHelp">
+                  <option value="male" selected>Male</option>
+                  <option value="female">Female</option>
+                </select>
+                <p id="ahaHelp" class="field-help mt-1">AHA caps differ by sex. Ignored for other standards.</p>
+              </div>
+
+              <!-- Logging foods/drinks -->
+              <div>
+                <label for="itemName" class="block text-sm font-medium">Add food or drink</label>
+                <input id="itemName" class="mt-1 block w-full px-3 py-2 border rounded-md tt" placeholder="e.g., Cola 330 ml" aria-describedby="itemHelp" />
+                <p id="itemHelp" class="field-help mt-1">Optional tracker: enter an item and its sugars below.</p>
+              </div>
+
+              <div>
+                <label for="grams" class="block text-sm font-medium">Sugars (g) per serving</label>
+                <input type="number" id="grams" min="0" step="0.1" class="mt-1 block w-full px-3 py-2 border rounded-md tt" aria-describedby="gramsHelp gramsErr" />
+                <p id="gramsHelp" class="field-help mt-1">Use the label: “of which sugars” or “Added sugars”.</p>
+                <p id="gramsErr" class="err" role="alert" aria-live="polite"></p>
+              </div>
+
+              <div>
+                <label for="servings" class="block text-sm font-medium">Servings</label>
+                <input type="number" id="servings" min="0" step="0.5" value="1" class="mt-1 block w-full px-3 py-2 border rounded-md tt" />
+              </div>
+
+              <div class="flex items-end gap-3">
+                <button id="addItem" type="button" class="bg-emerald-600 text-white px-4 py-2 rounded-md tt">Add to log</button>
+                <button id="clearLog" type="button" class="border px-4 py-2 rounded-md tt">Clear log</button>
+              </div>
+            </div>
+          </form>
+        </section>
+
+        <!-- RESULTS -->
+        <section class="mt-6 bg-emerald-50 border border-emerald-200 rounded-lg p-6 minh-results" aria-labelledby="resHeading">
+          <h2 id="resHeading" class="text-xl font-bold mb-4">Results</h2>
+          <div class="flex flex-col md:flex-row gap-6">
+            <div class="w-full md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="result-card">
+                <h4>Recommended limit</h4>
+                <p id="limitG">0 g</p>
+                <p class="text-xs text-gray-600" id="limitExplain">—</p>
+              </div>
+              <div class="result-card">
+                <h4>Today’s logged sugars</h4>
+                <p id="loggedG">0 g</p>
+                <p class="text-xs text-gray-600"><span id="loggedTsp">0</span> tsp</p>
+              </div>
+              <div class="result-card">
+                <h4>Remaining</h4>
+                <p id="remainG">0 g</p>
+                <p class="text-xs text-gray-600">(<span id="remainPct">0</span>% of limit)</p>
+              </div>
+              <div class="result-card">
+                <h4>% Daily Value (FDA)</h4>
+                <p id="pctDV">0%</p>
+                <p class="text-xs text-gray-600">vs. 50 g DV</p>
+              </div>
+            </div>
+            <div class="w-full md:w-1/3" id="donut-wrap">
+              <canvas id="donut" aria-label="Sugars used vs remaining donut chart"></canvas>
+            </div>
+          </div>
+
+          <details class="mt-6 bg-white rounded-md border" id="logDetails">
+            <summary class="px-4 py-3 font-semibold">View intake log</summary>
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-sm">
+                <thead class="bg-gray-100 text-gray-700">
+                  <tr><th class="text-left px-4 py-2">Item</th><th class="text-right px-4 py-2">g sugars</th><th class="text-right px-4 py-2">servings</th><th class="text-right px-4 py-2">Total g</th></tr>
+                </thead>
+                <tbody id="logBody"></tbody>
+              </table>
+            </div>
+          </details>
+        </section>
+
+        <!-- E-E-A-T CONTENT -->
+        <article class="bg-white p-6 rounded-lg shadow-sm border mt-8 prose">
+          <h2>Data source & methodology</h2>
+          <ul>
+            <li><strong>WHO free sugars:</strong> “In both adults and children, WHO recommends reducing the intake of free sugars to less than 10% of total energy intake; suggests &lt;5% for additional benefits.” (2015 Guideline). Source: World Health Organization / NCBI book.<br><a class="text-emerald-700 underline" href="https://www.ncbi.nlm.nih.gov/books/NBK285525/">NBK285525 — WHO Guideline (2015)</a></li>
+            <li><strong>AHA added sugar caps:</strong> Men ≤ 36 g/day; Women ≤ 25 g/day; also phrased as ≤6% of calories. <a class="text-emerald-700 underline" href="https://www.heart.org/en/healthy-living/healthy-eating/eat-smart/sugar/how-much-sugar-is-too-much">AHA: How much sugar is too much?</a></li>
+            <li><strong>FDA %DV for Added Sugars:</strong> 50 g/day based on a 2,000 kcal diet. <a class="text-emerald-700 underline" href="https://www.fda.gov/food/nutrition-facts-label/added-sugars-nutrition-facts-label">FDA Added Sugars — Nutrition Facts Label</a></li>
+            <li><strong>NHS free sugars cap:</strong> UK adults ≤ 30 g/day. <a class="text-emerald-700 underline" href="https://www.nhs.uk/live-well/eat-well/food-types/how-does-sugar-in-our-diet-affect-our-health/">NHS: Sugar facts</a></li>
+          </ul>
+          <p><em>Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da queste fonti.</em></p>
+
+          <h2>The formula explained</h2>
+          <div class="formula-box">
+            <p>WHO % of energy limit:</p>
+            <p>\[ \text{Limit}_{g} = \frac{p \times E_{kcal}}{4} \]</p>
+            <p>where \(p\) is 0.10 (10%) or 0.05 (5%), and 1 g sugar ≈ 4 kcal.</p>
+            <p>AHA absolute caps:</p>
+            <p>\[ \text{Limit}_{g} = \begin{cases}36 & \text{men}\\ 25 & \text{women}\end{cases} \]</p>
+            <p>FDA %DV shown on U.S. labels:</p>
+            <p>\[ \%\text{DV} = 100 \times \frac{\text{Your added sugars (g)}}{50}\, .\]</p>
+          </div>
+
+          <h2>Variable glossary</h2>
+          <table class="w-full text-sm border">
+            <thead class="bg-gray-100">
+              <tr><th class="text-left p-2">Symbol / Field</th><th class="text-left p-2">Meaning</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="p-2"><code>Daily calories</code> (\(E_{kcal}\))</td><td class="p-2">Total energy target in kcal/day.</td></tr>
+              <tr><td class="p-2"><code>Guideline standard</code> (\(p\))</td><td class="p-2">Policy framework: WHO 10%/5%, AHA caps, FDA DV, NHS cap.</td></tr>
+              <tr><td class="p-2"><code>Sugars (g)</code></td><td class="p-2">Grams of added/free sugars for a serving.</td></tr>
+              <tr><td class="p-2"><code>Servings</code></td><td class="p-2">Count of servings consumed.</td></tr>
+              <tr><td class="p-2"><code>Teaspoons</code></td><td class="p-2">Approx. teaspoons of sugar (1 tsp ≈ 4 g).</td></tr>
+              <tr><td class="p-2"><code>%DV</code></td><td class="p-2">Percent of FDA Daily Value (50 g) used.</td></tr>
+            </tbody>
+          </table>
+
+          <h2>How it works: a step‑by‑step example</h2>
+          <p><strong>Scenario.</strong> A person targeting 2,000 kcal/day wants to follow the WHO 10% free sugars limit. They drink a 330 ml cola (35 g sugars) and eat a flavored yogurt (12 g sugars).</p>
+          <ol>
+            <li>Compute the WHO limit: \( \frac{0.10 \times 2000}{4} = 50\,g \).</li>
+            <li>Log the items: total sugars = 35 + 12 = 47 g.</li>
+            <li>Remaining vs limit = 50 − 47 = 3 g; teaspoons ≈ 47/4 = 11.75 tsp.</li>
+            <li>FDA %DV = 100 × 47 / 50 = 94% DV.</li>
+          </ol>
+
+          <h2>FAQ</h2>
+          <details>
+            <summary>What’s the difference between <em>added</em> and <em>free</em> sugars?</summary>
+            <p>“Added sugars” are added during processing (and include syrups/honey). “Free sugars” include added sugars plus those naturally present in honey, syrups, fruit juices and juice concentrates. Lactose in plain milk and intrinsic sugars in whole fruit are not counted as free sugars.</p>
+          </details>
+          <details>
+            <summary>Which standard should I follow?</summary>
+            <p>For general health, WHO &lt;10% energy (or &lt;5% for extra benefit) and the FDA 50 g DV are widely used. The AHA caps (36 g men/25 g women) are stricter and useful for cardiometabolic risk reduction. Choose the stricter one if you have weight, dental or metabolic goals.</p>
+          </details>
+          <details>
+            <summary>Does the calculator count sugars in whole fruit?</summary>
+            <p>No; WHO “free sugars” exclude intrinsic sugars in intact fruit and veg. Fruit <em>juices</em> are counted as free sugars.</p>
+          </details>
+          <details>
+            <summary>How many grams are in a teaspoon?</summary>
+            <p>About 4 grams per level teaspoon. We use 4 g/tsp in this tool.</p>
+          </details>
+          <details>
+            <summary>What about children?</summary>
+            <p>NHS guidance caps free sugars lower for children (e.g., 24 g for ages 7–10). This tool targets adults; consult pediatric guidance for kids.</p>
+          </details>
+          <details>
+            <summary>Is “no added sugar” the same as “sugar free”?</summary>
+            <p>No. “No added sugar” can still contain natural sugars (e.g., fruit juices). “Sugar free” in labeling often means &lt;0.5 g per serving.</p>
+          </details>
+
+          <div class="mt-6 p-4 bg-gray-50 border rounded text-sm text-gray-700">
+            <p><strong>Tool developed by Ugo Candido.</strong> Content medically reviewed by the CalcDomain Editorial Board.<br/>
+              Last accuracy review: <time datetime="2025-10-30">October 30, 2025</time></p>
+          </div>
+        </article>
+      </section>
+
+      <aside class="w-full lg:w-1/3">
+        <div class="sticky top-24 space-y-6">
+          <div class="bg-gray-200 h-72 rounded-lg flex items-center justify-center text-gray-600">Ad Placement (300×600)</div>
+          <div class="bg-white p-6 rounded-lg shadow-sm border">
+            <h3 class="font-bold text-lg mb-3">Why this is better</h3>
+            <ul class="list-disc list-inside text-sm text-gray-700 space-y-2">
+              <li>Clear WHO/AHA/FDA targets with side‑by‑side comparison.</li>
+              <li>Built‑in intake log with teaspoons and %DV.</li>
+              <li>Accessible UI (WCAG 2.1 AA), mobile-first, and printable.</li>
+            </ul>
+          </div>
+          <div class="bg-white p-6 rounded-lg shadow-sm border">
+            <h3 class="font-bold text-lg mb-3">Related nutrition tools</h3>
+            <ul class="text-sm space-y-2">
+              <li><a class="text-emerald-700 underline" href="calorie-deficit-calculator.html">Calorie Deficit Calculator</a></li>
+              <li><a class="text-emerald-700 underline" href="macros-calculator.html">Macros Planner</a></li>
+              <li><a class="text-emerald-700 underline" href="fiber-intake-calculator.html">Fiber Intake Calculator</a></li>
+            </ul>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="bg-white border-t">
+    <div class="container mx-auto px-6 py-8 text-center text-gray-600 text-sm">
+      <p>&copy; 2025 CalcDomain. All Rights Reserved.</p>
+      <div class="mt-4 space-x-4">
+        <a href="about.html" class="hover:text-emerald-700">About</a>
+        <a href="contact.html" class="hover:text-emerald-700">Contact</a>
+        <a href="privacy.html" class="hover:text-emerald-700">Privacy</a>
+        <a href="terms.html" class="hover:text-emerald-700">Terms</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Calculator Logic (defer placed before </body>) -->
+  <script defer>
+  (function(){
+    const $ = (id) => document.getElementById(id);
+    const els = {
+      menuBtn: $('menuBtn'), mobileNav: $('mobileNav'),
+      dailyCalories: $('dailyCalories'), estBMRBtn: $('estBMRBtn'), estimator: $('estimator'),
+      sex: $('sex'), age: $('age'), height: $('height'), weight: $('weight'), activity: $('activity'),
+      estimateBtn: $('estimateBtn'), useEstBtn: $('useEstBtn'),
+      standard: $('standard'), ahaSex: $('ahaSex'),
+      itemName: $('itemName'), grams: $('grams'), servings: $('servings'), addItem: $('addItem'), clearLog: $('clearLog'),
+      calErr: $('calErr'), stdErr: $('stdErr'), gramsErr: $('gramsErr'),
+      limitG: $('limitG'), limitExplain: $('limitExplain'), loggedG: $('loggedG'), loggedTsp: $('loggedTsp'), remainG: $('remainG'), remainPct: $('remainPct'), pctDV: $('pctDV'),
+      logBody: $('logBody')
+    };
+
+    // Mobile nav toggle
+    els.menuBtn?.addEventListener('click', () => {
+      const open = els.mobileNav.classList.toggle('hidden');
+      els.menuBtn.setAttribute('aria-expanded', String(!open));
+    });
+
+    // Tooltip/estimator toggle
+    els.estBMRBtn.addEventListener('click', () => {
+      const hidden = els.estimator.classList.toggle('hidden');
+      els.estBMRBtn.setAttribute('aria-expanded', String(!hidden));
+      if (!hidden) els.sex.focus();
+    });
+
+    // Validation (on blur)
+    const onBlurValidate = (input, errEl, {min, max, name}) => {
+      input.addEventListener('blur', () => {
+        const v = parseFloat(input.value);
+        let msg = '';
+        if (input.hasAttribute('aria-required') && (isNaN(v))) msg = `${name} is required.`;
+        else if (!isNaN(min) && v < min) msg = `${name} must be ≥ ${min}.`;
+        else if (!isNaN(max) && v > max) msg = `${name} must be ≤ ${max}.`;
+        errEl.textContent = msg;
+      });
+    };
+    onBlurValidate(els.dailyCalories, els.calErr, {min:1000,max:5000,name:'Daily calories'});
+    onBlurValidate(els.grams, els.gramsErr, {min:0,max:500,name:'Sugars (g)'});
+
+    // Small intake log state
+    let log = [];
+
+    function gramsToTsp(g){ return g/4; }
+
+    function calcLimit(){
+      const kcal = parseFloat(els.dailyCalories.value) || 2000;
+      const std = els.standard.value;
+      const ahaSex = els.ahaSex.value;
+      let limit = 0; let explain = '';
+      if (std === 'who10') { limit = (0.10 * kcal) / 4; explain = `WHO 10% of ${kcal} kcal`; }
+      else if (std === 'who5') { limit = (0.05 * kcal) / 4; explain = `WHO 5% of ${kcal} kcal`; }
+      else if (std === 'aha') { limit = ahaSex==='male'?36:25; explain = `AHA cap (${ahaSex==='male'?'men 36g':'women 25g'})`; }
+      else if (std === 'fda') { limit = 50; explain = 'FDA Daily Value for Added Sugars'; }
+      else if (std === 'nhs') { limit = 30; explain = 'NHS adult free sugars cap'; }
+      return {limit, explain};
+    }
+
+    function render(){
+      const {limit, explain} = calcLimit();
+      const total = log.reduce((s,it)=> s + it.totalG, 0);
+      const remain = Math.max(0, limit - total);
+      const dvPct = Math.round((total/50)*100);
+      els.limitG.textContent = `${limit.toFixed(0)} g`;
+      els.limitExplain.textContent = explain;
+      els.loggedG.textContent = `${total.toFixed(1)} g`;
+      els.loggedTsp.textContent = gramsToTsp(total).toFixed(1);
+      els.remainG.textContent = `${remain.toFixed(1)} g`;
+      els.remainPct.textContent = limit>0? Math.round((remain/limit)*100) : 0;
+      els.pctDV.textContent = `${dvPct}%`;
+
+      // table
+      els.logBody.innerHTML = '';
+      log.forEach((it,i)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="px-4 py-2">${it.name||'-'}</td><td class="px-4 py-2 text-right">${it.g.toFixed(1)}</td><td class="px-4 py-2 text-right">${it.serv.toFixed(2)}</td><td class="px-4 py-2 text-right">${it.totalG.toFixed(1)}</td>`;
+        els.logBody.appendChild(tr);
+      });
+
+      // donut chart
+      if (window.Chart) {
+        if (!window._donut) {
+          const ctx = document.getElementById('donut');
+          window._donut = new Chart(ctx, {
+            type: 'doughnut',
+            data: { labels:['Used','Remaining'], datasets:[{ data:[total, Math.max(0,limit-total)] }] },
+            options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } } }
+          });
+        } else {
+          window._donut.data.datasets[0].data = [total, Math.max(0,limit-total)];
+          window._donut.update();
+        }
+      }
+
+      // Update FAQ LD (minimal)
+      const faq = {
+        "@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+          {"@type":"Question","name":"What’s the difference between added and free sugars?","acceptedAnswer":{"@type":"Answer","text":"Added sugars are added during processing; free sugars also include sugars in honey, syrups, fruit juices and concentrates."}},
+          {"@type":"Question","name":"How many grams are in a teaspoon?","acceptedAnswer":{"@type":"Answer","text":"About 4 grams per level teaspoon."}},
+          {"@type":"Question","name":"Which standard should I follow?","acceptedAnswer":{"@type":"Answer","text":"WHO <10% energy, FDA 50 g DV, or stricter AHA caps (36 g men / 25 g women). Choose stricter targets if managing weight, dental or metabolic risk."}}
+        ]};
+      const faqScript = document.getElementById('faq-ld');
+      if (faqScript) faqScript.textContent = JSON.stringify(faq);
+    }
+
+    // Intake log actions
+    els.addItem.addEventListener('click', ()=>{
+      const g = parseFloat(els.grams.value);
+      const sv = parseFloat(els.servings.value)||1;
+      if (isNaN(g) || g < 0) { els.gramsErr.textContent = 'Enter sugars (g) as a non‑negative number.'; return; }
+      els.gramsErr.textContent='';
+      const totalG = g * sv;
+      log.push({ name: els.itemName.value.trim(), g, serv: sv, totalG });
+      els.itemName.value=''; els.grams.value=''; els.servings.value='1';
+      render();
+    });
+    els.clearLog.addEventListener('click', ()=>{ log = []; render(); });
+
+    // Recalculate on changes
+    ['dailyCalories','standard','ahaSex'].forEach(id =>{
+      document.getElementById(id).addEventListener('input', render);
+    });
+
+    // Estimator (Mifflin–St Jeor)
+    function estimateCalories(){
+      const sex = els.sex.value; const age = parseFloat(els.age.value)||35; const h = parseFloat(els.height.value)||175; const w = parseFloat(els.weight.value)||70; const af = parseFloat(els.activity.value)||1.55;
+      const bmr = (sex==='male') ? (10*w + 6.25*h - 5*age + 5) : (10*w + 6.25*h - 5*age - 161);
+      return Math.round(bmr * af);
+    }
+    els.estimateBtn.addEventListener('click', ()=>{
+      const kcal = estimateCalories();
+      els.estimator.querySelector('#estTip').textContent = `Estimated maintenance: ~${kcal} kcal/day (Mifflin–St Jeor × activity). Click Use to apply.`;
+    });
+    els.useEstBtn.addEventListener('click', ()=>{
+      const kcal = estimateCalories();
+      els.dailyCalories.value = kcal;
+      render();
+    });
+
+    // Init
+    els.dailyCalories.value = 2000; render();
+  })();
+  </script>
+</body>
+</html>

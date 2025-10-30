@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Heart Rate Calculator – Target Zones, HRmax & Karvonen (HRR)</title>
+  <meta name="description" content="Calculate your target heart rate zones using multiple HRmax formulas (Fox, Tanaka, HUNT, Gulati for women) and the Karvonen method (HRR). Includes step-by-step example, formulas in LaTeX, accessible UI, and expert guidance." />
+  <link rel="canonical" href="https://calcdomain.com/heart-rate-calculator.html" />
+  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com" defer></script>
+  <!-- Chart.js (for optional zone visualization) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+  <!-- MathJax for LaTeX formulas -->
+  <script defer id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  <style>
+    :root { --focus: #2563eb; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji"; }
+    /* readable prose sizing */
+    .prose { max-width: 68ch; }
+    .prose h2 { font-size: 1.375rem; font-weight: 700; margin-top: 2rem; margin-bottom: 0.75rem; }
+    .prose h3 { font-size: 1.125rem; font-weight: 700; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+    .prose p  { line-height: 1.65; margin-bottom: 0.9rem; }
+    .prose ul, .prose ol { margin-left: 1.25rem; margin-bottom: 1rem; }
+    .formula-box { background:#f3f4f6; border:1px solid #d1d5db; border-radius:10px; padding:1rem; overflow-x:auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    /* results container min-height to prevent CLS */
+    #results { min-height: 16rem; }
+    /* focus styles (WCAG) */
+    :where(a, button, input, select, details, summary, textarea):focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+      border-radius: 8px;
+    }
+    /* Touch targets */
+    .tap-target { min-height: 48px; min-width: 48px; }
+    /* Print */
+    @media print {
+      body * { visibility: hidden; }
+      #print-section, #print-section * { visibility: visible; }
+      #print-section { position: absolute; inset: 0; }
+      #zoneChartWrap { display: none !important; }
+    }
+  </style>
+
+  <!-- JSON-LD: WebPage -->
+  <script type="application/ld+json" defer>
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Heart Rate Calculator – Target Zones, HRmax & Karvonen (HRR)",
+    "url": "https://calcdomain.com/heart-rate-calculator.html",
+    "inLanguage": "en",
+    "description": "Calculate your target heart rate zones using multiple HRmax formulas (Fox, Tanaka, HUNT, Gulati for women) and the Karvonen method (HRR).",
+    "author": { "@type": "Person", "name": "Ugo Candido" },
+    "publisher": { "@type": "Organization", "name": "CalcDomain" },
+    "about": [{ "@type": "Thing", "name": "Heart rate" }, { "@type": "Thing", "name": "Exercise intensity" }]
+  }
+  </script>
+
+  <!-- JSON-LD: Breadcrumbs -->
+  <script type="application/ld+json" defer>
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://calcdomain.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Health & Fitness", "item": "https://calcdomain.com/health-fitness.html" },
+      { "@type": "ListItem", "position": 3, "name": "Health Metrics", "item": "https://calcdomain.com/subcategories/health-metrics.html" },
+      { "@type": "ListItem", "position": 4, "name": "Heart Rate Calculator", "item": "https://calcdomain.com/heart-rate-calculator.html" }
+    ]
+  }
+  </script>
+
+  <!-- JSON-LD: FAQPage -->
+  <script type="application/ld+json" defer>
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {"@type":"Question","name":"Which maximum heart rate formula should I use?","acceptedAnswer":{"@type":"Answer","text":"Fox (220 − age) is a rough rule; Tanaka (208 − 0.7 × age) and HUNT (211 − 0.64 × age) are research-backed for mixed populations. Gulati (206 − 0.88 × age) is recommended for women. Compare all and fine-tune with your real-world data."}},
+      {"@type":"Question","name":"What is the Karvonen (HRR) method?","acceptedAnswer":{"@type":"Answer","text":"Karvonen uses heart rate reserve (HRR = HRmax − Resting HR) to compute target training heart rates: Target HR = Resting HR + %Intensity × HRR. It individualizes zones based on your resting HR."}},
+      {"@type":"Question","name":"Are wrist wearables accurate for HR zones?","acceptedAnswer":{"@type":"Answer","text":"Wrist optical sensors can lag or drift during high-intensity or arm-dominant activities. Use a chest strap for best accuracy and validate zones with perceived exertion and pace/power where relevant."}},
+      {"@type":"Question","name":"Do medications affect target heart rate?","acceptedAnswer":{"@type":"Answer","text":"Yes. Beta-blockers, some calcium channel blockers, and other medications blunt HR response. Consult your clinician; perceived exertion or power/pace may be better guides."}},
+      {"@type":"Question","name":"What zone is best for fat loss or endurance?","acceptedAnswer":{"@type":"Answer","text":"Consistent Zone 2 (roughly 60–70% HRmax or 40–59% HRR) builds aerobic base and supports fat oxidation. Mix higher-intensity sessions judiciously for performance adaptations."}}
+    ]
+  }
+  </script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <!-- Header (non-sticky per spec) -->
+  <header class="bg-white border-b">
+    <nav class="container mx-auto px-4 lg:px-6 py-4 flex items-center justify-between">
+      <a href="index.html" class="text-2xl font-extrabold text-blue-600">CalcDomain</a>
+      <div class="hidden md:flex items-center gap-6 text-sm">
+        <a href="search.html" class="hover:text-blue-600">Search</a>
+        <a href="index.html#categories" class="hover:text-blue-600">Categories</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="container mx-auto px-4 lg:px-6 py-8">
+    <div class="flex flex-col lg:flex-row gap-8">
+      <section class="w-full lg:w-2/3">
+        <!-- Breadcrumb -->
+        <nav class="text-sm text-gray-600 mb-4" aria-label="Breadcrumb">
+          <a href="index.html" class="hover:text-blue-600">Home</a> &raquo;
+          <a href="health-fitness.html" class="hover:text-blue-600">Health &amp; Fitness</a> &raquo;
+          <a href="subcategories/health-metrics.html" class="hover:text-blue-600">Health Metrics</a> &raquo;
+          <span class="text-gray-900">Heart Rate Calculator</span>
+        </nav>
+
+        <div id="print-section" class="bg-white rounded-lg shadow p-6">
+          <!-- 1) H1 -->
+          <h1 class="text-3xl font-extrabold mb-2">heart rate calculator</h1>
+
+          <!-- 2) Intro -->
+          <p class="text-gray-700 mb-6">
+            Instantly compute your target heart rate zones using multiple research-based HRmax formulas and the Karvonen (HRR) method.
+            Ideal for athletes, coaches, clinicians, and anyone training by heart rate.
+          </p>
+
+          <!-- 3) Calculator UI -->
+          <section id="calculator-ui" class="space-y-6" aria-labelledby="calcHeading">
+            <h2 id="calcHeading" class="sr-only">Calculator inputs</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Age -->
+              <div>
+                <label for="age" class="block text-sm font-medium text-gray-900">
+                  Age <span aria-hidden="true" class="text-red-600">*</span>
+                </label>
+                <div class="flex items-start gap-2">
+                  <input type="number" inputmode="numeric" id="age" min="10" max="100" step="1" value="35"
+                         aria-required="true" aria-describedby="ageHelp ageError"
+                         class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm tap-target"
+                         />
+                  <button type="button" class="mt-1 px-3 py-2 border rounded-md tap-target"
+                          aria-expanded="false" aria-controls="ageHelp">?</button>
+                </div>
+                <p id="ageHelp" class="text-xs text-gray-600 mt-1">
+                  Enter your age in years (10–100). Used to estimate HRmax with the selected formula.
+                </p>
+                <p id="ageError" class="text-sm text-red-700 mt-1 hidden"></p>
+              </div>
+
+              <!-- Sex (for Gulati) -->
+              <div>
+                <label for="sex" class="block text-sm font-medium text-gray-900">
+                  Sex at birth <span class="text-gray-500 text-xs font-normal">(for Gulati formula)</span>
+                </label>
+                <select id="sex" aria-describedby="sexHelp"
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm tap-target">
+                  <option value="female">Female</option>
+                  <option value="male" selected>Male</option>
+                  <option value="unspecified">Prefer not to say</option>
+                </select>
+                <p id="sexHelp" class="text-xs text-gray-600 mt-1">
+                  Gulati’s HRmax applies to women; others are unisex. The calculator will adapt.
+                </p>
+              </div>
+
+              <!-- Resting HR -->
+              <div>
+                <label for="rhr" class="block text-sm font-medium text-gray-900">
+                  Resting Heart Rate (RHR, bpm) <span aria-hidden="true" class="text-red-600">*</span>
+                </label>
+                <div class="flex items-start gap-2">
+                  <input type="number" id="rhr" min="30" max="120" step="1" value="60"
+                         aria-required="true" aria-describedby="rhrHelp rhrError"
+                         class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm tap-target"/>
+                  <button type="button" class="mt-1 px-3 py-2 border rounded-md tap-target"
+                          aria-expanded="false" aria-controls="rhrHelp">?</button>
+                </div>
+                <p id="rhrHelp" class="text-xs text-gray-600 mt-1">
+                  Measure on waking, before getting out of bed. Typical adult range is ~60–100 bpm.
+                </p>
+                <p id="rhrError" class="text-sm text-red-700 mt-1 hidden"></p>
+              </div>
+
+              <!-- HRmax method -->
+              <div>
+                <label for="method" class="block text-sm font-medium text-gray-900">
+                  HRmax Formula <span aria-hidden="true" class="text-red-600">*</span>
+                </label>
+                <div class="flex items-start gap-2">
+                  <select id="method" aria-required="true" aria-describedby="methodHelp"
+                          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm tap-target">
+                    <option value="fox">Fox (220 − age)</option>
+                    <option value="tanaka" selected>Tanaka (208 − 0.7 × age)</option>
+                    <option value="hunt">HUNT (211 − 0.64 × age)</option>
+                    <option value="gulati">Gulati – women (206 − 0.88 × age)</option>
+                    <option value="custom">Custom HRmax (enter below)</option>
+                  </select>
+                  <button type="button" class="mt-1 px-3 py-2 border rounded-md tap-target"
+                          aria-expanded="false" aria-controls="methodHelp">?</button>
+                </div>
+                <p id="methodHelp" class="text-xs text-gray-600 mt-1">
+                  Compare formulas or set a custom HRmax validated by a lab test or race effort.
+                </p>
+              </div>
+
+              <!-- Custom HRmax -->
+              <div>
+                <label for="customMax" class="block text-sm font-medium text-gray-900">
+                  Custom HRmax (bpm)
+                </label>
+                <input type="number" id="customMax" min="120" max="230" step="1" value=""
+                       aria-describedby="customHelp customError"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm tap-target" />
+                <p id="customHelp" class="text-xs text-gray-600 mt-1">
+                  Only used if “Custom HRmax” is selected. Range 120–230 bpm.
+                </p>
+                <p id="customError" class="text-sm text-red-700 mt-1 hidden"></p>
+              </div>
+
+              <!-- Output units/info -->
+              <div>
+                <label for="zoneScale" class="block text-sm font-medium text-gray-900">
+                  Zone Scale
+                </label>
+                <select id="zoneScale" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm tap-target"
+                        aria-describedby="zoneScaleHelp">
+                  <option value="percentMax" selected>% of HRmax (AHA 50–85%)</option>
+                  <option value="percentHRR">% of HRR (Karvonen)</option>
+                </select>
+                <p id="zoneScaleHelp" class="text-xs text-gray-600 mt-1">
+                  Switch between %HRmax and %HRR (more individualized).
+                </p>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3">
+              <button id="calcBtn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 tap-target" type="button">
+                Calculate zones
+              </button>
+              <button id="printBtn" class="px-4 py-2 bg-white border rounded-md hover:bg-gray-50 tap-target" type="button">
+                Print results
+              </button>
+              <button id="resetBtn" class="px-4 py-2 bg-white border rounded-md hover:bg-gray-50 tap-target" type="button">
+                Reset
+              </button>
+            </div>
+          </section>
+
+          <!-- 4) Results Area -->
+          <section id="results" class="mt-8 bg-blue-50 border border-blue-100 rounded-lg p-6">
+            <h2 class="text-lg font-bold text-blue-900 mb-4">Results</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="bg-white border rounded-lg p-4 text-center">
+                <h3 class="text-sm text-gray-600">Estimated HRmax</h3>
+                <p id="hrmaxOut" class="text-2xl font-extrabold text-blue-700">—</p>
+                <p id="hrmaxNote" class="text-xs text-gray-500 mt-1">Method: —</p>
+              </div>
+              <div class="bg-white border rounded-lg p-4 text-center">
+                <h3 class="text-sm text-gray-600">Heart Rate Reserve (HRR)</h3>
+                <p id="hrrOut" class="text-2xl font-extrabold text-blue-700">—</p>
+                <p class="text-xs text-gray-500 mt-1">HRR = HRmax − Resting HR</p>
+              </div>
+              <div class="bg-white border rounded-lg p-4 text-center">
+                <h3 class="text-sm text-gray-600">Recommended Moderate/Vigorous</h3>
+                <p id="recOut" class="text-base font-semibold text-gray-900">—</p>
+                <p class="text-xs text-gray-500 mt-1">Per AHA guidance</p>
+              </div>
+            </div>
+
+            <!-- Zones tables -->
+            <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div class="bg-white border rounded-lg p-4">
+                <h3 class="font-semibold mb-2">Zones by %HRmax</h3>
+                <div class="overflow-x-auto">
+                  <table class="min-w-full text-sm">
+                    <thead class="bg-gray-100 text-gray-700">
+                      <tr>
+                        <th class="px-3 py-2 text-left">Zone</th>
+                        <th class="px-3 py-2 text-right">%HRmax</th>
+                        <th class="px-3 py-2 text-right">BPM</th>
+                      </tr>
+                    </thead>
+                    <tbody id="zonesMaxBody"></tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="bg-white border rounded-lg p-4">
+                <h3 class="font-semibold mb-2">Zones by %HRR (Karvonen)</h3>
+                <div class="overflow-x-auto">
+                  <table class="min-w-full text-sm">
+                    <thead class="bg-gray-100 text-gray-700">
+                      <tr>
+                        <th class="px-3 py-2 text-left">Zone</th>
+                        <th class="px-3 py-2 text-right">%HRR</th>
+                        <th class="px-3 py-2 text-right">BPM</th>
+                      </tr>
+                    </thead>
+                    <tbody id="zonesHrrBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Chart -->
+            <div id="zoneChartWrap" class="mt-6">
+              <div class="h-56">
+                <canvas id="zoneChart" aria-label="Target heart rate zones chart"></canvas>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- 5) Authoritative Content Ecosystem -->
+        <article class="bg-white p-6 rounded-lg shadow mt-8 prose">
+          <h2>Data Source & Methodology</h2>
+          <p><strong>AuthoritativeDataSource:</strong></p>
+          <ul>
+            <li><a class="text-blue-700 underline" href="https://www.heart.org/en/healthy-living/fitness/fitness-basics/target-heart-rates" target="_blank" rel="noopener">American Heart Association (AHA): Target Heart Rates</a> – Moderate 50–70% HRmax; Vigorous 70–85% HRmax.</li>
+            <li>HRmax formulas:
+              <ul>
+                <li>Fox: \( HR_{\max} = 220 - \text{age} \) (rule of thumb/AHA page).</li>
+                <li>Tanaka et&nbsp;al., 2001 (JACC): \( HR_{\max} = 208 - 0.7 \times \text{age} \). <a class="text-blue-700 underline" href="https://pubmed.ncbi.nlm.nih.gov/11153730/" target="_blank" rel="noopener">PubMed</a></li>
+                <li>HUNT study (Nes et&nbsp;al., 2013): \( HR_{\max} = 211 - 0.64 \times \text{age} \). <a class="text-blue-700 underline" href="https://pubmed.ncbi.nlm.nih.gov/22376273/" target="_blank" rel="noopener">PubMed</a></li>
+                <li>Gulati et&nbsp;al., 2010 (women): \( HR_{\max} = 206 - 0.88 \times \text{age} \). <a class="text-blue-700 underline" href="https://www.ahajournals.org/doi/10.1161/CIRCULATIONAHA.110.939249" target="_blank" rel="noopener">Circulation</a></li>
+              </ul>
+            </li>
+            <li>Karvonen (HRR) method: \( HR_{\text{target}} = HR_{\text{rest}} + \% \times (HR_{\max} - HR_{\text{rest}}) \). See overview: <a class="text-blue-700 underline" href="https://www.physiotutors.com/wiki/karvonen-formula/" target="_blank" rel="noopener">Physiotutors</a>.</li>
+          </ul>
+          <p><em>Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.</em></p>
+
+          <h2>The Formula Explained</h2>
+          <div class="formula-box">
+            <p><strong>Max HR (pick a formula):</strong></p>
+            <p>
+              \( HR_{\max}^{\text{Fox}} = 220 - \text{age} \) &nbsp;&nbsp;|&nbsp;&nbsp;
+              \( HR_{\max}^{\text{Tanaka}} = 208 - 0.7\,\text{age} \) &nbsp;&nbsp;|&nbsp;&nbsp;
+              \( HR_{\max}^{\text{HUNT}} = 211 - 0.64\,\text{age} \) <br/>
+              \( HR_{\max}^{\text{Gulati (women)}} = 206 - 0.88\,\text{age} \)
+            </p>
+            <p class="mt-2"><strong>Heart Rate Reserve (HRR):</strong> \( HRR = HR_{\max} - HR_{\text{rest}} \)</p>
+            <p class="mt-2"><strong>Karvonen target:</strong> \( HR_{\text{target}} = HR_{\text{rest}} + \% \times HRR \)</p>
+            <p class="mt-2"><strong>AHA zones (by %HRmax):</strong> Moderate \( \approx 50\!-\!70\% \), Vigorous \( \approx 70\!-\!85\% \).</p>
+          </div>
+
+          <h2>Glossary of Inputs & Outputs</h2>
+          <ul>
+            <li><strong>Age</strong> – your age in years; used to estimate HRmax.</li>
+            <li><strong>Sex at birth</strong> – required only if applying the Gulati (women) formula for HRmax.</li>
+            <li><strong>Resting Heart Rate (RHR)</strong> – morning pulse at rest; used for HRR and Karvonen targets.</li>
+            <li><strong>HRmax</strong> – estimated maximal heart rate from a chosen formula or custom measurement.</li>
+            <li><strong>HRR</strong> – Heart Rate Reserve: HRmax − RHR.</li>
+            <li><strong>Zones by %HRmax</strong> – bands defined by a percentage of HRmax (e.g., 60–70%).</li>
+            <li><strong>Zones by %HRR</strong> – Karvonen zones accounting for your resting heart rate.</li>
+          </ul>
+
+          <h2>How It Works: A Step-by-Step Example</h2>
+          <h3>Example – 35-year-old, female, RHR = 60 bpm, Tanaka method</h3>
+          <ol>
+            <li>Compute HRmax (Tanaka): \( 208 - 0.7 \times 35 = 208 - 24.5 = 183.5 \) → ~184 bpm.</li>
+            <li>Compute HRR: \( HRR = 184 - 60 = 124 \) bpm.</li>
+            <li>Zone 2 by %HRmax (60–70%): \( 0.60 \times 184 = 110 \) to \( 0.70 \times 184 = 129 \) bpm.</li>
+            <li>Zone 2 by %HRR (40–59% HRR): \( 60 + (0.40 \times 124) = 110 \) to \( 60 + (0.59 \times 124) \approx 133 \) bpm.</li>
+          </ol>
+          <p>Karvonen adjusts targets by your RHR, often aligning better with your perceived effort and training data.</p>
+
+          <h2>Frequently Asked Questions</h2>
+          <details>
+            <summary>How do I choose between %HRmax and %HRR?</summary>
+            <p>%HRR (Karvonen) is more individualized because it accounts for your resting HR. If you have reliable RHR, prefer %HRR; otherwise, %HRmax is acceptable for general guidance.</p>
+          </details>
+          <details>
+            <summary>What zone ranges do you use?</summary>
+            <p>By %HRmax: Z1 50–60%, Z2 60–70%, Z3 70–80%, Z4 80–90%, Z5 90–100%. By %HRR (Karvonen): Z1 30–39%, Z2 40–59%, Z3 60–69%, Z4 70–84%, Z5 85–100%.</p>
+          </details>
+          <details>
+            <summary>Can I enter a custom HRmax?</summary>
+            <p>Yes. If you have a lab test or well-paced race/field test yielding a credible peak HR, select “Custom HRmax”.</p>
+          </details>
+          <details>
+            <summary>Are these medical recommendations?</summary>
+            <p>No. This tool is for educational purposes only. Consult your clinician before starting or changing an exercise program, especially if you have medical conditions or take HR-affecting medications.</p>
+          </details>
+          <details>
+            <summary>Do these formulas work for every individual?</summary>
+            <p>No formula predicts HRmax perfectly. They are population averages with standard errors. Validate and refine with your training data where possible.</p>
+          </details>
+
+          <div class="mt-6 p-4 bg-gray-50 border rounded text-sm text-gray-700">
+            <p><strong>Tool developed by Ugo Candido.</strong> Content verified by CalcDomain Editorial Board.<br>
+              Last accuracy review: <time datetime="2025-10-30">October 30, 2025</time></p>
+          </div>
+        </article>
+      </section>
+
+      <!-- Sidebar -->
+      <aside class="w-full lg:w-1/3">
+        <div class="sticky top-24 space-y-6">
+          <div class="bg-gray-200 h-72 rounded-lg flex items-center justify-center text-gray-600">
+            Ad Placement (300×600)
+          </div>
+
+          <div class="bg-white p-6 rounded-lg shadow">
+            <h3 class="font-bold text-lg mb-3">Why this calculator is different</h3>
+            <ul class="list-disc list-inside text-sm text-gray-700 space-y-2">
+              <li>Multiple HRmax formulas (Fox, Tanaka, HUNT, Gulati) + custom override.</li>
+              <li>Dual view: %HRmax (AHA) and %HRR (Karvonen) for individualized targets.</li>
+              <li>WCAG-accessible UI with inline validation and print-friendly output.</li>
+            </ul>
+          </div>
+
+          <div class="bg-white p-6 rounded-lg shadow">
+            <h3 class="font-bold text-lg mb-4">Related health tools</h3>
+            <ul class="space-y-3 text-sm">
+              <li><a class="text-blue-700 hover:underline" href="bmi-calculator.html">BMI Calculator</a></li>
+              <li><a class="text-blue-700 hover:underline" href="vo2max-estimator.html">VO₂max Estimator</a></li>
+              <li><a class="text-blue-700 hover:underline" href="calorie-calculator.html">Calorie & TDEE Calculator</a></li>
+              <li><a class="text-blue-700 hover:underline" href="pace-zone-calculator.html">Pace & Zone Planner</a></li>
+            </ul>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="bg-white border-t">
+    <div class="container mx-auto px-6 py-8 text-center text-gray-600 text-sm">
+      <p>&copy; 2025 CalcDomain. All Rights Reserved.</p>
+      <div class="mt-4 space-x-4">
+        <a href="about.html" class="hover:text-blue-600">About</a>
+        <a href="contact.html" class="hover:text-blue-600">Contact</a>
+        <a href="privacy.html" class="hover:text-blue-600">Privacy</a>
+        <a href="terms.html" class="hover:text-blue-600">Terms</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Calculator Logic (defer in head per spec; kept here at end for clarity and to avoid blocking) -->
+  <script defer>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Elements
+    const el = {
+      age:        document.getElementById('age'),
+      sex:        document.getElementById('sex'),
+      rhr:        document.getElementById('rhr'),
+      method:     document.getElementById('method'),
+      customMax:  document.getElementById('customMax'),
+      zoneScale:  document.getElementById('zoneScale'),
+      calcBtn:    document.getElementById('calcBtn'),
+      printBtn:   document.getElementById('printBtn'),
+      resetBtn:   document.getElementById('resetBtn'),
+      // errors
+      ageError:   document.getElementById('ageError'),
+      rhrError:   document.getElementById('rhrError'),
+      customError:document.getElementById('customError'),
+      // outputs
+      hrmaxOut:   document.getElementById('hrmaxOut'),
+      hrmaxNote:  document.getElementById('hrmaxNote'),
+      hrrOut:     document.getElementById('hrrOut'),
+      recOut:     document.getElementById('recOut'),
+      zonesMaxBody: document.getElementById('zonesMaxBody'),
+      zonesHrrBody: document.getElementById('zonesHrrBody')
+    };
+
+    // Accessible tooltip toggles (for all "?" buttons near labels)
+    document.querySelectorAll('label + div > button[aria-controls]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('aria-controls');
+        const tgt = document.getElementById(id);
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        tgt.classList.toggle('hidden', expanded);
+      });
+      // Start tooltips visible (we keep them visible by default for clarity)
+    });
+
+    // Validation helpers
+    function setError(elErr, msg, input) {
+      elErr.textContent = msg;
+      elErr.classList.remove('hidden');
+      if (input) input.setAttribute('aria-invalid', 'true');
+    }
+    function clearError(elErr, input) {
+      elErr.textContent = '';
+      elErr.classList.add('hidden');
+      if (input) input.removeAttribute('aria-invalid');
+    }
+
+    function validateAge() {
+      const v = Number(el.age.value);
+      if (!Number.isFinite(v) || v < 10 || v > 100) {
+        setError(el.ageError, 'Please enter an age between 10 and 100 years.', el.age);
+        return false;
+      }
+      clearError(el.ageError, el.age);
+      return true;
+    }
+    function validateRhr() {
+      const v = Number(el.rhr.value);
+      if (!Number.isFinite(v) || v < 30 || v > 120) {
+        setError(el.rhrError, 'Resting HR should be between 30 and 120 bpm. Measure on waking for accuracy.', el.rhr);
+        return false;
+      }
+      clearError(el.rhrError, el.rhr);
+      return true;
+    }
+    function validateCustom() {
+      if (el.method.value !== 'custom') { clearError(el.customError, el.customMax); return true; }
+      const v = Number(el.customMax.value);
+      if (!Number.isFinite(v) || v < 120 || v > 230) {
+        setError(el.customError, 'Custom HRmax must be between 120 and 230 bpm.', el.customMax);
+        return false;
+      }
+      clearError(el.customError, el.customMax);
+      return true;
+    }
+
+    // On-blur validation (per spec)
+    el.age.addEventListener('blur', validateAge);
+    el.rhr.addEventListener('blur', validateRhr);
+    el.customMax.addEventListener('blur', validateCustom);
+    el.method.addEventListener('change', validateCustom);
+
+    // HRmax calculators
+    function hrmax(age, method, sex, customVal) {
+      switch (method) {
+        case 'fox':   return 220 - age;
+        case 'tanaka':return 208 - 0.7 * age;
+        case 'hunt':  return 211 - 0.64 * age;
+        case 'gulati':return sex === 'female' ? 206 - 0.88 * age : 208 - 0.7 * age; // fallback to Tanaka if not female
+        case 'custom':return Number(customVal) || NaN;
+        default:      return 208 - 0.7 * age;
+      }
+    }
+
+    // Zones
+    const ZONES_MAX = [
+      { name: 'Z1 (Warm-up/Recovery)', lo: 0.50, hi: 0.60 },
+      { name: 'Z2 (Endurance/Base)',  lo: 0.60, hi: 0.70 },
+      { name: 'Z3 (Tempo/Aerobic)',   lo: 0.70, hi: 0.80 },
+      { name: 'Z4 (Threshold)',       lo: 0.80, hi: 0.90 },
+      { name: 'Z5 (VO₂max)',          lo: 0.90, hi: 1.00 }
+    ];
+    const ZONES_HRR = [
+      { name: 'Z1 (Recovery)', lo: 0.30, hi: 0.39 },
+      { name: 'Z2 (Endurance)',lo: 0.40, hi: 0.59 },
+      { name: 'Z3 (Tempo)',    lo: 0.60, hi: 0.69 },
+      { name: 'Z4 (Thresh.)',  lo: 0.70, hi: 0.84 },
+      { name: 'Z5 (VO₂max)',   lo: 0.85, hi: 1.00 }
+    ];
+
+    // Formatters
+    const fmt = (n) => Math.round(n);
+    const bpm = (n) => Number.isFinite(n) ? `${fmt(n)} bpm` : '—';
+
+    // Render zone tables
+    function renderMaxZones(max) {
+      el.zonesMaxBody.innerHTML = '';
+      ZONES_MAX.forEach(z => {
+        const lo = z.lo * max, hi = z.hi * max;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="px-3 py-2 text-left">${z.name}</td>
+          <td class="px-3 py-2 text-right">${fmt(z.lo*100)}–${fmt(z.hi*100)}%</td>
+          <td class="px-3 py-2 text-right">${fmt(lo)}–${fmt(hi)} bpm</td>`;
+        el.zonesMaxBody.appendChild(tr);
+      });
+    }
+    function renderHrrZones(max, rhr) {
+      el.zonesHrrBody.innerHTML = '';
+      const hrr = max - rhr;
+      ZONES_HRR.forEach(z => {
+        const lo = rhr + z.lo * hrr, hi = rhr + z.hi * hrr;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="px-3 py-2 text-left">${z.name}</td>
+          <td class="px-3 py-2 text-right">${fmt(z.lo*100)}–${fmt(z.hi*100)}%</td>
+          <td class="px-3 py-2 text-right">${fmt(lo)}–${fmt(hi)} bpm</td>`;
+        el.zonesHrrBody.appendChild(tr);
+      });
+      return hrr;
+    }
+
+    // Chart
+    let chart;
+    function renderChart(max, rhr) {
+      const ctx = document.getElementById('zoneChart');
+      if (!ctx) return;
+      const hrr = max - rhr;
+
+      // Show midpoints of Z2-Z5 to visualize targets (HRR scale)
+      const mids = ZONES_HRR.map(z => rhr + ((z.lo + z.hi)/2) * hrr);
+      const labels = ZONES_HRR.map(z => z.name);
+
+      const data = {
+        labels,
+        datasets: [{
+          label: 'Midpoint (Karvonen, bpm)',
+          data: mids
+        }]
+      };
+      const options = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { title: { display: true, text: 'BPM' }, beginAtZero: false }
+        }
+      };
+
+      if (chart) { chart.data = data; chart.options = options; chart.update(); }
+      else { chart = new Chart(ctx, { type: 'bar', data, options }); }
+    }
+
+    function recommendText(max, rhr) {
+      const modLo = 0.50 * max, modHi = 0.70 * max;
+      const vigLo = 0.70 * max, vigHi = 0.85 * max;
+      return `Moderate ~ ${fmt(modLo)}–${fmt(modHi)} bpm; Vigorous ~ ${fmt(vigLo)}–${fmt(vigHi)} bpm`;
+    }
+
+    function calculate() {
+      if (!(validateAge() & validateRhr() & validateCustom())) return;
+
+      const age = Number(el.age.value);
+      const rhr = Number(el.rhr.value);
+      const method = el.method.value;
+      const sex = el.sex.value;
+      const customVal = el.customMax.value;
+
+      let max = hrmax(age, method, sex, customVal);
+      if (!Number.isFinite(max) || max <= rhr + 10) {
+        setError(el.customError, 'Computed HRmax is too low relative to RHR; check inputs or use Custom HRmax.', null);
+        return;
+      } else {
+        clearError(el.customError, null);
+      }
+
+      // Outputs
+      el.hrmaxOut.textContent = bpm(max);
+      el.hrmaxNote.textContent = `Method: ${method === 'custom' ? 'Custom' :
+        method === 'fox' ? 'Fox (220−age)' :
+        method === 'tanaka' ? 'Tanaka (208−0.7×age)' :
+        method === 'hunt' ? 'HUNT (211−0.64×age)' :
+        'Gulati (women, 206−0.88×age)'}`;
+
+      const hrr = renderHrrZones(max, rhr);
+      el.hrrOut.textContent = bpm(hrr);
+      renderMaxZones(max);
+      el.recOut.textContent = recommendText(max, rhr);
+
+      renderChart(max, rhr);
+    }
+
+    // Events
+    el.calcBtn.addEventListener('click', calculate);
+    el.printBtn.addEventListener('click', () => window.print());
+    el.resetBtn.addEventListener('click', () => {
+      el.age.value = 35; el.sex.value = 'male'; el.rhr.value = 60;
+      el.method.value = 'tanaka'; el.customMax.value = ''; el.zoneScale.value = 'percentMax';
+      el.hrmaxOut.textContent = '—'; el.hrrOut.textContent = '—'; el.recOut.textContent = '—';
+      el.zonesMaxBody.innerHTML = ''; el.zonesHrrBody.innerHTML = '';
+      if (window.MathJax && MathJax.typeset) MathJax.typeset();
+    });
+
+    // Auto-run initial calc
+    calculate();
+  });
+  </script>
+</body>
+</html>
