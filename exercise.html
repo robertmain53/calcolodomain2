@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="shortcut icon" href="/favicon.ico" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<link rel="manifest" href="/site.webmanifest" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Exercise Calculator: Estimate Calories Burned</title>
+<meta name="description" content="Estimate calories burned during exercise based on your body weight, activity duration, and the activity's MET value. Uses the 2011 Compendium of Physical Activities.">
+<link rel="canonical" href="https://calcdomain.com/exercise.html"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-wcPF+ETRHEvQUPvMBDQYvDYmNAnMHEYl/fgI/Vdx8x0kMvD-B/UinWQTxlhrLTO/g" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" integrity="sha384-hIoI8myL1IfA/LIfWMUiLdxifYCAP+noOproJAYCFvM2YXF/rLCFS9iWq7pUeOEA" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js" integrity="sha384-43gviWU0YVjaDtbCATErLVKpSmRTCFGqAOVM9S0oKxkaGfN/BAx80LNYMh1vE5G6" crossorigin="anonymous"
+    onload="renderMathInElement(document.body, {
+      delimiters: [
+          {left: '$$', right: '$$', display: true},
+          {left: '$', right: '$', display: false}
+      ]
+    });"></script>
+<style>
+body { font-family: 'Inter', sans-serif; }
+.prose { max-width: 65ch; }
+.prose h2 { font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; }
+.prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+.prose p { margin-bottom: 1rem; line-height: 1.6; }
+.prose ul, .prose ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+.prose li { margin-bottom: 0.5rem; }
+.formula-box {
+background:#f3f4f6; border:1px solid #d1d5db; border-radius:8px; padding:1rem;
+overflow-x:auto; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+}
+details > summary { cursor: pointer; font-weight: 600; padding: 0.5rem 0; }
+details[open] > summary { margin-bottom: 0.5rem; }
+
+/* Stili specifici del calcolatore */
+.result-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 1.25rem; text-align: center; }
+.result-card h4 { font-size: 0.95rem; color: #6b7280; margin-bottom: 0.25rem; }
+.result-card p { font-size: 1.75rem; font-weight: 700; color: #2563eb; }
+
+/* *** INIZIO STILI A11Y E UX ***
+*/
+/* Stile di focus visibile personalizzato per WCAG */
+:focus-visible {
+  outline: 3px solid #3b82f6;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4);
+}
+/* Rimuove lo stile di default solo se :focus-visible è supportato */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Stili per messaggi di errore e validazione */
+.error-message {
+  color: #dc2626; /* red-600 */
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+input[aria-invalid="true"] {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 1px #dc2626;
+}
+
+/* Stili per il tooltip accessibile */
+.tooltip-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 9999px;
+  background-color: #e5e7eb;
+  color: #4b5563;
+  border: none;
+  margin-left: 0.25rem;
+  font-style: normal;
+  font-weight: 700;
+  cursor: help;
+}
+.tooltip-text {
+  background-color: #1f2937;
+  color: #fff;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  position: relative;
+  width: 100%;
+}
+/* *** FINE STILI A11Y E UX ***
+*/
+
+@media print {
+body * { visibility: hidden; }
+#print-section, #print-section * { visibility: visible; }
+#print-section { position: absolute; left: 0; top: 0; width: 100%; }
+}
+</style>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Exercise Calculator: Estimate Calories Burned",
+  "description": "Estimate calories burned during exercise based on your body weight, activity duration, and the activity's MET value. Uses the 2011 Compendium of Physical Activities.",
+  "url": "https://calcdomain.com/exercise.html",
+  "inLanguage": "en",
+  "author": { "@type": "Person", "name": "Ugo Candido" },
+  "publisher": { "@type": "Organization", "name": "CalcDomain" },
+  "mainEntity": {
+    "@type": "Calculator",
+    "name": "Exercise Calories Burned Calculator",
+    "description": "Estimate calories burned from exercise based on activity (MET value), body weight, and duration.",
+    "mainEntity": {
+      "@type": "HowTo",
+      "name": "How to Use the Exercise Calculator",
+      "step": [
+        {"@type": "HowToStep", "name": "Select Activity", "text": "Filter and select your activity from the list. Each activity has a MET value associated with it."},
+        {"@type": "HowToStep", "name": "Enter Weight", "text": "Input your current body weight and select the unit (kg or lbs)."},
+        {"@type": "HowToStep", "name": "Enter Duration", "text": "Input the total time you performed the activity and select the unit (minutes or hours)."},
+        {"@type": "HowToStep", "name": "Calculate", "text": "Click 'Calculate' to see your estimated total calories burned and the hourly rate."}
+      ]
+    }
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://calcdomain.com/" },
+    { "@type": "ListItem", "position": 2, "name": "Health & Fitness", "item": "https://calcdomain.com/health-fitness.html" },
+    { "@type": "ListItem", "position": 3, "name": "Fitness", "item": "https://calcdomain.com/subcategories/health-fitness-fitness.html" },
+    { "@type": "ListItem", "position": 4, "name": "Exercise Calculator", "item": "https://calcdomain.com/exercise.html" }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is a MET value?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "MET stands for Metabolic Equivalent of Task. It's a measure of the energy cost of a physical activity relative to resting metabolism. A MET of 1 is resting (like sitting quietly). A MET of 8 means you are burning 8 times more energy than when at rest."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why is body weight important for this calculation?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Heavier individuals burn more calories to perform the same task because they have more body mass to move. The formula uses weight as a key multiplier to accurately estimate energy expenditure."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is this calculation 100% accurate?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "This calculator provides a highly accurate estimate based on the standardized MET values from the Compendium of Physical Activities. However, individual results can vary based on factors like age, sex, body composition, and environmental conditions, which are not accounted for in this formula."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What if my exact activity isn't listed?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Try to find the closest match. For example, if you played a casual game of basketball, 'Basketball, general' is a good choice. The list is based on the Compendium of Physical Activities and includes the most common activities and their corresponding MET values."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I use this for weight loss?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes, understanding your energy expenditure (calories burned) is a critical part of managing weight. You can use this tool to track calories burned during your workouts and compare it against your caloric intake."
+      }
+    }
+  ]
+}
+</script>
+<script src="search.js" defer></script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+<header class="bg-white shadow-sm">
+<nav class="container mx-auto px-4 lg:px-6 py-4">
+<div class="flex justify-between items-center">
+<a href="index.html" class="text-2xl font-bold text-blue-600">CalcDomain</a>
+
+<div class="w-full max-w-md hidden md:block mx-8">
+<div class="relative">
+<input type="search" id="search-input" placeholder="Search for a calculator..."
+class="w-full py-2 px-4 pr-12 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+autocomplete="off">
+<svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
+fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+</svg>
+<div id="search-results" class="absolute top-full left-0 right-0 hidden bg-white border border-gray-200 rounded-lg shadow-lg mt-2 max-h-96 overflow-y-auto z-50"></div>
+</div>
+</div>
+
+<div class="hidden md:flex items-center space-x-6 text-sm">
+<a href="search.html" class="text-gray-700 hover:text-blue-600">Advanced Search</a>
+<a href="index.html#categories" class="text-gray-700 hover:text-blue-600">Categories</a>
+</div>
+
+<button id="mobile-menu-toggle" class="md:hidden p-2" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+d="M4 6h16M4 12h16M4 18h16"></path>
+</svg>
+</button>
+</div>
+
+<div id="mobile-menu" class="md:hidden mt-4 hidden">
+<div class="space-y-2">
+<a href="search.html" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
+<a href="index.html#categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
+</div>
+</div>
+</nav>
+</header>
+
+<main class="container mx-auto px-4 lg:px-6 py-10">
+<div class="flex flex-col lg:flex-row gap-8">
+
+<section class="w-full lg:w-2/3">
+<nav class="text-sm text-gray-600 mb-4" aria-label="Breadcrumb">
+<a href="index.html" class="hover:text-blue-600">Home</a> &raquo;
+<a href="health-fitness.html" class="hover:text-blue-600">Health &amp; Fitness</a> &raquo;
+<a href="subcategories/health-fitness-fitness.html" class="hover:text-blue-600">Fitness</a> &raquo;
+<span class="text-gray-900">Exercise Calculator</span>
+</nav>
+
+<div id="print-section" class="bg-white p-6 rounded-lg shadow-md">
+<h1 class="text-3xl font-extrabold text-gray-900 mb-2">Exercise Calculator: Estimate Calories Burned</h1>
+<p class="text-gray-600 mb-6">This calculator estimates the total calories burned during a specific activity. It's designed for anyone from casual gym-goers to athletes looking to track their energy expenditure. Simply select your activity, enter your weight and the duration to get an instant estimate.</p>
+
+<form id="calculator-ui" class="space-y-6" onsubmit="return false;">
+  
+  <div>
+    <label for="activityFilter" class="block text-sm font-medium text-gray-700">Filter Activities (Type to search)</label>
+    <input type="search" id="activityFilter"
+           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+           placeholder="e.g., 'running' or 'swimming'">
+  </div>
+  
+  <div>
+    <label for="activitySelect" class="block text-sm font-medium text-gray-700">
+      Select Activity 
+      <span class="text-red-600" aria-hidden="true">*</span>
+      <button type="button" class="tooltip-btn" aria-label="More info on MET values" aria-describedby="met-tooltip-text" id="met-tooltip-btn">?</button>
+    </label>
+    <select id="activitySelect" size="8" aria-required="true"
+            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            aria-describedby="activitySelect-error">
+      </select>
+    <div id="met-tooltip-text" role="tooltip" class="tooltip-text hidden">
+      This list provides the activity's MET (Metabolic Equivalent of Task) value, which is key to calculating calorie burn.
+    </div>
+    <div id="activitySelect-error" class="error-message" role="alert"></div>
+  </div>
+  
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    
+    <fieldset>
+      <legend class="block text-sm font-medium text-gray-700">
+        Your Body Weight
+        <span class="text-red-600" aria-hidden="true">*</span>
+      </legend>
+      <input type="number" id="bodyWeight" min="1" step="0.1" aria-required="true"
+             class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+             aria-describedby="bodyWeight-error">
+      
+      <div class="flex items-center space-x-4 mt-2">
+        <div class="flex items-center">
+          <input type="radio" id="weightUnit-kg" name="weightUnit" value="kg" checked
+                 class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+          <label for="weightUnit-kg" class="ml-2 block text-sm text-gray-900">kg</label>
+        </div>
+        <div class="flex items-center">
+          <input type="radio" id="weightUnit-lbs" name="weightUnit" value="lbs"
+                 class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+          <label for="weightUnit-lbs" class="ml-2 block text-sm text-gray-900">lbs</label>
+        </div>
+      </div>
+      <div id="bodyWeight-error" class="error-message" role="alert"></div>
+    </fieldset>
+    
+    <fieldset>
+      <legend class="block text-sm font-medium text-gray-700">
+        Exercise Duration
+        <span class="text-red-600" aria-hidden="true">*</span>
+      </legend>
+      <input type="number" id="duration" min="1" step="1" aria-required="true"
+             class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+             aria-describedby="duration-error">
+      
+      <div class="flex items-center space-x-4 mt-2">
+        <div class="flex items-center">
+          <input type="radio" id="durationUnit-min" name="durationUnit" value="minutes" checked
+                 class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+          <label for="durationUnit-min" class="ml-2 block text-sm text-gray-900">Minutes</label>
+        </div>
+        <div class="flex items-center">
+          <input type="radio" id="durationUnit-hr" name="durationUnit" value="hours"
+                 class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+          <label for="durationUnit-hr" class="ml-2 block text-sm text-gray-900">Hours</label>
+        </div>
+      </div>
+      <div id="duration-error" class="error-message" role="alert"></div>
+    </fieldset>
+    
+  </div>
+  
+  <div class="flex items-center space-x-4 pt-4 border-t border-gray-200">
+    <button type="button" id="calculateBtn"
+            class="w-full md:w-auto px-6 py-3 text-base font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+      Calculate
+    </button>
+    <button type="reset" id="resetBtn"
+            class="w-full md:w-auto px-6 py-3 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+      Reset
+    </button>
+  </div>
+  
+</form>
+
+<section id="results" class="mt-8 bg-blue-50 border border-blue-100 rounded-lg p-6" style="min-height: 150px;">
+  <h2 class="text-2xl font-semibold text-gray-900 mb-4 text-center">Your Results</h2>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div class="result-card">
+      <h4>Total Calories Burned</h4>
+      <p id="totalCaloriesResult">0 kcal</p>
+    </div>
+    <div class="result-card">
+      <h4>Calories Burned per Hour</h4>
+      <p id="caloriesPerHourResult">0 kcal/hr</p>
+    </div>
+  </div>
+</section>
+</div>
+<article class="bg-white p-6 rounded-lg shadow-md mt-8 prose">
+  
+  <h2>Data Source and Methodology</h2>
+  <p>This calculator estimates energy expenditure using the <strong>Metabolic Equivalent of Task (MET)</strong>. The MET values used are sourced directly from the authoritative <strong>2011 Compendium of Physical Activities</strong>.</p>
+  <ul>
+    <li><strong>Source:</strong> Ainsworth BE, et al. "2011 Compendium of Physical Activities: a second update of codes and MET values."</li>
+    <li><strong>Reference:</strong> <em>Medicine & Science in Sports & Exercise</em>. 2011;43(8):1575-1581.</li>
+    <li><strong>Availability:</strong> <a href="https://sites.google.com/site/compendiumofphysicalactivities/" target="_blank" rel="noopener noreferrer">Official Compendium Website</a>.</li>
+  </ul>
+  <p>All calculations are based strictly on the formulas and data provided by this source. This calculator uses a curated list of the most common activities from the Compendium for ease of use.</p>
+
+  <h2>The Formula Explained</h2>
+  <p>The standard formula to calculate calories burned per minute using METs is:</p>
+  <div class="formula-box">
+    $\text{Calories per Minute} = \frac{\text{MET} \times \text{Body Weight (kg)} \times 3.5}{200}$
+  </div>
+  <p class="mt-4">To find the total calories burned, this value is then multiplied by the total duration of the activity in minutes:</p>
+  <div class="formula-box">
+    $\text{Total Calories} = \text{Calories per Minute} \times \text{Duration (minutes)}$
+  </div>
+
+  <h2>Glossary of Variables</h2>
+  <dl>
+    <dt class="font-semibold">MET (Metabolic Equivalent of Task)</dt>
+    <dd class="mb-2">A ratio of your working metabolic rate relative to your resting metabolic rate. A MET of 1 is the energy you expend while at rest (e.g., sitting quietly). An activity with a MET of 7 (like jogging) means you are burning 7 times more energy than when at rest.</dd>
+    
+    <dt class="font-semibold">Body Weight (kg)</dt>
+    <dd class="mb-2">Your mass in kilograms. The formula is standardized for kilograms, so if you enter your weight in pounds (lbs), the calculator first converts it using the factor $1 \text{ kg} = 2.20462 \text{ lbs}$.</dd>
+    
+    <dt class="font-semibold">Duration (minutes)</dt>
+    <dd class="mb-2">The total time, in minutes, that you performed the activity. If you enter the duration in hours, it is first converted to minutes ($1 \text{ hour} = 60 \text{ minutes}$).</dd>
+  </dl>
+  
+  <h2>How It Works: A Step-by-Step Example</h2>
+  <p>Let's calculate the calories burned for a person who weighs <strong>70 kg</strong> and goes <strong>running at 5 mph</strong> (a MET value of 8.3) for <strong>30 minutes</strong>.</p>
+  <ol>
+    <li><strong>Identify Variables:</strong>
+      <ul>
+        <li>MET: 8.3</li>
+        <li>Body Weight: 70 kg</li>
+        <li>Duration: 30 minutes</li>
+      </ul>
+    </li>
+    <li><strong>Calculate Calories per Minute:</strong>
+      <ul>
+        <li>$\text{Calories per Minute} = (8.3 \times 70 \times 3.5) / 200$</li>
+        <li>$\text{Calories per Minute} = 2033.5 / 200$</li>
+        <li>$\text{Calories per Minute} \approx 10.17$</li>
+      </ul>
+    </li>
+    <li><strong>Calculate Total Calories:</strong>
+      <ul>
+        <li>$\text{Total Calories} = 10.17 \times 30$</li>
+        <li>$\text{Total Calories} \approx 305 \text{ kcal}$</li>
+      </ul>
+    </li>
+  </ol>
+  <p>Therefore, a 70 kg person running at 5 mph for 30 minutes burns approximately <strong>305 calories</strong>.</p>
+  
+  <h2>Frequently Asked Questions</h2>
+  <details>
+    <summary>What is a MET value?</summary>
+    <p>MET stands for Metabolic Equivalent of Task. It's a measure of the energy cost of a physical activity relative to resting metabolism. A MET of 1 is resting (like sitting quietly). A MET of 8 means you are burning 8 times more energy than when at rest.</p>
+  </details>
+  <details>
+    <summary>Why is body weight important for this calculation?</summary>
+    <p>Heavier individuals burn more calories to perform the same task because they have more body mass to move. The formula uses weight as a key multiplier to accurately estimate energy expenditure.</p>
+  </details>
+  <details>
+    <summary>Is this calculation 100% accurate?</summary>
+    <p>This calculator provides a highly accurate estimate based on the standardized MET values from the Compendium of Physical Activities. However, individual results can vary based on factors like age, sex, body composition, and environmental conditions, which are not accounted for in this formula.</p>
+  </details>
+  <details>
+    <summary>What if my exact activity isn't listed?</summary>
+    <p>Try to find the closest match. For example, if you played a casual game of basketball, 'Basketball, general' is a good choice. The list is based on the Compendium of Physical Activities and includes the most common activities and their corresponding MET values.</p>
+  </details>
+  <details>
+    <summary>Can I use this for weight loss?</summary>
+    <p>Yes, understanding your energy expenditure (calories burned) is a critical part of managing weight. You can use this tool to track calories burned during your workouts and compare it against your caloric intake.</p>
+  </details>
+  <details>
+    <summary>How are 'Calories Burned per Hour' calculated?</summary>
+    <p>The "Calories Burned per Hour" value shows the steady rate of calorie burn for the selected activity, regardless of your actual duration. It's calculated by taking the "Calories per Minute" and multiplying it by 60.</p>
+  </details>
+
+  <div class="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
+    <p><strong>Tool developed by Ugo Candido.</strong> Health &amp; Fitness content verified by the CalcDomain Editorial Board.<br>
+    Last accuracy review: <time datetime="2025-10-31">October 31, 2025</time></p>
+  </div>
+</article>
+</section>
+
+<aside class="w-full lg:w-1/3">
+<div class="sticky top-24 space-y-6">
+<div class="bg-gray-200 h-72 rounded-lg flex items-center justify-center text-gray-500">
+Ad Placement (300×600)
+</div>
+<div class="bg-white p-6 rounded-lg shadow-md">
+<h3 class="font-bold text-lg mb-3">Why use this calculator</h3>
+<ul class="list-disc list-inside text-sm text-gray-600 space-y-2">
+<li>Get estimates based on the academic <strong>2011 Compendium of Physical Activities</strong>.</li>
+<li>Track energy expenditure to help manage fitness and weight goals.</li>
+<li>Compare the calorie burn of different activities, from walking to vigorous sports.</li>
+<li>Fully accessible (WCAG 2.1 AA) and mobile-first design.</li>
+</ul>
+</div>
+<div class="bg-white p-6 rounded-lg shadow-md">
+<h3 class="font-bold text-lg mb-4">Related Health Tools</h3>
+<ul class="space-y-3 text-sm">
+<li><a href="bmi-calculator.html" class="text-blue-600 hover:underline">BMI Calculator</a></li>
+<li><a href="tdee-calculator.html" class="text-blue-600 hover:underline">TDEE Calculator</a></li>
+<li><a href="bmr-calculator.html" class="text-blue-600 hover:underline">BMR Calculator</a></li>
+<li><a href="macro-calculator.html" class="text-blue-600 hover:underline">Macro Calculator</a></li>
+</ul>
+</div>
+</div>
+</aside>
+</div>
+</main>
+
+<footer class="bg-white border-t">
+<div class="container mx-auto px-6 py-8 text-center text-gray-600 text-sm">
+<p>&copy; 2025 CalcDomain. All Rights Reserved.</p>
+<div class="mt-4 space-x-4">
+<a href="about.html" class="hover:text-blue-600">About</a>
+<a href="contact.html" class="hover:text-blue-600">Contact</a>
+<a href="privacy.html" class="hover:text-blue-600">Privacy</a>
+<a href="terms.html" class="hover:text-blue-600">Terms</a>
+</div>
+</div>
+</footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+  // --- 1. DATI DEL CALCOLATORE (Fonte: Compendium 2011) ---
+  // Una lista curata per usabilità e prestazioni
+  const activityData = [
+    { name: 'Bicycling, <10 mph, leisure', met: 4.0 },
+    { name: 'Bicycling, 10-11.9 mph, light', met: 6.8 },
+    { name: 'Bicycling, 12-13.9 mph, moderate', met: 8.0 },
+    { name: 'Bicycling, 14-15.9 mph, vigorous', met: 10.0 },
+    { name: 'Bicycling, 16-19 mph, very fast', met: 12.0 },
+    { name: 'Bicycling, >20 mph, racing', met: 15.8 },
+    { name: 'Bicycling, stationary, moderate', met: 7.0 },
+    { name: 'Bicycling, stationary, vigorous', met: 10.5 },
+    { name: 'Calisthenics (e.g., pushups, situps), vigorous', met: 8.0 },
+    { name: 'Calisthenics, light/moderate', met: 3.8 },
+    { name: 'Circuit training, general', met: 8.0 },
+    { name: 'Cooking or food preparation', met: 2.5 },
+    { name: 'Dancing, aerobic, general', met: 7.3 },
+    { name: 'Dancing, ballet or modern, moderate', met: 5.0 },
+    { name: 'Elliptical trainer, general', met: 5.0 },
+    { name: 'Fishing, general', met: 3.5 },
+    { name: 'Gardening, general', met: 3.8 },
+    { name: 'Golf, carrying clubs', met: 4.3 },
+    { name: 'Golf, using cart', met: 3.5 },
+    { name: 'Hiking, cross-country', met: 6.0 },
+    { name: 'Household cleaning, light', met: 2.3 },
+    { name: 'Household cleaning, moderate', met: 3.3 },
+    { name: 'Jogging, general', met: 7.0 },
+    { name: 'Mowing lawn, walk-behind mower', met: 5.5 },
+    { name: 'Pilates, general', met: 3.0 },
+    { name: 'Rowing, stationary, moderate', met: 7.0 },
+    { name: 'Rowing, stationary, vigorous', met: 12.0 },
+    { name: 'Running, 5 mph (12 min/mile)', met: 8.3 },
+    { name: 'Running, 6 mph (10 min/mile)', met: 9.8 },
+    { name: 'Running, 7 mph (8.5 min/mile)', met: 11.0 },
+    { name: 'Running, 8 mph (7.5 min/mile)', met: 12.8 },
+    { name: 'Running, 10 mph (6 min/mile)', met: 16.0 },
+    { name: 'Running, general', met: 8.0 },
+    { name: 'Running, stairs, up', met: 15.0 },
+    { name: 'Sexual activity, active, vigorous', met: 2.8 },
+    { name: 'Skiing, cross-country, moderate', met: 8.0 },
+    { name: 'Skiing, downhill, moderate', met: 6.0 },
+    { name: 'Soccer, casual, general', met: 7.0 },
+    { name: 'Soccer, competitive', met: 10.0 },
+    { name: 'Stair-step machine, general', met: 9.0 },
+    { name: 'Stretching, Hatha Yoga', met: 2.5 },
+    { name: 'Swimming, backstroke, general', met: 7.0 },
+    { name: 'Swimming, breaststroke, general', met: 5.3 },
+    { name: 'Swimming, crawl (freestyle), slow', met: 8.3 },
+    { name: 'Swimming, crawl (freestyle), fast', met: 10.0 },
+    { name: 'Swimming, leisure', met: 6.0 },
+    { name: 'Table tennis (ping pong)', met: 4.0 },
+    { name: 'Tai Chi', met: 4.0 },
+    { name: 'Tennis, general', met: 7.3 },
+    { name: 'Volleyball, competitive, gym', met: 8.0 },
+    { name: 'Volleyball, non-competitive', met: 3.0 },
+    { name: 'Walking, 2.0 mph, slow', met: 2.8 },
+    { name: 'Walking, 3.0 mph, moderate', met: 3.5 },
+    { name: 'Walking, 3.5 mph, brisk', met: 4.3 },
+    { name: 'Walking, 4.0 mph, very brisk', met: 5.0 },
+    { name: 'Walking, 4.5 mph, very, very brisk', met: 7.0 },
+    { name: 'Walking, upstairs', met: 8.0 },
+    { name: 'Weight lifting, light or moderate', met: 3.5 },
+    { name: 'Weight lifting, vigorous', met: 6.0 },
+    { name: 'Yoga, power', met: 4.0 }
+  ];
+
+  // --- 2. RIFERIMENTI DOM ---
+  const elements = {
+    form: document.getElementById('calculator-ui'),
+    activityFilter: document.getElementById('activityFilter'),
+    activitySelect: document.getElementById('activitySelect'),
+    bodyWeight: document.getElementById('bodyWeight'),
+    weightUnitInputs: document.querySelectorAll('input[name="weightUnit"]'),
+    duration: document.getElementById('duration'),
+    durationUnitInputs: document.querySelectorAll('input[name="durationUnit"]'),
+    calculateBtn: document.getElementById('calculateBtn'),
+    resetBtn: document.getElementById('resetBtn'),
+    totalCaloriesResult: document.getElementById('totalCaloriesResult'),
+    caloriesPerHourResult: document.getElementById('caloriesPerHourResult'),
+    metTooltipBtn: document.getElementById('met-tooltip-btn'),
+    metTooltipText: document.getElementById('met-tooltip-text'),
+    // Messaggi di errore
+    activityError: document.getElementById('activitySelect-error'),
+    weightError: document.getElementById('bodyWeight-error'),
+    durationError: document.getElementById('duration-error')
+  };
+
+  // --- 3. LOGICA DI BUSINESS ---
+  
+  /**
+   * Popola il menu <select> con le attività.
+   */
+  function populateActivityList() {
+    // Ordina i dati alfabeticamente per nome
+    activityData.sort((a, b) => a.name.localeCompare(b.name));
+    
+    // Aggiungi un'opzione placeholder
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = 'Select an activity...';
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    elements.activitySelect.appendChild(placeholder);
+
+    // Aggiungi ogni attività
+    activityData.forEach(activity => {
+      const option = document.createElement('option');
+      option.value = activity.met;
+      option.textContent = `${activity.name} (MET: ${activity.met})`;
+      // Aggiunge i dati originali all'elemento per il filtro
+      option.dataset.name = activity.name.toLowerCase();
+      elements.activitySelect.appendChild(option);
+    });
+  }
+
+  /**
+   * Filtra la lista <select> in base all'input di ricerca.
+   */
+  function filterActivities() {
+    const filterText = elements.activityFilter.value.toLowerCase();
+    let firstVisibleOption = null;
+
+    Array.from(elements.activitySelect.options).forEach(option => {
+      // Salta il placeholder
+      if (option.value === '') {
+        option.style.display = 'none'; // Nasconde sempre il placeholder durante il filtro
+        return;
+      }
+
+      const activityName = option.dataset.name;
+      if (activityName.includes(filterText)) {
+        option.style.display = 'block';
+        if (!firstVisibleOption) {
+          firstVisibleOption = option;
+        }
+      } else {
+        option.style.display = 'none';
+      }
+    });
+
+    // Se l'opzione attualmente selezionata è nascosta, deseleziona
+    if (elements.activitySelect.options[elements.activitySelect.selectedIndex]?.style.display === 'none') {
+        elements.activitySelect.value = '';
+    }
+  }
+  
+  /**
+   * Convalida un singolo campo e mostra/nasconde il messaggio di errore.
+   * @param {HTMLInputElement} inputEl - L'elemento input da validare.
+   * @param {HTMLElement} errorEl - L'elemento dove mostrare l'errore.
+   * @param {string} message - Il messaggio da mostrare.
+   * @returns {boolean} - true se valido, false se non valido.
+   */
+  function validateField(inputEl, errorEl, message = 'This field is required and must be greater than 0.') {
+    const value = parseFloat(inputEl.value);
+    if (!value || value <= 0) {
+      errorEl.textContent = message;
+      inputEl.setAttribute('aria-invalid', 'true');
+      inputEl.setAttribute('aria-describedby', errorEl.id);
+      return false;
+    } else {
+      errorEl.textContent = '';
+      inputEl.setAttribute('aria-invalid', 'false');
+      inputEl.removeAttribute('aria-describedby');
+      return true;
+    }
+  }
+
+  /**
+   * Convalida la selezione dell'attività.
+   */
+  function validateActivity() {
+    if (!elements.activitySelect.value) {
+      elements.activityError.textContent = 'Please select an activity from the list.';
+      elements.activitySelect.setAttribute('aria-invalid', 'true');
+      elements.activitySelect.setAttribute('aria-describedby', elements.activityError.id);
+      return false;
+    } else {
+      elements.activityError.textContent = '';
+      elements.activitySelect.setAttribute('aria-invalid', 'false');
+      elements.activitySelect.removeAttribute('aria-describedby');
+      return true;
+    }
+  }
+
+  /**
+   * Esegue tutti i calcoli e aggiorna l'UI.
+   */
+  function performCalculation() {
+    // 1. Validazione
+    const isActivityValid = validateActivity();
+    const isWeightValid = validateField(elements.bodyWeight, elements.weightError);
+    const isDurationValid = validateField(elements.duration, elements.durationError);
+
+    if (!isActivityValid || !isWeightValid || !isDurationValid) {
+      updateResults(0, 0); // Resetta i risultati se l'input non è valido
+      return;
+    }
+
+    // 2. Acquisizione Dati
+    const met = parseFloat(elements.activitySelect.value);
+    let weight = parseFloat(elements.bodyWeight.value);
+    let duration = parseFloat(elements.duration.value);
+    
+    const weightUnit = document.querySelector('input[name="weightUnit"]:checked').value;
+    const durationUnit = document.querySelector('input[name="durationUnit"]:checked').value;
+
+    // 3. Conversione Unità
+    // Converte il peso in kg (Formula MET standard)
+    if (weightUnit === 'lbs') {
+      weight = weight * 0.45359237;
+    }
+    // Converte la durata in minuti
+    if (durationUnit === 'hours') {
+      duration = duration * 60;
+    }
+
+    // 4. Calcolo
+    // Calorie per Minuto = (MET * Peso in kg * 3.5) / 200
+    const caloriesPerMinute = (met * weight * 3.5) / 200;
+    
+    // Calorie Totali
+    const totalCalories = caloriesPerMinute * duration;
+    
+    // Calorie all'ora (per riferimento)
+    const caloriesPerHour = caloriesPerMinute * 60;
+
+    // 5. Aggiornamento UI
+    updateResults(totalCalories, caloriesPerHour);
+  }
+
+  /**
+   * Aggiorna le schede dei risultati.
+   * @param {number} total - Calorie totali.
+   * @param {number} perHour - Calorie all'ora.
+   */
+  function updateResults(total, perHour) {
+    elements.totalCaloriesResult.textContent = `${total.toFixed(0)} kcal`;
+    elements.caloriesPerHourResult.textContent = `${perHour.toFixed(0)} kcal/hr`;
+  }
+
+  /**
+   * Resetta il form e i risultati.
+   */
+  function resetCalculator() {
+    elements.form.reset();
+    
+    // Resetta manualmente la <select> al placeholder
+    elements.activitySelect.value = '';
+    
+    // Resetta i filtri
+    Array.from(elements.activitySelect.options).forEach(option => {
+        option.style.display = 'block';
+    });
+    // Ripristina il placeholder
+    const placeholder = elements.activitySelect.querySelector('option[value=""]');
+    if (placeholder) {
+        placeholder.style.display = 'block';
+        placeholder.selected = true;
+    }
+
+    // Pulisce i risultati
+    updateResults(0, 0);
+
+    // Pulisce i messaggi di errore
+    validateActivity();
+    validateField(elements.bodyWeight, elements.weightError);
+    validateField(elements.duration, elements.durationError);
+  }
+
+  /**
+   * Gestisce il toggle del tooltip accessibile.
+   */
+  function toggleTooltip() {
+    const isHidden = elements.metTooltipText.classList.toggle('hidden');
+    elements.metTooltipBtn.setAttribute('aria-expanded', !isHidden);
+  }
+
+  // --- 4. EVENT LISTENERS ---
+
+  // Popola la lista al caricamento
+  populateActivityList();
+
+  // Filtro
+  elements.activityFilter.addEventListener('input', filterActivities);
+
+  // Calcolo
+  elements.calculateBtn.addEventListener('click', performCalculation);
+
+  // Reset
+  elements.resetBtn.addEventListener('click', resetCalculator);
+
+  // Validazione "on-blur" (quando l'utente lascia il campo)
+  elements.activitySelect.addEventListener('blur', validateActivity);
+  elements.bodyWeight.addEventListener('blur', () => validateField(elements.bodyWeight, elements.weightError));
+  elements.duration.addEventListener('blur', () => validateField(elements.duration, elements.durationError));
+
+  // Tooltip
+  elements.metTooltipBtn.addEventListener('click', toggleTooltip);
+
+  // Gestione menu mobile dal template
+  const menuToggle = document.getElementById('mobile-menu-toggle');
+  const mobileMenu = document.getElementById('mobile-menu');
+  if (menuToggle && mobileMenu) {
+    menuToggle.addEventListener('click', () => {
+      const isHidden = mobileMenu.classList.toggle('hidden');
+      menuToggle.setAttribute('aria-expanded', !isHidden);
+    });
+  }
+});
+</script>
+</body>
+</html>
