@@ -288,7 +288,7 @@ RELATED_BY_SUBCATEGORY = {
         "niche-breadth",
         "island-biogeography",
         "life-table",
-        "population-growth",
+        "bacterial-growth-curve",
     ],
     "geometry": [
         "triangle-calculator",
@@ -300,7 +300,7 @@ RELATED_BY_SUBCATEGORY = {
     ],
     "measurement-unit-conversions": [
         "length-converter",
-        "temperature-converter",
+        "conversions-temperature",
         "weight-converter",
         "speed-converter",
         "unit-converter",
@@ -352,22 +352,22 @@ RELATED_BY_SUBCATEGORY = {
     "business-small-biz": [
         "roi",
         "break-even-calculator",
-        "contribution-margin",
+        "contribution-margin-calculator",
         "ctr",
         "roas",
-        "profit-margin",
+        "profit-margin-calculator",
     ],
     "fitness": [
         "running-pace",
         "vo2-max",
         "one-rep-max",
         "cycling-speed",
-        "calorie-calculator",
+        "calorie",
         "tdee",
     ],
     "health-metrics": [
-        "bmi",
-        "body-fat-calculator",
+        "bmi-calculator",
+        "body-fat",
         "target-heart-rate",
         "waist-to-hip-ratio-calculator",
         "vo2-max",
@@ -415,7 +415,7 @@ RELATED_BY_SUBCATEGORY = {
         "natural-frequency",
     ],
     "structural-engineering": [
-        "beam-calculator",
+        "wood-beam-design",
         "welded-connection",
         "masonry-column-design",
         "masonry-shear-wall-design",
@@ -427,14 +427,14 @@ RELATED_BY_SUBCATEGORY = {
         "voltage-divider",
         "amps-to-watts",
         "reactance",
-        "impedance-calculator",
+        "watts-to-amps",
     ],
     "construction-diy-materials-estimation": [
         "concrete-calculator",
         "tile-calculator",
         "epoxy-resin",
         "drywall-calculator",
-        "materials-cost-calculator",
+        "mulch-calculator",
     ],
 }
 
@@ -493,6 +493,7 @@ def strip_header_footer(body_html: str) -> Tuple[str, str, List[str]]:
         body = body[:breadcrumb_match.start()] + body[breadcrumb_match.end():]
 
     body = re.sub(r"<footer[\s\S]*?</footer>", "", body, flags=re.I)
+    body = re.sub(r'<aside[\s\S]*?class="[^"]*w-full[^>]*>\s*[\s\S]*?</aside>', "", body, flags=re.I)
     body = body.strip()
 
     trailing_scripts: List[str] = []
@@ -751,7 +752,9 @@ def enhance_page(slug: str, subcat_key: str, meta_lookup: Dict[str, Dict[str, st
     body_content, _, trailing_scripts = strip_header_footer(body_inner)
     h1_tag, intro_tag, remaining = extract_intro(body_content)
     title_text, h1_tag = ensure_heading(title_tag, h1_tag)
-    intro = intro_tag and re.sub(r"<p([^>]*)>", r"<p\1 class=\"text-gray-600 mb-6\">", intro_tag, count=1, flags=re.I)
+    intro = None
+    if intro_tag:
+        intro = re.sub(r'<p[^>]*>', '<p class="text-gray-600 mb-6">', intro_tag, count=1, flags=re.I)
     if not intro:
         intro = build_default_intro(desc_tag)
     if not title_text:
@@ -795,6 +798,45 @@ def enhance_page(slug: str, subcat_key: str, meta_lookup: Dict[str, Dict[str, st
 
     new_html = "<!DOCTYPE html>\n<html lang=\"en\">\n" + new_head + "\n" + new_body + "\n</html>\n"
     new_html = normalize_links(new_html, path)
+    new_html = re.sub(
+        r'(    <link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">\n)+',
+        '    <link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">\n',
+        new_html,
+    )
+    new_html = re.sub(
+        r'(    <link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">\n)+',
+        '    <link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">\n',
+        new_html,
+    )
+    new_html = re.sub(
+        r'(    <script defer src="https://calcdomain.com/assets/js/mobile-menu.js"></script>\n)+',
+        '    <script defer src="https://calcdomain.com/assets/js/mobile-menu.js"></script>\n',
+        new_html,
+    )
+    new_html = re.sub(
+        r'(    <script defer src="https://calcdomain.com/assets/js/page-enhancements.js"></script>\n)+',
+        '    <script defer src="https://calcdomain.com/assets/js/page-enhancements.js"></script>\n',
+        new_html,
+    )
+
+    lines: List[str] = []
+    seen_once = set()
+    targets = {
+        '<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">',
+        '<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">',
+        '<script defer src="https://calcdomain.com/assets/js/mobile-menu.js"></script>',
+        '<script defer src="https://calcdomain.com/assets/js/page-enhancements.js"></script>',
+    }
+    for line in new_html.splitlines():
+        stripped = line.strip()
+        if 'href="/assets/js/mobile-menu.js"' in stripped or 'href="/assets/js/page-enhancements.js"' in stripped:
+            continue
+        if stripped in targets:
+            if stripped in seen_once:
+                continue
+            seen_once.add(stripped)
+        lines.append(line)
+    new_html = "\n".join(lines) + "\n"
 
     path.write_text(new_html, encoding="utf-8")
 
@@ -931,30 +973,55 @@ def ensure_engineering_section(slug: str, subcat_key: str, meta_lookup: Dict[str
     meta = meta_lookup.get(slug, {})
     title = meta.get("title") or slug.replace("-", " ").title()
     description = meta.get("description") or "Run mechanical and structural engineering calculations with instant feedback."
-    section_heading = "Mechanical Engineering Calculators" if subcat_key == "mechanical-engineering" else "Structural Engineering Calculators"
+    if subcat_key == "mechanical-engineering":
+        section_heading = "Mechanical Engineering Calculators"
+        section_id = "mechanical-engineering-calculators"
+    elif subcat_key == "structural-engineering":
+        section_heading = "Structural Engineering Calculators"
+        section_id = "structural-engineering-calculators"
+    else:
+        section_heading = "Electrical Engineering Calculators"
+        section_id = "electrical-engineering-calculators"
 
-    section_marker = f"<h2 class=\"text-2xl font-semibold text-gray-800 mb-4\">{section_heading}</h2>"
+    section_marker = f'id="{section_id}"'
     if section_marker not in text:
         section_template = (
-            f"    <section class=\"mb-10\">\n"
-            f"      <h2 class=\"text-2xl font-semibold text-gray-800 mb-4\">{section_heading}</h2>\n"
-            "      <div class=\"grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4\">\n"
-            "      </div>\n"
-            "    </section>\n"
+            f'    <section class="mb-10" id="{section_id}">\n'
+            f'      <h2 class="text-2xl font-semibold text-gray-800 mb-4">{section_heading}</h2>\n'
+            '      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">\n'
+            '      </div>\n'
+            '    </section>\n'
         )
-        insertion_point = text.rfind("</section>")
-        if insertion_point == -1:
-            insertion_point = len(text)
-        text = text[:insertion_point] + section_template + text[insertion_point:]
+        quick_start = text.find('<section class="mb-10">')
+        if quick_start != -1:
+            quick_end = text.find("</section>", quick_start)
+            if quick_end != -1:
+                insert_pos = quick_end + len("</section>")
+            else:
+                insert_pos = quick_start + len('<section class="mb-10">')
+        else:
+            insert_pos = text.find("</main>")
+            if insert_pos == -1:
+                insert_pos = len(text)
+        text = text[:insert_pos] + "\n" + section_template + text[insert_pos:]
 
+    section_idx = text.find(section_marker)
+    if section_idx == -1:
+        return
+    grid_idx = text.find('<div class="grid', section_idx)
+    if grid_idx == -1:
+        return
+    closing_idx = find_matching_div(text, grid_idx)
+    if closing_idx == -1:
+        return
+    insert_pos = closing_idx - len("</div>")
     card = (
         '        <a href="{slug}.html" class="bg-white p-4 rounded-lg border shadow-sm hover:shadow-lg transition flex flex-col gap-2">\n'
-        "          <h3 class=\"font-semibold text-gray-800\">{title}</h3>\n"
-        "          <p class=\"text-sm text-gray-600\">{description}</p>\n"
-        "        </a>\n"
+        '          <h3 class="font-semibold text-gray-800">{title}</h3>\n'
+        '          <p class="text-sm text-gray-600">{description}</p>\n'
+        "        </a>"
     ).format(slug=slug, title=title, description=description)
-
-    text = text.replace(section_marker, section_marker + "\n" + card, 1)
+    text = text[:insert_pos] + "\n" + card + "\n" + text[insert_pos:]
     path.write_text(text, encoding="utf-8")
 
 
