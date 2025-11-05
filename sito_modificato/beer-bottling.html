@@ -1,1342 +1,403 @@
 <!DOCTYPE html>
 <html lang="en">
- <head>
-  <link href="https://calcdomain.com/beer-bottling" rel="canonical"/>
-  <link href="/favicon-96x96.png" rel="icon" sizes="96x96" type="image/png"/>
-  <link href="/favicon.svg" rel="icon" type="image/svg+xml"/>
-  <link href="/favicon.ico" rel="shortcut icon"/>
-  <link href="/apple-touch-icon.png" rel="apple-touch-icon" sizes="180x180"/>
-  <link href="/site.webmanifest" rel="manifest"/>
-  <meta charset="utf-8"/>
-  <title>
-   Beer Bottling Calculator | Priming Sugar, Bottles &amp; Carbonation Volumes
-  </title>
-  <meta content="width=device-width, initial-scale=1" name="viewport"/>
-  <meta content="Professional beer bottling calculator for homebrewers. Compute priming sugar by type, required bottles, and target CO₂ volumes based on temperature and style presets. WCAG 2.1 AA accessible, mobile-first, and optimized for Core Web Vitals." name="description"/>
-  <meta content="Ugo Candido" name="author"/>
-  <meta content="#0a2540" name="theme-color"/>
-  <style>
-   /* Critical, mobile-first CSS (no external fonts for performance) */
-    :root{
-      --primary:#0a2540; --primary-2:#163a5f; --accent:#00a4e4;
-      --bg:#f8fafc; --surface:#ffffff; --text:#1f2937; --muted:#6b7280;
-      --border:#e5e7eb; --success:#0d9488; --error:#dc2626;
-      --shadow:0 6px 18px rgba(0,0,0,.06);
-
-      --radius-sm:6px; --radius-md:10px;
-      --pad:clamp(.75rem,2.5vw,1rem);
-      --touch:48px;
-
-      --container:1200px;
-    }
-    @media (prefers-contrast: more){
-      :root{ --primary:#000080; --text:#000; --border:#000; --bg:#fff; }
-    }
-    @media (prefers-reduced-motion: reduce){
-      *,*::before,*::after{ animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; }
-      html{ scroll-behavior:auto; }
-    }
-
-    *{box-sizing:border-box} html{font-size:16px}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
-    a{color:var(--primary);text-decoration:none}
-    a:hover{text-decoration:underline}
-    img{max-width:100%;display:block}
-    .container{max-width:var(--container);margin:0 auto;padding:0 clamp(1rem,4vw,2rem)}
-    .skip-link{position:absolute;top:-40px;left:8px;background:var(--primary);color:#fff;padding:.5rem .75rem;border-radius:0 0 6px 6px;z-index:1000}
-    .skip-link:focus{top:0}
-
-    header.site-header{background:var(--surface);border-bottom:1px solid var(--border)}
-    .header-wrap{display:flex;align-items:center;gap:1rem;min-height:64px}
-    .brand{font-weight:800;color:var(--primary);font-size:1.125rem}
-    nav[aria-label="breadcrumb"]{font-size:.9rem;color:var(--muted);margin:.75rem 0}
-    nav[aria-label="breadcrumb"] a{color:inherit}
-
-    h1{font-size:clamp(1.6rem,4.5vw,2.25rem);line-height:1.2;color:var(--primary);margin:.5rem 0 0}
-    h2{font-size:clamp(1.3rem,3.5vw,1.75rem);color:var(--primary);margin:1.75rem 0 .5rem}
-    h3{font-size:clamp(1.1rem,3vw,1.25rem);color:var(--primary-2);margin:1rem 0 .25rem}
-    p{margin:.75rem 0;max-width:75ch}
-
-    .calculator-layout{display:grid;grid-template-columns:1fr;gap:1.5rem;margin-top:1rem}
-    @media(min-width:992px){.calculator-layout{grid-template-columns:minmax(280px,420px) 1fr}}
-
-    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--shadow)}
-    .calculator{padding:clamp(1rem,3vw,1.5rem)}
-    .form-group{margin-bottom:1rem}
-    label{display:flex;align-items:center;gap:.5rem;font-weight:700;margin-bottom:.4rem}
-    .help-btn{
-      appearance:none;border:1px solid var(--border);background:#fff;color:var(--primary);
-      border-radius:50%;width:28px;height:28px;min-width:28px;min-height:28px;
-      display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-weight:800;line-height:1
-    }
-    .help-btn:focus{outline:3px solid var(--primary);outline-offset:2px}
-    .tooltip{background:#eef2f7;border-left:3px solid var(--primary);padding:.5rem .75rem;border-radius:6px;color:#0f172a;margin:.25rem 0}
-    .tooltip[hidden]{display:none}
-
-    .field{width:100%;min-height:var(--touch);padding:.6rem .75rem;border:1px solid var(--border);border-radius:8px;font-size:1rem}
-    .field:focus{outline:3px solid rgba(10,37,64,.25);border-color:var(--primary)}
-    .inline{display:flex;gap:.5rem;align-items:center}
-    .inline .field{flex:1}
-    .radio-row{display:flex;gap:.5rem;flex-wrap:wrap}
-    .segmented{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
-    .segmented input{position:absolute;opacity:0;width:0;height:0}
-    .segmented label{flex:1;text-align:center;padding:.55rem;border-right:1px solid var(--border);cursor:pointer;min-height:var(--touch);display:flex;align-items:center;justify-content:center}
-    .segmented label:last-child{border-right:0}
-    .segmented input:checked+label{background:var(--primary);color:#fff}
-    .segmented input:focus+label{outline:3px solid rgba(10,37,64,.35);outline-offset:-3px}
-
-    .error{color:var(--error);font-size:.9rem;margin-top:.25rem}
-    .field[aria-invalid="true"]{border-color:var(--error)}
-    .actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem}
-
-    .results{padding:clamp(1rem,3vw,1.25rem);border-top:1px solid var(--border)}
-    .results-container{background:#f3f6fa;border:1px solid var(--border);border-radius:10px;padding:1rem;min-height:240px}
-    .kpi{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
-    @media(min-width:640px){.kpi{grid-template-columns:repeat(3,1fr)}}
-    .kpi-item{background:#fff;border:1px solid var(--border);border-radius:10px;padding:.85rem}
-    .kpi-label{font-size:.9rem;color:var(--muted)}
-    .kpi-value{font-weight:800;font-size:1.25rem;color:var(--success)}
-    .aside-note{font-size:.9rem;color:var(--muted);margin-top:.5rem}
-
-    .content{padding:clamp(1rem,3vw,1.5rem)}
-    .formula-box{background:#eef2f7;border:1px solid var(--border);border-radius:10px;padding:1rem;overflow:auto}
-    code.latex{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;background:#e5edf7;padding:.15rem .35rem;border-radius:4px}
-
-    footer.site-footer{background:var(--primary);color:#fff;margin-top:2rem}
-    .footer-wrap{display:grid;grid-template-columns:1fr;gap:1rem;padding:1.25rem 0}
-    .footer-bottom{border-top:1px solid rgba(255,255,255,.2);padding:1rem 0;text-align:center;font-size:.9rem;color:#dbeafe}
-  </style>
-  <script type="application/ld+json">
-   {
-  "@context": "https://schema.org",
-  "@type": "WebPage",
-  "name": "Beer Bottling Calculator",
-  "description": "Compute priming sugar by fermentable type, required bottles, and target CO₂ volumes based on beer temperature and style presets.",
-  "url": "https://calcdomain.com/beer-bottling",
-  "inLanguage": "en",
-  "author": {
-    "@type": "Person",
-    "name": "Ugo Candido"
-  },
-  "publisher": {
-    "@type": "Organization",
-    "name": "CalcDomain"
-  },
-  "mainEntity": [
-    {
-      "@type": "HowTo",
-      "name": "How It Works: A Step-by-Step Example",
-      "description": "Example showing how to compute priming sugar and bottles required.",
-      "step": [
-        {
-          "@type": "HowToStep",
-          "name": "Set batch and temperature",
-          "text": "Batch = 19 L; Bottling temperature = 21 °C (70 °F)."
-        },
-        {
-          "@type": "HowToStep",
-          "name": "Pick style or target volumes",
-          "text": "Select American Ale preset (2.3 vols CO₂)."
-        },
-        {
-          "@type": "HowToStep",
-          "name": "Choose fermentable",
-          "text": "Priming sugar type = Corn sugar (dextrose)."
-        },
-        {
-          "@type": "HowToStep",
-          "name": "Choose bottle size",
-          "text": "Bottle size = 12 oz (355 mL), no extra packaging losses."
-        },
-        {
-          "@type": "HowToStep",
-          "name": "Compute",
-          "text": "The tool calculates residual CO₂ from temperature, delta volumes, sugar mass in grams/oz, per-bottle sugar, and bottles/caps needed."
-        }
-      ]
-    },
-    {
-      "@type": "FAQPage",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "Which priming sugar should I use?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Corn sugar (dextrose) is most common due to neutral flavor and predictable yield. Sucrose (table sugar) also works; use slightly less by weight. DME adds a hint of malt but requires more by weight."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Why does bottling temperature matter?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Colder beer retains more dissolved CO₂ from fermentation. The calculator estimates this residual CO₂ from temperature and subtracts it to avoid over-carbonation."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Will honey or DME change flavor?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. Honey and DME can contribute subtle flavor and aroma. For the cleanest result, use dextrose or sucrose."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is volumetric measuring (cups) reliable?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "No. Density varies by sugar and packing. Weighing in grams with a scale is strongly recommended for consistency."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "How many bottles do I need?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Enter your batch size and bottle size. The calculator estimates total bottles and crowns/caps required; you may add a small packaging loss margin."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can I prime per bottle instead of batch priming?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. Use the per-bottle sugar output to dose individually. Accuracy is still best by weight using small funnels and a jeweler’s scale."
-          }
-        }
-      ]
-    }
-  ]
-}
-  </script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
-  <script src="https://cdn.tailwindcss.com">
-  </script>
-  <script defer="" src="search.js">
-  </script>
-  <!-- MathJax for LaTeX formulas -->
-  <script>
-   window.MathJax = {
-    tex: {
-      inlineMath: [['\(','\)'], ['$', '$']],
-      displayMath: [['$','$'], ['\[','\]']]
-    },
-    svg: { fontCache: 'global' }
-  };
-  </script>
-  <script async="" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
-  </script>
-  <script type="application/ld+json">
-   {
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "Hobbies",
-      "item": "https://calcdomain.com/hobbies"
-    }
-  ]
-}
-  </script>
-  <!-- Google tag (gtag.js) -->
-  <html>
-   <head>
-    <script async="" src="https://www.googletagmanager.com/gtag/js?id=G-7MB5V1LZRN">
-    </script>
-    <script>
-     window.dataLayer = window.dataLayer || [];
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>beer bottling</title>
+    <meta name="description" content="Professional beer bottling calculator for homebrewers. Compute priming sugar by type, required bottles, and target CO₂ volumes based on temperature and style presets. WCAG 2.1 AA accessible, mobile-first, and optimized for Core Web Vitals.">
+    <link rel="canonical" href="https://calcdomain.com/beer-bottling">
+    
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .card-hover { transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; }
+        .card-hover:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        /* Stili per il contenuto estratto (es. .prose per articoli) */
+        .prose { max-width: 65ch; margin-left: auto; margin-right: auto; }
+        .prose h2 { font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; }
+        .prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+        .prose p { margin-bottom: 1rem; line-height: 1.6; }
+        .prose ul, .prose ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+        .prose li { margin-bottom: 0.5rem; }
+        .formula-box { background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; padding: 1rem; overflow-x: auto; margin: 1rem 0; }
+    </style>
+    
+    
+<script async src="https://www.googletagmanager.com/gtag/js?id=TUO_ID_GA"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
+  gtag('config', 'TUO_ID_GA');
+</script>
+<meta name="google-site-verification" content="IL_TUO_CODICE_GSC" />
+<script async src="//go.ezoic.net/ezoic/ezoic.js"></script>
 
-  gtag('config', 'G-7MB5V1LZRN');
+
+    <script type="application/ld+json">
+      [{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://calcdomain.com"}, {"@type": "ListItem", "position": 2, "name": "Hobbies", "item": "https://calcdomain.com/hobbies"}]}, {"@context": "https://schema.org", "@type": "Organization", "name": "CalcDomain", "url": "https://calcdomain.com", "logo": "https://calcdomain.com/apple-touch-icon.png"}, {"@context": "https://schema.org", "@type": "WebSite", "name": "CalcDomain", "url": "https://calcdomain.com", "potentialAction": {"@type": "SearchAction", "target": "https://calcdomain.com/search?q={search_term_string}", "query-input": "required name=search_term_string"}}]
     </script>
-    <meta content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA" name="google-site-verification"/>
-    <script data-cfasync="false" src="https://cmp.gatekeeperconsent.com/min.js">
-    </script>
-    <script data-cfasync="false" src="https://the.gatekeeperconsent.com/cmp.min.js">
-    </script>
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js">
-    </script>
-    <script>
-     window.ezstandalone = window.ezstandalone || {};
-    ezstandalone.cmd = ezstandalone.cmd || [];
-    </script>
-   </head>
-  </html>
- </head>
- <body>
-  <html>
-   <head>
-    <script async="" crossorigin="anonymous" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939">
-    </script>
-   </head>
-  </html>
-  <header class="bg-white shadow-sm sticky top-0 z-50">
-   <nav aria-label="Primary" class="container mx-auto px-4 lg:px-6 py-4">
-    <div class="flex justify-between items-center">
-     <a class="text-2xl font-bold text-blue-600" href="https://calcdomain.com">
-      CalcDomain
-     </a>
-     <div class="w-full max-w-md hidden md:block mx-8">
-      <div class="relative">
-       <input autocomplete="off" class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" id="search-input" placeholder="Search for a calculator..." type="search"/>
-       <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
-        </path>
-       </svg>
-       <div class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200" id="search-results">
-       </div>
-      </div>
-     </div>
-     <div class="hidden md:flex items-center space-x-6">
-      <a class="text-gray-700 hover:text-blue-600 transition-colors" href="https://calcdomain.com/search">
-       Advanced Search
-      </a>
-      <a class="text-gray-700 hover:text-blue-600 transition-colors" href="https://calcdomain.com/categories">
-       Categories
-      </a>
-     </div>
-     <button aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" class="md:hidden p-2" id="mobile-menu-toggle" type="button">
-      <svg aria-hidden="true" class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-       <path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
-       </path>
-      </svg>
-     </button>
-    </div>
-    <nav aria-label="Mobile menu" class="md:hidden mt-4 hidden" id="mobile-menu" role="navigation">
-     <div class="mb-4">
-      <div class="relative">
-       <input class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="mobile-search-input" placeholder="Search calculators..." type="search"/>
-       <svg aria-hidden="true" class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
-        </path>
-       </svg>
-      </div>
-     </div>
-     <div class="space-y-2">
-      <a class="block py-2 text-gray-700 hover:text-blue-600" href="https://calcdomain.com/search">
-       Advanced Search
-      </a>
-      <a class="block py-2 text-gray-700 hover:text-blue-600" href="https://calcdomain.com#categories">
-       Categories
-      </a>
-     </div>
-    </nav>
-   </nav>
-  </header>
-  <nav class="container mx-auto px-4 py-2 text-sm text-gray-600" id="breadcrumb-container">
-   <html>
-    <body>
-     <a class="hover:text-blue-600" href="https://calcdomain.com">
-      Home
-     </a>
-     »
-     <a class="hover:text-blue-600" href="https://calcdomain.com/hobbies">
-      Hobbies
-     </a>
-     »
-     <span>
-      beer bottling
-     </span>
-    </body>
-   </html>
-  </nav>
-  <html>
-   <body>
-    <div class="container mx-auto px-4 py-8">
-     <div class="flex flex-col lg:flex-row gap-8">
-      <main class="w-full lg:w-2/3">
-       <a class="skip-link" href="#main">
-        Skip to main content
-       </a>
-       <main class="container" id="main" role="main">
-        <nav aria-label="breadcrumb">
-         Home /
-         <a href="https://calcdomain.com/lifestyle-everyday">
-          Everyday Life
-         </a>
-         /  Beer Bottling Calculator
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    %%BODY_SCRIPTS_INIZIO%%
+
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+      <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
+        <div class="flex justify-between items-center">
+          <a href="https://calcdomain.com" class="text-2xl font-bold text-blue-600">CalcDomain</a>
+          <div class="w-full max-w-md hidden md:block mx-8">
+            <div class="relative">
+              <input type="search" id="search-input" placeholder="Search for a calculator..." class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" />
+              <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              <div id="search-results" class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200"></div>
+            </div>
+          </div>
+          <div class="hidden md:flex items-center space-x-6">
+            <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600 transition-colors">Advanced Search</a>
+            <a href="https://calcdomain.com/categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
+          </div>
+          <button id="mobile-menu-toggle" class="md:hidden p-2" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" type="button">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+          </button>
+        </div>
+        <nav id="mobile-menu" class="md:hidden mt-4 hidden" aria-label="Mobile menu" role="navigation">
+          <div class="mb-4">
+            <div class="relative">
+              <input type="search" id="mobile-search-input" placeholder="Search calculators..." class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
+            <a href="https://calcdomain.com/categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
+          </div>
         </nav>
-        <h1>
-         beer bottling calculator
-        </h1>
-        <p>
-         This professional-grade beer bottling calculator helps homebrewers and small breweries determine the exact priming sugar to add, how many bottles and caps are required, and the per‑bottle sugar dose. It accounts for beer temperature, desired carbonation (CO₂ volumes), fermentable type, and bottle size to deliver precise, consistent results.
-        </p>
-        <div class="calculator-layout">
-         <section aria-labelledby="calc-heading" class="card calculator">
-          <h2 id="calc-heading">
-           Interactive Calculator
-          </h2>
-          <!-- Batch volume -->
-          <div class="form-group">
-           <label for="batchVolume">
+      </nav>
+    </header>
+
+    <div class="container mx-auto px-4 py-8">
+      
+      <nav id="breadcrumb-container" class="text-sm mb-4 text-gray-600">
+        <a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/hobbies" class="hover:text-blue-600">Hobbies</a> &raquo; <span>beer bottling</span>
+      </nav>
+      
+      <div class="flex flex-col lg:flex-row gap-8">
+        
+        <main class="w-full lg:w-2/3">
+          <div class="bg-white p-6 rounded-lg shadow-md">
+            <main class="container" id="main" role="main">
+<nav aria-label="breadcrumb">
+Home / <a href="https://calcdomain.com/lifestyle-everyday">Everyday Life</a> /  Beer Bottling Calculator
+    </nav>
+<h1>beer bottling calculator</h1>
+<p>
+      This professional-grade beer bottling calculator helps homebrewers and small breweries determine the exact priming sugar to add, how many bottles and caps are required, and the per‑bottle sugar dose. It accounts for beer temperature, desired carbonation (CO₂ volumes), fermentable type, and bottle size to deliver precise, consistent results.
+    </p>
+<div class="calculator-layout">
+<section aria-labelledby="calc-heading" class="card calculator">
+<h2 id="calc-heading">Interactive Calculator</h2>
+<!-- Batch volume -->
+<div class="form-group">
+<label for="batchVolume">
             Batch volume *
-            <button aria-controls="tip-volume" aria-expanded="false" class="help-btn" id="tip-volume-btn" title="More info" type="button">
-             ?
-            </button>
-           </label>
-           <div class="tooltip" hidden="" id="tip-volume">
+            <button aria-controls="tip-volume" aria-expanded="false" class="help-btn" id="tip-volume-btn" title="More info" type="button">?</button>
+</label>
+<div class="tooltip" hidden="" id="tip-volume">
             Enter the volume of beer going into bottles (exclude trub and losses). You can switch units between liters and US gallons.
-           </div>
-           <div aria-label="Batch volume entry" class="inline" role="group">
-            <input aria-describedby="batchVolumeError tip-volume unitVolume" aria-required="true" class="field" id="batchVolume" inputmode="decimal" min="0" placeholder="e.g., 19" step="0.01" type="number"/>
-            <select aria-label="Volume unit" class="field" id="unitVolume">
-             <option value="L">
-              L
-             </option>
-             <option value="gal">
-              US gal
-             </option>
-            </select>
-           </div>
-           <div aria-live="polite" class="error" id="batchVolumeError" role="alert">
-           </div>
           </div>
-          <!-- Temperature -->
-          <div class="form-group">
-           <label for="beerTemp">
+<div aria-label="Batch volume entry" class="inline" role="group">
+<input aria-describedby="batchVolumeError tip-volume unitVolume" aria-required="true" class="field" id="batchVolume" inputmode="decimal" min="0" placeholder="e.g., 19" step="0.01" type="number"/>
+<select aria-label="Volume unit" class="field" id="unitVolume">
+<option value="L">L</option>
+<option value="gal">US gal</option>
+</select>
+</div>
+<div aria-live="polite" class="error" id="batchVolumeError" role="alert"></div>
+</div>
+<!-- Temperature -->
+<div class="form-group">
+<label for="beerTemp">
             Bottling temperature *
-            <button aria-controls="tip-temp" aria-expanded="false" class="help-btn" id="tip-temp-btn" title="More info" type="button">
-             ?
-            </button>
-           </label>
-           <div class="tooltip" hidden="" id="tip-temp">
+            <button aria-controls="tip-temp" aria-expanded="false" class="help-btn" id="tip-temp-btn" title="More info" type="button">?</button>
+</label>
+<div class="tooltip" hidden="" id="tip-temp">
             Use the warmest temperature your beer reached post‑fermentation. Residual CO₂ depends on this temperature.
-           </div>
-           <div aria-label="Bottling temperature entry" class="inline" role="group">
-            <input aria-describedby="beerTempError tip-temp unitTemp" aria-required="true" class="field" id="beerTemp" inputmode="decimal" placeholder="e.g., 21" step="0.1" type="number"/>
-            <select aria-label="Temperature unit" class="field" id="unitTemp">
-             <option value="C">
-              °C
-             </option>
-             <option value="F">
-              °F
-             </option>
-            </select>
-           </div>
-           <div aria-live="polite" class="error" id="beerTempError" role="alert">
-           </div>
           </div>
-          <!-- Target carbonation -->
-          <div class="form-group">
-           <label for="stylePreset">
-            Target CO₂ volumes *
-           </label>
-           <div class="inline">
-            <select aria-label="Style preset" class="field" id="stylePreset">
-             <option value="custom">
-              Custom (enter below)
-             </option>
-             <option value="British Ale|1.8">
-              British Ale — 1.8 vols
-             </option>
-             <option value="American Ale|2.3">
-              American Ale — 2.3 vols
-             </option>
-             <option value="German Lager|2.5">
-              German Lager — 2.5 vols
-             </option>
-             <option value="Saison|3.0">
-              Saison — 3.0 vols
-             </option>
-             <option value="German Wheat|3.3">
-              German Wheat — 3.3 vols
-             </option>
-             <option value="Stout/Porter|1.9">
-              Stout / Porter — 1.9 vols
-             </option>
-             <option value="Belgian Strong|2.7">
-              Belgian Strong — 2.7 vols
-             </option>
-             <option value="Cider|2.5">
-              Cider — 2.5 vols
-             </option>
-            </select>
-            <input aria-describedby="targetVolumesError" aria-label="Target CO2 volumes" aria-required="true" class="field" id="targetVolumes" inputmode="decimal" max="4.5" min="1.2" placeholder="e.g., 2.3" step="0.1" type="number"/>
-           </div>
-           <div aria-live="polite" class="error" id="targetVolumesError" role="alert">
-           </div>
-          </div>
-          <!-- Sugar type -->
-          <div class="form-group">
-           <label for="sugarType">
-            Priming fermentable *
-           </label>
-           <select aria-describedby="sugarTypeError" aria-required="true" class="field" id="sugarType">
-            <option value="dextrose">
-             Corn sugar (dextrose) — typical
-            </option>
-            <option value="sucrose">
-             Table sugar (sucrose)
-            </option>
-            <option value="dme">
-             DME (light)
-            </option>
-            <option value="honey">
-             Honey (wildflower, approx.)
-            </option>
-           </select>
-           <div aria-live="polite" class="error" id="sugarTypeError" role="alert">
-           </div>
-          </div>
-          <!-- Bottle size and losses -->
-          <div class="form-group">
-           <label for="bottleSize">
+<div aria-label="Bottling temperature entry" class="inline" role="group">
+<input aria-describedby="beerTempError tip-temp unitTemp" aria-required="true" class="field" id="beerTemp" inputmode="decimal" placeholder="e.g., 21" step="0.1" type="number"/>
+<select aria-label="Temperature unit" class="field" id="unitTemp">
+<option value="C">°C</option>
+<option value="F">°F</option>
+</select>
+</div>
+<div aria-live="polite" class="error" id="beerTempError" role="alert"></div>
+</div>
+<!-- Target carbonation -->
+<div class="form-group">
+<label for="stylePreset">Target CO₂ volumes *</label>
+<div class="inline">
+<select aria-label="Style preset" class="field" id="stylePreset">
+<option value="custom">Custom (enter below)</option>
+<option value="British Ale|1.8">British Ale — 1.8 vols</option>
+<option value="American Ale|2.3">American Ale — 2.3 vols</option>
+<option value="German Lager|2.5">German Lager — 2.5 vols</option>
+<option value="Saison|3.0">Saison — 3.0 vols</option>
+<option value="German Wheat|3.3">German Wheat — 3.3 vols</option>
+<option value="Stout/Porter|1.9">Stout / Porter — 1.9 vols</option>
+<option value="Belgian Strong|2.7">Belgian Strong — 2.7 vols</option>
+<option value="Cider|2.5">Cider — 2.5 vols</option>
+</select>
+<input aria-describedby="targetVolumesError" aria-label="Target CO2 volumes" aria-required="true" class="field" id="targetVolumes" inputmode="decimal" max="4.5" min="1.2" placeholder="e.g., 2.3" step="0.1" type="number"/>
+</div>
+<div aria-live="polite" class="error" id="targetVolumesError" role="alert"></div>
+</div>
+<!-- Sugar type -->
+<div class="form-group">
+<label for="sugarType">Priming fermentable *</label>
+<select aria-describedby="sugarTypeError" aria-required="true" class="field" id="sugarType">
+<option value="dextrose">Corn sugar (dextrose) — typical</option>
+<option value="sucrose">Table sugar (sucrose)</option>
+<option value="dme">DME (light)</option>
+<option value="honey">Honey (wildflower, approx.)</option>
+</select>
+<div aria-live="polite" class="error" id="sugarTypeError" role="alert"></div>
+</div>
+<!-- Bottle size and losses -->
+<div class="form-group">
+<label for="bottleSize">
             Bottle size
-            <button aria-controls="tip-bottle" aria-expanded="false" class="help-btn" id="tip-bottle-btn" title="More info" type="button">
-             ?
-            </button>
-           </label>
-           <div class="tooltip" hidden="" id="tip-bottle">
+            <button aria-controls="tip-bottle" aria-expanded="false" class="help-btn" id="tip-bottle-btn" title="More info" type="button">?</button>
+</label>
+<div class="tooltip" hidden="" id="tip-bottle">
             Choose a standard size or use Custom (mL). The calculator estimates the number of bottles and caps required.
-           </div>
-           <div class="inline">
-            <select aria-label="Bottle preset" class="field" id="bottlePreset">
-             <option value="355">
-              12 oz (355 mL)
-             </option>
-             <option value="473">
-              16 oz (473 mL)
-             </option>
-             <option value="650">
-              22 oz (650 mL)
-             </option>
-             <option value="500">
-              500 mL
-             </option>
-             <option value="750">
-              750 mL
-             </option>
-             <option value="custom">
-              Custom (mL)
-             </option>
-            </select>
-            <input aria-describedby="bottleSizeError" aria-label="Custom bottle size (mL)" class="field" disabled="" id="bottleSize" inputmode="numeric" min="50" placeholder="Custom mL" step="1" type="number"/>
-           </div>
-           <div aria-live="polite" class="error" id="bottleSizeError" role="alert">
-           </div>
-           <div aria-label="Packaging loss" class="actions" role="group">
-            <div aria-label="Include packaging losses" class="segmented" role="radiogroup">
-             <input checked="" id="lossOff" name="loss" type="radio" value="off"/>
-             <label for="lossOff">
-              No loss
-             </label>
-             <input id="lossOn" name="loss" type="radio" value="on"/>
-             <label for="lossOn">
-              Add loss %
-             </label>
-            </div>
-            <input aria-label="Packaging loss percent" class="field" disabled="" id="lossPercent" inputmode="decimal" max="10" min="0" step="0.5" type="number" value="2"/>
-           </div>
           </div>
-          <!-- Results -->
-          <div aria-live="polite" class="results">
-           <h3>
-            Results
-           </h3>
-           <div class="results-container">
-            <div class="kpi">
-             <div aria-live="polite" class="kpi-item">
-              <div class="kpi-label">
-               Priming sugar required
-              </div>
-              <div class="kpi-value" id="sugarMass">
-               —
-              </div>
-              <div class="aside-note" id="sugarMassAlt">
-               —
-              </div>
-             </div>
-             <div class="kpi-item">
-              <div class="kpi-label">
-               Per-bottle sugar
-              </div>
-              <div class="kpi-value" id="perBottleSugar">
-               —
-              </div>
-              <div class="aside-note" id="perBottleSugarAlt">
-               —
-              </div>
-             </div>
-             <div class="kpi-item">
-              <div class="kpi-label">
-               Bottles and caps needed
-              </div>
-              <div class="kpi-value" id="bottleCount">
-               —
-              </div>
-              <div class="aside-note" id="batchSummary">
-               —
-              </div>
-             </div>
+<div class="inline">
+<select aria-label="Bottle preset" class="field" id="bottlePreset">
+<option value="355">12 oz (355 mL)</option>
+<option value="473">16 oz (473 mL)</option>
+<option value="650">22 oz (650 mL)</option>
+<option value="500">500 mL</option>
+<option value="750">750 mL</option>
+<option value="custom">Custom (mL)</option>
+</select>
+<input aria-describedby="bottleSizeError" aria-label="Custom bottle size (mL)" class="field" disabled="" id="bottleSize" inputmode="numeric" min="50" placeholder="Custom mL" step="1" type="number"/>
+</div>
+<div aria-live="polite" class="error" id="bottleSizeError" role="alert"></div>
+<div aria-label="Packaging loss" class="actions" role="group">
+<div aria-label="Include packaging losses" class="segmented" role="radiogroup">
+<input checked="" id="lossOff" name="loss" type="radio" value="off"/>
+<label for="lossOff">No loss</label>
+<input id="lossOn" name="loss" type="radio" value="on"/>
+<label for="lossOn">Add loss %</label>
+</div>
+<input aria-label="Packaging loss percent" class="field" disabled="" id="lossPercent" inputmode="decimal" max="10" min="0" step="0.5" type="number" value="2"/>
+</div>
+</div>
+<!-- Results -->
+<div aria-live="polite" class="results">
+<h3>Results</h3>
+<div class="results-container">
+<div class="kpi">
+<div aria-live="polite" class="kpi-item">
+<div class="kpi-label">Priming sugar required</div>
+<div class="kpi-value" id="sugarMass">—</div>
+<div class="aside-note" id="sugarMassAlt">—</div>
+</div>
+<div class="kpi-item">
+<div class="kpi-label">Per-bottle sugar</div>
+<div class="kpi-value" id="perBottleSugar">—</div>
+<div class="aside-note" id="perBottleSugarAlt">—</div>
+</div>
+<div class="kpi-item">
+<div class="kpi-label">Bottles and caps needed</div>
+<div class="kpi-value" id="bottleCount">—</div>
+<div class="aside-note" id="batchSummary">—</div>
+</div>
+</div>
+<div class="aside-note" id="techDetails">
+              Residual CO₂: — | Δ Volumes: —
             </div>
-            <div class="aside-note" id="techDetails">
-             Residual CO₂: — | Δ Volumes: —
-            </div>
-           </div>
-          </div>
-         </section>
-         <article class="card content">
-          <section>
-           <h2>
-            Data Source and Methodology
-           </h2>
-           <p>
-            <strong>
-             Authoritative Data Sources
-            </strong>
-           </p>
-           <ul>
-            <li>
-             John J. Palmer, How to Brew (4th ed.), Chapter “Priming and Carbonation”, Brewers Publications, 2017.
-             <a href="https://howtobrew.com/book/section-1/conditioning-and-carbonation/priming" rel="noopener" target="_blank">
-              howtobrew.com
-             </a>
-            </li>
-            <li>
-             Brewer’s Friend, “Beer Priming Calculator” &amp; residual CO₂ temperature fit.
-             <a href="https://www.brewersfriend.com/beer-priming-calculator/" rel="noopener" target="_blank">
-              brewersfriend.com
-             </a>
-            </li>
-            <li>
-             Lallemand Brewing, “Bottle Conditioning Calculator”.
-             <a href="https://www.lallemandbrewing.com/en/united-states/resources/brewers-corner/brewing-calculators/bottle-conditioning-calculator/" rel="noopener" target="_blank">
-              lallemandbrewing.com
-             </a>
-            </li>
-           </ul>
-           <p>
-            <em>
-             All calculations are strictly based on the formulas and data provided by this source.
-            </em>
-           </p>
-          </section>
-          <section>
-           <h2>
-            The Formula Explained
-           </h2>
-           <div aria-describedby="formulaNote" class="formula-box">
-            <p>
-             <strong>
-              Residual CO₂ (volumes) from temperature (°F):
-             </strong>
-            </p>
-            <p>
-             <code class="latex">
-              V_{res}(T_F) = 3.0378 - 0.050062\,T_F + 0.00026555\,T_F^2
-             </code>
-            </p>
-            <p style="margin-top:.75rem">
-             <strong>
-              Required sugar mass (grams):
-             </strong>
-            </p>
-            <p>
-             <code class="latex">
-              m_{sugar} = (V_{target} - V_{res}) \times V_{beer,L} \times k_{sugar}
-             </code>
-            </p>
-            <p style="margin-top:.75rem">
-             <strong>
-              Per-bottle sugar (grams):
-             </strong>
-            </p>
-            <p>
-             <code class="latex">
-              m_{per\_bot} = \dfrac{m_{sugar}}{N_{bottles}} \;\;\; \text{where} \;\; N_{bottles}=\left\lceil\dfrac{1000\,V_{beer,L}}{V_{bottle,mL}}\right\rceil
-             </code>
-            </p>
-           </div>
-           <p class="aside-note" id="formulaNote">
-            k
-            <sub>
-             sugar
-            </sub>
-            is the fermentable-specific factor in g/L per 1.0 CO₂ volume. Defaults used here:
+</div>
+</div>
+</section>
+<article class="card content">
+<section>
+<h2>Data Source and Methodology</h2>
+<p><strong>Authoritative Data Sources</strong></p>
+<ul>
+<li>
+              John J. Palmer, How to Brew (4th ed.), Chapter “Priming and Carbonation”, Brewers Publications, 2017.
+              <a href="https://howtobrew.com/book/section-1/conditioning-and-carbonation/priming" rel="noopener" target="_blank">howtobrew.com</a>
+</li>
+<li>
+              Brewer’s Friend, “Beer Priming Calculator” &amp; residual CO₂ temperature fit.
+              <a href="https://www.brewersfriend.com/beer-priming-calculator/" rel="noopener" target="_blank">brewersfriend.com</a>
+</li>
+<li>
+              Lallemand Brewing, “Bottle Conditioning Calculator”.
+              <a href="https://www.lallemandbrewing.com/en/united-states/resources/brewers-corner/brewing-calculators/bottle-conditioning-calculator/" rel="noopener" target="_blank">lallemandbrewing.com</a>
+</li>
+</ul>
+<p><em>All calculations are strictly based on the formulas and data provided by this source.</em></p>
+</section>
+<section>
+<h2>The Formula Explained</h2>
+<div aria-describedby="formulaNote" class="formula-box">
+<p><strong>Residual CO₂ (volumes) from temperature (°F):</strong></p>
+<p><code class="latex">V_{res}(T_F) = 3.0378 - 0.050062\,T_F + 0.00026555\,T_F^2</code></p>
+<p style="margin-top:.75rem"><strong>Required sugar mass (grams):</strong></p>
+<p><code class="latex">m_{sugar} = (V_{target} - V_{res}) \times V_{beer,L} \times k_{sugar}</code></p>
+<p style="margin-top:.75rem"><strong>Per-bottle sugar (grams):</strong></p>
+<p><code class="latex">m_{per\_bot} = \dfrac{m_{sugar}}{N_{bottles}} \;\;\; \text{where} \;\; N_{bottles}=\left\lceil\dfrac{1000\,V_{beer,L}}{V_{bottle,mL}}\right\rceil</code></p>
+</div>
+<p class="aside-note" id="formulaNote">
+            k<sub>sugar</sub> is the fermentable-specific factor in g/L per 1.0 CO₂ volume. Defaults used here:
             dextrose 4.01, sucrose 3.70, DME 6.50, honey 4.25.
-           </p>
-          </section>
-          <section>
-           <h2>
-            Glossary of Variables
-           </h2>
-           <ul>
-            <li>
-             <strong>
-              Batch volume (V
-              <sub>
-               beer,L
-              </sub>
-              ):
-             </strong>
-             Beer volume packaged, in liters.
+          </p>
+</section>
+<section>
+<h2>Glossary of Variables</h2>
+<ul>
+<li><strong>Batch volume (V<sub>beer,L</sub>):</strong> Beer volume packaged, in liters.</li>
+<li><strong>Bottling temperature (T):</strong> Highest post‑fermentation beer temperature; used to estimate V<sub>res</sub>.</li>
+<li><strong>Target CO₂ (V<sub>target</sub>):</strong> Desired carbonation level in volumes of CO₂.</li>
+<li><strong>Residual CO₂ (V<sub>res</sub>):</strong> CO₂ already dissolved from fermentation, based on temperature.</li>
+<li><strong>k<sub>sugar</sub>:</strong> Sugar factor (g/L per 1.0 volume), varies by fermentable.</li>
+<li><strong>Sugar mass (m<sub>sugar</sub>):</strong> Total priming sugar required for the batch.</li>
+<li><strong>Bottle size (V<sub>bottle,mL</sub>):</strong> Nominal bottle volume in milliliters.</li>
+<li><strong>N<sub>bottles</sub>:</strong> Estimated number of bottles, rounded up.</li>
+</ul>
+</section>
+<section>
+<h2>How It Works: A Step-by-Step Example</h2>
+<p><strong>Scenario:</strong> 19 L batch at 21 °C (70 °F), American Ale target 2.3 vols, dextrose, 355 mL bottles, no loss.</p>
+<ol>
+<li>Convert temperature to °F: 21 °C → 69.8 °F.</li>
+<li>Residual CO₂:
+              <code class="latex">V_{res} = 3.0378 - 0.050062(69.8) + 0.00026555(69.8)^2 \approx 0.86</code>
+</li>
+<li>Delta volumes:
+              <code class="latex">\Delta V = V_{target} - V_{res} = 2.3 - 0.86 = 1.44</code>
+</li>
+<li>Sugar factor for dextrose:
+              <code class="latex">k_{sugar} = 4.01 \; \mathrm{g/(L\cdot vol)}</code>
+</li>
+<li>Total sugar:
+              <code class="latex">m_{sugar} = 1.44 \times 19 \times 4.01 \approx 109.7\ \mathrm{g}</code> (≈ 3.87 oz).
             </li>
-            <li>
-             <strong>
-              Bottling temperature (T):
-             </strong>
-             Highest post‑fermentation beer temperature; used to estimate V
-             <sub>
-              res
-             </sub>
-             .
+<li>Bottle count:
+              <code class="latex">N = \left\lceil \dfrac{1000\cdot 19}{355} \right\rceil = \lceil 53.5 \rceil = 54</code>
+</li>
+<li>Per-bottle sugar:
+              <code class="latex">m_{per\_bot} = 109.7/54 \approx 2.03\ \mathrm{g}</code> (≈ 0.072 oz).
             </li>
-            <li>
-             <strong>
-              Target CO₂ (V
-              <sub>
-               target
-              </sub>
-              ):
-             </strong>
-             Desired carbonation level in volumes of CO₂.
-            </li>
-            <li>
-             <strong>
-              Residual CO₂ (V
-              <sub>
-               res
-              </sub>
-              ):
-             </strong>
-             CO₂ already dissolved from fermentation, based on temperature.
-            </li>
-            <li>
-             <strong>
-              k
-              <sub>
-               sugar
-              </sub>
-              :
-             </strong>
-             Sugar factor (g/L per 1.0 volume), varies by fermentable.
-            </li>
-            <li>
-             <strong>
-              Sugar mass (m
-              <sub>
-               sugar
-              </sub>
-              ):
-             </strong>
-             Total priming sugar required for the batch.
-            </li>
-            <li>
-             <strong>
-              Bottle size (V
-              <sub>
-               bottle,mL
-              </sub>
-              ):
-             </strong>
-             Nominal bottle volume in milliliters.
-            </li>
-            <li>
-             <strong>
-              N
-              <sub>
-               bottles
-              </sub>
-              :
-             </strong>
-             Estimated number of bottles, rounded up.
-            </li>
-           </ul>
-          </section>
-          <section>
-           <h2>
-            How It Works: A Step-by-Step Example
-           </h2>
-           <p>
-            <strong>
-             Scenario:
-            </strong>
-            19 L batch at 21 °C (70 °F), American Ale target 2.3 vols, dextrose, 355 mL bottles, no loss.
-           </p>
-           <ol>
-            <li>
-             Convert temperature to °F: 21 °C → 69.8 °F.
-            </li>
-            <li>
-             Residual CO₂:
-             <code class="latex">
-              V_{res} = 3.0378 - 0.050062(69.8) + 0.00026555(69.8)^2 \approx 0.86
-             </code>
-            </li>
-            <li>
-             Delta volumes:
-             <code class="latex">
-              \Delta V = V_{target} - V_{res} = 2.3 - 0.86 = 1.44
-             </code>
-            </li>
-            <li>
-             Sugar factor for dextrose:
-             <code class="latex">
-              k_{sugar} = 4.01 \; \mathrm{g/(L\cdot vol)}
-             </code>
-            </li>
-            <li>
-             Total sugar:
-             <code class="latex">
-              m_{sugar} = 1.44 \times 19 \times 4.01 \approx 109.7\ \mathrm{g}
-             </code>
-             (≈ 3.87 oz).
-            </li>
-            <li>
-             Bottle count:
-             <code class="latex">
-              N = \left\lceil \dfrac{1000\cdot 19}{355} \right\rceil = \lceil 53.5 \rceil = 54
-             </code>
-            </li>
-            <li>
-             Per-bottle sugar:
-             <code class="latex">
-              m_{per\_bot} = 109.7/54 \approx 2.03\ \mathrm{g}
-             </code>
-             (≈ 0.072 oz).
-            </li>
-           </ol>
-           <p>
-            We recommend weighing sugar with a scale for best accuracy.
-           </p>
-          </section>
-          <section>
-           <h2>
-            Frequently Asked Questions (FAQ)
-           </h2>
-           <h3>
-            How accurate are the sugar factors?
-           </h3>
-           <p>
-            They reflect widely used practical values: dextrose 4.01, sucrose 3.70, DME 6.50, honey 4.25 g/L per 1.0 vol. Actual results can vary slightly by brand and humidity; weigh by grams for consistency.
-           </p>
-           <h3>
-            Should I heat or boil the priming solution?
-           </h3>
-           <p>
-            Yes. Dissolve sugar in a small volume of water and gently heat to sanitize. Cool before mixing with beer to avoid hot-side oxygen pickup or uneven mixing.
-           </p>
-           <h3>
-            How do I avoid uneven carbonation across bottles?
-           </h3>
-           <p>
-            Batch prime: gently rack beer onto the cooled priming solution and stir with sanitized equipment to achieve uniform distribution without introducing oxygen.
-           </p>
-           <h3>
-            What if my beer was cold-crashed?
-           </h3>
-           <p>
-            Use the warmest temperature reached after active fermentation (often before the crash) for residual CO₂. Using fridge temp would overestimate residual CO₂ and under‑prime.
-           </p>
-           <h3>
-            Is there a safe upper limit for CO₂ volumes in bottles?
-           </h3>
-           <p>
-            Standard 12–22 oz beer bottles typically handle up to ~3.0–3.2 vols; some Belgian bottles tolerate more. Always match the bottle to the style and carbonation target.
-           </p>
-           <h3>
-            Can I use table sugar instead of corn sugar?
-           </h3>
-           <p>
-            Yes. Use slightly less by weight (the calculator adjusts automatically). Flavor impact is negligible at typical priming levels.
-           </p>
-          </section>
-          <div class="aside-note">
-           Tool developed by
-           <strong>
-            Ugo Candido
-           </strong>
-           . Content verified by the
-           <strong>
-            CalcDomain Editorial Board
-           </strong>
-           .
-           <br/>
-           Last reviewed for accuracy on:
-           <time datetime="2025-09-12">
-            September 12, 2025
-           </time>
-           .
+</ol>
+<p>We recommend weighing sugar with a scale for best accuracy.</p>
+</section>
+<section>
+<h2>Frequently Asked Questions (FAQ)</h2>
+<h3>How accurate are the sugar factors?</h3>
+<p>They reflect widely used practical values: dextrose 4.01, sucrose 3.70, DME 6.50, honey 4.25 g/L per 1.0 vol. Actual results can vary slightly by brand and humidity; weigh by grams for consistency.</p>
+<h3>Should I heat or boil the priming solution?</h3>
+<p>Yes. Dissolve sugar in a small volume of water and gently heat to sanitize. Cool before mixing with beer to avoid hot-side oxygen pickup or uneven mixing.</p>
+<h3>How do I avoid uneven carbonation across bottles?</h3>
+<p>Batch prime: gently rack beer onto the cooled priming solution and stir with sanitized equipment to achieve uniform distribution without introducing oxygen.</p>
+<h3>What if my beer was cold-crashed?</h3>
+<p>Use the warmest temperature reached after active fermentation (often before the crash) for residual CO₂. Using fridge temp would overestimate residual CO₂ and under‑prime.</p>
+<h3>Is there a safe upper limit for CO₂ volumes in bottles?</h3>
+<p>Standard 12–22 oz beer bottles typically handle up to ~3.0–3.2 vols; some Belgian bottles tolerate more. Always match the bottle to the style and carbonation target.</p>
+<h3>Can I use table sugar instead of corn sugar?</h3>
+<p>Yes. Use slightly less by weight (the calculator adjusts automatically). Flavor impact is negligible at typical priming levels.</p>
+</section>
+<div class="aside-note">
+          Tool developed by <strong>Ugo Candido</strong>. Content verified by the <strong>CalcDomain Editorial Board</strong>.<br/>
+          Last reviewed for accuracy on: <time datetime="2025-09-12">September 12, 2025</time>.
+        </div>
+</article>
+</div>
+</main>
           </div>
-         </article>
+        </main>
+        
+        <aside class="w-full lg:w-1/3">
+          
+    <div class="sticky top-24 space-y-8">
+      <div id="sidebar-ad-placeholder-top"></div>
+      <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="font-bold text-lg mb-4">Related Calculators</h3>
+        <ul class="space-y-3">
+          <li><a href="https://calcdomain.com/abv" class="text-blue-600 hover:underline">homebrew abv</a></li><li><a href="https://calcdomain.com/beer-bottling" class="text-blue-600 hover:underline">beer bottling</a></li><li><a href="https://calcdomain.com/batting-average" class="text-blue-600 hover:underline">batting average</a></li><li><a href="https://calcdomain.com/bac" class="text-blue-600 hover:underline">baconian cipher encoder/decoder</a></li><li><a href="https://calcdomain.com/leveling" class="text-blue-600 hover:underline">xp / leveling</a></li><li><a href="https://calcdomain.com/golf-handicap" class="text-blue-600 hover:underline">golf handicap</a></li><li><a href="https://calcdomain.com/priming-sugar-5-gallons" class="text-blue-600 hover:underline">priming sugar calculator 5 gallons</a></li><li><a href="https://calcdomain.com/dps" class="text-blue-600 hover:underline">damage per second (dps)</a></li><li><a href="https://calcdomain.com/slot-machine-payout" class="text-blue-600 hover:underline">slot machine payout</a></li><li><a href="https://calcdomain.com/sudoku-solver" class="text-blue-600 hover:underline">sudoku solver</a></li>
+        </ul>
+      </div>
+    </div>
+    
+        </aside>
+        
+      </div>
+    </div> <footer class="bg-gray-900 text-white py-12">
+      <div class="container mx-auto px-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div>
+            <h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+            <p class="text-gray-400 mb-4">Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.</p>
+          </div>
+          <div>
+            <h4 class="text-lg font-semibold mb-4">Categories</h4>
+            <ul class="space-y-2">
+              <li><a href="https://calcdomain.com/finance" class="text-gray-400 hover:text-white">Finance</a></li>
+              <li><a href="https://calcdomain.com/health-fitness" class="text-gray-400 hover:text-white">Health & Fitness</a></li>
+              <li><a href="https://calcdomain.com/math-conversions" class="text-gray-400 hover:text-white">Math & Conversions</a></li>
+              <li><a href="https://calcdomain.com/lifestyle-everyday" class="text-gray-400 hover:text-white">Lifestyle & Everyday</a></li>
+              <li><a href="https://calcdomain.com/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+            <ul class="space-y-2">
+              <li><a href="https://calcdomain.com/mortgage-payment" class="text-gray-400 hover:text-white">Mortgage Calculator</a></li>
+              <li><a href="https://calcdomain.com/percentage-calculator" class="text-gray-400 hover:text-white">Percentage Calculator</a></li>
+              <li><a href="https://calcdomain.com/bmi-calculator" class="text-gray-400 hover:text-white">BMI Calculator</a></li>
+              <li><a href="https://calcdomain.com/auto-loan-calculator" class="text-gray-400 hover:text-white">Auto Loan Calculator</a></li>
+              <li><a href="https://calcdomain.com/house-affordability" class="text-gray-400 hover:text-white">House Affordability</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="text-lg font-semibold mb-4">Support</h4>
+            <ul class="space-y-2">
+              <li><a href="https://calcdomain.com/about" class="text-gray-400 hover:text-white">About Us</a></li>
+              <li><a href="https://calcdomain.com/contact" class="text-gray-400 hover:text-white">Contact</a></li>
+              <li><a href="https://calcdomain.com/privacy" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
+              <li><a href="https://calcdomain.com/terms" class="text-gray-400 hover:text-white">Terms of Service</a></li>
+              <li><a href="https://calcdomain.com/sitemap" class="text-gray-400 hover:text-white">Site Map</a></li>
+            </ul>
+          </div>
         </div>
-       </main>
-       Standard Footer
-       <script defer="">
-        (function(){
-      'use strict';
-
-      // Elements
-      const els = {
-        batchVolume: document.getElementById('batchVolume'),
-        unitVolume: document.getElementById('unitVolume'),
-        beerTemp: document.getElementById('beerTemp'),
-        unitTemp: document.getElementById('unitTemp'),
-        stylePreset: document.getElementById('stylePreset'),
-        targetVolumes: document.getElementById('targetVolumes'),
-        sugarType: document.getElementById('sugarType'),
-        bottlePreset: document.getElementById('bottlePreset'),
-        bottleSize: document.getElementById('bottleSize'),
-        lossOff: document.getElementById('lossOff'),
-        lossOn: document.getElementById('lossOn'),
-        lossPercent: document.getElementById('lossPercent'),
-        // Errors
-        errBatch: document.getElementById('batchVolumeError'),
-        errTemp: document.getElementById('beerTempError'),
-        errTarget: document.getElementById('targetVolumesError'),
-        errBottle: document.getElementById('bottleSizeError'),
-        // Results
-        sugarMass: document.getElementById('sugarMass'),
-        sugarMassAlt: document.getElementById('sugarMassAlt'),
-        perBottleSugar: document.getElementById('perBottleSugar'),
-        perBottleSugarAlt: document.getElementById('perBottleSugarAlt'),
-        bottleCount: document.getElementById('bottleCount'),
-        batchSummary: document.getElementById('batchSummary'),
-        techDetails: document.getElementById('techDetails'),
-        // Tooltips
-        tipVolBtn: document.getElementById('tip-volume-btn'),
-        tipVol: document.getElementById('tip-volume'),
-        tipTempBtn: document.getElementById('tip-temp-btn'),
-        tipTemp: document.getElementById('tip-temp'),
-        tipBottleBtn: document.getElementById('tip-bottle-btn'),
-        tipBottle: document.getElementById('tip-bottle')
+        <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+          <p>&copy; 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+        </div>
+      </div>
+    </footer>
+    
+    <script src="/assets/js/script_menu.js" defer></script>
+    <script src="/assets/js/script_faq.js" defer></script>
+    <script src="search.js" defer></script>
+    
+    <script>
+      window.MathJax = {
+        tex: { inlineMath: [['\(','\)'], ['$', '$']], displayMath: [['$','$'], ['\[','\]']] },
+        svg: { fontCache: 'global' }
       };
-
-      // Constants
-      const sugarFactors = {
-        dextrose: 4.01, // g/L per 1.0 vol
-        sucrose: 3.70,
-        dme: 6.50,
-        honey: 4.25
-      };
-
-      // Utilities
-      const fmt = (n, opts={}) => new Intl.NumberFormat(undefined, {maximumFractionDigits: 2, ...opts}).format(n);
-      const ozFromGrams = g => g / 28.349523125;
-      const F = C => (C * 9/5) + 32;
-      const LfromGal = gal => gal * 3.785411784;
-
-      function residualCO2Volumes(tempValue, unit){
-        const TF = unit === 'C' ? F(Number(tempValue)) : Number(tempValue);
-        // Brewer's Friend polynomial fit (volumes of CO2)
-        return 3.0378 - 0.050062 * TF + 0.00026555 * TF * TF;
-      }
-
-      function validate(){
-        let ok = true;
-
-        // Batch volume
-        const v = parseFloat(els.batchVolume.value);
-        if (!(v > 0)){
-          setError(els.batchVolume, els.errBatch, "Please enter a batch volume greater than 0.");
-          ok = false;
-        } else {
-          clearError(els.batchVolume, els.errBatch);
-        }
-
-        // Temperature
-        const t = parseFloat(els.beerTemp.value);
-        if (Number.isNaN(t)){
-          setError(els.beerTemp, els.errTemp, "Please enter the beer temperature.");
-          ok = false;
-        } else {
-          // Reasonable brewing range
-          const [min,max] = els.unitTemp.value === 'C' ? [0, 35] : [32, 95];
-          if (t < min || t > max){
-            setError(els.beerTemp, els.errTemp, `Value looks unusual. Enter a temperature between ${min} and ${max} ${els.unitTemp.value === 'C' ? '°C' : '°F'}.`);
-            ok = false;
-          } else {
-            clearError(els.beerTemp, els.errTemp);
-          }
-        }
-
-        // Target volumes
-        const tv = parseFloat(els.targetVolumes.value);
-        if (!(tv > 0)){
-          setError(els.targetVolumes, els.errTarget, "Enter your target carbonation in CO₂ volumes (e.g., 2.3).");
-          ok = false;
-        } else if (tv < 1.2 || tv > 4.5){
-          setError(els.targetVolumes, els.errTarget, "Target should be between 1.2 and 4.5 volumes for typical styles.");
-          ok = false;
-        } else {
-          clearError(els.targetVolumes, els.errTarget);
-        }
-
-        // Bottle size if custom
-        if (els.bottlePreset.value === 'custom'){
-          const b = parseFloat(els.bottleSize.value);
-          if (!(b >= 50)){
-            setError(els.bottleSize, els.errBottle, "Enter a custom bottle size of at least 50 mL.");
-            ok = false;
-          } else {
-            clearError(els.bottleSize, els.errBottle);
-          }
-        } else {
-          clearError(els.bottleSize, els.errBottle);
-        }
-
-        return ok;
-      }
-
-      function setError(input, errEl, message){
-        input.setAttribute('aria-invalid', 'true');
-        errEl.textContent = message;
-      }
-      function clearError(input, errEl){
-        input.removeAttribute('aria-invalid');
-        errEl.textContent = '';
-      }
-
-      function currentBottleML(){
-        if (els.bottlePreset.value === 'custom'){
-          return parseFloat(els.bottleSize.value) || 0;
-        }
-        return parseFloat(els.bottlePreset.value);
-      }
-
-      function effectiveBatchLiters(){
-        const vol = parseFloat(els.batchVolume.value) || 0;
-        const liters = els.unitVolume.value === 'gal' ? LfromGal(vol) : vol;
-        if (els.lossOn.checked){
-          const pct = Math.max(0, Math.min(10, parseFloat(els.lossPercent.value) || 0));
-          return liters * (1 - pct/100);
-        }
-        return liters;
-      }
-
-      function compute(){
-        if (!validate()){
-          renderPlaceholder();
-          return;
-        }
-
-        const liters = effectiveBatchLiters();
-        const T = parseFloat(els.beerTemp.value);
-        const Vres = residualCO2Volumes(T, els.unitTemp.value);
-        const Vtarget = parseFloat(els.targetVolumes.value);
-        const deltaV = Math.max(0, Vtarget - Vres);
-        const k = sugarFactors[els.sugarType.value] || sugarFactors.dextrose;
-
-        const sugarG = liters * deltaV * k;
-        const sugarOz = ozFromGrams(sugarG);
-
-        const bottleML = currentBottleML();
-        const bottles = bottleML > 0 ? Math.max(1, Math.ceil((liters * 1000) / bottleML)) : 0;
-        const perBotG = bottles ? (sugarG / bottles) : 0;
-        const perBotOz = bottles ? (sugarOz / bottles) : 0;
-
-        renderResults({
-          sugarG, sugarOz, liters, bottles, perBotG, perBotOz, Vres, deltaV, Vtarget, bottleML
-        });
-      }
-
-      function renderPlaceholder(){
-        els.sugarMass.textContent = '—';
-        els.sugarMassAlt.textContent = '—';
-        els.perBottleSugar.textContent = '—';
-        els.perBottleSugarAlt.textContent = '—';
-        els.bottleCount.textContent = '—';
-        els.batchSummary.textContent = '—';
-        els.techDetails.textContent = 'Residual CO₂: — | Δ Volumes: —';
-      }
-
-      function renderResults(r){
-        els.sugarMass.textContent = `${fmt(r.sugarG)} g`;
-        els.sugarMassAlt.textContent = `${fmt(r.sugarOz, {maximumFractionDigits: 3})} oz`;
-
-        els.perBottleSugar.textContent = r.bottles ? `${fmt(r.perBotG, {maximumFractionDigits: 2})} g` : '—';
-        els.perBottleSugarAlt.textContent = r.bottles ? `${fmt(r.perBotOz, {maximumFractionDigits: 3})} oz` : '—';
-
-        els.bottleCount.textContent = r.bottles ? `${r.bottles} bottles` : '—';
-        const unit = els.unitVolume.value === 'gal' ? 'US gal' : 'L';
-        els.batchSummary.textContent = `${fmt(els.batchVolume.value)} ${unit} to ${r.bottleML || 0} mL bottles`;
-
-        els.techDetails.textContent = `Residual CO₂: ${fmt(r.Vres, {maximumFractionDigits: 2})} vols | Δ Volumes: ${fmt(r.deltaV, {maximumFractionDigits: 2})} | Target: ${fmt(r.Vtarget)} vols`;
-      }
-
-      // Events: inputs compute on change; inline validation on blur
-      [
-        els.batchVolume, els.unitVolume, els.beerTemp, els.unitTemp,
-        els.stylePreset, els.targetVolumes, els.sugarType,
-        els.bottlePreset, els.bottleSize,
-        els.lossOff, els.lossOn, els.lossPercent
-      ].forEach(el => {
-        el.addEventListener('input', compute, {passive:true});
-        el.addEventListener('change', compute, {passive:true});
-        el.addEventListener('blur', validate, {passive:true});
-      });
-
-      // Style preset -> set target
-      els.stylePreset.addEventListener('change', () => {
-        const val = els.stylePreset.value;
-        if (val === 'custom'){
-          // leave user input
-          els.targetVolumes.focus();
-        } else {
-          const parts = val.split('|');
-          if (parts.length === 2){
-            els.targetVolumes.value = parts[1];
-          }
-        }
-        compute();
-      });
-
-      // Bottle preset toggle
-      els.bottlePreset.addEventListener('change', () => {
-        const isCustom = els.bottlePreset.value === 'custom';
-        els.bottleSize.disabled = !isCustom;
-        if (!isCustom){
-          els.bottleSize.value = '';
-        }
-        compute();
-      });
-
-      // Loss toggle
-      els.lossOff.addEventListener('change', () => {
-        els.lossPercent.disabled = true;
-        compute();
-      });
-      els.lossOn.addEventListener('change', () => {
-        els.lossPercent.disabled = false;
-        compute();
-      });
-
-      // Accessible tooltips
-      function bindTooltip(btn, panel){
-        btn.addEventListener('click', () => {
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          panel.hidden = expanded;
-        });
-        btn.addEventListener('keydown', (e) => {
-          if (e.key === 'Escape'){
-            btn.setAttribute('aria-expanded', 'false');
-            panel.hidden = true;
-            btn.focus();
-          }
-        });
-      }
-      bindTooltip(els.tipVolBtn, els.tipVol);
-      bindTooltip(els.tipTempBtn, els.tipTemp);
-      bindTooltip(els.tipBottleBtn, els.tipBottle);
-
-      // Defaults
-      els.batchVolume.value = '19';
-      els.unitVolume.value = 'L';
-      els.beerTemp.value = '21';
-      els.unitTemp.value = 'C';
-      els.stylePreset.value = 'American Ale|2.3';
-      els.targetVolumes.value = '2.3';
-      els.sugarType.value = 'dextrose';
-      els.bottlePreset.value = '355';
-      els.lossOff.checked = true;
-      els.lossPercent.value = '2';
-      els.lossPercent.disabled = true;
-
-      // Initial compute
-      compute();
-    })();
-       </script>
-      </main>
-      <aside class="w-full lg:w-1/3">
-       <div class="sticky top-24 space-y-8">
-        <div id="sidebar-ad-placeholder-top">
-        </div>
-        <div class="bg-white p-6 rounded-lg shadow-md">
-         <h3 class="font-bold text-lg mb-4">
-          Related Calculators
-         </h3>
-         <ul class="space-y-3">
-          <li>
-           <a class="text-blue-600 hover:underline" href="https://calcdomain.com/abv">
-            homebrew abv
-           </a>
-          </li>
-          <li>
-           <a class="text-blue-600 hover:underline" href="https://calcdomain.com/beer-bottling">
-            beer bottling
-           </a>
-          </li>
-          <li>
-           <a class="text-blue-600 hover:underline" href="https://calcdomain.com/batting-average">
-            batting average
-           </a>
-          </li>
-          <li>
-           <a class="text-blue-600 hover:underline" href="https://calcdomain.com/bac">
-            baconian cipher encoder/decoder
-           </a>
-          </li>
-          <li>
-           <a class="text-blue-600 hover:underline" href="https://calcdomain.com/leveling">
-            xp / leveling
-           </a>
-          </li>
-          <li>
-           <a class="text-blue-600 hover:underline" href="https://calcdomain.com/golf-handicap">
-            golf handicap
-           </a>
-          </li>
-          <li>
-           <a class="text-blue-600 hover:underline" href="https://calcdomain.com/priming-sugar-5-gallons">
-            priming sugar calculator 5 gallons
-           </a>
-          </li>
-          <li>
-           <a class="text-blue-600 hover:underline" href="https://calcdomain.com/dps">
-            damage per second (dps)
-           </a>
-          </li>
-          <li>
-           <a class="text-blue-600 hover:underline" href="https://calcdomain.com/slot-machine-payout">
-            slot machine payout
-           </a>
-          </li>
-          <li>
-           <a class="text-blue-600 hover:underline" href="https://calcdomain.com/sudoku-solver">
-            sudoku solver
-           </a>
-          </li>
-         </ul>
-        </div>
-       </div>
-      </aside>
-     </div>
-    </div>
-   </body>
-  </html>
-  <footer class="bg-gray-900 text-white py-12">
-   <div class="container mx-auto px-4">
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-     <div>
-      <h3 class="text-2xl font-bold mb-4">
-       CalcDomain
-      </h3>
-      <p class="text-gray-400 mb-4">
-       Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.
-      </p>
-     </div>
-     <div>
-      <h4 class="text-lg font-semibold mb-4">
-       Categories
-      </h4>
-      <ul class="space-y-2">
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/finance">
-         Finance
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/health-fitness">
-         Health &amp; Fitness
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/math-conversions">
-         Math &amp; Conversions
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/lifestyle-everyday">
-         Lifestyle &amp; Everyday
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/construction-diy">
-         Construction &amp; DIY
-        </a>
-       </li>
-      </ul>
-     </div>
-     <div>
-      <h4 class="text-lg font-semibold mb-4">
-       Popular Tools
-      </h4>
-      <ul class="space-y-2">
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/mortgage-payment">
-         Mortgage Calculator
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/percentage-calculator">
-         Percentage Calculator
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/bmi-calculator">
-         BMI Calculator
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/auto-loan-calculator">
-         Auto Loan Calculator
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/house-affordability">
-         House Affordability
-        </a>
-       </li>
-      </ul>
-     </div>
-     <div>
-      <h4 class="text-lg font-semibold mb-4">
-       Support
-      </h4>
-      <ul class="space-y-2">
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/about">
-         About Us
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/contact">
-         Contact
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/privacy">
-         Privacy Policy
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/terms">
-         Terms of Service
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/sitemap">
-         Site Map
-        </a>
-       </li>
-      </ul>
-     </div>
-    </div>
-    <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-     <p>
-      © 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone
-     </p>
-    </div>
-   </div>
-  </footer>
-  <script defer="True" src="/assets/js/script_menu.js">
-  </script>
-  <script defer="True" src="/assets/js/script_faq.js">
-  </script>
-  <script defer="True" src="search.js">
-  </script>
- </body>
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+</body>
 </html>

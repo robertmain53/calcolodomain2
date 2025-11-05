@@ -1,1025 +1,401 @@
 <!DOCTYPE html>
 <html lang="en">
- <head>
-  <link href="https://calcdomain.com/abv" rel="canonical"/>
-  <link href="/favicon-96x96.png" rel="icon" sizes="96x96" type="image/png"/>
-  <link href="/favicon.svg" rel="icon" type="image/svg+xml"/>
-  <link href="/favicon.ico" rel="shortcut icon"/>
-  <link href="/apple-touch-icon.png" rel="apple-touch-icon" sizes="180x180"/>
-  <link href="/site.webmanifest" rel="manifest"/>
-  <meta charset="utf-8"/>
-  <title>
-   homebrew abv calculator | Precise, Accessible, Mobile-First Tool
-  </title>
-  <meta content="width=device-width, initial-scale=1" name="viewport"/>
-  <meta content="Homebrew ABV calculator: compute Alcohol by Volume (ABV) and Alcohol by Weight (ABW) from Original Gravity (OG) and Final Gravity (FG). Includes advanced Terrill method, hydrometer temperature correction, and Plato conversions." name="description"/>
-  <meta content="Ugo Candido" name="author"/>
-  <meta content="#0b3d63" name="theme-color"/>
-  <meta content="index,follow,max-image-preview:large" name="robots"/>
-  <style>
-   /* Critical, mobile-first CSS (optimized for CWV and A11y) */
-    :root{
-      --primary:#0B5CAD; --primary-600:#094b8a; --primary-700:#083e73;
-      --bg:#F8FAFC; --surface:#FFFFFF; --border:#D8DEE9;
-      --text:#1E293B; --muted:#6B7280;
-      --success:#0F9D58; --danger:#DC2626;
-      --touch:48px;
-      --radius:12px;
-      --shadow:0 2px 8px rgba(2,6,23,.06);
-      --focus:3px solid #0B5CAD;
-      --container:1200px;
-      --gap:.75rem;
-      --gap-lg:1.5rem;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      --sans: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,"Helvetica Neue",Arial,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
-    }
-    *{box-sizing:border-box}
-    html{font-size:16px}
-    body{
-      margin:0; font-family:var(--sans); color:var(--text);
-      background:var(--bg); line-height:1.6;
-      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
-    }
-    a{color:var(--primary); text-decoration:none}
-    a:hover{text-decoration:underline}
-    a:focus{outline:var(--focus); outline-offset:2px}
-    .skip-link{
-      position:absolute; left:8px; top:-40px; background:var(--primary); color:#fff;
-      padding:.5rem .75rem; border-radius:6px; z-index:1000; text-decoration:none; font-weight:600;
-    }
-    .skip-link:focus{top:8px}
-    header{
-      background:var(--surface); box-shadow:var(--shadow);
-      border-bottom:1px solid var(--border);
-    }
-    .container{max-width:var(--container); margin:0 auto; padding:0 1rem}
-    .header-inner{
-      display:flex; align-items:center; gap:.75rem; padding:.75rem 0;
-    }
-    .brand{font-weight:800; color:var(--primary-700); font-size:1.125rem}
-    .main{padding:1rem 0 2rem}
-    nav.breadcrumb{font-size:.9rem; color:var(--muted); margin:.25rem 0 1rem}
-    nav.breadcrumb a{color:inherit}
-    h1{font-size:1.8rem; line-height:1.2; margin:.25rem 0 .5rem; color:var(--primary-700)}
-    p.lead{color:#334155; max-width:70ch}
-    .layout{
-      display:grid; grid-template-columns:1fr; gap:1.25rem; margin-top:1rem;
-    }
-    @media(min-width:992px){ .layout{ grid-template-columns: minmax(0,430px) minmax(0,1fr);} }
-
-    /* Calculator card */
-    .card{
-      background:var(--surface); border:1px solid var(--border);
-      border-radius:var(--radius); box-shadow:var(--shadow); padding:1rem;
-    }
-    .calculator h2{font-size:1.25rem; margin:0 0 .5rem}
-    .form-group{margin-bottom:1rem}
-    .form-group label{display:flex; align-items:center; gap:.5rem; font-weight:700; margin-bottom:.35rem}
-    .help-btn{
-      border:1px solid var(--border); background:#fff; color:#0f172a;
-      width:var(--touch); height:var(--touch); border-radius:10px; cursor:pointer;
-      display:inline-flex; align-items:center; justify-content:center; font-weight:800; line-height:1;
-    }
-    .help-btn:hover{background:#f3f4f6}
-    .help-btn:focus{outline:var(--focus)}
-    .tooltip{
-      background:#eef2ff; border:1px solid #c7d2fe; color:#111827;
-      border-radius:8px; padding:.6rem .75rem; font-size:.95rem; margin:.25rem 0 0;
-    }
-    .input-wrap{position:relative}
-    .control{
-      width:100%; min-height:var(--touch); padding:.7rem .85rem; font-size:1rem;
-      border:1px solid var(--border); border-radius:10px; background:#fff;
-    }
-    .control:focus{outline:none; box-shadow:0 0 0 4px rgba(11,92,173,.15); border-color:#94a3b8}
-    .unit{
-      position:absolute; right:.75rem; top:50%; transform:translateY(-50%); color:#475569; font-weight:600;
-      pointer-events:none;
-    }
-    .row{display:grid; grid-template-columns:1fr 1fr; gap:.75rem}
-    .radio-group{display:flex; gap:.5rem}
-    .radio{
-      position:relative; flex:1 1 0; display:flex; align-items:center; justify-content:center;
-      border:1px solid var(--border); border-radius:10px; min-height:var(--touch); padding:.25rem .5rem;
-      background:#fff; cursor:pointer; font-weight:700; color:#0f172a;
-    }
-    .radio input{position:absolute; inset:0; opacity:0}
-    .radio:has(input:checked){background:var(--primary); color:#fff; border-color:var(--primary)}
-    .radio:has(input:focus-visible){outline:var(--focus)}
-    .checkbox{display:flex; align-items:center; gap:.5rem; min-height:var(--touch)}
-    .error{color:var(--danger); font-size:.9rem; margin-top:.25rem; min-height:1.1rem}
-    .hint{color:var(--muted); font-size:.9rem; margin-top:.25rem}
-
-    /* Results */
-    .results{ background:#f1f5f9; border:1px solid var(--border); border-radius:12px; padding:1rem; min-height:240px }
-    .results h3{margin:.25rem 0 1rem; color:#0f172a}
-    .result{
-      display:flex; align-items:flex-start; justify-content:space-between; gap:.75rem;
-      padding:.6rem 0; border-bottom:1px solid var(--border);
-    }
-    .result:last-child{border-bottom:none}
-    .result .label{color:#475569}
-    .result .value{font-weight:800; color:var(--success); font-size:1.25rem}
-    .mono{font-family:var(--mono)}
-
-    /* Content sections */
-    .content h2{margin-top:1.25rem; padding-top:.25rem; border-top:1px solid var(--border)}
-    .formula-box{background:#e2e8f0; border:1px solid #cbd5e1; border-radius:10px; padding:1rem; overflow:auto}
-    .formula{font-family:var(--mono); display:block; padding:.25rem .5rem; background:#f8fafc; border-radius:6px; margin:.25rem 0}
-    ul,ol{padding-left:1.25rem}
-    .definition-list{display:grid; grid-template-columns:1fr; gap:.35rem}
-    @media(min-width:720px){ .definition-list{ grid-template-columns: 1fr 2fr } .definition-list dt{font-weight:700} }
-    .author-box{font-size:.95rem; color:#475569; border-top:1px solid var(--border); margin-top:1.5rem; padding-top:.75rem}
-
-    /* Utilities */
-    .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0}
-  </style>
-  <!-- Non-critical global styles (loaded non-blocking) -->
-  <noscript>
-  </noscript>
-  <script type="application/ld+json">
-   {
-  "@context": "https://schema.org",
-  "@type": "WebPage",
-  "name": "homebrew abv calculator",
-  "description": "Compute Alcohol by Volume (ABV) and Alcohol by Weight (ABW) from Original Gravity (OG) and Final Gravity (FG). Includes advanced Terrill method, hydrometer temperature correction, and Plato conversions.",
-  "url": "https://calcdomain.com/abv",
-  "inLanguage": "en",
-  "author": {
-    "@type": "Person",
-    "name": "Ugo Candido"
-  },
-  "publisher": {
-    "@type": "Organization",
-    "name": "CalcDomain"
-  },
-  "mainEntity": [
-    {
-      "@type": "HowTo",
-      "name": "How It Works: A Step-by-Step Example",
-      "description": "Use OG and FG to calculate ABV with the Standard or Advanced (Terrill) method, with optional hydrometer temperature correction.",
-      "step": [
-        {
-          "@type": "HowToStep",
-          "name": "Enter Original Gravity (OG)",
-          "text": "Input OG, e.g., 1.050 as measured with a hydrometer."
-        },
-        {
-          "@type": "HowToStep",
-          "name": "Enter Final Gravity (FG)",
-          "text": "Input FG, e.g., 1.012 after fermentation completes."
-        },
-        {
-          "@type": "HowToStep",
-          "name": "Choose formula",
-          "text": "Select Standard (131.25 factor) or Advanced (Terrill) for higher accuracy."
-        },
-        {
-          "@type": "HowToStep",
-          "name": "Optional: apply temperature correction",
-          "text": "Enable correction and set sample and calibration temperatures if your hydrometer reading was taken far from its calibration temperature."
-        },
-        {
-          "@type": "HowToStep",
-          "name": "Read results",
-          "text": "The tool displays ABV, ABW, Original/Final Extract in °P, Apparent Attenuation, and Real Extract."
-        }
-      ]
-    },
-    {
-      "@type": "FAQPage",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "Which ABV formula should I use?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Use the Advanced (Terrill) method for most homebrew scenarios as it compensates for non-linearity at higher gravities. The Standard method is simpler and close enough for low to moderate OG beers."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Do I need hydrometer temperature correction?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Correct if your sample temperature differs from the hydrometer calibration temperature (often 20°C or 60°F). Significant differences can bias OG/FG and final ABV."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can FG be higher than OG?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "No. If FG exceeds OG, re-check measurements or temperature corrections. The calculator requires FG to be less than OG."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "What is Apparent vs Real Extract?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Apparent Extract uses hydrometer readings uncorrected for alcohol's lower density; Real Extract adjusts for alcohol presence to better reflect residual sugars."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "How accurate is this calculator?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "It uses industry-standard relationships (ASBC/Plato) and the Terrill correlation. Accuracy depends on precise gravity readings and appropriate temperature correction."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Does this work with refractometers?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "This version is optimized for hydrometer readings (Specific Gravity). For refractometers, apply wort correction and alcohol corrections or use a dedicated refractometer calculator."
-          }
-        }
-      ]
-    }
-  ]
-}
-  </script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
-  <script src="https://cdn.tailwindcss.com">
-  </script>
-  <script defer="" src="search.js">
-  </script>
-  <!-- MathJax for LaTeX formulas -->
-  <script>
-   window.MathJax = {
-    tex: {
-      inlineMath: [['\(','\)'], ['$', '$']],
-      displayMath: [['$','$'], ['\[','\]']]
-    },
-    svg: { fontCache: 'global' }
-  };
-  </script>
-  <script async="" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
-  </script>
-  <script type="application/ld+json">
-   {
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "Hobbies",
-      "item": "https://calcdomain.com/hobbies"
-    }
-  ]
-}
-  </script>
-  <!-- Google tag (gtag.js) -->
-  <html>
-   <head>
-    <script async="" src="https://www.googletagmanager.com/gtag/js?id=G-7MB5V1LZRN">
-    </script>
-    <script>
-     window.dataLayer = window.dataLayer || [];
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>homebrew abv</title>
+    <meta name="description" content="Homebrew ABV calculator: compute Alcohol by Volume (ABV) and Alcohol by Weight (ABW) from Original Gravity (OG) and Final Gravity (FG). Includes advanced Terrill method, hydrometer temperature correction, and Plato conversions.">
+    <link rel="canonical" href="https://calcdomain.com/abv">
+    
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .card-hover { transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; }
+        .card-hover:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        /* Stili per il contenuto estratto (es. .prose per articoli) */
+        .prose { max-width: 65ch; margin-left: auto; margin-right: auto; }
+        .prose h2 { font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; }
+        .prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+        .prose p { margin-bottom: 1rem; line-height: 1.6; }
+        .prose ul, .prose ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+        .prose li { margin-bottom: 0.5rem; }
+        .formula-box { background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; padding: 1rem; overflow-x: auto; margin: 1rem 0; }
+    </style>
+    
+    
+<script async src="https://www.googletagmanager.com/gtag/js?id=TUO_ID_GA"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
+  gtag('config', 'TUO_ID_GA');
+</script>
+<meta name="google-site-verification" content="IL_TUO_CODICE_GSC" />
+<script async src="//go.ezoic.net/ezoic/ezoic.js"></script>
 
-  gtag('config', 'G-7MB5V1LZRN');
+
+    <script type="application/ld+json">
+      [{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://calcdomain.com"}, {"@type": "ListItem", "position": 2, "name": "Hobbies", "item": "https://calcdomain.com/hobbies"}]}, {"@context": "https://schema.org", "@type": "Organization", "name": "CalcDomain", "url": "https://calcdomain.com", "logo": "https://calcdomain.com/apple-touch-icon.png"}, {"@context": "https://schema.org", "@type": "WebSite", "name": "CalcDomain", "url": "https://calcdomain.com", "potentialAction": {"@type": "SearchAction", "target": "https://calcdomain.com/search?q={search_term_string}", "query-input": "required name=search_term_string"}}]
     </script>
-    <meta content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA" name="google-site-verification"/>
-    <script data-cfasync="false" src="https://cmp.gatekeeperconsent.com/min.js">
-    </script>
-    <script data-cfasync="false" src="https://the.gatekeeperconsent.com/cmp.min.js">
-    </script>
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js">
-    </script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    %%BODY_SCRIPTS_INIZIO%%
+
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+      <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
+        <div class="flex justify-between items-center">
+          <a href="https://calcdomain.com" class="text-2xl font-bold text-blue-600">CalcDomain</a>
+          <div class="w-full max-w-md hidden md:block mx-8">
+            <div class="relative">
+              <input type="search" id="search-input" placeholder="Search for a calculator..." class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" />
+              <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              <div id="search-results" class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200"></div>
+            </div>
+          </div>
+          <div class="hidden md:flex items-center space-x-6">
+            <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600 transition-colors">Advanced Search</a>
+            <a href="https://calcdomain.com/categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
+          </div>
+          <button id="mobile-menu-toggle" class="md:hidden p-2" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" type="button">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+          </button>
+        </div>
+        <nav id="mobile-menu" class="md:hidden mt-4 hidden" aria-label="Mobile menu" role="navigation">
+          <div class="mb-4">
+            <div class="relative">
+              <input type="search" id="mobile-search-input" placeholder="Search calculators..." class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
+            <a href="https://calcdomain.com/categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
+          </div>
+        </nav>
+      </nav>
+    </header>
+
+    <div class="container mx-auto px-4 py-8">
+      
+      <nav id="breadcrumb-container" class="text-sm mb-4 text-gray-600">
+        <a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/hobbies" class="hover:text-blue-600">Hobbies</a> &raquo; <span>homebrew abv</span>
+      </nav>
+      
+      <div class="flex flex-col lg:flex-row gap-8">
+        
+        <main class="w-full lg:w-2/3">
+          <div class="bg-white p-6 rounded-lg shadow-md">
+            <main class="main" id="main-content" role="main">
+<div class="container">
+<nav aria-label="Breadcrumb" class="breadcrumb">
+Home / <a href="https://calcdomain.com/lifestyle-everyday">Everyday Life</a> / <a href="https://calcdomain.com/subcategories/hobbies">Hobbies</a> / homebrew abv calculator
+      </nav>
+<h1>homebrew abv calculator</h1>
+<p class="lead">A precise, accessibility-first tool for homebrewers to compute Alcohol by Volume (ABV) and related metrics from Original Gravity (OG) and Final Gravity (FG). Choose between Standard or Advanced methods, apply hydrometer temperature correction, and get Plato-based analytics instantly.</p>
+<div class="layout">
+<!-- Calculator -->
+<aside aria-labelledby="calc-heading" class="card calculator">
+<h2 id="calc-heading">Calculator</h2>
+<!-- Formula selection -->
+<div aria-labelledby="method-label" class="form-group" role="group">
+<div class="sr-only" id="method-label">Select ABV formula</div>
+<div aria-label="ABV formula" class="radio-group" role="radiogroup">
+<label class="radio">
+<input checked="" id="methodStandard" name="method" type="radio" value="standard"/>
+<span>Standard</span>
+</label>
+<label class="radio">
+<input id="methodAdvanced" name="method" type="radio" value="advanced"/>
+<span>Advanced (Terrill)</span>
+</label>
+</div>
+<p class="hint">Standard: ABV = (OG − FG) × 131.25. Advanced: Terrill correlation for improved accuracy.</p>
+</div>
+<!-- OG -->
+<div class="form-group">
+<label for="og">
+              Original Gravity (OG) *
+              <button aria-controls="ogTip" aria-expanded="false" aria-label="What is OG?" class="help-btn" id="ogInfoBtn" title="What is OG?" type="button">
+                ?
+              </button>
+</label>
+<div class="input-wrap">
+<input aria-describedby="ogTip ogError" aria-required="true" class="control" id="og" inputmode="decimal" max="1.2" min="0.98" placeholder="e.g., 1.050" step="0.001" type="number" value="1.050"/>
+<span aria-hidden="true" class="unit">SG</span>
+</div>
+<div class="tooltip" hidden="" id="ogTip" role="tooltip">
+              OG is the specific gravity of wort before fermentation. Typical range: 1.030–1.120.
+            </div>
+<div aria-live="polite" class="error" id="ogError" role="alert"></div>
+</div>
+<!-- FG -->
+<div class="form-group">
+<label for="fg">
+              Final Gravity (FG) *
+              <button aria-controls="fgTip" aria-expanded="false" aria-label="What is FG?" class="help-btn" id="fgInfoBtn" title="What is FG?" type="button">
+                ?
+              </button>
+</label>
+<div class="input-wrap">
+<input aria-describedby="fgTip fgError" aria-required="true" class="control" id="fg" inputmode="decimal" max="1.2" min="0.98" placeholder="e.g., 1.010" step="0.001" type="number" value="1.010"/>
+<span aria-hidden="true" class="unit">SG</span>
+</div>
+<div class="tooltip" hidden="" id="fgTip" role="tooltip">
+              FG is the specific gravity after fermentation. It must be less than OG in normal fermentations.
+            </div>
+<div aria-live="polite" class="error" id="fgError" role="alert"></div>
+</div>
+<!-- Temperature correction toggle -->
+<div class="form-group">
+<div class="checkbox">
+<input aria-controls="tempBlock" aria-describedby="tempHelp" id="tempToggle" type="checkbox"/>
+<label for="tempToggle"><strong>Apply hydrometer temperature correction</strong></label>
+</div>
+<p class="hint" id="tempHelp">Corrects SG readings when measured at temperatures different from your hydrometer’s calibration.</p>
+</div>
+<!-- Temperature correction block -->
+<div aria-live="polite" class="card" hidden="" id="tempBlock" style="padding: .75rem; margin-top:.25rem;">
+<div class="row">
+<div class="form-group">
+<label for="sampleTemp">
+                  Sample temperature
+                  <button aria-controls="tTip" aria-expanded="false" aria-label="Temperature help" class="help-btn" id="tInfoBtn" title="Temperature help" type="button">?</button>
+</label>
+<div class="row">
+<div class="input-wrap">
+<input aria-describedby="tTip tError" class="control" id="sampleTemp" max="100" min="0" step="0.1" type="number" value="20"/>
+</div>
+<div>
+<select aria-label="Sample temperature unit" class="control" id="sampleTempUnit">
+<option selected="" value="C">°C</option>
+<option value="F">°F</option>
+</select>
+</div>
+</div>
+<div class="tooltip" hidden="" id="tTip" role="tooltip">
+                  Use the temperature at which you read OG/FG. Valid range 0–100 °C (32–212 °F).
+                </div>
+<div aria-live="polite" class="error" id="tError" role="alert"></div>
+</div>
+<div class="form-group">
+<label for="calTemp">Hydrometer calibration temperature</label>
+<div class="row">
+<div class="input-wrap">
+<input class="control" id="calTemp" max="100" min="0" step="0.1" type="number" value="20"/>
+</div>
+<div>
+<select aria-label="Calibration temperature unit" class="control" id="calTempUnit">
+<option selected="" value="C">°C</option>
+<option value="F">°F</option>
+</select>
+</div>
+</div>
+<p class="hint">Common calibrations: 20°C or 60°F (check your hydrometer).</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Results -->
+<section aria-atomic="true" aria-labelledby="results-heading" aria-live="polite" class="card results">
+<h3 id="results-heading">Results</h3>
+<div class="result">
+<div class="label">Alcohol by Volume (ABV)</div>
+<div class="value"><span class="mono" id="abv">0.00</span>%</div>
+</div>
+<div class="result">
+<div class="label">Alcohol by Weight (ABW)</div>
+<div class="value"><span class="mono" id="abw">0.00</span>%</div>
+</div>
+<div class="result">
+<div class="label">Original Extract</div>
+<div class="value"><span class="mono" id="ogp">0.00</span> °P</div>
+</div>
+<div class="result">
+<div class="label">Final Extract (Apparent)</div>
+<div class="value"><span class="mono" id="fgp">0.00</span> °P</div>
+</div>
+<div class="result">
+<div class="label">Real Extract</div>
+<div class="value"><span class="mono" id="re">0.00</span> °P</div>
+</div>
+<div class="result">
+<div class="label">Apparent Attenuation</div>
+<div class="value"><span class="mono" id="aa">0.0</span>%</div>
+</div>
+<p class="hint" style="margin-top:.75rem">Results update automatically as you type. Values are rounded for readability.</p>
+</section>
+</div>
+<!-- Authoritative Content Ecosystem -->
+<section aria-labelledby="content-heading" class="content">
+<h2 id="content-heading">Data Source and Methodology</h2>
+<p><strong>Authoritative Data Source:</strong> American Society of Brewing Chemists (ASBC), Methods of Analysis. Wort-12: Extract—Specific Gravity and Plato (2014), and Beer-4/Beer-6: Alcohol in Beer (various editions). Official resource: <a href="https://www.asbcnet.org/exams-resources/Resources/Pages/Methods.aspx" rel="nofollow noopener" target="_blank">asbcnet.org — Methods of Analysis</a>. Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.</p>
+<p>For enhanced ABV accuracy we implement the widely used Terrill correlation alongside the standard linear factor method. Hydrometer temperature correction follows the polynomial water density compensation commonly used in brewing software.</p>
+<h2>The Formula Explained</h2>
+<div aria-describedby="formula-note" class="formula-box">
+<div class="hint" id="formula-note">LaTeX notation is shown; variables are defined in the Glossary.</div>
+<p><strong>1) Standard ABV</strong></p>
+<span class="formula">ABV_{\%} = (OG - FG) \times 131.25</span>
+<p><strong>2) Advanced ABV (Terrill)</strong></p>
+<span class="formula">ABV_{\%} = \frac{76.08 \times (OG - FG)}{1.775 - OG} \times \frac{FG}{0.794}</span>
+<p><strong>3) Plato (°P) from Specific Gravity</strong></p>
+<span class="formula">P = -616.868 + 1111.14\,SG - 630.272\,SG^{2} + 135.997\,SG^{3}</span>
+<p><strong>4) Real Extract (Balling)</strong></p>
+<span class="formula">RE = 0.1808 \times P_{OG} + 0.8192 \times P_{FG}</span>
+<p><strong>5) Apparent Attenuation</strong></p>
+<span class="formula">AA_{\%} = \frac{P_{OG} - P_{FG}}{P_{OG}} \times 100</span>
+<p><strong>6) Alcohol by Weight</strong></p>
+<span class="formula">ABW_{\%} = \frac{0.79336 \times ABV_{\%}}{FG}</span>
+<p><strong>7) Hydrometer Temperature Correction</strong></p>
+<span class="formula">SG_{corr} = SG_{obs} \times \frac{CF(T_{sample})}{CF(T_{cal})}</span>
+<span class="formula">CF(T) = 1.00130346 - 1.34722124\times10^{-4}T + 2.04052596\times10^{-6}T^{2} - 2.32820948\times10^{-9}T^{3}</span>
+</div>
+<h2>Glossary of Variables</h2>
+<dl class="definition-list">
+<dt>Original Gravity (OG)</dt>
+<dd>Specific gravity of wort before fermentation (e.g., 1.050).</dd>
+<dt>Final Gravity (FG)</dt>
+<dd>Specific gravity after fermentation; typically lower than OG (e.g., 1.010).</dd>
+<dt>ABV (%)</dt>
+<dd>Alcohol by Volume; primary strength measure for beer.</dd>
+<dt>ABW (%)</dt>
+<dd>Alcohol by Weight; ABV scaled by beer density.</dd>
+<dt>Plato (°P)</dt>
+<dd>Percentage by weight of dissolved extract (sugars) in wort/beer.</dd>
+<dt>Real Extract (RE)</dt>
+<dd>Extract adjusted for alcohol presence, approximating residual sugars.</dd>
+<dt>Apparent Attenuation (AA%)</dt>
+<dd>Degree to which fermentable extract appears to have been consumed.</dd>
+<dt>Temperature Correction</dt>
+<dd>Adjustment to SG readings when sample temperature differs from hydrometer calibration.</dd>
+</dl>
+<h2>How It Works: A Step-by-Step Example</h2>
+<ol>
+<li>Inputs: OG = 1.050, FG = 1.012, 20°C sample, 20°C calibration (no temperature bias).</li>
+<li>Convert to Plato:
+            <span class="formula">P_{OG} \approx 12.39\,°P,\; P_{FG} \approx 3.07\,°P</span>
+</li>
+<li>Standard ABV:
+            <span class="formula">ABV = (1.050 - 1.012)\times 131.25 \approx 4.99\%</span>
+</li>
+<li>Advanced (Terrill):
+            <span class="formula">ABV \approx \frac{76.08\times 0.038}{1.775 - 1.050}\times \frac{1.012}{0.794} \approx 5.08\%</span>
+</li>
+<li>ABW from ABV and FG:
+            <span class="formula">ABW \approx \frac{0.79336\times 5.08}{1.012} \approx 3.98\%</span>
+</li>
+<li>Real Extract:
+            <span class="formula">RE = 0.1808 \times 12.39 + 0.8192 \times 3.07 \approx 4.71\,°P</span>
+</li>
+<li>Apparent Attenuation:
+            <span class="formula">AA = \frac{12.39 - 3.07}{12.39}\times 100 \approx 75.2\%</span>
+</li>
+</ol>
+<h2>Frequently Asked Questions (FAQ)</h2>
+<div>
+<h3>Which ABV method should I choose?</h3>
+<p>The Advanced (Terrill) method is recommended for improved accuracy, especially for higher gravity beers. The Standard method is sufficient for low to moderate OG beers.</p>
+<h3>How far can the sample temperature be from calibration before I must correct?</h3>
+<p>Any difference can bias results, but corrections become important beyond ~5–6°C (10°F). Use the correction option for best accuracy.</p>
+<h3>Why do Plato values matter?</h3>
+<p>Plato expresses extract as mass percentage and underpins professional brewing calculations, enabling Real Extract and attenuation metrics.</p>
+<h3>Is ABW just ABV times a constant?</h3>
+<p>ABW is derived from ABV and the beer’s density (FG). We use ABW = 0.79336 × ABV / FG.</p>
+<h3>My FG equals OG. What does it mean?</h3>
+<p>Fermentation likely did not start or the readings are off. Recheck calibration, temperature, and measurement technique.</p>
+<h3>Can this calculator handle refractometer readings?</h3>
+<p>This tool targets hydrometer SG. For refractometers, a wort correction factor and alcohol correction are required. Use a refractometer-specific calculator.</p>
+<h3>Are the formulas peer-reviewed?</h3>
+<p>The Plato relationships trace back to Balling/Plato and are standardized in ASBC methods. The Terrill correlation is a widely accepted empirical improvement used by many brewing tools.</p>
+</div>
+<div class="author-box">
+<p>Strumento sviluppato da <strong>Ugo Candido</strong>,. Contenuti verificati da,.</p>
+<p>Ultima revisione per l'accuratezza in data: <time datetime="2025-09-12">September 12, 2025</time>.</p>
+</div>
+</section>
+</div>
+</main>
+          </div>
+        </main>
+        
+        <aside class="w-full lg:w-1/3">
+          
+    <div class="sticky top-24 space-y-8">
+      <div id="sidebar-ad-placeholder-top"></div>
+      <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="font-bold text-lg mb-4">Related Calculators</h3>
+        <ul class="space-y-3">
+          <li><a href="https://calcdomain.com/abv" class="text-blue-600 hover:underline">homebrew abv</a></li><li><a href="https://calcdomain.com/beer-bottling" class="text-blue-600 hover:underline">beer bottling</a></li><li><a href="https://calcdomain.com/batting-average" class="text-blue-600 hover:underline">batting average</a></li><li><a href="https://calcdomain.com/bac" class="text-blue-600 hover:underline">baconian cipher encoder/decoder</a></li><li><a href="https://calcdomain.com/leveling" class="text-blue-600 hover:underline">xp / leveling</a></li><li><a href="https://calcdomain.com/golf-handicap" class="text-blue-600 hover:underline">golf handicap</a></li><li><a href="https://calcdomain.com/priming-sugar-5-gallons" class="text-blue-600 hover:underline">priming sugar calculator 5 gallons</a></li><li><a href="https://calcdomain.com/dps" class="text-blue-600 hover:underline">damage per second (dps)</a></li><li><a href="https://calcdomain.com/slot-machine-payout" class="text-blue-600 hover:underline">slot machine payout</a></li><li><a href="https://calcdomain.com/sudoku-solver" class="text-blue-600 hover:underline">sudoku solver</a></li>
+        </ul>
+      </div>
+    </div>
+    
+        </aside>
+        
+      </div>
+    </div> <footer class="bg-gray-900 text-white py-12">
+      <div class="container mx-auto px-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div>
+            <h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+            <p class="text-gray-400 mb-4">Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.</p>
+          </div>
+          <div>
+            <h4 class="text-lg font-semibold mb-4">Categories</h4>
+            <ul class="space-y-2">
+              <li><a href="https://calcdomain.com/finance" class="text-gray-400 hover:text-white">Finance</a></li>
+              <li><a href="https://calcdomain.com/health-fitness" class="text-gray-400 hover:text-white">Health & Fitness</a></li>
+              <li><a href="https://calcdomain.com/math-conversions" class="text-gray-400 hover:text-white">Math & Conversions</a></li>
+              <li><a href="https://calcdomain.com/lifestyle-everyday" class="text-gray-400 hover:text-white">Lifestyle & Everyday</a></li>
+              <li><a href="https://calcdomain.com/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+            <ul class="space-y-2">
+              <li><a href="https://calcdomain.com/mortgage-payment" class="text-gray-400 hover:text-white">Mortgage Calculator</a></li>
+              <li><a href="https://calcdomain.com/percentage-calculator" class="text-gray-400 hover:text-white">Percentage Calculator</a></li>
+              <li><a href="https://calcdomain.com/bmi-calculator" class="text-gray-400 hover:text-white">BMI Calculator</a></li>
+              <li><a href="https://calcdomain.com/auto-loan-calculator" class="text-gray-400 hover:text-white">Auto Loan Calculator</a></li>
+              <li><a href="https://calcdomain.com/house-affordability" class="text-gray-400 hover:text-white">House Affordability</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="text-lg font-semibold mb-4">Support</h4>
+            <ul class="space-y-2">
+              <li><a href="https://calcdomain.com/about" class="text-gray-400 hover:text-white">About Us</a></li>
+              <li><a href="https://calcdomain.com/contact" class="text-gray-400 hover:text-white">Contact</a></li>
+              <li><a href="https://calcdomain.com/privacy" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
+              <li><a href="https://calcdomain.com/terms" class="text-gray-400 hover:text-white">Terms of Service</a></li>
+              <li><a href="https://calcdomain.com/sitemap" class="text-gray-400 hover:text-white">Site Map</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+          <p>&copy; 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+        </div>
+      </div>
+    </footer>
+    
+    <script src="/assets/js/script_menu.js" defer></script>
+    <script src="/assets/js/script_faq.js" defer></script>
+    <script src="search.js" defer></script>
+    
     <script>
-     window.ezstandalone = window.ezstandalone || {};
-    ezstandalone.cmd = ezstandalone.cmd || [];
+      window.MathJax = {
+        tex: { inlineMath: [['\(','\)'], ['$', '$']], displayMath: [['$','$'], ['\[','\]']] },
+        svg: { fontCache: 'global' }
+      };
     </script>
-   </head>
-  </html>
- </head>
- <body>
-  <html>
-   <head>
-    <script async="" crossorigin="anonymous" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939">
-    </script>
-   </head>
-  </html>
-  <header class="bg-white shadow-sm sticky top-0 z-50">
-   <nav aria-label="Primary" class="container mx-auto px-4 lg:px-6 py-4">
-    <div class="flex justify-between items-center">
-     <a class="text-2xl font-bold text-blue-600" href="https://calcdomain.com">
-      CalcDomain
-     </a>
-     <div class="w-full max-w-md hidden md:block mx-8">
-      <div class="relative">
-       <input autocomplete="off" class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" id="search-input" placeholder="Search for a calculator..." type="search"/>
-       <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
-        </path>
-       </svg>
-       <div class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200" id="search-results">
-       </div>
-      </div>
-     </div>
-     <div class="hidden md:flex items-center space-x-6">
-      <a class="text-gray-700 hover:text-blue-600 transition-colors" href="https://calcdomain.com/search">
-       Advanced Search
-      </a>
-      <a class="text-gray-700 hover:text-blue-600 transition-colors" href="https://calcdomain.com/categories">
-       Categories
-      </a>
-     </div>
-     <button aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" class="md:hidden p-2" id="mobile-menu-toggle" type="button">
-      <svg aria-hidden="true" class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-       <path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
-       </path>
-      </svg>
-     </button>
-    </div>
-    <nav aria-label="Mobile menu" class="md:hidden mt-4 hidden" id="mobile-menu" role="navigation">
-     <div class="mb-4">
-      <div class="relative">
-       <input class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="mobile-search-input" placeholder="Search calculators..." type="search"/>
-       <svg aria-hidden="true" class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
-        </path>
-       </svg>
-      </div>
-     </div>
-     <div class="space-y-2">
-      <a class="block py-2 text-gray-700 hover:text-blue-600" href="https://calcdomain.com/search">
-       Advanced Search
-      </a>
-      <a class="block py-2 text-gray-700 hover:text-blue-600" href="https://calcdomain.com#categories">
-       Categories
-      </a>
-     </div>
-    </nav>
-   </nav>
-  </header>
-  <nav class="container mx-auto px-4 py-2 text-sm text-gray-600" id="breadcrumb-container">
-   <html>
-    <body>
-     <a class="hover:text-blue-600" href="https://calcdomain.com">
-      Home
-     </a>
-     »
-     <a class="hover:text-blue-600" href="https://calcdomain.com/hobbies">
-      Hobbies
-     </a>
-     »
-     <span>
-      homebrew abv
-     </span>
-    </body>
-   </html>
-  </nav>
-  <a class="skip-link" href="#main-content">
-   Skip to main content
-  </a>
-  <main class="main" id="main-content" role="main">
-   <div class="container">
-    <nav aria-label="Breadcrumb" class="breadcrumb">
-     Home /
-     <a href="https://calcdomain.com/lifestyle-everyday">
-      Everyday Life
-     </a>
-     /
-     <a href="https://calcdomain.com/subcategories/hobbies">
-      Hobbies
-     </a>
-     / homebrew abv calculator
-    </nav>
-    <h1>
-     homebrew abv calculator
-    </h1>
-    <p class="lead">
-     A precise, accessibility-first tool for homebrewers to compute Alcohol by Volume (ABV) and related metrics from Original Gravity (OG) and Final Gravity (FG). Choose between Standard or Advanced methods, apply hydrometer temperature correction, and get Plato-based analytics instantly.
-    </p>
-    <div class="layout">
-     <!-- Calculator -->
-     <!-- Results -->
-     <section aria-atomic="true" aria-labelledby="results-heading" aria-live="polite" class="card results">
-      <h3 id="results-heading">
-       Results
-      </h3>
-      <div class="result">
-       <div class="label">
-        Alcohol by Volume (ABV)
-       </div>
-       <div class="value">
-        <span class="mono" id="abv">
-         0.00
-        </span>
-        %
-       </div>
-      </div>
-      <div class="result">
-       <div class="label">
-        Alcohol by Weight (ABW)
-       </div>
-       <div class="value">
-        <span class="mono" id="abw">
-         0.00
-        </span>
-        %
-       </div>
-      </div>
-      <div class="result">
-       <div class="label">
-        Original Extract
-       </div>
-       <div class="value">
-        <span class="mono" id="ogp">
-         0.00
-        </span>
-        °P
-       </div>
-      </div>
-      <div class="result">
-       <div class="label">
-        Final Extract (Apparent)
-       </div>
-       <div class="value">
-        <span class="mono" id="fgp">
-         0.00
-        </span>
-        °P
-       </div>
-      </div>
-      <div class="result">
-       <div class="label">
-        Real Extract
-       </div>
-       <div class="value">
-        <span class="mono" id="re">
-         0.00
-        </span>
-        °P
-       </div>
-      </div>
-      <div class="result">
-       <div class="label">
-        Apparent Attenuation
-       </div>
-       <div class="value">
-        <span class="mono" id="aa">
-         0.0
-        </span>
-        %
-       </div>
-      </div>
-      <p class="hint" style="margin-top:.75rem">
-       Results update automatically as you type. Values are rounded for readability.
-      </p>
-     </section>
-    </div>
-    <!-- Authoritative Content Ecosystem -->
-    <section aria-labelledby="content-heading" class="content">
-     <h2 id="content-heading">
-      Data Source and Methodology
-     </h2>
-     <p>
-      <strong>
-       Authoritative Data Source:
-      </strong>
-      American Society of Brewing Chemists (ASBC), Methods of Analysis. Wort-12: Extract—Specific Gravity and Plato (2014), and Beer-4/Beer-6: Alcohol in Beer (various editions). Official resource:
-      <a href="https://www.asbcnet.org/exams-resources/Resources/Pages/Methods.aspx" rel="nofollow noopener" target="_blank">
-       asbcnet.org — Methods of Analysis
-      </a>
-      . Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.
-     </p>
-     <p>
-      For enhanced ABV accuracy we implement the widely used Terrill correlation alongside the standard linear factor method. Hydrometer temperature correction follows the polynomial water density compensation commonly used in brewing software.
-     </p>
-     <h2>
-      The Formula Explained
-     </h2>
-     <div aria-describedby="formula-note" class="formula-box">
-      <div class="hint" id="formula-note">
-       LaTeX notation is shown; variables are defined in the Glossary.
-      </div>
-      <p>
-       <strong>
-        1) Standard ABV
-       </strong>
-      </p>
-      <span class="formula">
-       ABV_{\%} = (OG - FG) \times 131.25
-      </span>
-      <p>
-       <strong>
-        2) Advanced ABV (Terrill)
-       </strong>
-      </p>
-      <span class="formula">
-       ABV_{\%} = \frac{76.08 \times (OG - FG)}{1.775 - OG} \times \frac{FG}{0.794}
-      </span>
-      <p>
-       <strong>
-        3) Plato (°P) from Specific Gravity
-       </strong>
-      </p>
-      <span class="formula">
-       P = -616.868 + 1111.14\,SG - 630.272\,SG^{2} + 135.997\,SG^{3}
-      </span>
-      <p>
-       <strong>
-        4) Real Extract (Balling)
-       </strong>
-      </p>
-      <span class="formula">
-       RE = 0.1808 \times P_{OG} + 0.8192 \times P_{FG}
-      </span>
-      <p>
-       <strong>
-        5) Apparent Attenuation
-       </strong>
-      </p>
-      <span class="formula">
-       AA_{\%} = \frac{P_{OG} - P_{FG}}{P_{OG}} \times 100
-      </span>
-      <p>
-       <strong>
-        6) Alcohol by Weight
-       </strong>
-      </p>
-      <span class="formula">
-       ABW_{\%} = \frac{0.79336 \times ABV_{\%}}{FG}
-      </span>
-      <p>
-       <strong>
-        7) Hydrometer Temperature Correction
-       </strong>
-      </p>
-      <span class="formula">
-       SG_{corr} = SG_{obs} \times \frac{CF(T_{sample})}{CF(T_{cal})}
-      </span>
-      <span class="formula">
-       CF(T) = 1.00130346 - 1.34722124\times10^{-4}T + 2.04052596\times10^{-6}T^{2} - 2.32820948\times10^{-9}T^{3}
-      </span>
-     </div>
-     <h2>
-      Glossary of Variables
-     </h2>
-     <dl class="definition-list">
-      <dt>
-       Original Gravity (OG)
-      </dt>
-      <dd>
-       Specific gravity of wort before fermentation (e.g., 1.050).
-      </dd>
-      <dt>
-       Final Gravity (FG)
-      </dt>
-      <dd>
-       Specific gravity after fermentation; typically lower than OG (e.g., 1.010).
-      </dd>
-      <dt>
-       ABV (%)
-      </dt>
-      <dd>
-       Alcohol by Volume; primary strength measure for beer.
-      </dd>
-      <dt>
-       ABW (%)
-      </dt>
-      <dd>
-       Alcohol by Weight; ABV scaled by beer density.
-      </dd>
-      <dt>
-       Plato (°P)
-      </dt>
-      <dd>
-       Percentage by weight of dissolved extract (sugars) in wort/beer.
-      </dd>
-      <dt>
-       Real Extract (RE)
-      </dt>
-      <dd>
-       Extract adjusted for alcohol presence, approximating residual sugars.
-      </dd>
-      <dt>
-       Apparent Attenuation (AA%)
-      </dt>
-      <dd>
-       Degree to which fermentable extract appears to have been consumed.
-      </dd>
-      <dt>
-       Temperature Correction
-      </dt>
-      <dd>
-       Adjustment to SG readings when sample temperature differs from hydrometer calibration.
-      </dd>
-     </dl>
-     <h2>
-      How It Works: A Step-by-Step Example
-     </h2>
-     <ol>
-      <li>
-       Inputs: OG = 1.050, FG = 1.012, 20°C sample, 20°C calibration (no temperature bias).
-      </li>
-      <li>
-       Convert to Plato:
-       <span class="formula">
-        P_{OG} \approx 12.39\,°P,\; P_{FG} \approx 3.07\,°P
-       </span>
-      </li>
-      <li>
-       Standard ABV:
-       <span class="formula">
-        ABV = (1.050 - 1.012)\times 131.25 \approx 4.99\%
-       </span>
-      </li>
-      <li>
-       Advanced (Terrill):
-       <span class="formula">
-        ABV \approx \frac{76.08\times 0.038}{1.775 - 1.050}\times \frac{1.012}{0.794} \approx 5.08\%
-       </span>
-      </li>
-      <li>
-       ABW from ABV and FG:
-       <span class="formula">
-        ABW \approx \frac{0.79336\times 5.08}{1.012} \approx 3.98\%
-       </span>
-      </li>
-      <li>
-       Real Extract:
-       <span class="formula">
-        RE = 0.1808 \times 12.39 + 0.8192 \times 3.07 \approx 4.71\,°P
-       </span>
-      </li>
-      <li>
-       Apparent Attenuation:
-       <span class="formula">
-        AA = \frac{12.39 - 3.07}{12.39}\times 100 \approx 75.2\%
-       </span>
-      </li>
-     </ol>
-     <h2>
-      Frequently Asked Questions (FAQ)
-     </h2>
-     <div>
-      <h3>
-       Which ABV method should I choose?
-      </h3>
-      <p>
-       The Advanced (Terrill) method is recommended for improved accuracy, especially for higher gravity beers. The Standard method is sufficient for low to moderate OG beers.
-      </p>
-      <h3>
-       How far can the sample temperature be from calibration before I must correct?
-      </h3>
-      <p>
-       Any difference can bias results, but corrections become important beyond ~5–6°C (10°F). Use the correction option for best accuracy.
-      </p>
-      <h3>
-       Why do Plato values matter?
-      </h3>
-      <p>
-       Plato expresses extract as mass percentage and underpins professional brewing calculations, enabling Real Extract and attenuation metrics.
-      </p>
-      <h3>
-       Is ABW just ABV times a constant?
-      </h3>
-      <p>
-       ABW is derived from ABV and the beer’s density (FG). We use ABW = 0.79336 × ABV / FG.
-      </p>
-      <h3>
-       My FG equals OG. What does it mean?
-      </h3>
-      <p>
-       Fermentation likely did not start or the readings are off. Recheck calibration, temperature, and measurement technique.
-      </p>
-      <h3>
-       Can this calculator handle refractometer readings?
-      </h3>
-      <p>
-       This tool targets hydrometer SG. For refractometers, a wort correction factor and alcohol correction are required. Use a refractometer-specific calculator.
-      </p>
-      <h3>
-       Are the formulas peer-reviewed?
-      </h3>
-      <p>
-       The Plato relationships trace back to Balling/Plato and are standardized in ASBC methods. The Terrill correlation is a widely accepted empirical improvement used by many brewing tools.
-      </p>
-     </div>
-     <div class="author-box">
-      <p>
-       Strumento sviluppato da
-       <strong>
-        Ugo Candido
-       </strong>
-       ,. Contenuti verificati da,.
-      </p>
-      <p>
-       Ultima revisione per l'accuratezza in data:
-       <time datetime="2025-09-12">
-        September 12, 2025
-       </time>
-       .
-      </p>
-     </div>
-    </section>
-   </div>
-  </main>
-  <!-- Standard Footer -->
-  <script defer="">
-   (function(){
-      'use strict';
-
-      // Elements
-      const methodRadios = document.querySelectorAll('input[name="method"]');
-      const ogEl = document.getElementById('og');
-      const fgEl = document.getElementById('fg');
-      const tempToggle = document.getElementById('tempToggle');
-      const tempBlock = document.getElementById('tempBlock');
-      const sampleTemp = document.getElementById('sampleTemp');
-      const sampleTempUnit = document.getElementById('sampleTempUnit');
-      const calTemp = document.getElementById('calTemp');
-      const calTempUnit = document.getElementById('calTempUnit');
-
-      const abvEl = document.getElementById('abv');
-      const abwEl = document.getElementById('abw');
-      const ogpEl = document.getElementById('ogp');
-      const fgpEl = document.getElementById('fgp');
-      const reEl  = document.getElementById('re');
-      const aaEl  = document.getElementById('aa');
-
-      const ogError = document.getElementById('ogError');
-      const fgError = document.getElementById('fgError');
-      const tError  = document.getElementById('tError');
-
-      // Accessible tooltips
-      function attachTooltip(btnId, tipId){
-        const btn = document.getElementById(btnId);
-        const tip = document.getElementById(tipId);
-        if(!btn || !tip) return;
-        btn.addEventListener('click', () => {
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          tip.hidden = expanded;
-        });
-        btn.addEventListener('keydown', (e)=>{
-          if(e.key === 'Escape'){
-            btn.setAttribute('aria-expanded','false');
-            tip.hidden = true;
-            btn.focus();
-          }
-        });
-      }
-      attachTooltip('ogInfoBtn','ogTip');
-      attachTooltip('fgInfoBtn','fgTip');
-      attachTooltip('tInfoBtn','tTip');
-
-      // Utilities
-      const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
-      const toC = (val, unit) => unit === 'F' ? (val - 32) * 5/9 : val;
-
-      // Hydrometer temperature correction coefficient
-      function cfPoly(Tc){
-        // T in °C
-        return 1.00130346 - 0.000134722124*Tc + 0.00000204052596*Tc*Tc - 0.00000000232820948*Tc*Tc*Tc;
-      }
-      function correctedSG(sg, sampT, sampUnit, calT, calUnit){
-        const Ts = toC(sampT, sampUnit);
-        const Tc = toC(calT, calUnit);
-        const cf = cfPoly(Ts) / cfPoly(Tc);
-        return sg * cf;
-      }
-
-      // SG <-> Plato
-      function sgToPlato(sg){
-        // ASBC cubic
-        return -616.868 + 1111.14*sg - 630.272*sg*sg + 135.997*sg*sg*sg;
-      }
-
-      // Validation
-      function validateOG(){
-        const v = parseFloat(ogEl.value);
-        let msg = '';
-        if (isNaN(v)) msg = 'Please enter a number for OG.';
-        else if (v < 0.98 || v > 1.2) msg = 'OG must be between 0.980 and 1.200.';
-        ogError.textContent = msg;
-        ogEl.setAttribute('aria-invalid', msg ? 'true' : 'false');
-        return !msg;
-      }
-      function validateFG(){
-        const og = parseFloat(ogEl.value);
-        const v = parseFloat(fgEl.value);
-        let msg = '';
-        if (isNaN(v)) msg = 'Please enter a number for FG.';
-        else if (v < 0.98 || v > 1.2) msg = 'FG must be between 0.980 and 1.200.';
-        else if (!isNaN(og) && v >= og) msg = 'FG must be less than OG for a typical fermentation.';
-        fgError.textContent = msg;
-        fgEl.setAttribute('aria-invalid', msg ? 'true' : 'false');
-        return !msg;
-      }
-      function validateTemps(){
-        if (!tempToggle.checked){ tError.textContent = ''; return true; }
-        const s = parseFloat(sampleTemp.value);
-        const c = parseFloat(calTemp.value);
-        let msg = '';
-        if (isNaN(s) || isNaN(c)) msg = 'Enter both sample and calibration temperatures.';
-        else if (s < 0 || s > 100 || c < 0 || c > 100) msg = 'Temperatures must be between 0 and 100 °C (32–212 °F).';
-        tError.textContent = msg;
-        sampleTemp.setAttribute('aria-invalid', msg ? 'true' : 'false');
-        calTemp.setAttribute('aria-invalid', msg ? 'true' : 'false');
-        return !msg;
-      }
-
-      // Calculation
-      function compute(){
-        if(!(validateOG() & validateFG() & validateTemps())) return;
-
-        let og = parseFloat(ogEl.value);
-        let fg = parseFloat(fgEl.value);
-
-        if (tempToggle.checked){
-          og = correctedSG(og, parseFloat(sampleTemp.value), sampleTempUnit.value, parseFloat(calTemp.value), calTempUnit.value);
-          fg = correctedSG(fg, parseFloat(sampleTemp.value), sampleTempUnit.value, parseFloat(calTemp.value), calTempUnit.value);
-        }
-
-        // Guard rails
-        og = clamp(og, 0.98, 1.2);
-        fg = clamp(fg, 0.98, 1.2);
-
-        const ogP = sgToPlato(og);
-        const fgP = sgToPlato(fg);
-        const RE  = 0.1808 * ogP + 0.8192 * fgP;
-
-        // Method
-        const method = [...methodRadios].find(r => r.checked)?.value || 'standard';
-
-        let abv;
-        if (method === 'advanced'){
-          const denom = (1.775 - og);
-          abv = denom <= 0 ? NaN : (76.08 * (og - fg) / denom) * (fg / 0.794);
-        } else {
-          abv = (og - fg) * 131.25;
-        }
-
-        const abw = isFinite(abv) && fg > 0 ? (0.79336 * abv) / fg : NaN;
-        const aa  = (ogP > 0) ? ((ogP - fgP) / ogP) * 100 : NaN;
-
-        // Update UI
-        abvEl.textContent = isFinite(abv) ? abv.toFixed(2) : '—';
-        abwEl.textContent = isFinite(abw) ? abw.toFixed(2) : '—';
-        ogpEl.textContent = isFinite(ogP) ? ogP.toFixed(2) : '—';
-        fgpEl.textContent = isFinite(fgP) ? fgP.toFixed(2) : '—';
-        reEl.textContent  = isFinite(RE)  ? RE.toFixed(2) : '—';
-        aaEl.textContent  = isFinite(aa)  ? aa.toFixed(1) : '—';
-      }
-
-      // Event wiring
-      ogEl.addEventListener('blur', validateOG);
-      fgEl.addEventListener('blur', validateFG);
-      sampleTemp.addEventListener('blur', validateTemps);
-      calTemp.addEventListener('blur', validateTemps);
-
-      [ogEl, fgEl, sampleTemp, sampleTempUnit, calTemp, calTempUnit].forEach(el=>{
-        el.addEventListener('input', compute);
-        el.addEventListener('change', compute);
-      });
-      methodRadios.forEach(r=> r.addEventListener('change', compute));
-
-      tempToggle.addEventListener('change', ()=>{
-        const expanded = tempToggle.checked;
-        tempBlock.hidden = !expanded;
-        compute();
-      });
-
-      // Initial compute
-      compute();
-    })();
-  </script>
-  <footer class="bg-gray-900 text-white py-12">
-   <div class="container mx-auto px-4">
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-     <div>
-      <h3 class="text-2xl font-bold mb-4">
-       CalcDomain
-      </h3>
-      <p class="text-gray-400 mb-4">
-       Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.
-      </p>
-     </div>
-     <div>
-      <h4 class="text-lg font-semibold mb-4">
-       Categories
-      </h4>
-      <ul class="space-y-2">
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/finance">
-         Finance
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/health-fitness">
-         Health &amp; Fitness
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/math-conversions">
-         Math &amp; Conversions
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/lifestyle-everyday">
-         Lifestyle &amp; Everyday
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/construction-diy">
-         Construction &amp; DIY
-        </a>
-       </li>
-      </ul>
-     </div>
-     <div>
-      <h4 class="text-lg font-semibold mb-4">
-       Popular Tools
-      </h4>
-      <ul class="space-y-2">
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/mortgage-payment">
-         Mortgage Calculator
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/percentage-calculator">
-         Percentage Calculator
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/bmi-calculator">
-         BMI Calculator
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/auto-loan-calculator">
-         Auto Loan Calculator
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/house-affordability">
-         House Affordability
-        </a>
-       </li>
-      </ul>
-     </div>
-     <div>
-      <h4 class="text-lg font-semibold mb-4">
-       Support
-      </h4>
-      <ul class="space-y-2">
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/about">
-         About Us
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/contact">
-         Contact
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/privacy">
-         Privacy Policy
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/terms">
-         Terms of Service
-        </a>
-       </li>
-       <li>
-        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/sitemap">
-         Site Map
-        </a>
-       </li>
-      </ul>
-     </div>
-    </div>
-    <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-     <p>
-      © 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone
-     </p>
-    </div>
-   </div>
-  </footer>
-  <script defer="True" src="/assets/js/script_menu.js">
-  </script>
-  <script defer="True" src="/assets/js/script_faq.js">
-  </script>
-  <script defer="True" src="search.js">
-  </script>
- </body>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+</body>
 </html>
