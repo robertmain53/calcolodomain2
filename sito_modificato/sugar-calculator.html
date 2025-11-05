@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <link href="https://calcdomain.com/sugar-calculator" rel="canonical"/>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>
+   Sugar Calculator — Intake, Beverages, and Blood Glucose Converter
+  </title>
+  <meta content="All-in-one sugar calculator: estimate daily added sugar intake and % of WHO/FDA limits, compute sugar in beverages from nutrition labels, and convert blood glucose between mg/dL and mmol/L." name="description"/>
+  <link href="https://calcdomain.com/favicon-96x96.png" rel="icon" sizes="96x96" type="image/png"/>
+  <link href="https://calcdomain.com/favicon.svg" rel="icon" type="image/svg+xml"/>
+  <link href="https://calcdomain.com/favicon.ico" rel="shortcut icon"/>
+  <link href="https://calcdomain.com/apple-touch-icon.png" rel="apple-touch-icon" sizes="180x180"/>
+  <link href="https://calcdomain.com/site.webmanifest" rel="manifest"/>
+  <!-- Tailwind (CDN) for fast prototyping and solid defaults -->
+  <script src="https://cdn.tailwindcss.com">
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+  <!-- Chart.js for the intake comparison chart -->
+  <script defer="" src="https://cdn.jsdelivr.net/npm/chart.js">
+  </script>
+  <!-- MathJax for LaTeX formulas -->
+  <script defer="" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+  </script>
+  <style>
+   :root { --focus: #2563eb; }
+    body { font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; }
+    .prose { max-width: 72ch; }
+    .prose h2 { font-size: 1.5rem; font-weight: 700; margin-top: 2rem; margin-bottom: 0.75rem; }
+    .prose h3 { font-size: 1.25rem; font-weight: 700; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+    .formula-box { background:#f3f4f6;border:1px solid #d1d5db;border-radius:10px;padding:1rem;overflow:auto }
+    .result-card { background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:1rem;text-align:center }
+    .result-card h4 { font-size:.95rem;color:#4b5563;margin-bottom:.25rem }
+    .result-card p { font-size:1.5rem;font-weight:700;color:#2563eb }
+    .btn { border:1px solid #cbd5e1;border-radius:9999px;padding:.625rem 1rem;font-weight:600 }
+    .btn[aria-pressed="true"] { border-color:#2563eb;color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.15) }
+    .tabpanel[hidden] { display:none !important }
+    .tooltip-box { display:none;margin-top:.5rem;border:1px solid #e5e7eb;background:#f9fafb;border-radius:.5rem;padding:.75rem;color:#374151 }
+    .minh-results { min-height: 16rem; } /* prevents CLS in Results region */
+    .focus-ring:focus { outline: 3px solid var(--focus); outline-offset: 2px; }
+    input, select, button { min-height: 44px; } /* touch target ~48px incl. padding/borders */
+    @media (min-width:640px){ input,select,button{ min-height:48px } }
+    @media print {
+      body * { visibility: hidden; }
+      #print-section, #print-section * { visibility: visible; }
+      #print-section { position: absolute; inset: 0; }
+      #intakeChartContainer { display: none !important; }
+    }
+  </style>
+  <!-- JSON-LD: WebPage -->
+  <script type="application/ld+json">
+   {
+    "@context":"https://schema.org",
+    "@type":"WebPage",
+    "name":"Sugar Calculator — Intake, Beverages, and Blood Glucose Converter",
+    "url":"https://calcdomain.com/sugar-calculator",
+    "inLanguage":"en",
+    "description":"Estimate daily added sugar intake versus WHO/FDA limits, compute drink sugar from nutrition labels, and convert blood glucose units.",
+    "author":{"@type":"Person","name":"Ugo Candido"},
+    "publisher":{"@type":"Organization","name":"CalcDomain"}
+  }
+  </script>
+  <!-- JSON-LD: Breadcrumb -->
+  <script type="application/ld+json">
+   {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Health & Fitness",
+      "item": "https://calcdomain.com/health-fitness"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Diet & Nutrition",
+      "item": "https://calcdomain.com/subcategories/diet-nutrition"
+    },
+    {
+      "@type": "ListItem",
+      "position": 4,
+      "name": "Sugar Calculator",
+      "item": "https://calcdomain.com/sugar-calculator"
+    }
+  ]
+}
+  </script>
+  <!-- JSON-LD: HowTo (Daily Intake) -->
+  <script type="application/ld+json">
+   {
+    "@context":"https://schema.org",
+    "@type":"HowTo",
+    "name":"How to estimate your daily added sugar intake",
+    "step":[
+      {"@type":"HowToStep","name":"List foods/drinks","text":"Enter servings and grams of sugar per serving for each item you routinely consume today."},
+      {"@type":"HowToStep","name":"Review totals","text":"The calculator sums grams, converts to teaspoons and kcal, and compares against WHO and FDA limits."},
+      {"@type":"HowToStep","name":"Adjust choices","text":"Reduce or swap items to align with your target (e.g., WHO conditional 25 g/day)."}
+    ]
+  }
+  </script>
+  <!-- JSON-LD: FAQPage -->
+  <script id="faq-jsonld" type="application/ld+json">
+   {
+    "@context":"https://schema.org",
+    "@type":"FAQPage",
+    "mainEntity":[
+      {"@type":"Question","name":"How many grams of sugar are in a teaspoon?","acceptedAnswer":{"@type":"Answer","text":"About 4 grams per level teaspoon of granulated sugar."}},
+      {"@type":"Question","name":"What is the WHO recommendation for free (added) sugar intake?","acceptedAnswer":{"@type":"Answer","text":"WHO suggests reducing free sugars to less than 10% of total energy intake, with a conditional recommendation to aim below 5% (≈25 g/day for a 2000 kcal diet)."}},
+      {"@type":"Question","name":"What is the FDA Daily Value for added sugars on labels?","acceptedAnswer":{"@type":"Answer","text":"The %DV for added sugars is based on 50 g per day on a 2,000 kcal diet."}},
+      {"@type":"Question","name":"How do I convert blood glucose from mg/dL to mmol/L?","acceptedAnswer":{"@type":"Answer","text":"Divide mg/dL by 18.0182 to get mmol/L. Multiply mmol/L by 18.0182 to get mg/dL."}},
+      {"@type":"Question","name":"Does fruit count toward added sugar?","acceptedAnswer":{"@type":"Answer","text":"Whole fruit contains intrinsic sugars and fiber and is not considered added sugar. Fruit juice and honey are considered free sugars in the WHO definition."}},
+      {"@type":"Question","name":"Are sugary drink calories the same as sugar grams × 4?","acceptedAnswer":{"@type":"Answer","text":"Yes. Carbohydrate energy is approximated as 4 kcal per gram; sugar is a carbohydrate."}}
+    ]
+  }
+  </script>
+  <html>
+   <head>
+    <script async="" src="https://www.googletagmanager.com/gtag/js?id=TUO_ID_GA">
+    </script>
+    <script>
+     window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'TUO_ID_GA');
+    </script>
+   </head>
+  </html>
+ </head>
+ <body class="bg-gray-50 text-gray-900">
+  <!-- Simple, non-sticky header (SEO-friendly, mobile-first) -->
+  <header class="bg-white shadow-sm sticky top-0 z-50">
+   <nav aria-label="Primary" class="container mx-auto px-4 lg:px-6 py-4">
+    <div class="flex justify-between items-center">
+     <a class="text-2xl font-bold text-blue-600" href="https://calcdomain.com">
+      CalcDomain
+     </a>
+     <div class="w-full max-w-md hidden md:block mx-8">
+      <div class="relative">
+       <input autocomplete="off" class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" id="search-input" placeholder="Search for a calculator..." type="search"/>
+       <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+        </path>
+       </svg>
+       <div class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200" id="search-results">
+       </div>
+      </div>
+     </div>
+     <div class="hidden md:flex items-center space-x-6">
+      <a class="text-gray-700 hover:text-blue-600 transition-colors" href="https://calcdomain.com/search">
+       Advanced Search
+      </a>
+      <a class="text-gray-700 hover:text-blue-600 transition-colors" href="https://calcdomain.com/categories">
+       Categories
+      </a>
+     </div>
+     <button aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" class="md:hidden p-2" id="mobile-menu-toggle" type="button">
+      <svg aria-hidden="true" class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+       <path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+       </path>
+      </svg>
+     </button>
+    </div>
+    <nav aria-label="Mobile menu" class="md:hidden mt-4 hidden" id="mobile-menu" role="navigation">
+     <div class="mb-4">
+      <div class="relative">
+       <input class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="mobile-search-input" placeholder="Search calculators..." type="search"/>
+       <svg aria-hidden="true" class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+        </path>
+       </svg>
+      </div>
+     </div>
+     <div class="space-y-2">
+      <a class="block py-2 text-gray-700 hover:text-blue-600" href="https://calcdomain.com/search">
+       Advanced Search
+      </a>
+      <a class="block py-2 text-gray-700 hover:text-blue-600" href="https://calcdomain.com/categories">
+       Categories
+      </a>
+     </div>
+    </nav>
+   </nav>
+  </header>
+  <html>
+   <body>
+    <nav class="container mx-auto px-4 py-2 text-sm text-gray-600" id="breadcrumb-container">
+    </nav>
+    <div class="container mx-auto px-4 py-8">
+     <div class="flex flex-col lg:flex-row gap-8">
+      <main class="w-full lg:w-2/3">
+       <main class="container mx-auto px-4 py-8">
+        <nav aria-label="Breadcrumb" class="text-sm text-gray-600 mb-4">
+         <a class="hover:text-blue-700 focus-ring" href="https://calcdomain.com">
+          Home
+         </a>
+         »
+         <a class="hover:text-blue-700 focus-ring" href="https://calcdomain.com/health-fitness">
+          Health &amp; Fitness
+         </a>
+         »
+         <a class="hover:text-blue-700 focus-ring" href="https://calcdomain.com/subcategories/diet-nutrition">
+          Diet &amp; Nutrition
+         </a>
+         »
+         <span class="text-gray-900">
+          Sugar Calculator
+         </span>
+        </nav>
+        <div class="bg-white p-6 rounded-lg shadow-sm" id="print-section">
+         <h1 class="text-3xl font-extrabold mb-2">
+          sugar calculator
+         </h1>
+         <p class="text-gray-700 mb-6">
+          A professional, all-in-one sugar tool for clinicians, dietitians, athletes, and informed consumers. Calculate daily
+          <em>
+           added
+          </em>
+          sugar intake versus WHO/FDA limits, compute sugar in beverages from nutrition labels, and convert blood glucose units accurately.
+         </p>
+         <!-- CALCULATOR INTERFACE -->
+         <section class="space-y-6" id="calculator">
+          <!-- Tabs -->
+          <div aria-label="Calculator modes" class="flex flex-wrap gap-2" role="tablist">
+           <button aria-controls="panel-intake" aria-pressed="true" aria-selected="true" class="btn focus-ring" id="tab-intake" role="tab">
+            Daily Added Sugar
+           </button>
+           <button aria-controls="panel-beverage" aria-pressed="false" aria-selected="false" class="btn focus-ring" id="tab-beverage" role="tab">
+            Beverage (Label)
+           </button>
+           <button aria-controls="panel-glucose" aria-pressed="false" aria-selected="false" class="btn focus-ring" id="tab-glucose" role="tab">
+            Blood Glucose Converter
+           </button>
+          </div>
+          <!-- Panel: Daily Intake -->
+          <section aria-labelledby="tab-intake" class="tabpanel grid gap-6" id="panel-intake" role="tabpanel">
+           <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+             <label class="block font-semibold" for="servings1">
+              Item 1 — Servings*
+             </label>
+             <div class="flex items-start gap-2">
+              <input aria-describedby="servings1_help servings1_err" aria-required="true" class="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus-ring" id="servings1" inputmode="decimal" min="0" step="0.1" type="number" value="1"/>
+              <button aria-controls="servings1_help" aria-expanded="false" class="focus-ring px-2 rounded border" type="button">
+               ?
+              </button>
+             </div>
+             <p class="tooltip-box" id="servings1_help">
+              Number of portions you consume today.
+             </p>
+             <p aria-live="polite" class="text-red-700 text-sm mt-1" id="servings1_err">
+             </p>
+            </div>
+            <div>
+             <label class="block font-semibold" for="grams1">
+              Item 1 — Sugar per Serving (g)*
+             </label>
+             <div class="flex items-start gap-2">
+              <input aria-describedby="grams1_help grams1_err" aria-required="true" class="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus-ring" id="grams1" inputmode="decimal" min="0" step="0.1" type="number" value="12"/>
+              <button aria-controls="grams1_help" aria-expanded="false" class="focus-ring px-2 rounded border" type="button">
+               ?
+              </button>
+             </div>
+             <p class="tooltip-box" id="grams1_help">
+              From the label: “Sugars” or “Added sugars” per serving.
+             </p>
+             <p aria-live="polite" class="text-red-700 text-sm mt-1" id="grams1_err">
+             </p>
+            </div>
+            <div>
+             <label class="block font-semibold" for="servings2">
+              Item 2 — Servings
+             </label>
+             <input aria-describedby="servings2_err" class="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus-ring" id="servings2" inputmode="decimal" min="0" step="0.1" type="number" value="0"/>
+             <p aria-live="polite" class="text-red-700 text-sm mt-1" id="servings2_err">
+             </p>
+            </div>
+            <div>
+             <label class="block font-semibold" for="grams2">
+              Item 2 — Sugar per Serving (g)
+             </label>
+             <input aria-describedby="grams2_err" class="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus-ring" id="grams2" inputmode="decimal" min="0" step="0.1" type="number" value="0"/>
+             <p aria-live="polite" class="text-red-700 text-sm mt-1" id="grams2_err">
+             </p>
+            </div>
+            <div>
+             <label class="block font-semibold" for="energyTarget">
+              Daily Energy Baseline (kcal)
+             </label>
+             <div class="flex items-start gap-2">
+              <input aria-describedby="energyTarget_help energyTarget_err" class="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus-ring" id="energyTarget" inputmode="numeric" min="1000" step="10" type="number" value="2000"/>
+              <button aria-controls="energyTarget_help" aria-expanded="false" class="focus-ring px-2 rounded border" type="button">
+               ?
+              </button>
+             </div>
+             <p class="tooltip-box" id="energyTarget_help">
+              Used to compute 10% and 5% of energy as sugar reference.
+             </p>
+             <p aria-live="polite" class="text-red-700 text-sm mt-1" id="energyTarget_err">
+             </p>
+            </div>
+            <div>
+             <label class="block font-semibold" for="unitsTeaspoon">
+              Teaspoon size (g)
+             </label>
+             <select class="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus-ring" id="unitsTeaspoon">
+              <option selected="" value="4">
+               4 g (standard nutrition conversion)
+              </option>
+              <option value="4.2">
+               4.2 g (alt. culinary)
+              </option>
+             </select>
+            </div>
+           </div>
+           <div class="flex flex-wrap gap-3">
+            <button aria-label="Add another item" class="btn focus-ring" id="addRow" type="button">
+             + Add another item
+            </button>
+            <button class="btn focus-ring" id="resetRows" type="button">
+             Reset
+            </button>
+           </div>
+          </section>
+          <!-- Panel: Beverage -->
+          <section aria-labelledby="tab-beverage" class="tabpanel grid gap-6" hidden="" id="panel-beverage" role="tabpanel">
+           <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+             <label class="block font-semibold" for="drinkVolume">
+              Drink Volume (mL)*
+             </label>
+             <input aria-describedby="drinkVolume_err" aria-required="true" class="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus-ring" id="drinkVolume" inputmode="decimal" min="0" step="1" type="number" value="330"/>
+             <p aria-live="polite" class="text-red-700 text-sm mt-1" id="drinkVolume_err">
+             </p>
+            </div>
+            <div>
+             <label class="block font-semibold" for="sugarPer100">
+              Sugar per 100 mL (g)*
+             </label>
+             <div class="flex items-start gap-2">
+              <input aria-describedby="sugarPer100_help sugarPer100_err" aria-required="true" class="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus-ring" id="sugarPer100" inputmode="decimal" min="0" step="0.1" type="number" value="10.6"/>
+              <button aria-controls="sugarPer100_help" aria-expanded="false" class="focus-ring px-2 rounded border" type="button">
+               ?
+              </button>
+             </div>
+             <p class="tooltip-box" id="sugarPer100_help">
+              From the nutrition label (EU style): grams of sugars per 100 mL.
+             </p>
+             <p aria-live="polite" class="text-red-700 text-sm mt-1" id="sugarPer100_err">
+             </p>
+            </div>
+           </div>
+          </section>
+          <!-- Panel: Glucose Converter -->
+          <section aria-labelledby="tab-glucose" class="tabpanel grid gap-6" hidden="" id="panel-glucose" role="tabpanel">
+           <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div class="sm:col-span-2">
+             <label class="block font-semibold" for="glucoseInput">
+              Blood Glucose Value*
+             </label>
+             <input aria-describedby="glucoseInput_err" aria-required="true" class="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus-ring" id="glucoseInput" inputmode="decimal" min="0" step="0.1" type="number" value="100"/>
+             <p aria-live="polite" class="text-red-700 text-sm mt-1" id="glucoseInput_err">
+             </p>
+            </div>
+            <div>
+             <label class="block font-semibold" for="glucoseUnit">
+              Unit
+             </label>
+             <select class="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus-ring" id="glucoseUnit">
+              <option selected="" value="mgdl">
+               mg/dL
+              </option>
+              <option value="mmoll">
+               mmol/L
+              </option>
+             </select>
+            </div>
+           </div>
+           <p class="text-sm text-gray-600">
+            Conversion uses \\(\mathrm{mmol/L} = \\frac{\mathrm{mg/dL}}{18.0182}\\).
+           </p>
+          </section>
+         </section>
+         <!-- RESULTS -->
+         <section class="mt-8 bg-blue-50 border border-blue-100 rounded-lg p-5 minh-results" id="results">
+          <h2 class="text-xl font-bold mb-3">
+           Results
+          </h2>
+          <!-- Intake Results -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-4" id="results-intake">
+           <div class="result-card">
+            <h4>
+             Total Added Sugar
+            </h4>
+            <p id="totalGrams">
+             0 g
+            </p>
+           </div>
+           <div class="result-card">
+            <h4>
+             Teaspoons
+            </h4>
+            <p id="totalTsp">
+             0 tsp
+            </p>
+           </div>
+           <div class="result-card">
+            <h4>
+             Calories from Sugar
+            </h4>
+            <p id="totalKcal">
+             0 kcal
+            </p>
+           </div>
+           <div class="result-card">
+            <h4>
+             % of WHO 10% limit
+            </h4>
+            <p id="pctWHO10">
+             0%
+            </p>
+           </div>
+           <div class="result-card">
+            <h4>
+             % of WHO 5% (≈25 g)
+            </h4>
+            <p id="pctWHO5">
+             0%
+            </p>
+           </div>
+           <div class="result-card">
+            <h4>
+             % of FDA Added Sugars DV (50 g)
+            </h4>
+            <p id="pctFDA">
+             0%
+            </p>
+           </div>
+          </div>
+          <div class="mt-6 h-56" id="intakeChartContainer">
+           <canvas aria-label="Sugar intake compared to WHO and FDA limits" id="intakeChart">
+           </canvas>
+          </div>
+          <!-- Beverage Results -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 hidden" id="results-beverage">
+           <div class="result-card">
+            <h4>
+             Sugar in Drink
+            </h4>
+            <p id="bevGrams">
+             0 g
+            </p>
+           </div>
+           <div class="result-card">
+            <h4>
+             Teaspoons
+            </h4>
+            <p id="bevTsp">
+             0 tsp
+            </p>
+           </div>
+           <div class="result-card">
+            <h4>
+             Calories from Sugar
+            </h4>
+            <p id="bevKcal">
+             0 kcal
+            </p>
+           </div>
+          </div>
+          <!-- Glucose Results -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 hidden" id="results-glucose">
+           <div class="result-card">
+            <h4>
+             mg/dL
+            </h4>
+            <p id="outMgdl">
+             0
+            </p>
+           </div>
+           <div class="result-card">
+            <h4>
+             mmol/L
+            </h4>
+            <p id="outMmoll">
+             0
+            </p>
+           </div>
+          </div>
+         </section>
+         <!-- AUTHORITATIVE CONTENT ECOSYSTEM -->
+         <article class="prose mt-8">
+          <h2>
+           Data Source &amp; Methodology
+          </h2>
+          <ul class="list-disc ml-6">
+           <li>
+            <strong>
+             WHO Guideline (2015):
+            </strong>
+            “Guideline: Sugars intake for adults and children.” Recommends free sugars &lt;10% of energy; conditional &lt;5% (~25 g/day at 2000 kcal).
+            <a class="text-blue-700 underline" href="https://www.who.int/publications/i/item/9789241549028">
+             Official WHO publication
+            </a>
+            .
+            <em>
+             Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.
+            </em>
+           </li>
+           <li>
+            <strong>
+             FDA % Daily Value for Added Sugars:
+            </strong>
+            Nutrition Facts uses 50 g/day reference on a 2,000 kcal diet. See FDA Food Labeling regulations and guidance.
+            <a class="text-blue-700 underline" href="https://www.fda.gov/food/nutrition-facts-label/added-sugars-nutrition-facts-label">
+             FDA Added Sugars
+            </a>
+            .
+           </li>
+           <li>
+            <strong>
+             Glucose Conversion:
+            </strong>
+            Standard factor 18.0182 between mg/dL and mmol/L for glucose (molecular weight basis). Commonly used by ADA and clinical references.
+           </li>
+          </ul>
+          <h2>
+           The Formula Explained
+          </h2>
+          <div class="formula-box">
+           <p>
+            <strong>
+             Daily added sugar total
+            </strong>
+            :
+           </p>
+           <p>
+            \\[
+            G_{\\text{total}} = \\sum_i s_i \\cdot g_i
+          \\]
+           </p>
+           <p>
+            \\(s_i\\): servings of item \\(i\\); \\(g_i\\): grams of sugar per serving.
+           </p>
+           <p>
+            <strong>
+             Teaspoons
+            </strong>
+            (4 g per tsp default): \\[ \\text{tsp} = \\frac{G_{\\text{total}}}{g_{\\text{tsp}}} \\]
+           </p>
+           <p>
+            <strong>
+             Calories
+            </strong>
+            (4 kcal per gram): \\[ \\text{kcal} = 4 \\cdot G_{\\text{total}} \\]
+           </p>
+           <p>
+            <strong>
+             WHO energy thresholds
+            </strong>
+            for a baseline \\(E\\) kcal/day:
+           </p>
+           <p>
+            10% limit (grams): \\[ G_{10\\%} = \\frac{0.10\\,E}{4} \\quad ; \\quad 5\\% \\text{ (grams)}: \\; G_{5\\%} = \\frac{0.05\\,E}{4} \\]
+           </p>
+           <p>
+            <strong>
+             FDA %DV
+            </strong>
+            (50 g/day): \\[ \\%\\text{DV} = 100\\times \\frac{G_{\\text{total}}}{50} \\]
+           </p>
+           <p>
+            <strong>
+             Glucose unit conversion
+            </strong>
+            :
+           </p>
+           <p>
+            \\[ \\mathrm{mmol/L} = \\frac{\\mathrm{mg/dL}}{18.0182} \\quad ; \\quad \\mathrm{mg/dL} = 18.0182\\times \\mathrm{mmol/L} \\]
+           </p>
+          </div>
+          <h2>
+           Glossary of Variables
+          </h2>
+          <table class="w-full border border-gray-200 text-sm">
+           <thead class="bg-gray-100">
+            <tr>
+             <th class="p-2 text-left">
+              Symbol / Field
+             </th>
+             <th class="p-2 text-left">
+              Meaning
+             </th>
+            </tr>
+           </thead>
+           <tbody>
+            <tr>
+             <td class="p-2">
+              <code>
+               s
+               <sub>
+                i
+               </sub>
+              </code>
+             </td>
+             <td class="p-2">
+              Servings of item
+              <em>
+               i
+              </em>
+              consumed today
+             </td>
+            </tr>
+            <tr>
+             <td class="p-2">
+              <code>
+               g
+               <sub>
+                i
+               </sub>
+              </code>
+             </td>
+             <td class="p-2">
+              Grams of sugar per serving for item
+              <em>
+               i
+              </em>
+             </td>
+            </tr>
+            <tr>
+             <td class="p-2">
+              <code>
+               G_total
+              </code>
+             </td>
+             <td class="p-2">
+              Total added sugar (g) for the day
+             </td>
+            </tr>
+            <tr>
+             <td class="p-2">
+              <code>
+               g_tsp
+              </code>
+             </td>
+             <td class="p-2">
+              Grams per teaspoon (default 4 g)
+             </td>
+            </tr>
+            <tr>
+             <td class="p-2">
+              <code>
+               E
+              </code>
+             </td>
+             <td class="p-2">
+              Daily energy baseline (kcal)
+             </td>
+            </tr>
+            <tr>
+             <td class="p-2">
+              <code>
+               G_10%
+              </code>
+              ,
+              <code>
+               G_5%
+              </code>
+             </td>
+             <td class="p-2">
+              WHO thresholds at 10% and 5% of energy
+             </td>
+            </tr>
+           </tbody>
+          </table>
+          <h2>
+           Come Funziona: Un Esempio Passo-Passo
+          </h2>
+          <p>
+           <strong>
+            Scenario:
+           </strong>
+           1 can of soda (330 mL, 10.6 g/100 mL) and 1 yogurt (1 serving × 12 g).
+          </p>
+          <ol class="list-decimal ml-6">
+           <li>
+            Soda sugar: \\( 330\\,\\text{mL} \\times 10.6/100 = 34.98\\,\\text{g} \\approx 35.0\\,\\text{g} \\)
+           </li>
+           <li>
+            Yogurt sugar: \\( 1\\times 12 = 12\\,\\text{g} \\)
+           </li>
+           <li>
+            Total: \\( G_{\\text{total}} = 35.0 + 12 = 47.0\\,\\text{g} \\)
+           </li>
+           <li>
+            Teaspoons (4 g/tsp): \\( 47/4 = 11.75\\,\\text{tsp} \\)
+           </li>
+           <li>
+            Calories: \\( 4\\times 47 = 188\\,\\text{kcal} \\)
+           </li>
+           <li>
+            Against limits for 2000 kcal: \\( G_{10\\%}=50\\,\\text{g},\\; G_{5\\%}=25\\,\\text{g} \\Rightarrow 94\\% \\text{ of FDA DV},\\; 188\\% \\text{ of WHO 5%}. \\)
+           </li>
+          </ol>
+          <h2>
+           Frequently Asked Questions
+          </h2>
+          <details>
+           <summary class="font-semibold">
+            Is “free sugar” the same as “added sugar”?
+           </summary>
+           <p>
+            Free sugars include added sugars plus sugars naturally present in honey, syrups, and fruit juices. Many labels report “added sugars,” which largely overlap but are not identical to “free sugars.”
+           </p>
+          </details>
+          <details>
+           <summary class="font-semibold">
+            Does this calculator cover intrinsic sugars from whole fruit?
+           </summary>
+           <p>
+            We focus on
+            <em>
+             added
+            </em>
+            /free sugars for limit comparisons. Whole fruit intrinsic sugars are generally not counted toward WHO “free sugar” thresholds.
+           </p>
+          </details>
+          <details>
+           <summary class="font-semibold">
+            Is 4 g per teaspoon always correct?
+           </summary>
+           <p>
+            Nutrition references commonly use 4 g; some culinary sources use ≈4.2 g. You can switch between both.
+           </p>
+          </details>
+          <details>
+           <summary class="font-semibold">
+            Are the results medical advice?
+           </summary>
+           <p>
+            No. This tool provides educational estimates. For diagnostics or treatment decisions, consult a qualified health professional.
+           </p>
+          </details>
+          <details>
+           <summary class="font-semibold">
+            What about A1C?
+           </summary>
+           <p>
+            This tool only converts glucose units. A1C/eAG relationships (e.g., Nathan et al.) are approximate and should be interpreted by clinicians in context.
+           </p>
+          </details>
+          <details>
+           <summary class="font-semibold">
+            Why compare to both WHO and FDA?
+           </summary>
+           <p>
+            WHO gives intake recommendations (10% and conditional 5% of energy). FDA’s 50 g/day is a labeling reference used for %DV in the U.S. market.
+           </p>
+          </details>
+          <div class="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+           <p>
+            <strong>
+             Tool developed by Ugo Candido.
+            </strong>
+            Content reviewed by the CalcDomain Editorial Board.
+            <br/>
+            Last accuracy review:
+            <time datetime="2025-10-29">
+             October 29, 2025
+            </time>
+           </p>
+          </div>
+         </article>
+        </div>
+       </main>
+      </main>
+      <aside class="w-full lg:w-1/3">
+       <div class="sticky top-24 space-y-8">
+        <div id="sidebar-ad-placeholder-top">
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow-md">
+         <h3 class="font-bold text-lg mb-4">
+          Popular Calculators
+         </h3>
+         <ul class="space-y-3">
+          <li>
+           <a class="text-blue-600 hover:underline" href="https://calcdomain.com/mortgage-payment">
+            Mortgage Calculator
+           </a>
+          </li>
+          <li>
+           <a class="text-blue-600 hover:underline" href="https://calcdomain.com/percentage-calculator">
+            Percentage Calculator
+           </a>
+          </li>
+          <li>
+           <a class="text-blue-600 hover:underline" href="https://calcdomain.com/bmi-calculator">
+            BMI Calculator
+           </a>
+          </li>
+         </ul>
+        </div>
+       </div>
+      </aside>
+     </div>
+    </div>
+   </body>
+  </html>
+  <footer class="bg-gray-900 text-white py-12">
+   <div class="container mx-auto px-4">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+     <div>
+      <h3 class="text-2xl font-bold mb-4">
+       CalcDomain
+      </h3>
+      <p class="text-gray-400 mb-4">
+       Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.
+      </p>
+     </div>
+     <div>
+      <h4 class="text-lg font-semibold mb-4">
+       Categories
+      </h4>
+      <ul class="space-y-2">
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/finance">
+         Finance
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/health-fitness">
+         Health &amp; Fitness
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/math-conversions">
+         Math &amp; Conversions
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/lifestyle-everyday">
+         Lifestyle &amp; Everyday
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/construction-diy">
+         Construction &amp; DIY
+        </a>
+       </li>
+      </ul>
+     </div>
+     <div>
+      <h4 class="text-lg font-semibold mb-4">
+       Popular Tools
+      </h4>
+      <ul class="space-y-2">
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/mortgage-payment">
+         Mortgage Calculator
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/percentage-calculator">
+         Percentage Calculator
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/bmi-calculator">
+         BMI Calculator
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/auto-loan-calculator">
+         Auto Loan Calculator
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/house-affordability">
+         House Affordability
+        </a>
+       </li>
+      </ul>
+     </div>
+     <div>
+      <h4 class="text-lg font-semibold mb-4">
+       Support
+      </h4>
+      <ul class="space-y-2">
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/about">
+         About Us
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/contact">
+         Contact
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/privacy">
+         Privacy Policy
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/terms">
+         Terms of Service
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/sitemap">
+         Site Map
+        </a>
+       </li>
+      </ul>
+     </div>
+    </div>
+    <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+     <p>
+      © 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone
+     </p>
+    </div>
+   </div>
+  </footer>
+  <!-- Calculator Logic (defer by default at end of body) -->
+  <script>
+   (function(){
+      // Utility formatters
+      const nf0 = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
+      const nf1 = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
+      const nf2 = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
+
+      // Tab logic
+      const tabs = [
+        { tab: 'tab-intake', panel: 'panel-intake', res: 'results-intake' },
+        { tab: 'tab-beverage', panel: 'panel-beverage', res: 'results-beverage' },
+        { tab: 'tab-glucose', panel: 'panel-glucose', res: 'results-glucose' }
+      ];
+      function setActiveTab(idx){
+        tabs.forEach((t,i)=>{
+          const tabEl = document.getElementById(t.tab);
+          const panelEl = document.getElementById(t.panel);
+          const resEl = document.getElementById(t.res);
+          const pressed = i===idx ? 'true':'false';
+          tabEl.setAttribute('aria-selected', pressed);
+          tabEl.setAttribute('aria-pressed', pressed);
+          panelEl.hidden = i!==idx;
+          resEl.classList.toggle('hidden', i!==idx);
+        });
+        // Recompute on tab switch for freshness
+        computeIntake();
+        computeBeverage();
+        computeGlucose();
+      }
+      tabs.forEach((t,i)=>{
+        document.getElementById(t.tab).addEventListener('click', ()=> setActiveTab(i));
+        document.getElementById(t.tab).addEventListener('keydown', (e)=>{
+          if(e.key==='Enter' || e.key===' '){ e.preventDefault(); setActiveTab(i); }
+        });
+      });
+
+      // Tooltips (accessible toggle)
+      document.querySelectorAll('button[aria-controls$="_help"]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const id = btn.getAttribute('aria-controls');
+          const box = document.getElementById(id);
+          const open = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!open));
+          box.style.display = open ? 'none' : 'block';
+        });
+      });
+
+      // Inline validation on blur
+      function validateNonNegativeNumber(input, errId, fieldLabel){
+        const val = parseFloat(input.value);
+        const err = document.getElementById(errId);
+        if (isNaN(val) || val < 0){
+          err.textContent = fieldLabel + " must be a number ≥ 0.";
+          return false;
+        }
+        err.textContent = '';
+        return true;
+      }
+
+      // Dynamic rows for intake
+      const intakeContainer = document.getElementById('panel-intake');
+      const addRowBtn = document.getElementById('addRow');
+      const resetRowsBtn = document.getElementById('resetRows');
+
+      function createIntakeRow(idx){
+        const wrap = document.createElement('div');
+        wrap.className = "grid grid-cols-1 sm:grid-cols-2 gap-6 sm:col-span-2";
+        wrap.innerHTML = `
+          <div>
+            <label for="servings${idx}" class="block font-semibold">Item ${idx} — Servings</label>
+            <input type="number" inputmode="decimal" step="0.1" min="0" id="servings${idx}"
+                   class="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus-ring"
+                   aria-describedby="servings${idx}_err" value="0">
+            <p id="servings${idx}_err" class="text-red-700 text-sm mt-1" aria-live="polite"></p>
+          </div>
+          <div>
+            <label for="grams${idx}" class="block font-semibold">Item ${idx} — Sugar per Serving (g)</label>
+            <input type="number" inputmode="decimal" step="0.1" min="0" id="grams${idx}"
+                   class="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 focus-ring"
+                   aria-describedby="grams${idx}_err" value="0">
+            <p id="grams${idx}_err" class="text-red-700 text-sm mt-1" aria-live="polite"></p>
+          </div>
+        `;
+        return wrap;
+      }
+
+      function nextRowIndex(){
+        let idx = 3;
+        while (document.getElementById('servings'+idx)) idx++;
+        return idx;
+      }
+
+      addRowBtn.addEventListener('click', ()=>{
+        const idx = nextRowIndex();
+        intakeContainer.appendChild(createIntakeRow(idx));
+        bindIntakeInputs();
+      });
+
+      resetRowsBtn.addEventListener('click', ()=>{
+        // Remove rows beyond initial 1 & 2
+        [...intakeContainer.querySelectorAll('input[id^="servings"],input[id^="grams"]')].forEach(inp=>{
+          const id = inp.id.match(/\d+$/) ? parseInt(inp.id.match(/\d+$/)[0],10) : 0;
+          if (id>2){
+            const group = inp.closest('.grid');
+            if (group && group.parentElement===intakeContainer) group.remove();
+          }
+        });
+        // Reset first two items
+        document.getElementById('servings1').value = 1;
+        document.getElementById('grams1').value = 12;
+        document.getElementById('servings2').value = 0;
+        document.getElementById('grams2').value = 0;
+        computeIntake();
+      });
+
+      function bindIntakeInputs(){
+        const ids = [...document.querySelectorAll('#panel-intake input, #panel-intake select')].map(el=>el.id);
+        ids.forEach(id=>{
+          const el = document.getElementById(id);
+          el.addEventListener('input', computeIntake);
+          el.addEventListener('blur', ()=>{
+            if (id.startsWith('servings')) validateNonNegativeNumber(el, id+'_err', 'Servings');
+            if (id.startsWith('grams')) validateNonNegativeNumber(el, id+'_err', 'Sugar per serving (g)');
+            if (id==='energyTarget') validateNonNegativeNumber(el, 'energyTarget_err', 'Daily energy baseline (kcal)');
+          });
+        });
+      }
+
+      // Intake computation
+      let chartIntake = null;
+      function computeIntake(){
+        // collect items
+        const tspGrams = parseFloat(document.getElementById('unitsTeaspoon').value) || 4;
+        const energy = Math.max(0, parseFloat(document.getElementById('energyTarget').value) || 2000);
+
+        const inputs = [...document.querySelectorAll('#panel-intake input[id^="servings"], #panel-intake input[id^="grams"]')];
+        const pairs = {};
+        inputs.forEach(inp=>{
+          const m = inp.id.match(/(servings|grams)(\d+)/);
+          if(!m) return;
+          const key = m[2];
+          pairs[key] = pairs[key] || { s:0, g:0 };
+          if(m[1]==='servings') pairs[key].s = Math.max(0, parseFloat(inp.value)||0);
+          else pairs[key].g = Math.max(0, parseFloat(inp.value)||0);
+        });
+
+        let G = 0;
+        Object.values(pairs).forEach(({s,g})=>{ G += s*g; });
+
+        const tsp = G / tspGrams;
+        const kcal = G * 4;
+
+        const G10 = (0.10*energy)/4; // grams at 10% energy
+        const G5  = (0.05*energy)/4; // grams at 5% energy
+        const pctWHO10 = G10>0 ? (100*G/G10) : 0;
+        const pctWHO5  = G5>0  ? (100*G/G5)  : 0;
+        const pctFDA   = 100*G/50;
+
+        // update UI
+        document.getElementById('totalGrams').textContent = nf1.format(G) + " g";
+        document.getElementById('totalTsp').textContent   = nf1.format(tsp) + " tsp";
+        document.getElementById('totalKcal').textContent  = nf0.format(kcal) + " kcal";
+        document.getElementById('pctWHO10').textContent   = nf1.format(pctWHO10) + "%";
+        document.getElementById('pctWHO5').textContent    = nf1.format(pctWHO5) + "%";
+        document.getElementById('pctFDA').textContent     = nf1.format(pctFDA) + "%";
+
+        // chart
+        const ctx = document.getElementById('intakeChart');
+        if (ctx){
+          const dataVals = [G, G5, G10, 50];
+          const labels = ["Your intake (g)", "WHO 5% (g)", "WHO 10% (g)", "FDA DV 50 g"];
+          if (chartIntake){
+            chartIntake.data.labels = labels;
+            chartIntake.data.datasets[0].data = dataVals;
+            chartIntake.update();
+          } else {
+            chartIntake = new Chart(ctx, {
+              type: 'bar',
+              data: { labels, datasets: [{ label: 'Grams', data: dataVals }] },
+              options: {
+                responsive:true, maintainAspectRatio:false,
+                plugins:{ legend:{display:false} },
+                scales:{ y:{ beginAtZero:true } }
+              }
+            });
+          }
+        }
+      }
+
+      // Beverage computation
+      function computeBeverage(){
+        const vol = Math.max(0, parseFloat(document.getElementById('drinkVolume').value)||0);
+        const g100 = Math.max(0, parseFloat(document.getElementById('sugarPer100').value)||0);
+        const grams = vol * (g100/100);
+        const tsp = grams / (parseFloat(document.getElementById('unitsTeaspoon').value)||4);
+        const kcal = grams * 4;
+
+        document.getElementById('bevGrams').textContent = nf1.format(grams) + " g";
+        document.getElementById('bevTsp').textContent   = nf1.format(tsp) + " tsp";
+        document.getElementById('bevKcal').textContent  = nf0.format(kcal) + " kcal";
+      }
+
+      // Glucose converter
+      function computeGlucose(){
+        const input = Math.max(0, parseFloat(document.getElementById('glucoseInput').value)||0);
+        const unit = document.getElementById('glucoseUnit').value;
+        let mgdl = 0, mmoll = 0;
+        if (unit === 'mgdl'){
+          mgdl = input;
+          mmoll = input / 18.0182;
+        } else {
+          mmoll = input;
+          mgdl = input * 18.0182;
+        }
+        document.getElementById('outMgdl').textContent  = nf1.format(mgdl);
+        document.getElementById('outMmoll').textContent = nf2.format(mmoll);
+      }
+
+      // Bind events
+      function bindAll(){
+        bindIntakeInputs();
+        // Beverage
+        ['drinkVolume','sugarPer100','unitsTeaspoon'].forEach(id=>{
+          const el = document.getElementById(id);
+          el.addEventListener('input', computeBeverage);
+          el.addEventListener('blur', ()=>{
+            if (id==='drinkVolume') validateNonNegativeNumber(el, 'drinkVolume_err', 'Drink volume (mL)');
+            if (id==='sugarPer100') validateNonNegativeNumber(el, 'sugarPer100_err', 'Sugar per 100 mL (g)');
+          });
+        });
+        // Glucose
+        ['glucoseInput','glucoseUnit'].forEach(id=>{
+          document.getElementById(id).addEventListener('input', computeGlucose);
+          document.getElementById(id).addEventListener('blur', ()=>{
+            if (id==='glucoseInput') validateNonNegativeNumber(document.getElementById(id), 'glucoseInput_err', 'Blood glucose value');
+          });
+        });
+      }
+
+      // Init
+      bindAll();
+      setActiveTab(0);
+      computeIntake();
+      computeBeverage();
+      computeGlucose();
+    })();
+  </script>
+  <script defer="True" src="/assets/js/script_menu.js">
+  </script>
+  <script defer="True" src="/assets/js/script_faq.js">
+  </script>
+  <script defer="True" src="search.js">
+  </script>
+ </body>
+</html>

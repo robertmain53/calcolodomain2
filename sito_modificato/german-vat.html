@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <link href="https://calcdomain.com/german-vat" rel="canonical"/>
+  <link href="https://calcdomain.com/favicon-96x96.png" rel="icon" sizes="96x96" type="image/png"/>
+  <link href="https://calcdomain.com/favicon.svg" rel="icon" type="image/svg+xml"/>
+  <link href="https://calcdomain.com/favicon.ico" rel="shortcut icon"/>
+  <link href="https://calcdomain.com/apple-touch-icon.png" rel="apple-touch-icon" sizes="180x180"/>
+  <link href="https://calcdomain.com/site.webmanifest" rel="manifest"/>
+  <meta charset="utf-8"/>
+  <title>
+   German VAT (Umsatzsteuer) Calculator
+  </title>
+  <meta content="Professional German VAT (Umsatzsteuer) calculator. Add or remove German VAT at 19% or 7%, get instant net, VAT, and gross totals. Mobile-first, WCAG-compliant, and SEO-optimized." name="description"/>
+  <meta content="width=device-width, initial-scale=1" name="viewport"/>
+  <meta content="Ugo Candido" name="author"/>
+  <meta content="index, follow" name="robots"/>
+  <meta content="#005A9C" name="theme-color"/>
+  <style>
+   /* =========================
+       Design tokens / base
+       ========================= */
+    :root{
+      --primary:#005A9C; --secondary:#003F6E; --accent:#00A4E4;
+      --bg:#F8F9FA; --surface:#FFFFFF;
+      --text:#212529; --muted:#6C757D; --border:#DEE2E6;
+      --success:#198754; --danger:#DC3545; --warning:#FFC107;
+      --radius-card:12px; --radius:8px; --gap:.75rem; --gap-lg:2rem;
+      --touch:48px; --shadow:0 4px 6px rgba(0,0,0,.06);
+    }
+    @media (prefers-reduced-motion: reduce){
+      *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+    }
+    *{box-sizing:border-box}
+    html{font-size:clamp(16px,2.3vw,18px)}
+    body{
+      margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Helvetica Neue", sans-serif;
+      color:var(--text); background:var(--bg); line-height:1.6;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    a{color:var(--primary); text-decoration:none}
+    a:hover{color:var(--secondary); text-decoration:underline}
+    img{max-width:100%; height:auto}
+    .container{max-width:1200px; margin-inline:auto; padding-inline:clamp(1rem,4vw,2rem)}
+    .skip-link{
+      position:absolute; left:6px; top:-40px; background:var(--primary); color:#fff; padding:8px 14px;
+      border-radius:0 0 6px 6px; z-index:1000
+    }
+    .skip-link:focus{top:0}
+    h1,h2,h3{line-height:1.25; color:var(--secondary); margin:.25rem 0 .75rem}
+    h1{font-size:clamp(1.8rem,4vw,2.4rem)}
+    h2{font-size:clamp(1.4rem,3.2vw,2rem)}
+    h3{font-size:clamp(1.15rem,2.8vw,1.4rem)}
+    p{margin:0 0 1rem}
+    code{background:#e9ecef; padding:.15em .35em; border-radius:4px}
+
+    /* =========================
+       Header (non-sticky)
+       ========================= */
+    header.site-header{
+      background:var(--surface); border-bottom:1px solid var(--border);
+      box-shadow:0 2px 3px rgba(0,0,0,.03)
+    }
+    .header-inner{
+      display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:.75rem;
+      padding:.75rem 0;
+    }
+    .logo{font-weight:800; color:var(--primary); font-size:1.25rem}
+    .site-search{display:flex; align-items:center; gap:.5rem}
+    .site-search input[type="search"]{
+      flex:1; min-width:0; padding:.6rem .8rem; border:1px solid var(--border); border-radius:8px
+    }
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
+      padding:.7rem 1rem; min-height:var(--touch); min-width:var(--touch);
+      font-weight:700; border-radius:8px; border:1px solid transparent; cursor:pointer
+    }
+    .btn:focus-visible{outline:3px solid var(--primary); outline-offset:2px}
+    .btn-primary{background:var(--primary); color:#fff; border-color:var(--primary)}
+    .btn-secondary{background:transparent; color:var(--primary); border-color:var(--primary)}
+    nav.breadcrumb{font-size:.95rem; color:var(--muted); margin:1rem 0}
+    nav.breadcrumb a{color:inherit}
+    nav.breadcrumb a:hover{color:var(--primary)}
+
+    /* =========================
+       Layout
+       ========================= */
+    .layout{
+      display:grid; grid-template-columns:1fr; gap:clamp(1rem,3vw,1.5rem)
+    }
+    @media (min-width: 992px){
+      .layout{grid-template-columns: minmax(300px, 420px) 1fr}
+    }
+
+    /* =========================
+       Calculator card
+       ========================= */
+    .card{
+      background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-card); box-shadow:var(--shadow);
+      padding:clamp(1rem,3vw,1.5rem)
+    }
+    .form-group{margin-bottom:1rem}
+    .form-group label{display:flex; align-items:center; gap:.5rem; font-weight:700; margin-bottom:.5rem}
+    .tooltip-btn{
+      inline-size:var(--touch); block-size:var(--touch);
+      display:inline-grid; place-items:center; font-weight:900; border-radius:50%;
+      border:1px solid var(--border); background:#fff; color:var(--secondary); cursor:pointer
+    }
+    .tooltip-btn:hover{background:#f1f3f5}
+    .tooltip-btn:focus-visible{outline:3px solid var(--primary); outline-offset:2px}
+    .tooltip{margin-top:.35rem; background:#f1f5f9; color:#0b1320; border:1px solid #d0d7de; border-radius:8px; padding:.75rem; display:none}
+    .tooltip[aria-hidden="false"]{display:block}
+    .input-wrap{position:relative}
+    .input-suffix{position:absolute; right:.75rem; top:50%; transform:translateY(-50%); color:var(--muted); pointer-events:none}
+    .control{
+      width:100%; padding:.75rem 1rem; min-height:var(--touch);
+      border:1px solid var(--border); border-radius:8px; font-size:1rem; background:#fff; color:var(--text)
+    }
+    .control:focus-visible{outline:3px solid var(--primary); outline-offset:2px; border-color:var(--primary)}
+    .control[aria-invalid="true"]{border-color:var(--danger)}
+    .error{color:var(--danger); font-size:.9rem; margin-top:.35rem}
+    fieldset{border:0; padding:0; margin:0}
+    .radio-grid{
+      display:flex; gap:.5rem; border:1px solid var(--border); border-radius:8px; padding:.25rem
+    }
+    .radio-grid input{position:absolute; opacity:0; width:0; height:0}
+    .radio-grid label{
+      flex:1; text-align:center; padding:.6rem; border-radius:6px; cursor:pointer; min-height:var(--touch);
+      display:flex; align-items:center; justify-content:center; user-select:none
+    }
+    .radio-grid input:checked + label{background:var(--primary); color:#fff}
+    .radio-grid input:focus-visible + label{outline:3px solid var(--primary); outline-offset:2px}
+
+    .row-2{display:grid; grid-template-columns:1fr 1fr; gap:.75rem}
+    @media (max-width:560px){ .row-2{grid-template-columns:1fr} }
+
+    /* =========================
+       Results
+       ========================= */
+    .results{margin-top:1rem; background:#f8fafc; border:1px solid var(--border); border-radius:10px; padding:1rem; min-height:236px}
+    .results h3{margin-top:0}
+    .result-line{display:flex; align-items:center; justify-content:space-between; padding:.6rem 0; border-bottom:1px dashed var(--border)}
+    .result-line:last-child{border-bottom:0}
+    .result-label{color:var(--muted)}
+    .result-value{font-weight:800; color:var(--success); font-size:1.25rem}
+    .meta{font-size:.95rem; color:var(--muted); margin-top:.5rem}
+
+    /* =========================
+       Content
+       ========================= */
+    .content section + section{margin-top:1.5rem}
+    .formula-box{background:#eef2f7; border:1px solid #d6dee9; padding:1rem; border-radius:8px; overflow-x:auto}
+    .author-box{font-size:.95rem; color:var(--muted); border-top:1px solid var(--border); margin-top:1.5rem; padding-top:1rem}
+
+    /* Utility */
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    .actions{display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.75rem}
+  </style>
+  <!-- MathJax for LaTeX rendering -->
+  <script>
+   window.MathJax = {
+      tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['\\[','\\]'], ['$$','$$']] },
+      options: { renderActions: { addMenu: [] } }
+    };
+  </script>
+  <script crossorigin="anonymous" defer="" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+  </script>
+  <!-- Structured Data (WebPage + HowTo + FAQ) -->
+  <script type="application/ld+json">
+   {
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "German VAT (Umsatzsteuer) Calculator",
+  "description": "Add or remove German VAT at 19% or 7% and get instant net, VAT, and gross totals. Accessible, mobile-first calculator with authoritative methodology.",
+  "url": "https://calcdomain.com/german-vat",
+  "inLanguage": "en",
+  "author": {
+    "@type": "Person",
+    "name": "Ugo Candido"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "VatCalculator.eu"
+  },
+  "dateModified": "2025-09-14",
+  "mainEntity": [
+    {
+      "@type": "HowTo",
+      "name": "How it works: a step-by-step example",
+      "description": "Compute German VAT for a real-world case using the standard 19% rate.",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "name": "Choose operation",
+          "text": "Select Add VAT or Remove VAT depending on whether your starting amount is net or gross."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Enter amount",
+          "text": "Type the net or gross amount (e.g., €1,250)."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Select rate",
+          "text": "Pick the German VAT rate: Standard 19%, Reduced 7%, or a custom rate when applicable."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Set options",
+          "text": "Optionally change currency, quantity and rounding mode."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Read results",
+          "text": "Instantly see Net, VAT and Gross. You can copy the results or share a permalink."
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What VAT rates apply in Germany?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Germany applies a standard VAT rate of 19% and a reduced rate of 7% for certain goods and services. Some supplies are zero-rated or exempt."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Should I add or remove VAT?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Add VAT when you have a net price and need the final consumer price. Remove VAT when you have a VAT-inclusive price and need the original net."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How is VAT extracted from a gross price?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Use Net = Gross ÷ (1 + r) and VAT = Gross × r ÷ (1 + r), where r is the VAT rate in decimal form (e.g., 0.19)."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does this tool support rounding?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. You can choose unrounded results or rounding to 2 decimals (half away from zero), which matches typical invoice presentation."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is this calculator suitable for invoices?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It provides accurate calculations, but always confirm the applicable VAT rate and invoicing rules for your specific supply before issuing an invoice."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it account for VAT exemptions or reverse charge?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The tool calculates amounts using the rate you select. If your supply is exempt or reverse charged, use 0% and follow the legal documentation requirements."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I change currency?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Amounts can be formatted in EUR, USD, or GBP. The VAT mathematics stays identical regardless of currency."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+  <script src="https://cdn.tailwindcss.com">
+  </script>
+  <script defer="" src="search.js">
+  </script>
+  <html>
+   <head>
+    <script async="" src="https://www.googletagmanager.com/gtag/js?id=TUO_ID_GA">
+    </script>
+    <script>
+     window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'TUO_ID_GA');
+    </script>
+   </head>
+  </html>
+ </head>
+ <body>
+  <header class="bg-white shadow-sm sticky top-0 z-50">
+   <nav aria-label="Primary" class="container mx-auto px-4 lg:px-6 py-4">
+    <div class="flex justify-between items-center">
+     <a class="text-2xl font-bold text-blue-600" href="https://calcdomain.com">
+      CalcDomain
+     </a>
+     <div class="w-full max-w-md hidden md:block mx-8">
+      <div class="relative">
+       <input autocomplete="off" class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" id="search-input" placeholder="Search for a calculator..." type="search"/>
+       <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+        </path>
+       </svg>
+       <div class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200" id="search-results">
+       </div>
+      </div>
+     </div>
+     <div class="hidden md:flex items-center space-x-6">
+      <a class="text-gray-700 hover:text-blue-600 transition-colors" href="https://calcdomain.com/search">
+       Advanced Search
+      </a>
+      <a class="text-gray-700 hover:text-blue-600 transition-colors" href="https://calcdomain.com/categories">
+       Categories
+      </a>
+     </div>
+     <button aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" class="md:hidden p-2" id="mobile-menu-toggle" type="button">
+      <svg aria-hidden="true" class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+       <path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+       </path>
+      </svg>
+     </button>
+    </div>
+    <nav aria-label="Mobile menu" class="md:hidden mt-4 hidden" id="mobile-menu" role="navigation">
+     <div class="mb-4">
+      <div class="relative">
+       <input class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" id="mobile-search-input" placeholder="Search calculators..." type="search"/>
+       <svg aria-hidden="true" class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+        </path>
+       </svg>
+      </div>
+     </div>
+     <div class="space-y-2">
+      <a class="block py-2 text-gray-700 hover:text-blue-600" href="https://calcdomain.com/search">
+       Advanced Search
+      </a>
+      <a class="block py-2 text-gray-700 hover:text-blue-600" href="https://calcdomain.com/categories">
+       Categories
+      </a>
+     </div>
+    </nav>
+   </nav>
+  </header>
+  <a class="skip-link" href="#main">
+   Skip to main content
+  </a>
+  <main class="container" id="main" role="main">
+   <nav aria-label="Breadcrumb" class="breadcrumb">
+    Home ›
+    <a href="https://calcdomain.com/finance">
+     Finance
+    </a>
+    › German Taxation › German VAT Calculator
+   </nav>
+   <h1>
+    German VAT (Umsatzsteuer) Calculator
+   </h1>
+   <p>
+    Instantly add or remove German VAT at 19% or 7%. Built for businesses, freelancers, and savvy shoppers, this WCAG-compliant, mobile-first calculator gives precise net, VAT, and gross totals with shareable links and invoice-ready rounding.
+   </p>
+   <div class="layout">
+    <!-- Calculator -->
+    <section aria-labelledby="calc-heading" class="card" id="calculator">
+     <h2 class="sr-only" id="calc-heading">
+      Interactive VAT Calculator
+     </h2>
+     <!-- Operation -->
+     <div class="form-group">
+      <fieldset aria-labelledby="op-legend">
+       <legend class="sr-only" id="op-legend">
+        Choose VAT operation
+       </legend>
+       <div aria-label="VAT operation" class="radio-grid" role="radiogroup">
+        <input checked="" id="op-add" name="op" type="radio" value="add"/>
+        <label for="op-add">
+         Add VAT
+        </label>
+        <input id="op-remove" name="op" type="radio" value="remove"/>
+        <label for="op-remove">
+         Remove VAT
+        </label>
+       </div>
+      </fieldset>
+     </div>
+     <!-- Amount -->
+     <div class="form-group">
+      <label for="amount">
+       <span id="amount-label">
+        Net amount (before VAT) *
+       </span>
+      </label>
+      <div class="input-wrap">
+       <input aria-describedby="amount-err amount-tip currency" aria-required="true" autocomplete="off" class="control" id="amount" inputmode="decimal" min="0" placeholder="e.g., 1250.00" step="0.01" type="number"/>
+       <span aria-hidden="true" class="input-suffix" id="currency">
+        €
+       </span>
+      </div>
+      <div aria-hidden="false" class="tooltip" id="amount-tip" role="note">
+       Enter a positive amount. Use a dot or comma as decimal separator; we normalize automatically.
+      </div>
+      <div aria-live="polite" class="error" id="amount-err" role="alert">
+      </div>
+     </div>
+     <!-- Rate and custom -->
+     <div class="row-2">
+      <div class="form-group">
+       <label for="rate">
+        VAT rate *
+        <button aria-controls="rate-tip" aria-expanded="false" aria-haspopup="dialog" class="tooltip-btn" id="rate-help-btn" title="More info" type="button">
+         ?
+        </button>
+       </label>
+       <select aria-describedby="rate-err rate-tip" aria-required="true" class="control" id="rate">
+        <option selected="" value="19">
+         Standard 19% (Germany)
+        </option>
+        <option value="7">
+         Reduced 7% (Germany)
+        </option>
+        <option value="0">
+         Zero 0%
+        </option>
+        <option value="custom">
+         Custom…
+        </option>
+       </select>
+       <div aria-hidden="true" aria-label="VAT rate help" class="tooltip" id="rate-tip" role="dialog">
+        Germany applies 19% standard and 7% reduced VAT. Select Custom to enter a different rate when legally applicable.
+       </div>
+       <div aria-live="polite" class="error" id="rate-err" role="alert">
+       </div>
+      </div>
+      <div class="form-group" id="custom-wrap" style="display:none">
+       <label for="customRate">
+        Custom VAT rate (%) *
+       </label>
+       <div class="input-wrap">
+        <input aria-describedby="custom-err" aria-required="true" class="control" id="customRate" inputmode="decimal" max="100" min="0" placeholder="e.g., 16" step="0.01" type="number"/>
+        <span class="input-suffix">
+         %
+        </span>
+       </div>
+       <div aria-live="polite" class="error" id="custom-err" role="alert">
+       </div>
+      </div>
+     </div>
+     <!-- Currency and quantity -->
+     <div class="row-2">
+      <div class="form-group">
+       <label for="ccy">
+        Currency
+       </label>
+       <select aria-describedby="ccy-tip" class="control" id="ccy">
+        <option selected="" value="EUR">
+         EUR – Euro (€)
+        </option>
+        <option value="USD">
+         USD – US Dollar ($)
+        </option>
+        <option value="GBP">
+         GBP – British Pound (£)
+        </option>
+       </select>
+       <div class="sr-only" id="ccy-tip">
+        Currency affects display only; tax math is currency-agnostic.
+       </div>
+      </div>
+      <div class="form-group">
+       <label for="qty">
+        Quantity
+        <button aria-controls="qty-tip" aria-expanded="false" aria-haspopup="dialog" class="tooltip-btn" id="qty-help-btn" title="What is quantity?" type="button">
+         ?
+        </button>
+       </label>
+       <input aria-describedby="qty-err qty-tip" class="control" id="qty" inputmode="numeric" min="1" step="1" type="number" value="1"/>
+       <div aria-hidden="true" aria-label="Quantity help" class="tooltip" id="qty-tip" role="dialog">
+        Quantity multiplies the amount. Use 1 for single item calculations.
+       </div>
+       <div aria-live="polite" class="error" id="qty-err" role="alert">
+       </div>
+      </div>
+     </div>
+     <!-- Rounding -->
+     <div class="row-2">
+      <div class="form-group">
+       <label for="rounding">
+        Rounding
+       </label>
+       <select aria-describedby="rounding-tip" class="control" id="rounding">
+        <option value="none">
+         Do not round
+        </option>
+        <option selected="" value="2">
+         Round to 2 decimals
+        </option>
+       </select>
+       <div class="sr-only" id="rounding-tip">
+        Rounding is half away from zero, suitable for typical invoices.
+       </div>
+      </div>
+      <div class="form-group">
+       <label for="locale">
+        Number format
+       </label>
+       <select aria-label="Number format" class="control" id="locale">
+        <option selected="" value="de-DE">
+         German (de-DE)
+        </option>
+        <option value="en-GB">
+         English (en-GB)
+        </option>
+        <option value="en-US">
+         English (en-US)
+        </option>
+       </select>
+      </div>
+     </div>
+     <!-- Results -->
+     <section aria-labelledby="results-heading" aria-live="polite" class="results">
+      <h3 id="results-heading">
+       Results
+      </h3>
+      <div class="result-line">
+       <span class="result-label">
+        Net amount
+       </span>
+       <span class="result-value" id="res-net">
+        €0.00
+       </span>
+      </div>
+      <div class="result-line">
+       <span class="result-label">
+        VAT amount
+       </span>
+       <span class="result-value" id="res-vat">
+        €0.00
+       </span>
+      </div>
+      <div class="result-line">
+       <span class="result-label">
+        Gross amount
+       </span>
+       <span class="result-value" id="res-gross">
+        €0.00
+       </span>
+      </div>
+      <div class="meta" id="res-meta">
+       Rate applied: 19% · Qty: 1
+      </div>
+      <div class="actions">
+       <button class="btn btn-secondary" id="copy-results" type="button">
+        Copy results
+       </button>
+       <button class="btn btn-secondary" id="copy-link" type="button">
+        Copy shareable link
+       </button>
+       <button class="btn btn-primary" id="reset" type="button">
+        Reset
+       </button>
+      </div>
+     </section>
+    </section>
+    <!-- Authoritative content -->
+    <article aria-labelledby="content-heading" class="card content">
+     <h2 id="content-heading">
+      Authoritative data, transparent math
+     </h2>
+     <section aria-labelledby="source-heading">
+      <h2 id="source-heading">
+       Data Source and Methodology
+      </h2>
+      <ul>
+       <li>
+        Bundesministerium der Finanzen (BMF) — Umsatzsteuersätze (VAT rates), referencing §12 UStG. Latest guidance and official lists of reduced-rate items. Published continuously; see portal:
+        <a href="https://www.bundesfinanzministerium.de" rel="nofollow noopener" target="_blank">
+         bundesfinanzministerium.de
+        </a>
+       </li>
+       <li>
+        Council Directive 2006/112/EC on the common system of value added tax (consolidated). EUR-Lex:
+        <a href="https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02006L0112-20240101" rel="nofollow noopener" target="_blank">
+         EUR‑Lex 2006/112/EC
+        </a>
+       </li>
+      </ul>
+      <p>
+       <strong>
+        Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.
+       </strong>
+      </p>
+     </section>
+     <section aria-labelledby="formula-heading">
+      <h2 id="formula-heading">
+       The Formula Explained
+      </h2>
+      <div class="formula-box">
+       <p>
+        Let the VAT rate be r as decimal, i.e., r = Rate% / 100.
+       </p>
+       <p>
+        Adding VAT (from net):
+       </p>
+       <p>
+        \\[ \mathrm{VAT} = \mathrm{Net} \times r \quad\text{and}\quad \mathrm{Gross} = \mathrm{Net} \times (1 + r). \\]
+       </p>
+       <p>
+        Removing VAT (from gross):
+       </p>
+       <p>
+        \\[ \mathrm{Net} = \frac{\mathrm{Gross}}{1 + r}, \quad \mathrm{VAT} = \mathrm{Gross} - \mathrm{Net} = \mathrm{Gross}\times\frac{r}{1+r}. \\]
+       </p>
+       <p>
+        For a quantity q, multiply each amount by q.
+       </p>
+      </div>
+     </section>
+     <section aria-labelledby="glossary-heading">
+      <h2 id="glossary-heading">
+       Glossary of Variables
+      </h2>
+      <ul>
+       <li>
+        <strong>
+         Operation:
+        </strong>
+        Add VAT (start from net) or Remove VAT (start from gross).
+       </li>
+       <li>
+        <strong>
+         Net amount (Net):
+        </strong>
+        Price before VAT.
+       </li>
+       <li>
+        <strong>
+         Gross amount (Gross):
+        </strong>
+        Price including VAT.
+       </li>
+       <li>
+        <strong>
+         VAT rate (Rate%):
+        </strong>
+        Percentage tax (19%, 7%, 0%, or custom).
+       </li>
+       <li>
+        <strong>
+         r:
+        </strong>
+        VAT rate as decimal, i.e., r = Rate% / 100.
+       </li>
+       <li>
+        <strong>
+         Quantity (q):
+        </strong>
+        Count of items; scales all totals.
+       </li>
+       <li>
+        <strong>
+         VAT amount:
+        </strong>
+        The tax component: Net × r (add) or Gross × r/(1+r) (remove).
+       </li>
+      </ul>
+     </section>
+     <section aria-labelledby="example-heading">
+      <h2 id="example-heading">
+       How It Works: A Step-By-Step Example
+      </h2>
+      <p>
+       <strong>
+        Scenario:
+       </strong>
+       You sell a product in Germany for a net price of €1,250 at the standard rate.
+      </p>
+      <ol>
+       <li>
+        Select
+        <em>
+         Add VAT
+        </em>
+        .
+       </li>
+       <li>
+        Enter Net = €1,250; choose Rate = 19% (so r = 0.19).
+       </li>
+       <li>
+        Compute VAT: \\( \mathrm{VAT} = 1{,}250 \times 0.19 = 237.50 \\).
+       </li>
+       <li>
+        Compute Gross: \\( \mathrm{Gross} = 1{,}250 \times (1 + 0.19) = 1{,}487.50 \\).
+       </li>
+      </ol>
+      <p>
+       Final invoice total is
+       <strong>
+        €1,487.50
+       </strong>
+       , with
+       <strong>
+        €237.50
+       </strong>
+       VAT.
+      </p>
+     </section>
+     <section aria-labelledby="faq-heading">
+      <h2 id="faq-heading">
+       Frequently Asked Questions (FAQ)
+      </h2>
+      <div>
+       <h3>
+        Which German VAT rate should I use: 19% or 7%?
+       </h3>
+       <p>
+        Use 19% unless your goods/services are on the reduced list (e.g., books, certain foodstuffs, cultural items) at 7%. Always confirm the classification under §12 UStG and BMF guidance.
+       </p>
+       <h3>
+        How do I extract the VAT from a VAT-inclusive price?
+       </h3>
+       <p>
+        Apply \\( \mathrm{Net} = \mathrm{Gross}/(1+r) \\) and \\( \mathrm{VAT} = \mathrm{Gross}\times r/(1+r) \\). For 19% (r=0.19), divide the gross by 1.19 to get the net.
+       </p>
+       <h3>
+        Does the calculator handle rounding like invoices do?
+       </h3>
+       <p>
+        Yes. Select “Round to 2 decimals” to use half-away-from-zero rounding, typical for currency display. For analytical work, choose “Do not round”.
+       </p>
+       <h3>
+        What about VAT-exempt supplies or reverse charge?
+       </h3>
+       <p>
+        If your transaction is exempt or reverse charged, use 0% for the calculation, but ensure your invoice states the appropriate legal reference and that you follow reporting rules.
+       </p>
+       <h3>
+        Are cross-border EU sales covered?
+       </h3>
+       <p>
+        The math is universal; the applicable rate depends on the place-of-supply and scheme. For OSS/IOSS or intra-Community supplies, consult your tax advisor and BMF guidance.
+       </p>
+       <h3>
+        Can I change currency? Will results stay valid?
+       </h3>
+       <p>
+        You can format results in EUR, USD, or GBP for convenience. VAT math is independent of currency, so the calculations remain valid.
+       </p>
+       <h3>
+        Is this tool a substitute for professional advice?
+       </h3>
+       <p>
+        No. It’s a precise calculator based on published rules, but your specific facts determine the rate and treatment. When in doubt, consult a tax professional.
+       </p>
+      </div>
+     </section>
+     <div class="author-box">
+      <p>
+       Strumento sviluppato da
+       <strong>
+        Ugo Candido
+       </strong>
+       ,. Contenuti verificati da,.
+       <br/>
+       Ultima revisione per l'accuratezza in data:
+       <time datetime="2025-09-14">
+        14 September 2025
+       </time>
+       .
+      </p>
+     </div>
+    </article>
+   </div>
+  </main>
+  <!-- Standard Footer -->
+  <script defer="" src="https://calcdomain.com/assets/js/mobile-menu.js">
+  </script>
+  <script defer="" src="https://calcdomain.com/assets/js/page-enhancements.js">
+  </script>
+  <footer class="bg-gray-900 text-white py-12">
+   <div class="container mx-auto px-4">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+     <div>
+      <h3 class="text-2xl font-bold mb-4">
+       CalcDomain
+      </h3>
+      <p class="text-gray-400 mb-4">
+       Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.
+      </p>
+     </div>
+     <div>
+      <h4 class="text-lg font-semibold mb-4">
+       Categories
+      </h4>
+      <ul class="space-y-2">
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/finance">
+         Finance
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/health-fitness">
+         Health &amp; Fitness
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/math-conversions">
+         Math &amp; Conversions
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/lifestyle-everyday">
+         Lifestyle &amp; Everyday
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/construction-diy">
+         Construction &amp; DIY
+        </a>
+       </li>
+      </ul>
+     </div>
+     <div>
+      <h4 class="text-lg font-semibold mb-4">
+       Popular Tools
+      </h4>
+      <ul class="space-y-2">
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/mortgage-payment">
+         Mortgage Calculator
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/percentage-calculator">
+         Percentage Calculator
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/bmi-calculator">
+         BMI Calculator
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/auto-loan-calculator">
+         Auto Loan Calculator
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/house-affordability">
+         House Affordability
+        </a>
+       </li>
+      </ul>
+     </div>
+     <div>
+      <h4 class="text-lg font-semibold mb-4">
+       Support
+      </h4>
+      <ul class="space-y-2">
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/about">
+         About Us
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/contact">
+         Contact
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/privacy">
+         Privacy Policy
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/terms">
+         Terms of Service
+        </a>
+       </li>
+       <li>
+        <a class="text-gray-400 hover:text-white" href="https://calcdomain.com/sitemap">
+         Site Map
+        </a>
+       </li>
+      </ul>
+     </div>
+    </div>
+    <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+     <p>
+      © 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone
+     </p>
+    </div>
+   </div>
+  </footer>
+  <script defer="True" src="/assets/js/script_menu.js">
+  </script>
+  <script defer="True" src="/assets/js/script_faq.js">
+  </script>
+  <script defer="True" src="search.js">
+  </script>
+ </body>
+</html>
