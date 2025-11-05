@@ -46,7 +46,9 @@ SCRIPT_ADSENSE_BODY = """
 # Aggiungi qui altri file (es. 'privacy.html', 'contact.html')
 IGNORE_LIST = [
     'search.html',
-    'seach.html' # Corregge il typo
+    'seach.html', # Corregge il typo
+    'privacy.html', 
+    'contact.html'
 ]
 
 # Percorsi
