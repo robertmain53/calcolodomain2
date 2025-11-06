@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="canonical" href="https://calcdomain.com/pottery-calculator">
+
+
+
+
+
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pottery Calculator — Shrinkage, Plaster Mix, Glaze Scaling & Unit Pricing</title>
+  <meta name="description" content="Professional pottery calculator: compute clay shrinkage & green size, plaster water ratios, glaze batch scaling by recipe percentages, and per-piece unit pricing with kiln & labor. Mobile-first, accessible, and citation-backed." />
+  
+  <link rel="icon" href="/favicon.ico" />
+  <meta name="author" content="Ugo Candido" />
+
+  <!-- Tailwind (JIT CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- MathJax for LaTeX (deferred rendering) -->
+  <script>
+    window.MathJax = { tex: {inlineMath: [['\\(','\\)'],['$','$']]}, svg: {fontCache: 'global'} };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+  <style>
+    :root {
+      --focus: #2563eb;
+      --muted: #f3f4f6;
+      --border: #e5e7eb;
+      --primary: #1d4ed8;
+      --danger: #b91c1c;
+    }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji"; }
+    /* Visible focus */
+    :focus {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    /* Prevent CLS in results boxes */
+    .results-minh { min-height: 7rem; }
+    .tab-btn[aria-selected="true"] { border-color: var(--primary); color: var(--primary); }
+    .formula-box { background: var(--muted); border:1px solid var(--border); border-radius: .5rem; padding:1rem; overflow:auto; }
+    .result-card { background:#fff; border:1px solid var(--border); border-radius: .75rem; padding:1rem; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    /* Tooltip popover base */
+    .tip { display:none; }
+    .tip[data-open="true"] { display:block; }
+    /* Print */
+    @media print {
+      .no-print { display:none !important; }
+      #print-section { position: static; box-shadow: none !important; }
+    }
+  </style>
+
+  <!-- JSON-LD: WebPage -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"WebPage",
+    "name":"Pottery Calculator",
+    "url":"https://calcdomain.com/pottery-calculator",
+    "inLanguage":"en",
+    "description":"Calculate clay shrinkage & throwing (green) size, plaster mixing ratios, glaze batch scaling by recipe percentages, and per-piece unit pricing.",
+    "isPartOf":{"@type":"WebSite","name":"CalcDomain","url":"https://calcdomain.com"},
+    "about":[{"@type":"Thing","name":"Pottery"},{"@type":"Thing","name":"Ceramics"}],
+    "author":{"@type":"Person","name":"Ugo Candido"},
+    "publisher":{"@type":"Organization","name":"CalcDomain"}
+  }
+  </script>
+
+  <!-- JSON-LD: Breadcrumbs -->
+  <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Lifestyle & Everyday",
+      "item": "https://calcdomain.com/lifestyle-everyday"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Hobbies",
+      "item": "https://calcdomain.com/subcategories/hobbies"
+    },
+    {
+      "@type": "ListItem",
+      "position": 4,
+      "name": "Pottery Calculator",
+      "item": "https://calcdomain.com/pottery-calculator"
+    }
+  ]
+}</script>
+
+  <!-- JSON-LD: HowTo (Shrinkage → required green size) -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"HowTo",
+    "name":"How to calculate clay green size from target fired size",
+    "description":"Use shrinkage percentage to determine what size to throw or build.",
+    "step":[
+      {"@type":"HowToStep","name":"Measure target fired size","text":"Enter desired final length/diameter/height after firing."},
+      {"@type":"HowToStep","name":"Enter shrinkage %","text":"Input your clay body's total firing shrinkage percentage (e.g., 12%)."},
+      {"@type":"HowToStep","name":"Compute green size","text":"Use Green = Final / (1 - s) where s is shrinkage as a decimal."}
+    ],
+    "tool":[{"@type":"HowToTool","name":"Pottery Calculator - Shrinkage tab"}]
+  }
+  </script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <!-- Header (non-sticky per spec) -->
+  <header class="bg-white border-b">
+    <div class="max-w-5xl mx-auto px-4 py-4">
+      <div class="flex items-center justify-between">
+        <a href="https://calcdomain.com" class="text-xl font-bold text-blue-700">CalcDomain</a>
+        <nav class="text-sm">
+          Categories
+          <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-700">Search</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main id="print-section" class="max-w-5xl mx-auto px-4 py-8">
+    <!-- Breadcrumb -->
+    <nav aria-label="Breadcrumb" class="text-sm text-gray-600 mb-4">
+      <a href="https://calcdomain.com" class="hover:text-blue-700">Home</a> &raquo;
+      <a href="https://calcdomain.com/lifestyle-everyday" class="hover:text-blue-700">Lifestyle Everyday</a> &raquo;
+      <a href="https://calcdomain.com/subcategories/hobbies" class="hover:text-blue-700">Hobbies</a> &raquo;
+      <span class="text-gray-900">Pottery Calculator</span>
+    </nav>
+
+    <!-- 1) Title -->
+    <h1 class="text-3xl font-extrabold mb-2">pottery calculator</h1>
+
+    <!-- 2) Intro -->
+    <p class="text-gray-700 mb-6">
+      A professional, all-in-one toolkit for ceramic artists and studio managers. Compute <strong>clay shrinkage & required green size</strong>,
+      <strong>plaster–water ratios</strong> for molds, <strong>glaze batch scaling</strong> by recipe percentages & target weight, and <strong>unit price per piece</strong>
+      including clay, glaze, kiln, and labor. Built for accuracy, mobile usability, and auditability.
+    </p>
+
+    <!-- 3) Interactive Calculator (tabs) -->
+    <section aria-labelledby="calcHeading" class="bg-white p-4 md:p-6 rounded-lg shadow-sm border">
+      <h2 id="calcHeading" class="text-xl font-semibold mb-3">Calculator</h2>
+
+      <!-- Tabs -->
+      <div role="tablist" aria-label="Pottery tools" class="flex flex-wrap gap-2 mb-4">
+        <button class="tab-btn px-3 py-2 border rounded-md text-sm" role="tab" id="tab-shrink" aria-selected="true" aria-controls="panel-shrink">Clay Shrinkage / Green Size</button>
+        <button class="tab-btn px-3 py-2 border rounded-md text-sm" role="tab" id="tab-plaster" aria-selected="false" aria-controls="panel-plaster">Plaster Mix</button>
+        <button class="tab-btn px-3 py-2 border rounded-md text-sm" role="tab" id="tab-glaze" aria-selected="false" aria-controls="panel-glaze">Glaze Batch Scaling</button>
+        <button class="tab-btn px-3 py-2 border rounded-md text-sm" role="tab" id="tab-price" aria-selected="false" aria-controls="panel-price">Unit Price per Piece</button>
+      </div>
+
+      <!-- Panels -->
+      <!-- SHRINKAGE -->
+      <div id="panel-shrink" role="tabpanel" aria-labelledby="tab-shrink">
+        <form class="grid gap-4 md:grid-cols-2" novalidate>
+          <!-- Target final length -->
+          <div>
+            <label for="finalLen" class="block text-sm font-medium text-gray-800">
+              Target fired length/diameter <span aria-hidden="true" class="text-red-600">*</span>
+            </label>
+            <div class="flex items-start gap-2 mt-1">
+              <input type="number" inputmode="decimal" id="finalLen" required aria-required="true"
+                     aria-describedby="finalLen_tip finalLen_err"
+                     class="w-full px-3 py-2 border rounded-md" min="0" step="0.01" value="20">
+              <button type="button" class="px-2 py-1 border rounded-md" aria-expanded="false" aria-controls="finalLen_tip">?</button>
+            </div>
+            <p id="finalLen_tip" class="tip text-sm text-gray-600 mt-1">
+              Enter any linear dimension you care about (e.g., bowl diameter). Units are arbitrary but must be consistent.
+            </p>
+            <p id="finalLen_err" class="text-sm text-red-700 mt-1" aria-live="polite"></p>
+          </div>
+
+          <!-- Shrinkage % -->
+          <div>
+            <label for="shrinkPct" class="block text-sm font-medium text-gray-800">
+              Total firing shrinkage (%) <span aria-hidden="true" class="text-red-600">*</span>
+            </label>
+            <div class="flex items-start gap-2 mt-1">
+              <input type="number" inputmode="decimal" id="shrinkPct" required aria-required="true"
+                     aria-describedby="shrinkPct_tip shrinkPct_err"
+                     class="w-full px-3 py-2 border rounded-md" min="0" max="30" step="0.1" value="12">
+              <button type="button" class="px-2 py-1 border rounded-md" aria-expanded="false" aria-controls="shrinkPct_tip">?</button>
+            </div>
+            <p id="shrinkPct_tip" class="tip text-sm text-gray-600 mt-1">
+              Typical stoneware: 10–15%; porcelain often 12–16%. Use your body’s tested value.
+            </p>
+            <p id="shrinkPct_err" class="text-sm text-red-700 mt-1" aria-live="polite"></p>
+          </div>
+
+          <!-- Optional: measure shrinkage -->
+          <div>
+            <label for="greenLen" class="block text-sm font-medium text-gray-800">
+              (Optional) Measured green length
+            </label>
+            <input type="number" inputmode="decimal" id="greenLen" aria-describedby="greenLen_tip"
+                   class="mt-1 w-full px-3 py-2 border rounded-md" min="0" step="0.01" />
+            <p id="greenLen_tip" class="text-sm text-gray-600 mt-1">If you also know the fired length, we’ll compute actual shrinkage.</p>
+          </div>
+          <div>
+            <label for="firedLen" class="block text-sm font-medium text-gray-800">
+              (Optional) Measured fired length
+            </label>
+            <input type="number" inputmode="decimal" id="firedLen" aria-describedby="firedLen_tip"
+                   class="mt-1 w-full px-3 py-2 border rounded-md" min="0" step="0.01" />
+            <p id="firedLen_tip" class="text-sm text-gray-600 mt-1">Pair with the green length for empirical shrinkage %.</p>
+          </div>
+        </form>
+
+        <!-- Results -->
+        <div class="mt-4 grid gap-4 md:grid-cols-3">
+          <div class="result-card results-minh">
+            <h3 class="text-sm text-gray-600">Required green size</h3>
+            <p id="resGreen" class="text-2xl font-bold text-blue-700 mt-1">—</p>
+            <p class="text-xs text-gray-500">Green = Final / (1 − s)</p>
+          </div>
+          <div class="result-card results-minh">
+            <h3 class="text-sm text-gray-600">Linear shrinkage multiplier</h3>
+            <p id="resMult" class="text-2xl font-bold text-blue-700 mt-1">—</p>
+            <p class="text-xs text-gray-500">Multiplier = 1 / (1 − s)</p>
+          </div>
+          <div class="result-card results-minh">
+            <h3 class="text-sm text-gray-600">Measured shrinkage (if given)</h3>
+            <p id="resMeasured" class="text-2xl font-bold text-blue-700 mt-1">—</p>
+            <p class="text-xs text-gray-500">s = (G − F) / G</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- PLASTER -->
+      <div id="panel-plaster" role="tabpanel" aria-labelledby="tab-plaster" hidden>
+        <form class="grid gap-4 md:grid-cols-2" novalidate>
+          <div>
+            <label for="plasterRatio" class="block text-sm font-medium text-gray-800">
+              Plaster:Water ratio by weight <span aria-hidden="true" class="text-red-600">*</span>
+            </label>
+            <div class="flex items-start gap-2 mt-1">
+              <input type="text" id="plasterRatio" required aria-required="true"
+                     aria-describedby="plasterRatio_tip plasterRatio_err"
+                     class="w-full px-3 py-2 border rounded-md" value="70:100">
+              <button type="button" class="px-2 py-1 border rounded-md" aria-expanded="false" aria-controls="plasterRatio_tip">?</button>
+            </div>
+            <p id="plasterRatio_tip" class="tip text-sm text-gray-600 mt-1">
+              Example: <strong>70:100</strong> (USG No.1 typical). Some workflows use ~73:100. Enter “plaster:water”.
+            </p>
+            <p id="plasterRatio_err" class="text-sm text-red-700 mt-1" aria-live="polite"></p>
+          </div>
+          <div>
+            <label for="moldVolume" class="block text-sm font-medium text-gray-800">
+              Mold volume (liters) <span aria-hidden="true" class="text-red-600">*</span>
+            </label>
+            <input type="number" inputmode="decimal" id="moldVolume" required aria-required="true"
+                   aria-describedby="moldVolume_err moldVolume_tip"
+                   class="mt-1 w-full px-3 py-2 border rounded-md" min="0" step="0.1" value="3.0" />
+            <p id="moldVolume_tip" class="text-sm text-gray-600 mt-1">Approx: 1 L ≈ 1 kg water at room temperature.</p>
+            <p id="moldVolume_err" class="text-sm text-red-700 mt-1" aria-live="polite"></p>
+          </div>
+        </form>
+        <div class="mt-4 grid gap-4 md:grid-cols-3">
+          <div class="result-card results-minh">
+            <h3 class="text-sm text-gray-600">Water needed</h3>
+            <p id="resWater" class="text-2xl font-bold text-blue-700 mt-1">—</p>
+            <p class="text-xs text-gray-500">kg (≈ liters)</p>
+          </div>
+          <div class="result-card results-minh">
+            <h3 class="text-sm text-gray-600">Plaster needed</h3>
+            <p id="resPlaster" class="text-2xl font-bold text-blue-700 mt-1">—</p>
+            <p class="text-xs text-gray-500">kg</p>
+          </div>
+          <div class="result-card results-minh">
+            <h3 class="text-sm text-gray-600">Total slurry</h3>
+            <p id="resTotal" class="text-2xl font-bold text-blue-700 mt-1">—</p>
+            <p class="text-xs text-gray-500">kg (approx. volume ≈ liters)</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- GLAZE SCALING -->
+      <div id="panel-glaze" role="tabpanel" aria-labelledby="tab-glaze" hidden>
+        <form class="grid gap-4" novalidate>
+          <div>
+            <label for="glazeList" class="block text-sm font-medium text-gray-800">
+              Recipe (percent format, one per line) <span aria-hidden="true" class="text-red-600">*</span>
+            </label>
+            <div class="flex items-start gap-2 mt-1">
+              <textarea id="glazeList" rows="6" required aria-required="true"
+                        aria-describedby="glazeList_tip glazeList_err"
+                        class="w-full px-3 py-2 border rounded-md"
+                        placeholder="Custer Feldspar 45%\nSilica 25%\nWhiting 20%\nKaolin 10%"></textarea>
+              <button type="button" class="px-2 py-1 border rounded-md" aria-expanded="false" aria-controls="glazeList_tip">?</button>
+            </div>
+            <p id="glazeList_tip" class="tip text-sm text-gray-600 mt-1">
+              Format: <em>Name percent%</em>. Percentages should total ~100. We’ll scale to your target dry weight.
+            </p>
+            <p id="glazeList_err" class="text-sm text-red-700 mt-1" aria-live="polite"></p>
+          </div>
+          <div class="grid gap-4 md:grid-cols-2">
+            <div>
+              <label for="targetDry" class="block text-sm font-medium text-gray-800">
+                Target batch dry weight (g) <span aria-hidden="true" class="text-red-600">*</span>
+              </label>
+              <input type="number" inputmode="decimal" id="targetDry" required aria-required="true"
+                     aria-describedby="targetDry_err"
+                     class="mt-1 w-full px-3 py-2 border rounded-md" min="1" step="1" value="1000" />
+              <p id="targetDry_err" class="text-sm text-red-700 mt-1" aria-live="polite"></p>
+            </div>
+            <div>
+              <label for="waterPct" class="block text-sm font-medium text-gray-800">
+                Approx water as % of total slurry (guideline)
+              </label>
+              <input type="number" inputmode="decimal" id="waterPct"
+                     aria-describedby="waterPct_tip"
+                     class="mt-1 w-full px-3 py-2 border rounded-md" min="20" max="70" step="1" value="50" />
+              <p id="waterPct_tip" class="text-sm text-gray-600 mt-1">Common starting point ~45–60%; adjust to target specific gravity.</p>
+            </div>
+          </div>
+        </form>
+        <div class="mt-4 overflow-x-auto border rounded-lg">
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-100 text-gray-700">
+              <tr>
+                <th class="px-4 py-2 text-left">Ingredient</th>
+                <th class="px-4 py-2 text-right">Percent</th>
+                <th class="px-4 py-2 text-right">Weight (g)</th>
+              </tr>
+            </thead>
+            <tbody id="glazeTable"></tbody>
+            <tfoot class="bg-gray-50">
+              <tr>
+                <td class="px-4 py-2 font-semibold text-right" colspan="2">Total dry</td>
+                <td class="px-4 py-2 text-right font-semibold" id="glazeTotalDry">—</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2 font-semibold text-right" colspan="2">Est. water (g)</td>
+                <td class="px-4 py-2 text-right font-semibold" id="glazeWater">—</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2 font-semibold text-right" colspan="2">Est. slurry (g)</td>
+                <td class="px-4 py-2 text-right font-semibold" id="glazeSlurry">—</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- UNIT PRICE -->
+      <div id="panel-price" role="tabpanel" aria-labelledby="tab-price" hidden>
+        <form class="grid gap-4 md:grid-cols-2" novalidate>
+          <div>
+            <label for="clayKgPrice" class="block text-sm font-medium text-gray-800">
+              Clay price per kg <span class="text-red-600" aria-hidden="true">*</span>
+            </label>
+            <input type="number" inputmode="decimal" id="clayKgPrice" required aria-required="true"
+                   aria-describedby="clayKgPrice_err"
+                   class="mt-1 w-full px-3 py-2 border rounded-md" min="0" step="0.01" value="2.50" />
+            <p id="clayKgPrice_err" class="text-sm text-red-700 mt-1" aria-live="polite"></p>
+          </div>
+          <div>
+            <label for="clayPerPiece" class="block text-sm font-medium text-gray-800">
+              Clay used per piece (g) <span class="text-red-600" aria-hidden="true">*</span>
+            </label>
+            <input type="number" inputmode="decimal" id="clayPerPiece" required aria-required="true"
+                   aria-describedby="clayPerPiece_err"
+                   class="mt-1 w-full px-3 py-2 border rounded-md" min="1" step="1" value="600" />
+            <p id="clayPerPiece_err" class="text-sm text-red-700 mt-1" aria-live="polite"></p>
+          </div>
+
+          <div>
+            <label for="glazeKgPrice" class="block text-sm font-medium text-gray-800">
+              Glaze dry mix price per kg
+            </label>
+            <input type="number" inputmode="decimal" id="glazeKgPrice"
+                   class="mt-1 w-full px-3 py-2 border rounded-md" min="0" step="0.01" value="6.00" />
+          </div>
+          <div>
+            <label for="glazeUse" class="block text-sm font-medium text-gray-800">
+              Est. dry glaze used per piece (g)
+            </label>
+            <input type="number" inputmode="decimal" id="glazeUse"
+                   class="mt-1 w-full px-3 py-2 border rounded-md" min="0" step="1" value="15" />
+          </div>
+
+          <div>
+            <label for="kilnCostBatch" class="block text-sm font-medium text-gray-800">
+              Kiln cost per firing (currency)
+            </label>
+            <input type="number" inputmode="decimal" id="kilnCostBatch"
+                   class="mt-1 w-full px-3 py-2 border rounded-md" min="0" step="0.01" value="18.00" />
+            <p class="text-sm text-gray-600 mt-1">Electricity/gas + wear. You can split across pieces fired.</p>
+          </div>
+          <div>
+            <label for="piecesPerFiring" class="block text-sm font-medium text-gray-800">
+              Avg. pieces per firing
+            </label>
+            <input type="number" inputmode="decimal" id="piecesPerFiring"
+                   class="mt-1 w-full px-3 py-2 border rounded-md" min="1" step="1" value="24" />
+          </div>
+
+          <div>
+            <label for="laborRate" class="block text-sm font-medium text-gray-800">
+              Labor rate (per hour)
+            </label>
+            <input type="number" inputmode="decimal" id="laborRate"
+                   class="mt-1 w-full px-3 py-2 border rounded-md" min="0" step="0.01" value="20.00" />
+          </div>
+          <div>
+            <label for="laborMins" class="block text-sm font-medium text-gray-800">
+              Minutes of labor per piece
+            </label>
+            <input type="number" inputmode="decimal" id="laborMins"
+                   class="mt-1 w-full px-3 py-2 border rounded-md" min="0" step="1" value="25" />
+          </div>
+
+          <div>
+            <label for="overheadPct" class="block text-sm font-medium text-gray-800">
+              Overhead markup on cost (%)
+            </label>
+            <input type="number" inputmode="decimal" id="overheadPct"
+                   class="mt-1 w-full px-3 py-2 border rounded-md" min="0" max="200" step="1" value="15" />
+          </div>
+          <div>
+            <label for="profitMargin" class="block text-sm font-medium text-gray-800">
+              Target profit margin on price (%)
+            </label>
+            <input type="number" inputmode="decimal" id="profitMargin"
+                   class="mt-1 w-full px-3 py-2 border rounded-md" min="0" max="95" step="1" value="40" />
+          </div>
+        </form>
+
+        <div class="mt-4 grid gap-4 md:grid-cols-4">
+          <div class="result-card results-minh">
+            <h3 class="text-sm text-gray-600">Material cost / piece</h3>
+            <p id="resMat" class="text-2xl font-bold text-blue-700 mt-1">—</p>
+          </div>
+          <div class="result-card results-minh">
+            <h3 class="text-sm text-gray-600">Labor cost / piece</h3>
+            <p id="resLabor" class="text-2xl font-bold text-blue-700 mt-1">—</p>
+          </div>
+          <div class="result-card results-minh">
+            <h3 class="text-sm text-gray-600">Total cost (with overhead)</h3>
+            <p id="resCost" class="text-2xl font-bold text-blue-700 mt-1">—</p>
+          </div>
+          <div class="result-card results-minh">
+            <h3 class="text-sm text-gray-600">Suggested price</h3>
+            <p id="resPrice" class="text-2xl font-bold text-blue-700 mt-1">—</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4) Results section note (for print anchoring / CLS) -->
+    <section class="mt-6 text-sm text-gray-600">
+      Results update live as you type. Units are consistent across each tool (e.g., cm or inches), and currencies are displayed using your locale.
+    </section>
+
+    <!-- 5) Authoritative Content Ecosystem -->
+    <section class="bg-white p-6 mt-8 rounded-lg shadow-sm border prose max-w-none">
+      <!-- a) Source & Methodology -->
+      <h2>Data Sources & Methodology</h2>
+      <ul>
+        <li><strong>Shrinkage fundamentals:</strong> Linear shrinkage computed as \( s = \frac{G-F}{G} \) (green–to–fired). Guidance on maturation & trends: Digitalfire, “Firing Shrinkage.” <a href="https://digitalfire.com/glossary/firing%2Bshrinkage" rel="nofollow">Source</a>.</li>
+        <li><strong>Green size from final:</strong> \( \text{Green} = \frac{\text{Final}}{1-s} \). Practical guidance corroborated by studio literature. <a href="https://www.oldforgecreations.co.uk/blog/clay-shrinkage" rel="nofollow">Source</a>.</li>
+        <li><strong>Plaster-water ratios:</strong> Typical ranges around 70–73 parts plaster per 100 parts water by weight (USG No.1 context). References: Glazy Plaster Calculator; PhotoPottery ratio explainer. <a href="https://plaster.glazy.org/" rel="nofollow">Source 1</a>, <a href="https://photopottery.com/water_to_plaster_ratio_calculator.php" rel="nofollow">Source 2</a>.</li>
+        <li><strong>Glaze batching:</strong> Percent scaling of dry recipe to target weight; initial water guideline ~45–60% of slurry by mass depending on clay content and target specific gravity. Practice notes: Glazy Help; studio guides. <a href="https://help.glazy.org/testing/mixing-tests" rel="nofollow">Source</a>.</li>
+        <li><strong>Water absorption context & measurement standards:</strong> ASTM C373 methods inform terminology for ceramic bodies. <a href="https://matestlabs.com/test-standards/astm-c373/" rel="nofollow">Source</a>.</li>
+      </ul>
+      <p class="p-3 bg-gray-50 border rounded">
+        <strong>All calculations strictly follow the formulas and data points provided by the sources above.</strong>
+      </p>
+
+      <!-- b) Formula explained -->
+      <h2>The Formulas (Explained)</h2>
+      <div class="formula-box">
+        <p><strong>Shrinkage (empirical):</strong> \( s = \dfrac{G - F}{G} \quad (0 \le s &lt; 1) \)</p>
+        <p><strong>Required green size from target final:</strong> \( \text{Green} = \dfrac{\text{Final}}{1 - s} \)</p>
+        <p><strong>Linear multiplier:</strong> \( M = \dfrac{1}{1 - s} \)</p>
+        <hr />
+        <p><strong>Plaster–water (by weight):</strong> Given \(P:W\), for water mass \(m_W\) the plaster mass is \( m_P = m_W \cdot \dfrac{P}{W} \). For target volume (L) we approximate \( m_W \approx \text{L} \) (1 L ≈ 1 kg water).</p>
+        <hr />
+        <p><strong>Glaze scaling:</strong> For ingredient i with percent \(p_i\), the scaled weight is \( w_i = p_i/100 \cdot W_{\text{dry}} \). Estimated water \( W_{\text{H2O}} \approx \alpha \cdot (W_{\text{dry}} + W_{\text{H2O}}) \Rightarrow W_{\text{H2O}} = \dfrac{\alpha}{1-\alpha} \, W_{\text{dry}} \).</p>
+        <hr />
+        <p><strong>Unit price per piece:</strong> Material + Labor + Kiln share → Cost. Overhead markup \( \beta \) on cost: \( C' = C \cdot (1+\beta) \). Target margin \( m \) on price: \( \text{Price} = \dfrac{C'}{1-m} \).</p>
+      </div>
+
+      <!-- c) Glossary -->
+      <h2>Glossary of Inputs & Outputs</h2>
+      <table class="min-w-full text-sm border">
+        <thead class="bg-gray-100">
+          <tr><th class="px-3 py-2 text-left">Field</th><th class="px-3 py-2 text-left">Meaning</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="px-3 py-2">Target fired length</td><td class="px-3 py-2">Your desired post-firing dimension along any axis.</td></tr>
+          <tr><td class="px-3 py-2">Shrinkage % (s)</td><td class="px-3 py-2">Total linear firing shrinkage of the clay body from green to fired.</td></tr>
+          <tr><td class="px-3 py-2">Green size</td><td class="px-3 py-2">Size to throw/handbuild to obtain the target final size after shrinkage.</td></tr>
+          <tr><td class="px-3 py-2">Plaster:Water</td><td class="px-3 py-2">Weight ratio for mixing pottery plaster slurries.</td></tr>
+          <tr><td class="px-3 py-2">Mold volume (L)</td><td class="px-3 py-2">Approximate liters of slurry needed for the mold cavity.</td></tr>
+          <tr><td class="px-3 py-2">Glaze recipe %</td><td class="px-3 py-2">Ingredient list as percentages that sum to ~100%.</td></tr>
+          <tr><td class="px-3 py-2">Target dry weight</td><td class="px-3 py-2">Total grams of dry materials to mix for the glaze batch.</td></tr>
+          <tr><td class="px-3 py-2">Water % of slurry</td><td class="px-3 py-2">Guideline fraction for initial hydration before dialing in SG.</td></tr>
+          <tr><td class="px-3 py-2">Unit price</td><td class="px-3 py-2">Suggested selling price meeting your margin after overhead.</td></tr>
+        </tbody>
+      </table>
+
+      <!-- d) Worked Example -->
+      <h2>How It Works: A Step-by-Step Example</h2>
+      <h3>Example A — Green size from final</h3>
+      <p>Target bowl diameter = 20 cm, shrinkage \( s = 0.12 \) (12%). Using \( \text{Green} = \frac{20}{1-0.12} = 22.73 \) cm. Throw to ~22.7 cm.</p>
+
+      <h3>Example B — Plaster mix</h3>
+      <p>Mold volume = 3.0 L. Ratio = 70:100 (plaster:water). Approx water \( \approx 3.0 \) kg. Plaster \( = 3.0 \times 70/100 = 2.1 \) kg. Total slurry ≈ 5.1 kg (~5.1 L).</p>
+
+      <h3>Example C — Glaze scaling</h3>
+      <p>Recipe totals 100%. Target dry = 1,000 g. Each ingredient weight \( = \% \times 10 \). If water fraction \( \alpha = 0.5 \), estimated water \( = \frac{0.5}{0.5}\times1000 = 1000 \) g → slurry ≈ 2000 g.</p>
+
+      <h3>Example D — Unit price</h3>
+      <p>Clay 600 g @ €2.50/kg → €1.50; Glaze 15 g @ €6/kg → €0.09; Kiln €18 / 24 pcs → €0.75; Labor 25 min @ €20/h → €8.33. Base cost = €10.67. Overhead 15% → €12.27. Margin 40% → Price \( = 12.27/(1-0.4) = €20.45 \).</p>
+
+      <!-- e) FAQs -->
+      <h2>FAQ</h2>
+      <details>
+        <summary>Is shrinkage the same for all directions?</summary>
+        <p>It’s approximately linear but can vary by forming method, wall thickness, and orientation. Test your body with bars or tiles and measure along the same axis you care about.</p>
+      </details>
+      <details>
+        <summary>What shrinkage should I enter—wet to fired or dry to fired?</summary>
+        <p>Use your total green-to-fired linear shrinkage for accurate <em>green size</em> targeting. If you only have dry-to-fired, expect slightly less total shrinkage than wet-to-fired.</p>
+      </details>
+      <details>
+        <summary>How accurate is the plaster volume ≈ mass assumption?</summary>
+        <p>We assume 1 L water ≈ 1 kg for quick planning. Actual slurry density differs; weigh materials for production.</p>
+      </details>
+      <details>
+        <summary>What water percentage should I use for glazes?</summary>
+        <p>Start around 45–60% of total slurry mass, then adjust to reach your target specific gravity and application behavior.</p>
+      </details>
+      <details>
+        <summary>How do I include multiple firings or decals in pricing?</summary>
+        <p>Add their costs to the kiln field (or duplicate the field as needed) and update pieces per firing accordingly.</p>
+      </details>
+      <details>
+        <summary>Can I switch units?</summary>
+        <p>Yes. Keep units consistent within each tool (e.g., all cm or all inches). Currency follows your locale.</p>
+      </details>
+    </section>
+
+    <!-- 6) Authorship & Review -->
+    <section class="mt-8">
+      <div class="p-4 bg-gray-100 border rounded text-sm text-gray-700">
+        <p><strong>Tool developed by Ugo Candido.</strong> Content verified by CalcDomain Editorial Board.</p>
+        <p>Last accuracy review: <time datetime="2025-10-30">October 30, 2025</time></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bg-white border-t">
+    <div class="max-w-5xl mx-auto px-4 py-8 text-center text-sm text-gray-600">
+      <p>&copy; 2025 CalcDomain. All rights reserved.</p>
+      <div class="mt-3 space-x-4">
+        <a href="https://calcdomain.com/about" class="hover:text-blue-700">About</a>
+        <a href="https://calcdomain.com/contact" class="hover:text-blue-700">Contact</a>
+        <a href="https://calcdomain.com/privacy" class="hover:text-blue-700">Privacy</a>
+        <a href="https://calcdomain.com/terms" class="hover:text-blue-700">Terms</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- App logic (defer) -->
+  <script defer>
+    (function(){
+      // Helpers
+      const $ = (sel) => document.querySelector(sel);
+      const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+      const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
+
+      // Accessible tooltips: toggle via button next to label
+      $$(".tab-btn + .tab-btn, .tab-btn").forEach(()=>{}); // no-op to satisfy linter in some CSP
+      document.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[aria-controls]');
+        if (!btn) return;
+        const tip = document.getElementById(btn.getAttribute('aria-controls'));
+        if (!tip) return;
+        const open = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!open));
+        tip.dataset.open = String(!open);
+      });
+
+      // Tabs
+      const tabs = $$(".tab-btn");
+      const panels = [ "#panel-shrink", "#panel-plaster", "#panel-glaze", "#panel-price" ].map(id => $(id));
+      function selectTab(index){
+        tabs.forEach((t,i)=>{
+          t.setAttribute('aria-selected', String(i===index));
+          panels[i].hidden = i!==index;
+        });
+      }
+      tabs.forEach((t,i)=>{
+        t.addEventListener('click', ()=>selectTab(i));
+        t.addEventListener('keydown', (ev)=>{
+          if(ev.key==='ArrowRight') { selectTab((i+1)%tabs.length); tabs[(i+1)%tabs.length].focus(); }
+          if(ev.key==='ArrowLeft')  { selectTab((i-1+tabs.length)%tabs.length); tabs[(i-1+tabs.length)%tabs.length].focus(); }
+        });
+      });
+      selectTab(0);
+
+      // ---------- Validations (on blur) ----------
+      function setErr(id, msg){
+        const el = $("#"+id);
+        const err = $("#"+id+"_err");
+        if(!err) return;
+        err.textContent = msg || "";
+        if(msg){ el.setAttribute('aria-invalid','true'); }
+        else { el.removeAttribute('aria-invalid'); }
+      }
+      $$("#panel-shrink input, #panel-plaster input, #panel-glaze textarea, #panel-glaze input, #panel-price input").forEach(el=>{
+        el.addEventListener('blur', ()=> {
+          if(el.hasAttribute('required') && !el.value){
+            setErr(el.id, "This field is required.");
+          } else if (el.type==="number" && el.min!=="" && Number(el.value)<Number(el.min)){
+            setErr(el.id, `Value must be ≥ ${el.min}.`);
+          } else {
+            setErr(el.id, "");
+          }
+        });
+      });
+
+      // ---------- SHRINKAGE ----------
+      const finalLen = $("#finalLen");
+      const shrinkPct = $("#shrinkPct");
+      const greenLen = $("#greenLen");
+      const firedLen = $("#firedLen");
+      const outGreen = $("#resGreen");
+      const outMult = $("#resMult");
+      const outMeasured = $("#resMeasured");
+
+      function calcShrink(){
+        const F = parseFloat(finalLen.value);
+        let sPct = parseFloat(shrinkPct.value);
+        if(Number.isFinite(sPct)) sPct = clamp(sPct, 0, 30);
+        if(!(F>0) || !(sPct>=0)) { outGreen.textContent="—"; outMult.textContent="—"; return; }
+        const s = sPct/100;
+        const M = 1/(1-s);
+        const Greq = F * M;
+        outGreen.textContent = (Math.round(Greq*100)/100).toString();
+        outMult.textContent = (Math.round(M*1000)/1000).toString();
+
+        const Gm = parseFloat(greenLen.value);
+        const Fm = parseFloat(firedLen.value);
+        if(Gm>0 && Fm>0 && Fm<Gm){
+          const sMeas = (Gm - Fm)/Gm * 100;
+          outMeasured.textContent = (Math.round(sMeas*10)/10) + "%";
+        } else {
+          outMeasured.textContent = "—";
+        }
+      }
+      ["input","change"].forEach(evt=>{
+        [finalLen, shrinkPct, greenLen, firedLen].forEach(el=> el.addEventListener(evt, calcShrink));
+      });
+      calcShrink();
+
+      // ---------- PLASTER ----------
+      const plasterRatio = $("#plasterRatio");
+      const moldVolume = $("#moldVolume");
+      const resWater = $("#resWater"), resPlaster = $("#resPlaster"), resTotal = $("#resTotal");
+
+      function parseRatio(text){
+        // expect "70:100" as plaster:water
+        const m = (text||"").replace(/\s+/g,"").match(/^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/);
+        if(!m) return null;
+        return { P: parseFloat(m[1]), W: parseFloat(m[2]) };
+      }
+      function calcPlaster(){
+        const volL = parseFloat(moldVolume.value);
+        const rw = parseRatio(plasterRatio.value);
+        if(!(volL>0) || !rw){ resWater.textContent="—"; resPlaster.textContent="—"; resTotal.textContent="—"; return; }
+        const waterKg = volL; // approx density 1 kg/L
+        const plasterKg = waterKg * (rw.P / rw.W);
+        const totalKg = waterKg + plasterKg;
+        resWater.textContent = waterKg.toFixed(2) + " kg";
+        resPlaster.textContent = plasterKg.toFixed(2) + " kg";
+        resTotal.textContent = totalKg.toFixed(2) + " kg";
+      }
+      ["input","change","blur"].forEach(evt=>{
+        [plasterRatio, moldVolume].forEach(el=> el.addEventListener(evt, calcPlaster));
+      });
+      calcPlaster();
+
+      // ---------- GLAZE SCALING ----------
+      const glazeList = $("#glazeList");
+      const targetDry = $("#targetDry");
+      const waterPct = $("#waterPct");
+      const glazeTable = $("#glazeTable");
+      const glazeTotalDry = $("#glazeTotalDry");
+      const glazeWater = $("#glazeWater");
+      const glazeSlurry = $("#glazeSlurry");
+
+      function parseRecipe(txt){
+        // Lines like "Silica 25%" (percent optional % sign)
+        const lines = (txt||"").split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+        const items=[];
+        let sum=0;
+        for(const ln of lines){
+          const m = ln.match(/^(.+?)\s+(\d+(?:\.\d+)?)\s*%?$/);
+          if(m){ const name=m[1].trim(); const pct=parseFloat(m[2]); items.push({name,pct}); sum+=pct; }
+        }
+        return {items, sum};
+      }
+      function renderGlaze(){
+        const tgt = parseFloat(targetDry.value);
+        const {items,sum} = parseRecipe(glazeList.value);
+        glazeTable.innerHTML="";
+        if(!(tgt>0) || items.length===0){ glazeTotalDry.textContent="—"; glazeWater.textContent="—"; glazeSlurry.textContent="—"; return; }
+        // Normalize if needed (allow totals close to 100)
+        const norm = sum>0 ? (100/sum) : 1;
+        let total = 0;
+        for(const it of items){
+          const pct = it.pct * norm;
+          const wt = pct/100 * tgt;
+          total += wt;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="px-4 py-2">${it.name}</td>
+            <td class="px-4 py-2 text-right">${pct.toFixed(2)}%</td>
+            <td class="px-4 py-2 text-right">${wt.toFixed(1)}</td>`;
+          glazeTable.appendChild(tr);
+        }
+        glazeTotalDry.textContent = total.toFixed(1);
+        const alpha = clamp((parseFloat(waterPct.value)||0)/100, 0.2, 0.7);
+        const water = (alpha/(1-alpha)) * total;
+        glazeWater.textContent = water.toFixed(0);
+        glazeSlurry.textContent = (total + water).toFixed(0);
+      }
+      ["input","change","blur"].forEach(evt=>{
+        [glazeList, targetDry, waterPct].forEach(el=> el.addEventListener(evt, renderGlaze));
+      });
+      renderGlaze();
+
+      // ---------- UNIT PRICE ----------
+      const clayKgPrice = $("#clayKgPrice");
+      const clayPerPiece = $("#clayPerPiece");
+      const glazeKgPrice = $("#glazeKgPrice");
+      const glazeUse = $("#glazeUse");
+      const kilnCostBatch = $("#kilnCostBatch");
+      const piecesPerFiring = $("#piecesPerFiring");
+      const laborRate = $("#laborRate");
+      const laborMins = $("#laborMins");
+      const overheadPct = $("#overheadPct");
+      const profitMargin = $("#profitMargin");
+      const resMat = $("#resMat"), resLabor = $("#resLabor"), resCost = $("#resCost"), resPrice = $("#resPrice");
+
+      const fmtCur = (v)=> new Intl.NumberFormat(undefined,{style:"currency", currency: "EUR"}).format(v||0);
+
+      function calcPrice(){
+        const clayKg = parseFloat(clayKgPrice.value)||0;
+        const clayGr = parseFloat(clayPerPiece.value)||0;
+        const glazeKg = parseFloat(glazeKgPrice.value)||0;
+        const glazeGr = parseFloat(glazeUse.value)||0;
+        const kiln = parseFloat(kilnCostBatch.value)||0;
+        const pieces = Math.max(1, parseInt(piecesPerFiring.value)||1);
+        const rate = parseFloat(laborRate.value)||0;
+        const mins = parseFloat(laborMins.value)||0;
+        const over = clamp(parseFloat(overheadPct.value)||0, 0, 200)/100;
+        const margin = clamp(parseFloat(profitMargin.value)||0, 0, 95)/100;
+
+        const matClay = clayKg * (clayGr/1000);
+        const matGlaze = glazeKg * (glazeGr/1000);
+        const kilnShare = kiln / pieces;
+        const materials = matClay + matGlaze + kilnShare;
+
+        const labor = rate * (mins/60);
+
+        const baseCost = materials + labor;
+        const withOver = baseCost * (1 + over);
+        const price = withOver / (1 - margin);
+
+        resMat.textContent = fmtCur(materials);
+        resLabor.textContent = fmtCur(labor);
+        resCost.textContent = fmtCur(withOver);
+        resPrice.textContent = fmtCur(price);
+      }
+      ["input","change","blur"].forEach(evt=>{
+        [clayKgPrice,clayPerPiece,glazeKgPrice,glazeUse,kilnCostBatch,piecesPerFiring,laborRate,laborMins,overheadPct,profitMargin].forEach(el=> el.addEventListener(evt, calcPrice));
+      });
+      calcPrice();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="canonical" href="https://calcdomain.com/car-payment-calculator">
+
+
+
+
+
+    <link rel="icon" type="image/png" href="https://calcdomain.com/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="https://calcdomain.com/favicon.svg" />
+    <link rel="shortcut icon" href="https://calcdomain.com/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="https://calcdomain.com/apple-touch-icon.png" />
+    <link rel="manifest" href="https://calcdomain.com/site.webmanifest" />
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>Car Payment Calculator - Estimate Monthly Auto Loan Costs</title>
+    <meta name="description" content="Estimate your monthly car payment, total interest, and total loan cost. Our accessible, mobile-first calculator accounts for vehicle price, down payment, trade-in, sales tax, and fees.">
+    
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.css" integrity="sha384-Xi8rHCmBmhbuyyhbI88391ZKP2dmfnOl4rT9ZfN75AGUOzS0QRwg/vS2rwQeM5k/" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.js" integrity="sha384-X/XCfMm41stwvAEBUY5gprLAP+dvjXA0o9+zQOFMMZNsBF0/EB5BEF/rNErT27Gr" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/contrib/auto-render.min.js" integrity="sha384-+XBljXPPiv+OzfbB3cVmLHf4hdUFHlWNZN5spNQ7eVnrdDMtwQpdVbA/imgklqcG" crossorigin="anonymous"
+        onload="renderMathInElement(document.body);"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .prose { max-width: 65ch; }
+        .prose h2 { font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; }
+        .prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+        .prose p { margin-bottom: 1rem; line-height: 1.6; }
+        .prose ul, .prose ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+        .prose li { margin-bottom: 0.5rem; }
+        
+        /* Formula box for KaTeX */
+        .formula-box {
+            background: #f3f4f6; 
+            border: 1px solid #d1d5db; 
+            border-radius: 8px; 
+            padding: 1.5rem;
+            overflow-x: auto; 
+            text-align: center;
+            font-size: 1.25rem;
+        }
+
+        /* Accessible Details/Summary */
+        details > summary { 
+            cursor: pointer; 
+            font-weight: 600; 
+            padding: 0.5rem 0; 
+            list-style: none; /* Remove default marker */
+            position: relative;
+            padding-left: 1.75rem;
+        }
+        details > summary::-webkit-details-marker { display: none; } /* Chrome/Safari */
+        details > summary::before {
+            content: '+';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #2563eb;
+            padding: 0 0.5rem;
+        }
+        details[open] > summary::before {
+            content: '−';
+        }
+        details[open] > summary { margin-bottom: 0.5rem; }
+
+        /* Result Card Styling */
+        .result-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 1.25rem; text-align: center; }
+        .result-card h4 { font-size: 0.95rem; color: #6b7280; margin-bottom: 0.25rem; text-wrap: nowrap; }
+        .result-card p { font-size: 1.75rem; font-weight: 700; color: #2563eb; }
+
+        /* Accessible Focus State */
+        *:focus-visible {
+            outline: 3px solid #2563eb !important;
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+
+        /* Accessible Form Error Messaging */
+        .error-message {
+            color: #dc2626; /* red-600 */
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+        input[aria-invalid="true"] {
+            border-color: #dc2626;
+            box-shadow: 0 0 0 1px #dc2626;
+        }
+
+        /* CLS Prevention: Reserve space for results */
+        #results {
+            min-height: 320px;
+        }
+        
+        /* Tooltip styles */
+        .tooltip-bubble {
+            display: none;
+            position: absolute;
+            z-index: 10;
+            width: 250px;
+            background-color: #1f2937; /* gray-800 */
+            color: #fff;
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            line-height: 1.4;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+            bottom: 125%; /* Position above the button */
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .tooltip-bubble::after { /* Tooltip arrow */
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1f2937 transparent transparent transparent;
+        }
+        button[aria-expanded="true"] + .tooltip-bubble {
+            display: block;
+        }
+
+        /* Print Styles */
+        @media print {
+            body * { visibility: hidden; }
+            #print-section, #print-section * { visibility: visible; }
+            #print-section { position: absolute; left: 0; top: 0; width: 100%; }
+            #results-chart-container, #calculator-ui button, #calculator-ui a { display: none !important; }
+            .prose, #results { margin-top: 1rem; }
+            .result-card { border: 1px solid #ccc; }
+        }
+    </style>
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": "Car Payment Calculator",
+      "description": "Estimate your monthly auto loan payment, total interest, and total cost. Our accessible, mobile-first calculator accounts for vehicle price, down payment, trade-in, sales tax, and fees.",
+      "url": "https://calcdomain.com/car-payment-calculator",
+      "inLanguage": "en",
+      "author": {
+        "@type": "Person",
+        "name": "Ugo Candido"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "CalcDomain",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://calcdomain.com/logo.svg"
+        }
+      }
+    }
+    </script>
+    
+    <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Lifestyle & Everyday",
+      "item": "https://calcdomain.com/lifestyle-everyday"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Automotive",
+      "item": "https://calcdomain.com/subcategories/automotive"
+    },
+    {
+      "@type": "ListItem",
+      "position": 4,
+      "name": "Car Payment Calculator",
+      "item": "https://calcdomain.com/car-payment-calculator"
+    }
+  ]
+}</script>
+    
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "name": "How to Use the Car Payment Calculator",
+      "description": "A step-by-step guide to calculating your auto loan payments and total costs.",
+      "step": [
+        {"@type": "HowToStep", "name": "Enter Vehicle Costs", "text": "Input the total Vehicle Price, the Sales Tax Rate (%) for your area, and any additional Fees (like title, registration, or doc fees)."},
+        {"@type": "HowToStep", "name": "Add Credits", "text": "Enter your Down Payment amount and the Trade-in Value of your current vehicle, if any."},
+        {"@type": "HowToStep", "name": "Input Loan Terms", "text": "Provide the Annual Interest Rate (APR) offered by your lender and the total Loan Term in months (e.g., 60 for 5 years)."},
+        {"@type": "HowToStep", "name": "Calculate & Review", "text": "The calculator will instantly show your estimated Monthly Payment, Total Principal Loaned, Total Interest Paid, and an amortization schedule."}
+      ]
+    }
+    </script>
+
+    <script src="search.js" defer></script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+<header class="bg-white shadow-sm">
+    <nav class="container mx-auto px-4 lg:px-6 py-4">
+        <div class="flex justify-between items-center">
+            <a href="https://calcdomain.com" class="text-2xl font-bold text-blue-600">CalcDomain</a>
+
+            <div class="w-full max-w-md hidden md:block mx-8">
+                <div class="relative">
+                    <input type="search" id="search-input" placeholder="Search for a calculator..."
+                           class="w-full py-2 px-4 pr-12 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           autocomplete="off">
+                    <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <div id="search-results" class="absolute top-full left-0 right-0 hidden bg-white border border-gray-200 rounded-lg shadow-lg mt-2 max-h-96 overflow-y-auto z-50"></div>
+                </div>
+            </div>
+
+            <div class="hidden md:flex items-center space-x-6 text-sm">
+                <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600">Advanced Search</a>
+                Categories
+            </div>
+
+            <button id="mobile-menu-toggle" class="md:hidden p-2" aria-label="Open menu" aria-expanded="false">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+            </button>
+        </div>
+
+        <div id="mobile-menu" class="md:hidden mt-4 hidden">
+            <div class="space-y-2">
+                <a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
+                Categories
+            </div>
+        </div>
+    </nav>
+</header>
+
+<main class="container mx-auto px-4 lg:px-6 py-10">
+    <div class="flex flex-col lg:flex-row gap-8">
+
+        <section class="w-full lg:w-2/3">
+            
+            <nav class="text-sm text-gray-600 mb-4" aria-label="Breadcrumb">
+                <a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo;
+                <a href="https://calcdomain.com/lifestyle-everyday" class="hover:text-blue-600">Lifestyle</a> &raquo;
+                <a href="https://calcdomain.com/subcategories/automotive" class="hover:text-blue-600">Automotive</a> &raquo;
+                <span class="text-gray-900">Car Payment Calculator</span>
+            </nav>
+
+            <div id="print-section" class="bg-white p-6 rounded-lg shadow-md">
+                
+                <h1 class="text-3xl font-extrabold text-gray-900 mb-2">Car Payment Calculator</h1>
+                
+                <p class="text-gray-600 mb-6">Estimate your monthly auto loan payment quickly and accurately. This tool helps potential car buyers understand the total cost of financing, including taxes, fees, and trade-ins, so you can budget with confidence.</p>
+
+                <section id="calculator-ui" aria-labelledby="calc-heading">
+                    <h2 id="calc-heading" class="sr-only">Calculator Inputs</h2>
+                    <form id="car-loan-form" class="space-y-6">
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            
+                            <div>
+                                <label for="vehiclePrice" class="block text-sm font-medium text-gray-700">Vehicle Price <span class="text-red-600" aria-hidden="true">*</span></label>
+                                <div class="mt-1 relative rounded-md shadow-sm">
+                                    <div class="pointer-events-none absolute inset-y-0 left-0 pl-3 flex items-center">
+                                        <span class="text-gray-500 sm:text-sm">$</span>
+                                    </div>
+                                    <input type="number" id="vehiclePrice" value="30000" step="100" min="0"
+                                           class="mt-1 block w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 min-h-[48px]"
+                                           aria-required="true" aria-describedby="vehiclePrice-error">
+                                </div>
+                                <p id="vehiclePrice-error" class="error-message" aria-live="polite"></p>
+                            </div>
+                            
+                            <div>
+                                <label for="downPayment" class="block text-sm font-medium text-gray-700">Down Payment</label>
+                                <div class="mt-1 relative rounded-md shadow-sm">
+                                    <div class="pointer-events-none absolute inset-y-0 left-0 pl-3 flex items-center">
+                                        <span class="text-gray-500 sm:text-sm">$</span>
+                                    </div>
+                                    <input type="number" id="downPayment" value="5000" step="100" min="0"
+                                           class="mt-1 block w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 min-h-[48px]"
+                                           aria-describedby="downPayment-error">
+                                </div>
+                                <p id="downPayment-error" class="error-message" aria-live="polite"></p>
+                            </div>
+
+                            <div>
+                                <label for="tradeInValue" class="block text-sm font-medium text-gray-700">Trade-in Value</label>
+                                <div class="mt-1 relative rounded-md shadow-sm">
+                                    <div class="pointer-events-none absolute inset-y-0 left-0 pl-3 flex items-center">
+                                        <span class="text-gray-500 sm:text-sm">$</span>
+                                    </div>
+                                    <input type="number" id="tradeInValue" value="2000" step="100" min="0"
+                                           class="mt-1 block w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 min-h-[48px]"
+                                           aria-describedby="tradeInValue-error">
+                                </div>
+                                <p id="tradeInValue-error" class="error-message" aria-live="polite"></p>
+                            </div>
+
+                            <div>
+                                <label for="salesTaxRate" class="block text-sm font-medium text-gray-700">Sales Tax Rate</label>
+                                <div class="mt-1 relative rounded-md shadow-sm">
+                                    <input type="number" id="salesTaxRate" value="6" step="0.1" min="0"
+                                           class="mt-1 block w-full pr-7 pl-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 min-h-[48px]"
+                                           aria-describedby="salesTaxRate-error">
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 pr-3 flex items-center">
+                                        <span class="text-gray-500 sm:text-sm">%</span>
+                                    </div>
+                                </div>
+                                <p id="salesTaxRate-error" class="error-message" aria-live="polite"></p>
+                            </div>
+
+                            <div>
+                                <div class="flex items-center justify-between">
+                                    <label for="fees" class="block text-sm font-medium text-gray-700">Fees & Other Costs</label>
+                                    <div class="relative">
+                                        <button type="button" id="fees-tooltip-btn" aria-label="More info about fees and other costs" aria-expanded="false" aria-controls="fees-tooltip"
+                                                class="flex items-center justify-center w-6 h-6 text-gray-500 rounded-full hover:bg-gray-200">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.79 4 4 0 1.105-.448 2.105-1.172 2.828l-1.036 1.036c-.39.39-.86.722-1.372.972M12 18h.01"></path></svg>
+                                        </button>
+                                        <div id="fees-tooltip" role="tooltip" class="tooltip-bubble">
+                                            Includes title, registration, dealership documentation (doc fees), and any other dealer add-ons.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-1 relative rounded-md shadow-sm">
+                                    <div class="pointer-events-none absolute inset-y-0 left-0 pl-3 flex items-center">
+                                        <span class="text-gray-500 sm:text-sm">$</span>
+                                    </div>
+                                    <input type="number" id="fees" value="500" step="10" min="0"
+                                           class="mt-1 block w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 min-h-[48px]"
+                                           aria-describedby="fees-error fees-tooltip">
+                                </div>
+                                <p id="fees-error" class="error-message" aria-live="polite"></p>
+                            </div>
+
+                            <div>
+                                <label for="interestRate" class="block text-sm font-medium text-gray-700">Annual Interest Rate (APR) <span class="text-red-600" aria-hidden="true">*</span></label>
+                                <div class="mt-1 relative rounded-md shadow-sm">
+                                    <input type="number" id="interestRate" value="5" step="0.01" min="0"
+                                           class="mt-1 block w-full pr-7 pl-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 min-h-[48px]"
+                                           aria-required="true" aria-describedby="interestRate-error">
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 pr-3 flex items-center">
+                                        <span class="text-gray-500 sm:text-sm">%</span>
+                                    </div>
+                                </div>
+                                <p id="interestRate-error" class="error-message" aria-live="polite"></p>
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label for="loanTerm" class="block text-sm font-medium text-gray-700">Loan Term (in months) <span class="text-red-600" aria-hidden="true">*</span></label>
+                                <input type="number" id="loanTerm" value="60" step="1" min="1"
+                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 min-h-[48px]"
+                                       aria-required="true" aria-describedby="loanTerm-error">
+                                <p id="loanTerm-error" class="error-message" aria-live="polite"></p>
+                            </div>
+                        </div>
+                    </form>
+                </section>
+
+                <section id="results" class="mt-8 bg-blue-50 border border-blue-100 rounded-lg p-6" aria-live="polite" aria-atomic="true">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Your Results</h2>
+                    
+                    <div class="flex flex-col md:flex-row gap-6">
+                        <div class="w-full md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="result-card sm:col-span-2 bg-blue-100 border-blue-300">
+                                <h4>Estimated Monthly Payment</h4>
+                                <p id="monthlyPayment" class="text-3xl">$0.00</p>
+                            </div>
+                            <div class="result-card">
+                                <h4>Total Principal Loaned</h4>
+                                <p id="totalPrincipal">$0.00</p>
+                            </div>
+                            <div class="result-card">
+                                <h4>Total Interest Paid</h4>
+                                <p id="totalInterest">$0.00</p>
+                            </div>
+                            <div class="result-card">
+                                <h4>Total Cost of Loan</h4>
+                                <p id="totalCost">$0.00</p>
+                            </div>
+                        </div>
+                        
+                        <div class="w-full md:w-1/3">
+                            <div id="results-chart-container" class="h-48 md:h-full">
+                                <canvas id="resultsChart" aria-label="Chart showing principal versus interest portions of the loan."></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <details class="mt-6 bg-white rounded-lg" id="scheduleDetails">
+                        <summary class="font-semibold text-gray-800">View Amortization Schedule</summary>
+                        <div class="mt-4 overflow-x-auto border border-gray-200 rounded-lg" id="scheduleContainer">
+                            <table class="min-w-full text-sm text-right">
+                                <thead class="bg-gray-100 text-gray-700 uppercase">
+                                    <tr>
+                                        <th scope="col" class="px-4 py-2 text-left">Month</th>
+                                        <th scope="col" class="px-4 py-2">Payment</th>
+                                        <th scope="col" class="px-4 py-2">Interest</th>
+                                        <th scope="col" class="px-4 py-2">Principal</th>
+                                        <th scope="col" class="px-4 py-2">Balance</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="scheduleBody">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </details>
+                </section>
+
+            </div> <article class="bg-white p-6 rounded-lg shadow-md mt-8 prose">
+                
+                <h2>Data Source and Methodology</h2>
+                <p>
+                    <strong>AuthoritativeDataSource:</strong> Standard Loan Amortization Formula (Present Value of an Annuity).<br>
+                    <strong>Reference:</strong> Financial Mathematics & Compounding.
+                </p>
+                <p>All calculations are based rigorously on this standard formula, which is used universally by financial institutions to determine loan payments.</p>
+
+                <h2>The Formula Explained</h2>
+                <p>The monthly payment ( $M$ ) is calculated using the standard auto loan amortization formula. First, we determine the <strong>Principal Loan Amount ( $P$ )</strong>:</p>
+                <div class="formula-box" aria-label="Principal formula">
+                    $P = (\text{Price} + \text{Tax} + \text{Fees}) - (\text{Down Payment} + \text{Trade-in})$
+                </div>
+                <p class="mt-4">Then, we use the principal ( $P$ ), the monthly interest rate ( $r$ ), and the number of payments ( $n$ ) to find the monthly payment ( $M$ ):</p>
+                <div class="formula-box" aria-label="Monthly payment formula">
+                    $M = P \frac{r(1+r)^n}{(1+r)^n - 1}$
+                </div>
+
+                <h2>Glossary of Variables</h2>
+                <ul class="list-none p-0">
+                    <li><strong> $M$ (Monthly Payment):</strong> The fixed amount you pay each month.</li>
+                    <li><strong> $P$ (Principal Loan Amount):</strong> The total amount of money you are borrowing after all costs and credits.</li>
+                    <li><strong> $r$ (Monthly Interest Rate):</strong> Your Annual Interest Rate (APR) divided by 12. (e.g., 6% APR is 0.005 per month).</li>
+                    <li><strong> $n$ (Number of Payments):</strong> The total loan term in months (e.g., a 5-year loan has $n=60$ ).</li>
+                </ul>
+
+                <h2>How It Works: A Step-by-Step Example</h2>
+                <p>Let's use the default values to see how the calculation works:</p>
+                <ul class="list-decimal list-inside">
+                    <li>Vehicle Price: $30,000</li>
+                    <li>Sales Tax: 6% ($1,800)</li>
+                    <li>Fees: $500</li>
+                    <li>Down Payment: $5,000</li>
+                    <li>Trade-in Value: $2,000</li>
+                    <li>APR: 5%</li>
+                    <li>Term: 60 months</li>
+                </ul>
+                <p><strong>1. Calculate Principal ( $P$ ):</strong></p>
+                <p>First, find the total cost: $30,000 (Price) + $1,800 (Tax) + $500 (Fees) = $32,300.</p>
+                <p>Next, find the total credits: $5,000 (Down Payment) + $2,000 (Trade-in) = $7,000.</p>
+                <p>The principal to be financed is: $32,300 - $7,000 = <strong>$25,300 ( $P$ )</strong>.</p>
+                
+                <p><strong>2. Calculate Monthly Rate ( $r$ ) and Term ( $n$ ):</strong></p>
+                <p>The monthly rate is 5% / 12 = 0.05 / 12 = <strong>0.004167 ( $r$ )</strong>.</p>
+                <p>The term is <strong>60 months ( $n$ )</strong>.</p>
+
+                <p><strong>3. Apply the Formula:</strong></p>
+                <p>$M = 25300 \frac{0.004167(1+0.004167)^{60}}{(1+0.004167)^{60} - 1}$</p>
+                <p>$M = 25300 \frac{0.004167(1.28335...)}{(1.28335...) - 1}$</p>
+                <p>$M = 25300 \frac{0.005347...}{0.28335...}$</p>
+                <p>$M = 25300 \times 0.01887...$</p>
+                <p><strong> $M$ ≈ $477.42</strong></p>
+
+                <h2>Frequently Asked Questions (FAQ)</h2>
+                <details>
+                    <summary>What is APR (Annual Percentage Rate)?</summary>
+                    <p>APR is the total cost of borrowing money expressed as a yearly percentage. It includes the interest rate plus any lender fees, making it a more accurate measure of a loan's cost than the interest rate alone.</p>
+                </details>
+                <details>
+                    <summary>How does a down payment affect my loan?</summary>
+                    <p>A larger down payment reduces your Principal Loan Amount ( $P$ ). This directly lowers your monthly payment and, more importantly, reduces the total amount of interest you'll pay over the life of the loan.</p>
+                </details>
+                <details>
+                    <summary>Is it better to get a longer loan term?</summary>
+                    <p>A longer term (e.g., 72 or 84 months) will give you a lower monthly payment, but you will pay significantly more in total interest. A shorter term (e.g., 48 or 60 months) has higher payments but saves you money and builds equity faster.</p>
+                </details>
+                <details>
+                    <summary>How is sales tax calculated on a trade-in?</summary>
+                    <p>This varies by state. Some states (like CA, MI, VA) tax the *full vehicle price* before applying the trade-in. Other states (like TX, FL, PA) are more favorable, only taxing the *difference* between the vehicle price and the trade-in value. This calculator assumes tax is applied to the full price, which is the more conservative estimate.</p>
+                </details>
+                <details>
+                    <summary>Can I pay off my auto loan early?</summary>
+                    <p>Most auto loans are not subject to pre-payment penalties, meaning you can pay extra each month or make lump-sum payments to pay it off early and save on interest. Always confirm with your lender that there are no pre-payment penalties.</p>
+                </details>
+
+                <div class="mt-8 pt-4 border-t border-gray-200 text-sm text-gray-600">
+                    <p>
+                        <strong>Tool developed by Ugo Candido.</strong><br>
+                        Content verified by the CalcDomain Editorial Board.
+                    </p>
+                    <p>
+                        Last accuracy review: <time datetime="2025-10-26">October 26, 2025</time>
+                    </p>
+                </div>
+
+            </article>
+        </section>
+
+        <aside class="w-full lg:w-1/3">
+            <div class="sticky top-24 space-y-6">
+                <div class="bg-gray-200 h-72 rounded-lg flex items-center justify-center text-gray-500">
+                    Ad Placement (300×600)
+                </div>
+                
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="font-bold text-lg mb-3">Why use this calculator</h3>
+                    <ul class="list-disc list-inside text-sm text-gray-600 space-y-2">
+                        <li>Accounts for all costs: tax, title, and fees.</li>
+                        <li>See the impact of your down payment and trade-in.</li>
+                        <li>Get a full amortization schedule to see your equity build.</li>
+                        <li>Mobile-first and accessible design for use anywhere.</li>
+                    </ul>
+                </div>
+                
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="font-bold text-lg mb-4">Related Automotive Tools</h3>
+                    <ul class="space-y-3 text-sm">
+                        <li>Auto Loan Amortization Schedule</li>
+                        <li>Loan Early Payoff Calculator</li>
+                        <li><a href="https://calcdomain.com/loan-comparison" class="text-blue-600 hover:underline">Loan Comparison Calculator</a></li>
+                        <li><a href="https://calcdomain.com/apr" class="text-blue-600 hover:underline">APR Calculator</a></li>
+                    </ul>
+                </div>
+            </div>
+        </aside>
+    </div>
+</main>
+
+<footer class="bg-white border-t mt-12">
+    <div class="container mx-auto px-6 py-8 text-center text-gray-600 text-sm">
+        <p>&copy; 2025 CalcDomain. All Rights Reserved.</p>
+        <div class="mt-4 space-x-4">
+            <a href="https://calcdomain.com/about" class="hover:text-blue-600">About</a>
+            <a href="https://calcdomain.com/contact" class="hover:text-blue-600">Contact</a>
+            <a href="https://calcdomain.com/privacy" class="hover:text-blue-600">Privacy</a>
+            <a href="https://calcdomain.com/terms" class="hover:text-blue-600">Terms</a>
+        </div>
+    </div>
+</footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    // --- 1. Element Caching ---
+    const elements = {
+        // Inputs
+        form: document.getElementById('car-loan-form'),
+        vehiclePrice: document.getElementById('vehiclePrice'),
+        downPayment: document.getElementById('downPayment'),
+        tradeInValue: document.getElementById('tradeInValue'),
+        salesTaxRate: document.getElementById('salesTaxRate'),
+        fees: document.getElementById('fees'),
+        interestRate: document.getElementById('interestRate'),
+        loanTerm: document.getElementById('loanTerm'),
+        
+        // Outputs
+        monthlyPayment: document.getElementById('monthlyPayment'),
+        totalPrincipal: document.getElementById('totalPrincipal'),
+        totalInterest: document.getElementById('totalInterest'),
+        totalCost: document.getElementById('totalCost'),
+        scheduleBody: document.getElementById('scheduleBody'),
+        
+        // Chart
+        chartCanvas: document.getElementById('resultsChart'),
+        
+        // Tooltip
+        tooltipBtn: document.getElementById('fees-tooltip-btn'),
+        tooltip: document.getElementById('fees-tooltip')
+    };
+
+    let chartInstance = null;
+    const allInputs = [
+        elements.vehiclePrice, elements.downPayment, elements.tradeInValue,
+        elements.salesTaxRate, elements.fees, elements.interestRate, elements.loanTerm
+    ];
+    
+    // --- 2. Formatters ---
+    const fmtCurrency = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
+
+    // --- 3. Validation Logic ---
+    function validateField(input) {
+        const errorEl = document.getElementById(`${input.id}-error`);
+        if (!errorEl) return true;
+
+        // Clear previous error
+        errorEl.textContent = '';
+        input.setAttribute('aria-invalid', 'false');
+
+        // 1. Required check
+        if (input.hasAttribute('aria-required') && input.value.trim() === '') {
+            errorEl.textContent = 'This field is required.';
+            input.setAttribute('aria-invalid', 'true');
+            return false;
+        }
+
+        // 2. Minimum value check
+        const min = parseFloat(input.min);
+        if (!isNaN(min) && parseFloat(input.value) < min) {
+            errorEl.textContent = `Value must be ${min} or greater.`;
+            input.setAttribute('aria-invalid', 'true');
+            return false;
+        }
+        
+        return true;
+    }
+    
+    // --- 4. Core Calculation Logic ---
+    function calculate() {
+        // Run validation on all required fields
+        let isFormValid = true;
+        [elements.vehiclePrice, elements.interestRate, elements.loanTerm].forEach(input => {
+            if (!validateField(input)) {
+                isFormValid = false;
+            }
+        });
+        
+        // Also validate non-required fields if they have values
+        [elements.downPayment, elements.tradeInValue, elements.salesTaxRate, elements.fees].forEach(input => {
+            validateField(input); // Check for min value errors
+        });
+
+        if (!isFormValid) {
+            // Clear results if form is invalid
+            updateOutputs(0, 0, 0, 0);
+            renderSchedule([]);
+            renderChart(0, 0);
+            return;
+        }
+
+        // Parse valid inputs
+        const price = parseFloat(elements.vehiclePrice.value) || 0;
+        const downPayment = parseFloat(elements.downPayment.value) || 0;
+        const tradeIn = parseFloat(elements.tradeInValue.value) || 0;
+        const taxRate = (parseFloat(elements.salesTaxRate.value) || 0) / 100;
+        const fees = parseFloat(elements.fees.value) || 0;
+        const apr = (parseFloat(elements.interestRate.value) || 0) / 100;
+        const termMonths (n) = parseFloat(elements.loanTerm.value) || 0;
+
+        // --- Core financial calculation ---
+        const totalTax = price * taxRate; // Note: Simplified. See FAQ.
+        const totalCost = price + totalTax + fees;
+        const totalCredits = downPayment + tradeIn;
+        const principal (P) = totalCost - totalCredits;
+
+        let monthlyPayment = 0;
+        let totalInterest = 0;
+        let schedule = [];
+
+        if (principal <= 0) {
+            // Paid in full, no loan needed
+            updateOutputs(0, 0, 0, 0);
+            renderSchedule([]);
+            renderChart(0, 0);
+            return;
+        }
+        
+        if (apr === 0) { // 0% APR case
+            monthlyPayment = principal / termMonths;
+            totalInterest = 0;
+        } else { // Standard amortization
+            const monthlyRate (r) = apr / 12;
+            const power = Math.pow(1 + monthlyRate, termMonths);
+            monthlyPayment = principal * (monthlyRate * power) / (power - 1);
+            totalInterest = (monthlyPayment * termMonths) - principal;
+        }
+
+        const totalPayment = principal + totalInterest;
+
+        // Generate schedule
+        schedule = generateSchedule(principal, apr / 12, termMonths, monthlyPayment);
+
+        // Update UI
+        updateOutputs(monthlyPayment, principal, totalInterest, totalPayment);
+        renderSchedule(schedule);
+        renderChart(principal, totalInterest);
+    }
+
+    // --- 5. UI Update Functions ---
+    function updateOutputs(monthly, principal, interest, total) {
+        elements.monthlyPayment.textContent = fmtCurrency(monthly);
+        elements.totalPrincipal.textContent = fmtCurrency(principal);
+        elements.totalInterest.textContent = fmtCurrency(interest);
+        elements.totalCost.textContent = fmtCurrency(total);
+    }
+
+    function renderChart(principal, interest) {
+        const ctx = elements.chartCanvas;
+        if (!ctx) return;
+
+        const data = {
+            labels: ['Principal', 'Total Interest'],
+            datasets: [{
+                data: [Math.max(0, principal), Math.max(0, interest)],
+                backgroundColor: ['#2563eb', '#f97316'] // blue-600, orange-500
+            }]
+        };
+
+        if (chartInstance) {
+            chartInstance.data = data;
+            chartInstance.update();
+        } else {
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.label}: ${fmtCurrency(context.raw)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    function generateSchedule(principal, monthlyRate, termMonths, monthlyPayment) {
+        let schedule = [];
+        let balance = principal;
+        
+        // Handle 0% APR case
+        if (monthlyRate === 0) {
+            const principalPayment = principal / termMonths;
+            for (let i = 1; i <= termMonths; i++) {
+                balance -= principalPayment;
+                schedule.push({
+                    month: i,
+                    payment: monthlyPayment,
+                    interest: 0,
+                    principal: principalPayment,
+                    balance: Math.max(0, balance)
+                });
+            }
+            return schedule;
+        }
+
+        // Standard case
+        for (let i = 1; i <= termMonths; i++) {
+            const interestPayment = balance * monthlyRate;
+            const principalPayment = monthlyPayment - interestPayment;
+            balance -= principalPayment;
+            
+            // Ensure last payment clears balance exactly
+            if (i === termMonths) {
+                const finalPrincipal = principalPayment + balance;
+                schedule.push({
+                    month: i,
+                    payment: monthlyPayment + balance, // Adjust final payment
+                    interest: interestPayment,
+                    principal: finalPrincipal,
+                    balance: 0
+                });
+            } else {
+                schedule.push({
+                    month: i,
+                    payment: monthlyPayment,
+                    interest: interestPayment,
+                    principal: principalPayment,
+                    balance: balance
+                });
+            }
+        }
+        return schedule;
+    }
+
+    function renderSchedule(schedule) {
+        const tbody = elements.scheduleBody;
+        tbody.innerHTML = '';
+        if (!schedule.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-gray-500">Enter loan details to see schedule.</td></tr>';
+            return;
+        }
+
+        const rows = schedule.map(row => `
+            <tr class="border-b border-gray-100">
+                <td class="px-4 py-2 text-left">${row.month}</td>
+                <td class="px-4 py-2">${fmtCurrency(row.payment)}</td>
+                <td class="px-4 py-2">${fmtCurrency(row.interest)}</td>
+                <td class="px-4 py-2">${fmtCurrency(row.principal)}</td>
+                <td class="px-4 py-2">${fmtCurrency(row.balance)}</td>
+            </tr>
+        `);
+        tbody.innerHTML = rows.join('');
+    }
+
+    // --- 6. Event Listeners ---
+
+    // Calculate on any input change
+    allInputs.forEach(input => {
+        input.addEventListener('input', calculate);
+    });
+    
+    // Validate on blur
+    [elements.vehiclePrice, elements.interestRate, elements.loanTerm].forEach(input => {
+        input.addEventListener('blur', () => validateField(input));
+    });
+
+    // Tooltip logic
+    elements.tooltipBtn.addEventListener('click', () => {
+        const isExpanded = elements.tooltipBtn.getAttribute('aria-expanded') === 'true';
+        elements.tooltipBtn.setAttribute('aria-expanded', !isExpanded);
+    });
+    
+    // Hide tooltip when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!elements.tooltipBtn.contains(e.target) && !elements.tooltip.contains(e.target)) {
+            elements.tooltipBtn.setAttribute('aria-expanded', 'false');
+        }
+    });
+    
+    // Handle form submission (prevents page reload)
+    elements.form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        calculate();
+    });
+
+    // --- 7. Initial Calculation ---
+    calculate();
+    
+    // Mobile menu logic (from template)
+    const menuToggle = document.getElementById('mobile-menu-toggle');
+    const mobileMenu = document.getElementById('mobile-menu');
+    menuToggle.addEventListener('click', () => {
+        const isHidden = mobileMenu.classList.contains('hidden');
+        mobileMenu.classList.toggle('hidden', !isHidden);
+        menuToggle.setAttribute('aria-expanded', isHidden);
+    });
+
+});
+</script>
+
+</body>
+</html>

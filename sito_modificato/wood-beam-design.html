@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<link rel="canonical" href="https://calcdomain.com/wood-beam-design">
+
+
+
+
+
+ 
+<link rel="icon" type="image/png" href="https://calcdomain.com/favicon-96x96.png" sizes="96x96" />
+<link rel="icon" type="image/svg+xml" href="https://calcdomain.com/favicon.svg" />
+<link rel="shortcut icon" href="https://calcdomain.com/favicon.ico" />
+<link rel="apple-touch-icon" sizes="180x180" href="https://calcdomain.com/apple-touch-icon.png" />
+<link rel="manifest" href="https://calcdomain.com/site.webmanifest" />
+<meta charset="utf-8">
+<title>AWC NDS Wood Beam Design Calculator (Bending &amp; Shear)</title>
+<meta content="width=device-width, initial-scale=1" name="viewport">
+<meta content="Professional wood beam design calculator for rectangular sawn lumber per AWC NDS: bending and shear checks with adjustment factors (Cd, Cm, Ct, Cf, Cr). Mobile-first, accessible, and fast." name="description">
+<meta content="Ugo Candido" name="author">
+
+<meta content="#ffffff" name="theme-color">
+<meta content="IE=edge" http-equiv="X-UA-Compatible">
+<style>
+    /* ======================================================================
+       Design Tokens (mobile-first, high-contrast compliant)
+    ====================================================================== */
+    :root{
+      --primary-color:#005A9C; --secondary-color:#0B3D62; --accent-color:#00A4E4;
+      --background-color:#F8FAFC; --surface-color:#FFFFFF;
+      --text-color:#1B1F23; --muted-text-color:#5F6B76; --border-color:#D8DEE4;
+      --success-color:#1E7E34; --danger-color:#B00020; --warning-color:#B8860B;
+
+      --focus-ring:3px solid #005A9C;
+
+      --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
+      --font-mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+
+      --container-max:1200px;
+      --gap-1:.5rem; --gap-2:1rem; --gap-3:1.5rem; --gap-4:2rem;
+      --radius-1:8px; --radius-2:12px;
+
+      --touch-min:48px;
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+    }
+
+    /* ======================================================================
+       Base
+    ====================================================================== */
+    *,*::before,*::after{box-sizing:border-box}
+    html{font-size:16px}
+    body{
+      margin:0; font-family:var(--font-sans); color:var(--text-color);
+      background:var(--background-color); line-height:1.55;
+    }
+
+    a{color:var(--primary-color); text-decoration:none}
+    a:hover{color:#003a6d; text-decoration:underline}
+    a:focus{outline:var(--focus-ring); outline-offset:2px}
+
+    h1,h2,h3{color:var(--secondary-color); line-height:1.25; margin:.5rem 0 .75rem}
+    h1{font-size:clamp(1.75rem,3.8vw,2.35rem)}
+    h2{font-size:clamp(1.4rem,3vw,1.9rem)}
+    h3{font-size:clamp(1.2rem,2.5vw,1.4rem)}
+    p{margin:.5rem 0 1rem; max-width:70ch}
+    ul{padding-left:1.25rem}
+
+    code,kbd,pre{font-family:var(--font-mono)}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+    .container{max-width:var(--container-max);margin:0 auto;padding:0 clamp(1rem,4vw,2rem)}
+    .main-content{padding:var(--gap-4) 0}
+
+    /* ======================================================================
+       Header (non-sticky as required)
+    ====================================================================== */
+    .site-header{
+      background:var(--surface-color);
+      border-bottom:1px solid var(--border-color);
+    }
+    .header-content{
+      display:grid; grid-template-columns:auto 1fr auto; gap:var(--gap-2); align-items:center; padding:.75rem 0;
+    }
+    .logo{font-weight:700; color:var(--primary-color); font-size:1.25rem}
+    .site-search{display:flex; align-items:center; gap:.5rem; width:100%}
+    .site-search input[type="search"]{
+      flex:1; min-width:0; padding:.6rem .75rem; border:1px solid var(--border-color); border-radius:8px; background:#fff;
+    }
+    .btn{display:inline-flex; align-items:center; justify-content:center; gap:.5rem; padding:.65rem 1rem; min-height:var(--touch-min); min-width:var(--touch-min); border-radius:10px; border:1px solid transparent; font-weight:600; cursor:pointer}
+    .btn-primary{background:var(--primary-color); color:#fff; border-color:var(--primary-color)}
+    .btn-primary:hover{background:#0a4a7e; color:#fff}
+    .btn-secondary{background:transparent; color:var(--primary-color); border-color:var(--primary-color)}
+    .btn-secondary:hover{background:rgba(0,90,156,.08)}
+    .nav-toggle{border:1px solid var(--border-color); background:#fff}
+    .nav-toggle:focus{outline:var(--focus-ring); outline-offset:2px}
+
+    .main-nav{display:none}
+    .main-nav.open{display:block; padding:.5rem 0}
+    .main-nav ul{list-style:none; padding:0; margin:0; display:flex; flex-wrap:wrap; gap:.25rem .75rem}
+    .main-nav a{display:block; padding:.4rem .5rem; border-radius:6px}
+    .main-nav a:hover{background:rgba(0,90,156,.08); text-decoration:none}
+
+    .skip-link{
+      position:absolute; left:6px; top:-40px; background:var(--primary-color); color:#fff; padding:.5rem .75rem; border-radius:0 0 6px 6px; z-index:1000;
+    }
+    .skip-link:focus{top:0}
+
+    /* ======================================================================
+       Calculator Layout
+    ====================================================================== */
+    .calculator-layout{
+      display:grid; grid-template-columns:1fr; gap:var(--gap-4); margin-top:1rem;
+    }
+    @media (min-width: 992px){
+      .calculator-layout{grid-template-columns: minmax(280px,420px) 1fr}
+    }
+
+    .card{
+      background:var(--surface-color); border:1px solid var(--border-color);
+      border-radius:var(--radius-2); padding:clamp(1rem,2.5vw,1.5rem);
+      box-shadow:0 4px 10px rgba(16,24,40,.04);
+    }
+
+    .calculator-container h2{margin-top:0}
+    .form-group{margin-bottom:var(--gap-2)}
+    .form-group label{display:flex; align-items:center; gap:.5rem; font-weight:700; margin-bottom:.35rem}
+    .form-hint{color:var(--muted-text-color); font-size:.95rem}
+    .input-group{position:relative}
+    .form-control{
+      width:100%; min-height:var(--touch-min); padding:.7rem .9rem; border-radius:10px;
+      border:1px solid var(--border-color); background:#fff; font-size:1rem;
+    }
+    .form-control:focus{outline:var(--focus-ring); border-color:var(--primary-color)}
+    .form-control[aria-invalid="true"]{border-color:var(--danger-color)}
+    .unit-addon{position:absolute; right:.75rem; top:50%; transform:translateY(-50%); color:var(--muted-text-color); pointer-events:none}
+
+    fieldset{border:0; padding:0; margin:0}
+    .radio-group{
+      display:flex; gap:.5rem; border:1px solid var(--border-color); border-radius:10px; padding:.25rem;
+    }
+    .radio-option{position:relative; flex:1}
+    .radio-option input{position:absolute; opacity:0; inset:0}
+    .radio-option label{
+      display:flex; align-items:center; justify-content:center; text-align:center; min-height:var(--touch-min);
+      padding:.5rem; border-radius:8px; cursor:pointer; user-select:none;
+    }
+    .radio-option input:checked + label{background:var(--primary-color); color:#fff}
+    .radio-option input:focus-visible + label{outline:var(--focus-ring)}
+
+    .inline-grid{display:grid; grid-template-columns:1fr; gap:var(--gap-2)}
+    @media (min-width:640px){
+      .inline-grid.two{grid-template-columns:1fr 1fr}
+      .inline-grid.three{grid-template-columns:1fr 1fr 1fr}
+    }
+
+    .tooltip-toggle{
+      border:1px solid var(--border-color); background:#fff; width:28px; height:28px;
+      border-radius:50%; font-weight:700; line-height:1; display:inline-flex; align-items:center; justify-content:center;
+    }
+    .tooltip-toggle:focus{outline:var(--focus-ring)}
+    .tooltip{display:none; background:#eef5fb; border:1px solid #cfe2f3; color:#0b3557; padding:.6rem .75rem; border-radius:8px}
+    .tooltip[aria-hidden="false"]{display:block}
+
+    .error-message{color:var(--danger-color); font-size:.9rem; margin-top:.25rem}
+    .actions{display:flex; gap:.5rem; flex-wrap:wrap; margin-top:var(--gap-2)}
+
+    /* Results */
+    .results-container{
+      margin-top:var(--gap-2); padding:var(--gap-2); background:#F3F6F9; border:1px solid var(--border-color);
+      border-radius:10px; min-height:260px;
+    }
+    .result-grid{display:grid; grid-template-columns:1fr; gap:.75rem}
+    @media (min-width:720px){ .result-grid{grid-template-columns:1fr 1fr} }
+    .result-item{
+      background:#fff; border:1px solid var(--border-color); border-radius:10px; padding:.75rem .9rem; display:flex; align-items:baseline; justify-content:space-between; gap:.75rem;
+    }
+    .result-label{color:var(--muted-text-color)}
+    .result-value{font-weight:800}
+    .pass{color:var(--success-color)}
+    .fail{color:var(--danger-color)}
+
+    .badge{display:inline-block; padding:.25rem .5rem; border-radius:999px; font-size:.85rem; border:1px solid var(--border-color); background:#fff}
+    .badge.pass{border-color:#2e7d32; color:#2e7d32}
+    .badge.fail{border-color:#b00020; color:#b00020}
+
+    .formula-box{background:#eef2f7; border:1px solid #d5dbe3; padding:1rem; border-radius:10px; overflow-x:auto}
+
+    .author-box{margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--border-color); color:var(--muted-text-color); font-size:.95rem}
+
+    /* Footer */
+    .site-footer{background:#0B3D62; color:#fff; margin-top:3rem}
+    .site-footer a{color:#fff}
+    .footer-content{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:var(--gap-3); padding:var(--gap-4) 0}
+    .footer-bottom{text-align:center; padding:1rem 0; border-top:1px solid rgba(255,255,255,.2); font-size:.95rem}
+
+    /* Breadcrumbs */
+    .breadcrumb{font-size:.95rem; color:var(--muted-text-color); margin:.5rem 0 1rem}
+    .breadcrumb a{color:inherit}
+  </style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "AWC NDS Wood Beam Design Calculator (Bending & Shear)",
+  "description": "Professional wood beam design calculator for rectangular sawn lumber per AWC NDS: bending and shear checks with adjustment factors (Cd, Cm, Ct, Cf, Cr). Mobile-first, accessible, and fast.",
+  "url": "https://calcdomain.com/wood-beam-design",
+  "inLanguage": "en",
+  "author": {
+    "@type": "Person",
+    "name": "Ugo Candido"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "CalcDomain"
+  },
+  "mainEntity": [
+    {
+      "@type": "HowTo",
+      "name": "Worked Example: Wood Beam Bending and Shear Check per AWC NDS",
+      "description": "Step-by-step example showing how to verify bending and shear for a simply supported sawn lumber beam with uniform load.",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "name": "Input geometry and loads",
+          "text": "Set span L = 12 ft, width b = 1.5 in, depth d = 9.25 in (nominal 2x10), uniform line load w = 300 plf."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Select material and factors",
+          "text": "Southern Pine No.2: Fb = 1000 psi, Fv = 135 psi. Use Cd = 1.0, Cm = 1.0, Ct = 1.0, Cf = 1.0, Cr = 1.15."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Compute section properties",
+          "text": "S = b·d^2/6 = 1.5×9.25^2/6 = 21.33 in^3. A = b·d = 13.875 in^2."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Get maxima",
+          "text": "M_max = w·L^2/8 = 300×12^2/8 = 5400 ft·lb = 64,800 in·lb. V_max = w·L/2 = 300×12/2 = 1,800 lb."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Check bending",
+          "text": "fb = M/S = 64,800/21.33 = 3,037 psi. Fb' = Fb·Cd·Cm·Ct·Cf·Cr = 1000×1×1×1×1×1.15 = 1,150 psi → Utilization = 264% (NG)."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Check shear",
+          "text": "τ = 1.5·V/A = 1.5×1,800/13.875 = 195 psi. Fv' = 135×1×1×1 = 135 psi → Utilization = 144% (NG)."
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Which design standard does this calculator follow?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Calculations follow AWC National Design Specification (NDS) for Wood Construction load and resistance check methodology for sawn lumber bending and shear. Base design values should be taken from the NDS Supplement."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use it for glulam or LVL?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "This tool targets rectangular sawn lumber. For glulam, LVL, or I-joists, use manufacturer properties and applicable factors; results here will not be directly applicable."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it include deflection checks?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. This version focuses on bending and shear strength checks. Deflection will be added in a future release."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Are adjustment factors mandatory?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. The NDS requires applying adjustment factors such as load duration (Cd), wet service (Cm), temperature (Ct), size factor (Cf), and repetitive member factor (Cr) as applicable."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What unit systems are supported?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Both US customary (lb, in, ft) and metric (kN, mm, m). The tool converts internally to maintain consistent checks."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is self-weight included?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Self-weight is not included automatically. Add it to your uniform load if needed using an estimated line load."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+<!-- MathJax for LaTeX rendering (deferred to avoid blocking) -->
+<script defer="" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="search.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<main class="main-content" id="main-content" role="main">
+<div class="container">
+<nav aria-label="breadcrumb" class="breadcrumb">
+Home / <a href="https://calcdomain.com/engineering">Engineering</a> / Civil (AWC NDS) / Wood Beam Calculator
+      </nav>
+<h1>AWC NDS Wood Beam Design Calculator (Bending &amp; Shear)</h1>
+<p>
+        This professional wood beam design calculator checks bending and shear capacity for rectangular sawn lumber in accordance with the AWC NDS methodology. It is intended for engineers, architects, builders, and advanced DIYers who need quick, reliable pass/fail checks using adjustable NDS factors (Cd, Cm, Ct, Cf, Cr).
+      </p>
+<div class="calculator-layout">
+<!-- Calculator -->
+<aside aria-labelledby="calc-heading" class="card calculator-container" id="beam-calculator">
+<h2 id="calc-heading">Calculator</h2>
+<div class="form-group">
+<fieldset>
+<legend class="sr-only">Unit system</legend>
+<div aria-label="Unit system" class="radio-group" role="radiogroup">
+<div class="radio-option">
+<input checked="" id="unitsUS" name="units" type="radio" value="US">
+<label for="unitsUS">US (lb, in, ft)</label>
+</div>
+<div class="radio-option">
+<input id="unitsSI" name="units" type="radio" value="SI">
+<label for="unitsSI">Metric (kN, mm, m)</label>
+</div>
+</div>
+</fieldset>
+</div>
+<div class="form-group">
+<fieldset>
+<legend class="sr-only">Load type</legend>
+<div aria-label="Load type" class="radio-group" role="radiogroup">
+<div class="radio-option">
+<input checked="" id="loadUniform" name="loadType" type="radio" value="uniform">
+<label for="loadUniform">Uniform load</label>
+</div>
+<div class="radio-option">
+<input id="loadPoint" name="loadType" type="radio" value="point">
+<label for="loadPoint">Central point load</label>
+</div>
+</div>
+</fieldset>
+</div>
+<div class="inline-grid two">
+<div class="form-group">
+<label for="span">Span length *</label>
+<div class="input-group">
+<input aria-describedby="spanUnit spanError" aria-required="true" class="form-control" id="span" inputmode="decimal" placeholder="e.g., 12" step="any" type="number">
+<span class="unit-addon" id="spanUnit">ft</span>
+</div>
+<div aria-live="polite" class="error-message" id="spanError" role="alert"></div>
+</div>
+<div class="form-group">
+<label for="load">Design load *</label>
+<div class="input-group">
+<input aria-describedby="loadUnit loadError" aria-required="true" class="form-control" id="load" inputmode="decimal" placeholder="e.g., 300" step="any" type="number">
+<span class="unit-addon" id="loadUnit">plf</span>
+</div>
+<div aria-live="polite" class="error-message" id="loadError" role="alert"></div>
+<p class="form-hint" id="loadHint">Enter line load (uniform) or point load at midspan based on selection above.</p>
+</div>
+</div>
+<div class="inline-grid two">
+<div class="form-group">
+<label for="width">Section width b *</label>
+<div class="input-group">
+<input aria-describedby="widthUnit widthError" aria-required="true" class="form-control" id="width" inputmode="decimal" placeholder="e.g., 1.5" step="any" type="number">
+<span class="unit-addon" id="widthUnit">in</span>
+</div>
+<div aria-live="polite" class="error-message" id="widthError" role="alert"></div>
+</div>
+<div class="form-group">
+<label for="depth">Section depth d *</label>
+<div class="input-group">
+<input aria-describedby="depthUnit depthError" aria-required="true" class="form-control" id="depth" inputmode="decimal" placeholder="e.g., 9.25" step="any" type="number">
+<span class="unit-addon" id="depthUnit">in</span>
+</div>
+<div aria-live="polite" class="error-message" id="depthError" role="alert"></div>
+</div>
+</div>
+<div class="form-group">
+<label for="species">Species &amp; grade preset</label>
+<select aria-describedby="speciesHint" class="form-control" id="species">
+<option selected="" value="custom">Custom (enter base values below)</option>
+<option value="SPF2">SPF No.2 (Fb=875 psi, Fv=135 psi)</option>
+<option value="DFL2">Douglas Fir-Larch No.2 (Fb=900 psi, Fv=180 psi)</option>
+<option value="SPNo2">Southern Pine No.2 (Fb=1000 psi, Fv=135 psi)</option>
+<option value="HemFir2">Hem-Fir No.2 (Fb=850 psi, Fv=135 psi)</option>
+</select>
+<p class="form-hint" id="speciesHint">Presets approximate NDS Supplement values. Always verify with the latest NDS Supplement.</p>
+</div>
+<div class="inline-grid two">
+<div class="form-group">
+<label for="Fb">
+                Base bending Fb
+                <button aria-controls="tipFb" aria-expanded="false" aria-label="What is Fb?" class="tooltip-toggle" type="button">?</button>
+</label>
+<div class="input-group">
+<input aria-describedby="FbUnit tipFb FbError" class="form-control" id="Fb" inputmode="decimal" placeholder="e.g., 900" step="any" type="number">
+<span class="unit-addon" id="FbUnit">psi</span>
+</div>
+<div aria-live="polite" class="error-message" id="FbError" role="alert"></div>
+<div aria-hidden="true" class="tooltip" id="tipFb" role="tooltip">
+                Base allowable bending stress before adjustment factors, from the NDS Supplement tables for species/grade.
+              </div>
+</div>
+<div class="form-group">
+<label for="Fv">
+                Base shear Fv
+                <button aria-controls="tipFv" aria-expanded="false" aria-label="What is Fv?" class="tooltip-toggle" type="button">?</button>
+</label>
+<div class="input-group">
+<input aria-describedby="FvUnit tipFv FvError" class="form-control" id="Fv" inputmode="decimal" placeholder="e.g., 135" step="any" type="number">
+<span class="unit-addon" id="FvUnit">psi</span>
+</div>
+<div aria-live="polite" class="error-message" id="FvError" role="alert"></div>
+<div aria-hidden="true" class="tooltip" id="tipFv" role="tooltip">
+                Base allowable horizontal shear stress, from the NDS Supplement tables for species/grade.
+              </div>
+</div>
+</div>
+<div class="inline-grid three">
+<div class="form-group">
+<label for="Cd">
+                Load duration Cd
+                <button aria-controls="tipCd" aria-expanded="false" aria-label="What is Cd?" class="tooltip-toggle" type="button">?</button>
+</label>
+<input aria-describedby="tipCd CdError" class="form-control" id="Cd" inputmode="decimal" step="any" type="number" value="1.0">
+<div aria-live="polite" class="error-message" id="CdError" role="alert"></div>
+<div aria-hidden="true" class="tooltip" id="tipCd" role="tooltip">
+                Accounts for load duration per NDS (e.g., 1.6 for wind/seismic, 1.25 for 2-month).
+              </div>
+</div>
+<div class="form-group">
+<label for="Cm">
+                Wet service Cm
+                <button aria-controls="tipCm" aria-expanded="false" aria-label="What is Cm?" class="tooltip-toggle" type="button">?</button>
+</label>
+<input aria-describedby="tipCm CmError" class="form-control" id="Cm" inputmode="decimal" step="any" type="number" value="1.0">
+<div aria-live="polite" class="error-message" id="CmError" role="alert"></div>
+<div aria-hidden="true" class="tooltip" id="tipCm" role="tooltip">
+                Adjusts for moisture content and service condition (wet vs. dry).
+              </div>
+</div>
+<div class="form-group">
+<label for="Ct">
+                Temperature Ct
+                <button aria-controls="tipCt" aria-expanded="false" aria-label="What is Ct?" class="tooltip-toggle" type="button">?</button>
+</label>
+<input aria-describedby="tipCt CtError" class="form-control" id="Ct" inputmode="decimal" step="any" type="number" value="1.0">
+<div aria-live="polite" class="error-message" id="CtError" role="alert"></div>
+<div aria-hidden="true" class="tooltip" id="tipCt" role="tooltip">
+                Adjusts for temperature effects where applicable.
+              </div>
+</div>
+</div>
+<div class="inline-grid two">
+<div class="form-group">
+<label for="Cf">
+                Size factor Cf
+                <button aria-controls="tipCf" aria-expanded="false" aria-label="What is Cf?" class="tooltip-toggle" type="button">?</button>
+</label>
+<input aria-describedby="tipCf CfError" class="form-control" id="Cf" inputmode="decimal" step="any" type="number" value="1.0">
+<div aria-live="polite" class="error-message" id="CfError" role="alert"></div>
+<div aria-hidden="true" class="tooltip" id="tipCf" role="tooltip">
+                Size factor for bending depending on depth and product category, per NDS.
+              </div>
+</div>
+<div class="form-group">
+<label for="Cr">
+                Repetitive member Cr
+                <button aria-controls="tipCr" aria-expanded="false" aria-label="What is Cr?" class="tooltip-toggle" type="button">?</button>
+</label>
+<input aria-describedby="tipCr CrError" class="form-control" id="Cr" inputmode="decimal" step="any" type="number" value="1.0">
+<div aria-live="polite" class="error-message" id="CrError" role="alert"></div>
+<div aria-hidden="true" class="tooltip" id="tipCr" role="tooltip">
+                Repetitive member factor for three or more parallel members sharing load.
+              </div>
+</div>
+</div>
+<div class="actions">
+<button class="btn btn-primary" id="calcBtn" type="button">Calculate</button>
+<button class="btn btn-secondary" id="resetBtn" type="button">Reset</button>
+</div>
+<section aria-atomic="true" aria-live="polite" class="results-container" id="results">
+<h3 style="margin-top:0">Results</h3>
+<div class="result-grid">
+<div class="result-item">
+<span class="result-label">Section modulus S</span>
+<span class="result-value" id="resS">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Area A</span>
+<span class="result-value" id="resA">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Max moment Mmax</span>
+<span class="result-value" id="resM">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Max shear Vmax</span>
+<span class="result-value" id="resV">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Adjusted Fb'</span>
+<span class="result-value" id="resFb">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Adjusted Fv'</span>
+<span class="result-value" id="resFv">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Bending utilization</span>
+<span class="result-value" id="resBend">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Shear utilization</span>
+<span class="result-value" id="resShear">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Status</span>
+<span class="result-value" id="resStatus"><span class="badge">Awaiting input</span></span>
+</div>
+<div class="result-item">
+<span class="result-label">Required S (bending)</span>
+<span class="result-value" id="resSreq">—</span>
+</div>
+<div class="result-item">
+<span class="result-label">Suggested depth (keep width)</span>
+<span class="result-value" id="resDepthSuggest">—</span>
+</div>
+</div>
+</section>
+</aside>
+<!-- Authoritative Content -->
+<article aria-labelledby="content-heading" class="card content-container">
+<h2 id="content-heading">Design Basis and Reference</h2>
+<section>
+<h2>Data Source and Methodology</h2>
+<p>
+              Authoritative data source: American Wood Council (AWC), National Design Specification (NDS) for Wood Construction and NDS Supplement – Design Values for Wood Construction. Recommended editions: NDS-2018 or NDS-2024 (latest), including the associated Supplement tables.
+              Direct resource hub: <a href="https://awc.org/resourcehub-old/calculators-and-tools/" rel="noopener" target="_blank">awc.org/resourcehub</a>.
+            </p>
+<p><strong>Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.</strong></p>
+</section>
+<section>
+<h2>The Formula Explained</h2>
+<div class="formula-box">
+<p>
+                Uniform load, simply supported:
+                $$ M_{max}=\frac{wL^2}{8}, \quad V_{max}=\frac{wL}{2} $$
+              </p>
+<p>
+                Central point load, simply supported:
+                $$ M_{max}=\frac{PL}{4}, \quad V_{max}=\frac{P}{2} $$
+              </p>
+<p>
+                Rectangular section properties:
+                $$ S=\frac{bd^2}{6}, \quad A=bd $$
+              </p>
+<p>
+                Bending and shear checks:
+                $$ f_b=\frac{M_{max}}{S} \le F_b' \quad\text{with}\quad F_b' = F_b \cdot C_d C_m C_t C_f C_r $$
+                $$ \tau=\frac{1.5\,V_{max}}{A} \le F_v' \quad\text{with}\quad F_v' = F_v \cdot C_d C_m C_t $$
+              </p>
+<p>
+                Required section modulus:
+                $$ S_{req}=\frac{M_{max}}{F_b'} \, , \quad d_{suggest}=\sqrt{\frac{6S_{req}}{b}} $$
+              </p>
+</div>
+</section>
+<section>
+<h2>Glossary of Variables</h2>
+<ul>
+<li>L: Span length (ft or m input; converted internally to in or mm)</li>
+<li>w: Uniform line load (plf or kN/m)</li>
+<li>P: Central point load (lb or kN)</li>
+<li>b: Section width (in or mm)</li>
+<li>d: Section depth (in or mm)</li>
+<li>S: Section modulus = b·d²/6 (in³ or mm³)</li>
+<li>A: Cross-sectional area = b·d (in² or mm²)</li>
+<li>Mmax: Maximum bending moment (lb·in or N·mm)</li>
+<li>Vmax: Maximum shear (lb or N)</li>
+<li>Fb, Fv: Base allowable bending and shear stresses (psi or MPa)</li>
+<li>Fb', Fv': Adjusted allowable stresses applying NDS factors</li>
+<li>Cd, Cm, Ct, Cf, Cr: NDS adjustment factors for duration, moisture, temperature, size (bending), and repetitive members</li>
+<li>fb, τ: Calculated bending and shear stresses</li>
+<li>Utilization: Demand/Capacity ratio (≤ 100% is Passing)</li>
+</ul>
+</section>
+<section>
+<h2>How It Works: A Step-by-Step Example</h2>
+<p>
+              Assume a simply supported beam with L = 12 ft, b = 1.5 in, d = 9.25 in (2×10), uniform load w = 300 plf.
+              Select Southern Pine No.2: Fb = 1000 psi, Fv = 135 psi. Use Cd = 1.0, Cm = 1.0, Ct = 1.0, Cf = 1.0, Cr = 1.15.
+            </p>
+<ol>
+<li>Section properties: S = b·d²/6 = 1.5×9.25²/6 = 21.33 in³; A = b·d = 13.875 in².</li>
+<li>Mmax = w·L²/8 = 300×12²/8 = 5,400 ft·lb = 64,800 in·lb; Vmax = w·L/2 = 1,800 lb.</li>
+<li>Bending stress fb = M/S = 64,800 / 21.33 = 3,037 psi. Fb' = 1000×1×1×1×1×1.15 = 1,150 psi → Utilization = 264% (Fail).</li>
+<li>Shear stress τ = 1.5·V/A = 1.5×1,800/13.875 = 195 psi. Fv' = 135×1×1×1 = 135 psi → Utilization = 144% (Fail).</li>
+<li>Required S = M/Fb' = 64,800 / 1,150 = 56.35 in³. With b = 1.5 in, d ≈ sqrt(6·S/b) = sqrt(6×56.35/1.5) ≈ 15.0 in.</li>
+</ol>
+<p>
+              Conclusion: A deeper member or higher-capacity species/grade (with applicable factors) is required. Always verify with full NDS checks including stability and deflection when finalizing sizes.
+            </p>
+</section>
+<section>
+<h2>Frequently Asked Questions (FAQ)</h2>
+<h3>Does this tool cover all NDS factors?</h3>
+<p>This version includes the most impactful factors for bending and shear (Cd, Cm, Ct, Cf, Cr). Other factors (e.g., incising Ci) may apply; use custom inputs to be conservative where needed.</p>
+<h3>Can I model other support or load conditions?</h3>
+<p>Currently it supports simply supported beams with uniform load or a central point load. For distributed point loads or different support conditions, use a full beam analysis package.</p>
+<h3>Where do I get accurate material values?</h3>
+<p>Use the latest AWC NDS Supplement tables for species and grade. Manufacturer literature must be used for engineered wood products.</p>
+<h3>Is this calculator suitable for code compliance submittals?</h3>
+<p>It provides engineering-grade computations, but you are responsible for verifying inputs, applicability, and additional checks required by code. Use professional judgment.</p>
+<h3>Why is my utilization over 100%?</h3>
+<p>Either loads are high, the span is long, or the section/grade is not strong enough. Try increasing section depth, choosing a higher grade/species, or revisiting loads and factors.</p>
+<h3>What about lateral stability and bearing?</h3>
+<p>These checks (e.g., unbraced length, bearing perpendicular to grain) are not included here and should be verified separately per NDS.</p>
+</section>
+<div class="author-box">
+<p>
+              Tool developed by <strong>Ugo Candido</strong>.<br/>
+              Content verified by <strong>Structural Engineering Advisory Board</strong>.<br/>
+              Last reviewed for accuracy on: September 14, 2025.
+            </p>
+</div>
+</article>
+</div>
+</div>
+</main>
+<!-- Standard Footer --> 
+
+
+<script defer src="https://calcdomain.com/assets/js/mobile-menu.js"></script>
+<script defer src="https://calcdomain.com/assets/js/page-enhancements.js"></script>
+</body></html>

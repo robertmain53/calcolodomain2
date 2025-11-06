@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="canonical" href="https://calcdomain.com/upload-time-calculator">
+
+
+
+
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Upload Time Calculator — Estimate File Upload Duration Accurately</title>
+  <meta name="description" content="Calculate upload time from file size and connection speed. Supports Mbps and MB/s, decimal vs binary units, protocol overhead presets, and LaTeX-explained formulas.">
+  
+  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --focus: #2563eb;
+      --ring: #93c5fd;
+    }
+    body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif; }
+    .prose { max-width: 68ch; }
+    .prose h2 { font-size: 1.5rem; font-weight: 700; margin-top: 2rem; margin-bottom: 0.75rem; }
+    .prose h3 { font-size: 1.25rem; font-weight: 700; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+    .prose p { margin-bottom: 1rem; line-height: 1.7; }
+    .prose ul, .prose ol { margin-left: 1.25rem; margin-bottom: 1rem; }
+    .formula-box { background:#f3f4f6; border:1px solid #d1d5db; border-radius:10px; padding:1rem; overflow-x:auto; }
+    .result-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1rem; text-align:center; }
+    .result-card h4 { font-size:0.95rem; color:#6b7280; margin-bottom:0.25rem; }
+    .result-card p { font-size:1.6rem; font-weight:800; color:#111827; }
+    .btn { min-height:48px; min-width:48px; }
+    .a11y-focus:focus { outline: 3px solid var(--focus); outline-offset: 2px; box-shadow: 0 0 0 4px var(--ring); border-radius: 10px; }
+    /* Prevent CLS by reserving space for results and chart */
+    #results { min-height: 280px; }
+    #chartWrap { min-height: 160px; }
+    /* Tooltip panel */
+    .tip-panel[hidden] { display: none !important; }
+    /* Print */
+    @media print {
+      body * { visibility: hidden; }
+      #print-section, #print-section * { visibility: visible; }
+      #print-section { position: absolute; inset: 0; width: 100%; }
+      #chartWrap { display: none !important; }
+      header, footer { display: none !important; }
+    }
+  </style>
+
+  <!-- MathJax for LaTeX formulas -->
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  <!-- Chart.js (tiny donut to visualize payload vs overhead) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- JSON-LD: WebPage -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"WebPage",
+    "name":"Upload Time Calculator",
+    "url":"https://calcdomain.com/upload-time-calculator",
+    "inLanguage":"en",
+    "description":"Compute upload time from file size and link speed with support for Mbps/MB/s, decimal vs binary units, and protocol overhead.",
+    "author":{"@type":"Person","name":"Ugo Candido"},
+    "publisher":{"@type":"Organization","name":"CalcDomain","url":"https://calcdomain.com"}
+  }
+  </script>
+
+  <!-- JSON-LD: Breadcrumbs -->
+  <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Lifestyle & Everyday",
+      "item": "https://calcdomain.com/lifestyle-everyday"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Miscellaneous",
+      "item": "https://calcdomain.com/subcategories/miscellaneous"
+    },
+    {
+      "@type": "ListItem",
+      "position": 4,
+      "name": "Upload Time Calculator",
+      "item": "https://calcdomain.com/upload-time-calculator"
+    }
+  ]
+}</script>
+
+  <!-- JSON-LD: HowTo -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"HowTo",
+    "name":"How to estimate upload time",
+    "description":"Enter file size and connection speed, choose units and overhead preset, then read the estimated upload duration.",
+    "step":[
+      {"@type":"HowToStep","name":"Enter File Size","text":"Type the file size and select the appropriate unit (MB, GB, etc.)."},
+      {"@type":"HowToStep","name":"Enter Connection Speed","text":"Provide your upload speed and select Mbps or MB/s."},
+      {"@type":"HowToStep","name":"Adjust Overhead","text":"Choose a protocol overhead preset or set a custom percentage."},
+      {"@type":"HowToStep","name":"Review Results","text":"See the estimated time in hh:mm:ss, effective throughput, and completion time."}
+    ]
+  }
+  </script>
+
+  <!-- JSON-LD: FAQPage -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"FAQPage",
+    "mainEntity":[
+      {"@type":"Question","name":"What’s the difference between Mbps and MB/s?","acceptedAnswer":{"@type":"Answer","text":"Mbps means megabits per second; MB/s means megabytes per second. 1 byte = 8 bits. 100 Mbps ≈ 12.5 MB/s."}},
+      {"@type":"Question","name":"Why do results differ from my real upload time?","acceptedAnswer":{"@type":"Answer","text":"Network congestion, Wi-Fi interference, server throttling, and protocol overhead reduce effective throughput versus your nominal line rate."}},
+      {"@type":"Question","name":"What are decimal vs binary units?","acceptedAnswer":{"@type":"Answer","text":"Decimal uses SI prefixes (1 MB = 1,000,000 bytes). Binary uses IEC prefixes (1 MiB = 1,048,576 bytes)."}},
+      {"@type":"Question","name":"What overhead should I use?","acceptedAnswer":{"@type":"Answer","text":"A 5–10% overhead is typical for TCP/IP + TLS over HTTP. For raw calculations set 0%. You can enter a custom percentage."}},
+      {"@type":"Question","name":"Does starting multiple uploads in parallel speed things up?","acceptedAnswer":{"@type":"Answer","text":"Usually not if your upstream bandwidth is the bottleneck; flows share the same total capacity and may compete, sometimes making things slower."}},
+      {"@type":"Question","name":"Will pausing or sleeping the device affect the estimate?","acceptedAnswer":{"@type":"Answer","text":"Yes, the estimate assumes continuous transfer. Pauses, background limits, or power-saving modes extend the elapsed time."}},
+      {"@type":"Question","name":"How accurate is the completion time?","acceptedAnswer":{"@type":"Answer","text":"It’s an estimate based on inputs and chosen overhead. Real-world performance varies with network and server conditions."}}
+    ]
+  }
+  </script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <!-- Header (non-sticky, mobile-first) -->
+  <header class="bg-white border-b">
+    <nav class="container mx-auto px-4 lg:px-6 py-4 flex items-center justify-between">
+      <a class="text-2xl font-extrabold text-blue-700 a11y-focus" href="https://calcdomain.com">CalcDomain</a>
+      <div class="hidden md:flex gap-6 text-sm">
+        <a class="a11y-focus hover:text-blue-700" href="https://calcdomain.com/search">Advanced Search</a>
+        Categories
+      </div>
+      <button id="mobileToggle" class="md:hidden btn p-2 rounded a11y-focus" aria-expanded="false" aria-controls="mobileNav" aria-label="Open navigation">
+        <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+    </nav>
+    <div id="mobileNav" class="md:hidden hidden border-t">
+      <div class="container mx-auto px-4 lg:px-6 py-3 text-sm space-y-2">
+        <a class="block a11y-focus hover:text-blue-700" href="https://calcdomain.com/search">Advanced Search</a>
+        Categories
+      </div>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 lg:px-6 py-8">
+    <div class="flex flex-col lg:flex-row gap-8">
+      <section class="w-full lg:w-2/3" id="print-section">
+        <!-- Breadcrumb -->
+        <nav class="text-sm text-gray-600 mb-4" aria-label="Breadcrumb">
+          <a href="https://calcdomain.com" class="hover:text-blue-700 a11y-focus">Home</a> &raquo;
+          <a href="https://calcdomain.com/lifestyle-everyday" class="hover:text-blue-700 a11y-focus">Lifestyle &amp; Everyday</a> &raquo;
+          <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-700 a11y-focus">Miscellaneous</a> &raquo;
+          <span class="text-gray-900">Upload Time Calculator</span>
+        </nav>
+
+        <!-- Title & intro -->
+        <h1 class="text-3xl font-extrabold text-gray-900 mb-2">upload time calculator</h1>
+        <p class="text-gray-700 mb-6">
+          Estimate how long it takes to upload any file based on its size, your connection speed, and protocol overhead.
+          Built for creators, IT admins, and anyone moving large media or backups.
+        </p>
+
+        <!-- Calculator Card -->
+        <section aria-labelledby="calcTitle" class="bg-white p-6 rounded-lg shadow-md">
+          <h2 id="calcTitle" class="sr-only">Upload time calculator</h2>
+
+          <form id="calcForm" novalidate class="space-y-6">
+            <!-- File size -->
+            <div>
+              <div class="flex items-center justify-between">
+                <label for="fileSize" class="block text-sm font-semibold text-gray-900">File size <span aria-hidden="true" class="text-red-600">*</span></label>
+                <button type="button" class="btn px-2 py-1 rounded a11y-focus text-sm text-blue-700" aria-expanded="false" aria-controls="tip-fileSize">?</button>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-[1fr,180px] gap-3 mt-1">
+                <input id="fileSize" name="fileSize" type="number" inputmode="decimal" step="any" min="0"
+                       required aria-required="true" aria-describedby="err-fileSize tip-fileSize"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md a11y-focus"
+                       placeholder="e.g., 5">
+                <select id="fileUnit" class="w-full px-3 py-2 border border-gray-300 rounded-md a11y-focus" aria-label="File size unit">
+                  <option value="MB">MB (10^6 bytes)</option>
+                  <option value="GB" selected>GB (10^9 bytes)</option>
+                  <option value="TB">TB (10^12 bytes)</option>
+                  <option value="MiB">MiB (2^20 bytes)</option>
+                  <option value="GiB">GiB (2^30 bytes)</option>
+                  <option value="TiB">TiB (2^40 bytes)</option>
+                </select>
+              </div>
+              <p id="tip-fileSize" class="tip-panel text-sm text-gray-600 mt-2" hidden>
+                Choose the correct unit for your file. Most OSes show decimal (MB/GB). Some tools show binary (MiB/GiB).
+              </p>
+              <p id="err-fileSize" class="mt-1 text-sm text-red-700" role="alert" hidden>Enter a file size greater than 0.</p>
+            </div>
+
+            <!-- Speed -->
+            <div>
+              <div class="flex items-center justify-between">
+                <label for="speed" class="block text-sm font-semibold text-gray-900">Connection upload speed <span aria-hidden="true" class="text-red-600">*</span></label>
+                <button type="button" class="btn px-2 py-1 rounded a11y-focus text-sm text-blue-700" aria-expanded="false" aria-controls="tip-speed">?</button>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-[1fr,180px] gap-3 mt-1">
+                <input id="speed" name="speed" type="number" inputmode="decimal" step="any" min="0"
+                       required aria-required="true" aria-describedby="err-speed tip-speed"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md a11y-focus"
+                       placeholder="e.g., 100">
+                <select id="speedUnit" class="w-full px-3 py-2 border border-gray-300 rounded-md a11y-focus" aria-label="Speed unit">
+                  <option value="Mbps" selected>Mbps (megabits/s)</option>
+                  <option value="MBps">MB/s (megabytes/s)</option>
+                </select>
+              </div>
+              <p id="tip-speed" class="tip-panel text-sm text-gray-600 mt-2" hidden>
+                ISPs advertise Mbps (megabits/second). To convert MB/s to Mbps, multiply by 8 (1 byte = 8 bits).
+              </p>
+              <p id="err-speed" class="mt-1 text-sm text-red-700" role="alert" hidden>Enter an upload speed greater than 0.</p>
+            </div>
+
+            <!-- Overhead -->
+            <fieldset class="space-y-2">
+              <legend class="block text-sm font-semibold text-gray-900">Protocol overhead</legend>
+              <div class="grid sm:grid-cols-2 gap-3">
+                <select id="overheadPreset" class="w-full px-3 py-2 border border-gray-300 rounded-md a11y-focus" aria-label="Overhead preset">
+                  <option value="7" selected>HTTP + TCP/IP + TLS (typical 7%)</option>
+                  <option value="5">Multipart/Cloud optimized (≈5%)</option>
+                  <option value="10">Conservative (10%)</option>
+                  <option value="0">Raw payload (0%)</option>
+                  <option value="custom">Custom…</option>
+                </select>
+                <div class="flex items-center gap-2">
+                  <label for="overhead" class="text-sm text-gray-900">Custom overhead %</label>
+                  <input id="overhead" type="number" step="0.1" min="0" max="50"
+                         value="7" class="w-28 px-3 py-2 border border-gray-300 rounded-md a11y-focus"
+                         aria-describedby="tip-overhead">
+                </div>
+              </div>
+              <p id="tip-overhead" class="text-sm text-gray-600">
+                Overhead accounts for headers, encryption, and protocol framing. It reduces effective payload throughput.
+              </p>
+            </fieldset>
+
+            <!-- Options -->
+            <div class="grid sm:grid-cols-2 gap-3">
+              <label class="inline-flex items-center gap-2">
+                <input id="binaryToggle" type="checkbox" class="h-5 w-5 a11y-focus rounded border-gray-300">
+                <span class="text-sm text-gray-900">Display results in binary (MiB, GiB)</span>
+              </label>
+              <label class="inline-flex items-center gap-2">
+                <input id="nowStart" type="checkbox" class="h-5 w-5 a11y-focus rounded border-gray-300" checked>
+                <span class="text-sm text-gray-900">Estimate completion time (start now)</span>
+              </label>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex flex-wrap items-center gap-3 pt-2">
+              <button id="calcBtn" type="button" class="btn a11y-focus bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-3 rounded-md">
+                Calculate
+              </button>
+              <button id="resetBtn" type="reset" class="btn a11y-focus bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold px-5 py-3 rounded-md">
+                Reset
+              </button>
+              <button id="printBtn" type="button" class="btn a11y-focus bg-white border border-gray-300 hover:bg-gray-50 text-gray-900 font-semibold px-5 py-3 rounded-md">
+                Print
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Results -->
+        <section id="results" aria-labelledby="resTitle" class="mt-8 bg-blue-50 border border-blue-100 rounded-lg p-6">
+          <h2 id="resTitle" class="sr-only">Results</h2>
+
+          <div class="flex flex-col md:flex-row gap-6">
+            <div class="w-full md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="result-card"><h4>Estimated time</h4><p id="outTime">—</p></div>
+              <div class="result-card"><h4>Time (seconds)</h4><p id="outSeconds">—</p></div>
+              <div class="result-card"><h4>Effective throughput</h4><p id="outEffThroughput">—</p></div>
+              <div class="result-card"><h4>Completion time</h4><p id="outETA">—</p></div>
+            </div>
+            <div class="w-full md:w-1/3">
+              <div id="chartWrap" class="h-44">
+                <canvas id="donut" aria-label="Payload vs overhead"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <details class="mt-6 bg-white rounded-lg">
+            <summary class="font-semibold text-gray-800 px-4 py-3 cursor-pointer">Details & conversion</summary>
+            <div class="px-4 pb-4 text-sm text-gray-700 space-y-1">
+              <p><span class="font-semibold">File size (bytes):</span> <span id="dbg-bytes">—</span></p>
+              <p><span class="font-semibold">Raw link rate:</span> <span id="dbg-raw">—</span></p>
+              <p><span class="font-semibold">Overhead:</span> <span id="dbg-oh">—</span></p>
+            </div>
+          </details>
+        </section>
+
+        <!-- Authoritative content -->
+        <article class="bg-white p-6 rounded-lg shadow-md mt-8 prose">
+          <h2>Data source & methodology</h2>
+          <p><strong>AuthoritativeDataSource:</strong> International System of Units (SI) — BIPM “SI Brochure” (9th ed.), and ITU-T definitions of bit rate (Recommendation I.113). Direct links:</p>
+          <ul>
+            <li><a class="text-blue-700 underline" href="https://www.bipm.org/en/publications/si-brochure" rel="nofollow">BIPM — SI Brochure</a> (latest edition)</li>
+            <li><a class="text-blue-700 underline" href="https://www.itu.int/rec/T-REC-I.113" rel="nofollow">ITU-T Recommendation I.113</a></li>
+          </ul>
+          <p><em>All calculations strictly follow the formulas and unit definitions provided by these sources.</em></p>
+
+          <h2>The formula explained</h2>
+          <div class="formula-box">
+            <p>\[
+              t = \frac{S_{\text{bits}}}{R_{\text{eff}}}
+              \quad\text{with}\quad
+              S_{\text{bits}} = S_{\text{bytes}} \times 8,\;
+              R_{\text{eff}} = R_{\text{raw}} \times \left(1 - \frac{\text{overhead\%}}{100}\right)
+            \]</p>
+            <p>\[
+              S_{\text{bytes}} = \begin{cases}
+                \text{value}\times 10^6 & \text{MB} \\
+                \text{value}\times 10^9 & \text{GB} \\
+                \text{value}\times 10^{12} & \text{TB} \\
+                \text{value}\times 2^{20} & \text{MiB} \\
+                \text{value}\times 2^{30} & \text{GiB} \\
+                \text{value}\times 2^{40} & \text{TiB}
+              \end{cases}
+              \quad;\quad
+              R_{\text{raw}} = \begin{cases}
+                \text{Mbps}\times 10^6 & (\text{bits/s})\\
+                \text{MB/s}\times 8\times 10^6 & (\text{bits/s})
+              \end{cases}
+            \]</p>
+          </div>
+
+          <h2>Glossary of variables</h2>
+          <table class="w-full border border-gray-200 text-sm">
+            <thead class="bg-gray-100">
+              <tr><th class="text-left p-2">Symbol / Field</th><th class="text-left p-2">Meaning</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="p-2"><strong>S</strong> (File size)</td><td class="p-2">The total payload to upload, selectable in MB/GB/TB or MiB/GiB/TiB.</td></tr>
+              <tr><td class="p-2"><strong>R<sub>raw</sub></strong> (Raw link rate)</td><td class="p-2">Advertised upload speed from ISP or speed test (Mbps or MB/s).</td></tr>
+              <tr><td class="p-2"><strong>Overhead%</strong></td><td class="p-2">Percentage of bandwidth used by headers, encryption, framing.</td></tr>
+              <tr><td class="p-2"><strong>R<sub>eff</sub></strong> (Effective throughput)</td><td class="p-2">Actual payload rate after overhead.</td></tr>
+              <tr><td class="p-2"><strong>t</strong> (Time)</td><td class="p-2">Estimated upload duration (seconds; also shown as hh:mm:ss).</td></tr>
+            </tbody>
+          </table>
+
+          <h2>How it works: a step-by-step example</h2>
+          <h3>Example: Uploading a 12 GB video at 100 Mbps (HTTP/TLS ~7% overhead)</h3>
+          <ol>
+            <li>Convert 12 GB to bytes: \(12\times 10^9 = 12{,}000{,}000{,}000\ \text{bytes}\).</li>
+            <li>Convert to bits: \(12{,}000{,}000{,}000\times 8 = 96{,}000{,}000{,}000\ \text{bits}\).</li>
+            <li>Raw rate: \(100\ \text{Mbps} = 100\times 10^6\ \text{bits/s}\).</li>
+            <li>Effective rate: \(R_{\text{eff}} = 100\times 10^6 \times (1 - 0.07) = 93\times 10^6\ \text{bits/s}\).</li>
+            <li>Time: \(t = 96\times 10^9 / 93\times 10^6 \approx 1032.26\ \text{s} \approx 17\ \text{min} 12\ \text{s}\).</li>
+          </ol>
+
+          <h2>FAQ</h2>
+          <details><summary>Why are some calculators wrong by 8×?</summary><p>They confuse bits with bytes. Remember: 1 byte = 8 bits. We explicitly convert and show both units to avoid this pitfall.</p></details>
+          <details><summary>Should I pick MB/GB or MiB/GiB?</summary><p>Use MB/GB if your tool shows decimal units. If you see MiB/GiB in your app, choose the binary option to match exactly.</p></details>
+          <details><summary>What overhead applies to S3/Drive/Dropbox?</summary><p>5–10% is a practical range. Start at 7%. For well-optimized multipart uploads, 5% is often reasonable.</p></details>
+          <details><summary>Wi-Fi vs Ethernet — does it matter?</summary><p>Yes. Wi-Fi retransmissions and interference reduce throughput. Ethernet is typically more consistent.</p></details>
+          <details><summary>Server throttling?</summary><p>Some services cap per-connection rates. Your line may be fast, but the server may limit speed, increasing upload time.</p></details>
+
+          <div class="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+            <p><strong>Tool developed by Ugo Candido.</strong><br>
+            Content verified by the CalcDomain Editorial Board.<br>
+            Last accuracy review: <time datetime="2025-10-26">October 26, 2025</time></p>
+          </div>
+        </article>
+      </section>
+
+      <!-- Sidebar -->
+      <aside class="w-full lg:w-1/3">
+        <div class="sticky top-6 space-y-6">
+          <div class="bg-gray-200 h-72 rounded-lg flex items-center justify-center text-gray-600">Ad Placement (300×600)</div>
+
+          <div class="bg-white p-6 rounded-lg shadow-md">
+            <h3 class="font-bold text-lg mb-3">Why this calculator stands out</h3>
+            <ul class="list-disc list-inside text-sm text-gray-700 space-y-2">
+              <li>Accurate unit handling (SI vs IEC).</li>
+              <li>Overhead presets + custom entry.</li>
+              <li>Accessible, mobile-first UI with inline validation.</li>
+            </ul>
+          </div>
+
+          <div class="bg-white p-6 rounded-lg shadow-md">
+            <h3 class="font-bold text-lg mb-4">Related everyday tools</h3>
+            <ul class="space-y-3 text-sm">
+              <li><a class="text-blue-700 hover:underline" href="https://calcdomain.com/download-time-calculator">Download Time Calculator</a></li>
+              <li>Bandwidth Converter</li>
+              <li>Video Bitrate Calculator</li>
+              <li>Cloud Storage Cost</li>
+            </ul>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="bg-white border-t">
+    <div class="container mx-auto px-6 py-8 text-center text-gray-600 text-sm">
+      <p>&copy; 2025 CalcDomain. All rights reserved.</p>
+      <div class="mt-4 space-x-4">
+        <a href="https://calcdomain.com/about" class="a11y-focus hover:text-blue-700">About</a>
+        <a href="https://calcdomain.com/contact" class="a11y-focus hover:text-blue-700">Contact</a>
+        <a href="https://calcdomain.com/privacy" class="a11y-focus hover:text-blue-700">Privacy</a>
+        <a href="https://calcdomain.com/terms" class="a11y-focus hover:text-blue-700">Terms</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Calculator logic (placed at end for performance) -->
+  <script>
+  (function(){
+    const $ = (id) => document.getElementById(id);
+
+    // Mobile nav
+    const mobileToggle = $('mobileToggle'), mobileNav = $('mobileNav');
+    if (mobileToggle && mobileNav) {
+      mobileToggle.addEventListener('click', () => {
+        const open = mobileNav.classList.toggle('hidden') ? 'false' : 'true';
+        mobileToggle.setAttribute('aria-expanded', open);
+      });
+    }
+
+    // Tooltip toggles (the two '?' buttons are the only buttons in their groups)
+    document.querySelectorAll('button[aria-controls^="tip-"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('aria-controls');
+        const panel = $(id);
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        if (panel) panel.hidden = expanded;
+      });
+    });
+
+    // DOM refs
+    const fileSize = $('fileSize');
+    const fileUnit = $('fileUnit');
+    const speed = $('speed');
+    const speedUnit = $('speedUnit');
+    const overheadPreset = $('overheadPreset');
+    const overhead = $('overhead');
+    const binaryToggle = $('binaryToggle');
+    const nowStart = $('nowStart');
+
+    const errFile = $('err-fileSize');
+    const errSpeed = $('err-speed');
+
+    const outTime = $('outTime');
+    const outSeconds = $('outSeconds');
+    const outEff = $('outEffThroughput');
+    const outETA = $('outETA');
+
+    const dbgBytes = $('dbg-bytes');
+    const dbgRaw = $('dbg-raw');
+    const dbgOh  = $('dbg-oh');
+
+    const printBtn = $('printBtn');
+    const calcBtn = $('calcBtn');
+    const resetBtn = $('resetBtn');
+
+    // Chart
+    let donutChart = null;
+
+    // Unit conversion maps
+    const DEC = { MB: 1e6, GB: 1e9, TB: 1e12 };
+    const BIN = { MiB: 2**20, GiB: 2**30, TiB: 2**40 };
+
+    function unitBytes(value, unit) {
+      if (DEC[unit]) return value * DEC[unit];
+      if (BIN[unit]) return value * BIN[unit];
+      return value; // fallback
+    }
+    function toBitsPerSec(val, unit) {
+      return unit === 'MBps' ? val * 8e6 : val * 1e6; // MB/s -> bits/s ; Mbps -> bits/s
+    }
+
+    // Formatting
+    const nf0 = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
+    const nf1 = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
+    const nf2 = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
+
+    function formatSeconds(sec) {
+      if (!isFinite(sec) || sec <= 0) return '—';
+      const s = Math.floor(sec % 60);
+      const m = Math.floor((sec / 60) % 60);
+      const h = Math.floor(sec / 3600);
+      const pad = (n) => String(n).padStart(2, '0');
+      return (h > 0 ? h + ':' : '') + pad(m) + ':' + pad(s);
+    }
+
+    function formatThroughput(bps, binary) {
+      if (!isFinite(bps) || bps <= 0) return '—';
+      // Show in Mbps and MB/s (decimal), and optionally MiB/s if binary mode
+      const Mbps = bps / 1e6;
+      const MBps = bps / 8e6;
+      if (binary) {
+        const MiBps = bps / (8 * 2**20);
+        return nf2.format(Mbps) + ' Mbps • ' + nf2.format(MBps) + ' MB/s • ' + nf2.format(MiBps) + ' MiB/s';
+      }
+      return nf2.format(Mbps) + ' Mbps • ' + nf2.format(MBps) + ' MB/s';
+    }
+
+    // Validation (on blur as required)
+    function validateField(input, errEl, min = 0) {
+      const v = parseFloat(input.value);
+      const ok = isFinite(v) && v > min;
+      errEl.hidden = !!ok;
+      input.setAttribute('aria-invalid', ok ? 'false' : 'true');
+      return ok;
+    }
+
+    fileSize.addEventListener('blur', () => validateField(fileSize, errFile, 0));
+    speed.addEventListener('blur',    () => validateField(speed, errSpeed, 0));
+
+    overheadPreset.addEventListener('change', () => {
+      if (overheadPreset.value !== 'custom') overhead.value = overheadPreset.value;
+      overhead.disabled = overheadPreset.value !== 'custom' ? true : false;
+    });
+    // Initialize overhead control
+    overhead.disabled = overheadPreset.value !== 'custom';
+
+    // Core calculation
+    function calculate() {
+      const okSize = validateField(fileSize, errFile, 0);
+      const okSpeed = validateField(speed, errSpeed, 0);
+      if (!okSize || !okSpeed) { renderOutputs(); return; }
+
+      const sizeValue = parseFloat(fileSize.value);
+      const sizeBytes = unitBytes(sizeValue, fileUnit.value);
+      const sizeBits = sizeBytes * 8;
+
+      const rawRate = toBitsPerSec(parseFloat(speed.value), speedUnit.value);
+
+      const oh = parseFloat(overhead.value) || 0;
+      const effRate = rawRate * (1 - Math.min(Math.max(oh, 0), 50) / 100);
+
+      const seconds = sizeBits / effRate;
+
+      // Debug lines
+      dbgBytes.textContent = nf0.format(sizeBytes) + ' bytes';
+      dbgRaw.textContent   = nf2.format(rawRate / 1e6) + ' Mbps';
+      dbgOh.textContent    = nf2.format(oh) + ' %';
+
+      // Outputs
+      const binary = binaryToggle.checked;
+      outSeconds.textContent = isFinite(seconds) ? nf2.format(seconds) : '—';
+      outTime.textContent = formatSeconds(seconds);
+      outEff.textContent = formatThroughput(effRate, binary);
+
+      if (nowStart.checked && isFinite(seconds) && seconds > 0) {
+        const end = new Date(Date.now() + seconds * 1000);
+        outETA.textContent = end.toLocaleString();
+      } else {
+        outETA.textContent = '—';
+      }
+
+      // Chart: payload vs overhead time-equivalent proportions
+      renderChart(sizeBits, rawRate, oh);
+    }
+
+    function renderOutputs() {
+      outTime.textContent = '—';
+      outSeconds.textContent = '—';
+      outEff.textContent = '—';
+      outETA.textContent = '—';
+      dbgBytes.textContent = '—';
+      dbgRaw.textContent = '—';
+      dbgOh.textContent = '—';
+      if (donutChart) { donutChart.destroy(); donutChart = null; }
+    }
+
+    function renderChart(sizeBits, rawRate, oh) {
+      const ctx = document.getElementById('donut');
+      if (!ctx) return;
+      const payloadShare = 100 - Math.min(Math.max(oh,0),50);
+      const overheadShare = 100 - payloadShare;
+
+      const data = {
+        labels: ['Payload', 'Overhead'],
+        datasets: [{ data: [Math.max(0,payloadShare), Math.max(0,overheadShare)] }]
+      };
+
+      if (donutChart) {
+        donutChart.data = data;
+        donutChart.update();
+      } else {
+        donutChart = new Chart(ctx, {
+          type: 'doughnut',
+          data,
+          options: {
+            plugins: { legend: { position: 'bottom' } },
+            responsive: true,
+            maintainAspectRatio: false
+          }
+        });
+      }
+    }
+
+    // Buttons
+    calcBtn.addEventListener('click', calculate);
+    resetBtn.addEventListener('click', () => {
+      // restore defaults
+      fileSize.value = '';
+      fileUnit.value = 'GB';
+      speed.value = '';
+      speedUnit.value = 'Mbps';
+      overheadPreset.value = '7';
+      overhead.value = '7';
+      overhead.disabled = true;
+      binaryToggle.checked = false;
+      nowStart.checked = true;
+      errFile.hidden = true; errSpeed.hidden = true;
+      fileSize.setAttribute('aria-invalid','false'); speed.setAttribute('aria-invalid','false');
+      renderOutputs();
+    });
+    printBtn.addEventListener('click', () => window.print());
+
+    // Live recompute on key inputs for great UX (without being noisy)
+    [fileSize, fileUnit, speed, speedUnit, overhead, overheadPreset, binaryToggle, nowStart].forEach(el => {
+      el.addEventListener('input', () => {
+        // gentle: only auto-calc when fields are valid
+        if (fileSize.value && speed.value) calculate();
+      });
+    });
+
+    // Kick off clean state
+    renderOutputs();
+  })();
+  </script>
+</body>
+</html>

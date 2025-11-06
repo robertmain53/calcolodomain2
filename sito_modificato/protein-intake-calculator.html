@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="canonical" href="https://calcdomain.com/protein-intake-calculator">
+
+
+
+
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Protein Intake Calculator — Daily & Per-Meal Targets by Goal</title>
+  <meta name="description" content="Calculate your ideal daily protein intake based on body weight or lean mass, training style, and goal (maintenance, fat loss, muscle gain). Get clear per-meal targets and science-based ranges." />
+  
+  <meta name="author" content="Ugo Candido" />
+
+  <!-- Icons / PWA -->
+  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+
+  <!-- Tailwind & Fonts -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- MathJax for LaTeX -->
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  <style>
+    body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji'; }
+    .prose { max-width: 70ch; }
+    .prose h2 { font-size: 1.5rem; font-weight: 700; margin-top: 2rem; margin-bottom: 0.75rem; }
+    .prose h3 { font-size: 1.125rem; font-weight: 600; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+    .prose p { margin-bottom: 0.9rem; line-height: 1.7; }
+    .formula-box { background:#f3f4f6; border:1px solid #d1d5db; border-radius:10px; padding:1rem; overflow-x:auto; }
+    details > summary { cursor: pointer; font-weight: 600; padding: 0.5rem 0; }
+    details[open] > summary { margin-bottom: 0.5rem; }
+    .result-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1rem; text-align: center; }
+    .result-card h4 { font-size: 0.95rem; color: #4b5563; margin-bottom: 0.25rem; }
+    .result-card p { font-size: 1.75rem; font-weight: 800; color: #1d4ed8; }
+    .help-btn { width: 32px; height: 32px; min-width: 32px; min-height: 32px; }
+    .focus-ring:focus { outline: 3px solid #2563eb; outline-offset: 2px; border-radius: 8px; }
+    /* Prevent CLS in results area */
+    #results { min-height: 280px; }
+    @media (prefers-reduced-motion: reduce) {
+      * { scroll-behavior: auto !important; transition: none !important; }
+    }
+    @media print {
+      body * { visibility: hidden; }
+      #print-section, #print-section * { visibility: visible; }
+      #print-section { position: absolute; inset: 0 auto auto 0; width: 100%; }
+      #results-chart-container { display: none !important; }
+    }
+  </style>
+
+  <!-- JSON-LD: WebPage -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"WebPage",
+    "name":"Protein Intake Calculator",
+    "url":"https://calcdomain.com/protein-intake-calculator",
+    "inLanguage":"en",
+    "description":"Science-based protein calculator for daily and per-meal targets using body weight or lean mass, by goal and training style.",
+    "author":{"@type":"Person","name":"Ugo Candido"},
+    "publisher":{"@type":"Organization","name":"CalcDomain"}
+  }
+  </script>
+
+  <!-- JSON-LD: HowTo -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"HowTo",
+    "name":"How to calculate your protein needs",
+    "description":"Enter your stats, select goal and training style, and get daily and per-meal protein targets.",
+    "step":[
+      {"@type":"HowToStep","name":"Enter body metrics","text":"Choose units and enter body weight (and body fat % if known for lean mass)."},
+      {"@type":"HowToStep","name":"Select goal and training style","text":"Pick maintenance, fat loss, or muscle gain, and your primary training focus."},
+      {"@type":"HowToStep","name":"Set meals per day","text":"Choose how many meals you usually eat to get a per-meal target."},
+      {"@type":"HowToStep","name":"Review results","text":"See daily gram target, range, per-meal guidance and chart."}
+    ]
+  }
+  </script>
+
+  <!-- JSON-LD: FAQPage -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"FAQPage",
+    "mainEntity":[
+      {"@type":"Question","name":"Do I need to use lean body mass?","acceptedAnswer":{"@type":"Answer","text":"You can use total body weight. If you know body fat %, lean mass provides a more individualized estimate, especially at higher or lower body fat levels."}},
+      {"@type":"Question","name":"Is high protein bad for kidneys?","acceptedAnswer":{"@type":"Answer","text":"In healthy individuals, higher protein intakes within athletic ranges are generally well tolerated. People with kidney disease should follow medical advice."}},
+      {"@type":"Question","name":"How much protein per meal can I absorb?","acceptedAnswer":{"@type":"Answer","text":"Muscle protein synthesis appears maximized around ~0.25–0.4 g/kg per meal for most adults; total daily intake matters most over acute meal caps."}},
+      {"@type":"Question","name":"What about plant-based diets?","acceptedAnswer":{"@type":"Answer","text":"Plant protein can fully support goals. Aim to include varied sources (e.g., soy, legumes, grains) and consider slightly higher totals to account for lower EAA density."}},
+      {"@type":"Question","name":"Do rest days change the target?","acceptedAnswer":{"@type":"Answer","text":"Daily protein targets usually stay similar across the week; you can distribute the same total on rest days."}}
+    ]
+  }
+  </script>
+</head>
+
+<body class="bg-gray-50 text-gray-900">
+  <!-- Header (non-sticky per spec) -->
+  <header class="bg-white border-b">
+    <nav class="container mx-auto px-4 lg:px-6 py-4">
+      <div class="flex justify-between items-center">
+        <a href="https://calcdomain.com" class="text-2xl font-extrabold text-blue-600 focus-ring">CalcDomain</a>
+        <div class="hidden md:flex items-center gap-6 text-sm">
+          <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600 focus-ring">Advanced Search</a>
+          Categories
+        </div>
+        <button id="mobile-menu-toggle" class="md:hidden p-2 focus-ring" aria-label="Open menu" aria-controls="mobile-menu" aria-expanded="false">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+      </div>
+      <div id="mobile-menu" class="md:hidden mt-4 hidden">
+        <div class="space-y-2">
+          <a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600 focus-ring">Advanced Search</a>
+          Categories
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="container mx-auto px-4 lg:px-6 py-10">
+    <div class="flex flex-col lg:flex-row gap-8">
+      <!-- Main content -->
+      <section class="w-full lg:w-2/3">
+        <!-- Breadcrumb -->
+        <nav class="text-sm text-gray-600 mb-4" aria-label="Breadcrumb">
+          <a href="https://calcdomain.com" class="hover:text-blue-600 focus-ring">Home</a> &raquo;
+          <a href="https://calcdomain.com/health-fitness" class="hover:text-blue-600 focus-ring">Health &amp; Fitness</a> &raquo;
+          <a href="https://calcdomain.com/subcategories/health-fitness-diet-nutrition" class="hover:text-blue-600 focus-ring">Diet &amp; Nutrition</a> &raquo;
+          <span class="text-gray-900">Protein Intake Calculator</span>
+        </nav>
+
+        <div id="print-section" class="bg-white p-6 rounded-lg shadow-sm">
+          <h1 class="text-3xl font-extrabold text-gray-900 mb-2">Protein Intake Calculator</h1>
+          <p class="text-gray-700 mb-6">
+            Get precise, science-based daily and per-meal protein targets tailored to your body, goal, and training style. Ideal for athletes, fat-loss phases, or anyone optimizing health.
+          </p>
+
+          <!-- Calculator UI -->
+          <section id="calculator-ui" class="space-y-6" aria-labelledby="calcHeading">
+            <h2 id="calcHeading" class="sr-only">Protein calculator inputs</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Units -->
+              <div>
+                <label for="unitSystem" class="block text-sm font-medium text-gray-800">Units *</label>
+                <div class="mt-1">
+                  <select id="unitSystem" aria-required="true" class="w-full px-3 py-2 border border-gray-300 rounded-md focus-ring">
+                    <option value="metric" selected>Metric (kg, cm)</option>
+                    <option value="imperial">Imperial (lb, in)</option>
+                  </select>
+                </div>
+                <p id="unitSystemHelp" class="text-xs text-gray-600 mt-1">Choose metric or imperial to enter your measurements.</p>
+              </div>
+
+              <!-- Body weight -->
+              <div>
+                <div class="flex items-center justify-between">
+                  <label for="bodyWeight" class="block text-sm font-medium text-gray-800">Body weight *</label>
+                  <button type="button" class="help-btn flex items-center justify-center rounded-full bg-blue-50 text-blue-700 focus-ring" aria-expanded="false" aria-controls="bwTip" title="What is body weight?">?</button>
+                </div>
+                <input type="number" id="bodyWeight" inputmode="decimal" step="0.1" min="20" max="400" aria-required="true"
+                       aria-describedby="bwError bwTip"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus-ring" placeholder="e.g., 70">
+                <p id="bwError" class="mt-1 text-sm text-red-600" aria-live="polite"></p>
+                <p id="bwTip" class="hidden mt-1 text-xs text-gray-600">Enter your current body weight without clothing or shoes.</p>
+              </div>
+
+              <!-- Body fat % (optional) -->
+              <div>
+                <div class="flex items-center justify-between">
+                  <label for="bodyFat" class="block text-sm font-medium text-gray-800">Body fat (%) <span class="text-gray-500">(optional)</span></label>
+                  <button type="button" class="help-btn flex items-center justify-center rounded-full bg-blue-50 text-blue-700 focus-ring" aria-expanded="false" aria-controls="bfTip" title="Why body fat?">?</button>
+                </div>
+                <input type="number" id="bodyFat" inputmode="decimal" step="0.5" min="2" max="60"
+                       aria-describedby="bfError bfTip"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus-ring" placeholder="e.g., 18">
+                <p id="bfError" class="mt-1 text-sm text-red-600" aria-live="polite"></p>
+                <p id="bfTip" class="hidden mt-1 text-xs text-gray-600">If known, we’ll estimate lean mass for more individualized ranges.</p>
+              </div>
+
+              <!-- Height (optional, for per-meal context or future features) -->
+              <div>
+                <label for="height" class="block text-sm font-medium text-gray-800">Height <span class="text-gray-500">(optional)</span></label>
+                <input type="number" id="height" inputmode="decimal" step="0.5" min="100" max="230"
+                       aria-describedby="hError"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus-ring" placeholder="e.g., 175">
+                <p id="hError" class="mt-1 text-sm text-red-600" aria-live="polite"></p>
+              </div>
+
+              <!-- Goal -->
+              <div>
+                <label for="goal" class="block text-sm font-medium text-gray-800">Goal *</label>
+                <select id="goal" aria-required="true" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus-ring" aria-describedby="goalHelp">
+                  <option value="maintenance" selected>Maintenance / General Health</option>
+                  <option value="fatloss">Fat Loss (Cutting)</option>
+                  <option value="muscle">Muscle Gain (Hypertrophy)</option>
+                </select>
+                <p id="goalHelp" class="text-xs text-gray-600 mt-1">Sets the base range multipliers.</p>
+              </div>
+
+              <!-- Training focus -->
+              <div>
+                <label for="training" class="block text-sm font-medium text-gray-800">Primary training *</label>
+                <select id="training" aria-required="true" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus-ring" aria-describedby="trainingHelp">
+                  <option value="sedentary">Sedentary / Minimal training</option>
+                  <option value="endurance">Endurance</option>
+                  <option value="strength" selected>Strength / Hypertrophy</option>
+                  <option value="mixed">Mixed training</option>
+                </select>
+                <p id="trainingHelp" class="text-xs text-gray-600 mt-1">Refines the recommended range.</p>
+              </div>
+
+              <!-- Meals per day -->
+              <div>
+                <div class="flex items-center justify-between">
+                  <label for="meals" class="block text-sm font-medium text-gray-800">Meals per day *</label>
+                  <button type="button" class="help-btn flex items-center justify-center rounded-full bg-blue-50 text-blue-700 focus-ring" aria-expanded="false" aria-controls="mealsTip" title="Per-meal target">?</button>
+                </div>
+                <input type="number" id="meals" inputmode="numeric" step="1" min="1" max="8" value="4"
+                       aria-required="true" aria-describedby="mealsError mealsTip"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus-ring">
+                <p id="mealsError" class="mt-1 text-sm text-red-600" aria-live="polite"></p>
+                <p id="mealsTip" class="hidden mt-1 text-xs text-gray-600">We’ll divide your daily target evenly across meals.</p>
+              </div>
+
+              <!-- Calculation basis -->
+              <div>
+                <label for="basis" class="block text-sm font-medium text-gray-800">Calculate using *</label>
+                <select id="basis" aria-required="true" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus-ring" aria-describedby="basisHelp">
+                  <option value="bodyweight" selected>Body weight (g/kg)</option>
+                  <option value="leanmass">Lean body mass (g/kg LBM)</option>
+                </select>
+                <p id="basisHelp" class="text-xs text-gray-600 mt-1">LBM requires body fat %; otherwise we’ll fall back to body weight.</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- Results -->
+          <section id="results" class="mt-8 bg-blue-50 border border-blue-100 rounded-lg p-6" aria-labelledby="resultsHeading" aria-live="polite">
+            <h2 id="resultsHeading" class="sr-only">Results</h2>
+            <div class="flex flex-col md:flex-row gap-6">
+              <div class="w-full md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="result-card">
+                  <h4>Daily Protein Target</h4>
+                  <p id="dailyProtein">— g</p>
+                </div>
+                <div class="result-card">
+                  <h4>Recommended Range</h4>
+                  <p id="rangeProtein">— to — g</p>
+                </div>
+                <div class="result-card">
+                  <h4>Per-Meal Target</h4>
+                  <p id="perMeal">— g</p>
+                </div>
+                <div class="result-card">
+                  <h4>Basis Used</h4>
+                  <p id="basisUsed">—</p>
+                </div>
+              </div>
+              <div class="w-full md:w-1/3">
+                <div id="results-chart-container" class="h-44">
+                  <canvas id="resultsChart" aria-label="Protein distribution chart"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <details class="mt-6 bg-white rounded-lg">
+              <summary class="font-semibold text-gray-800">View detailed breakdown</summary>
+              <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div class="p-3 rounded border border-gray-200">
+                  <div class="font-semibold text-gray-700 mb-1">Your inputs (normalized)</div>
+                  <ul class="text-gray-700 space-y-1">
+                    <li>Weight: <span id="normWeight">—</span></li>
+                    <li>Body fat: <span id="normBf">—</span></li>
+                    <li>Lean mass (est.): <span id="normLbm">—</span></li>
+                    <li>Goal &amp; training: <span id="normContext">—</span></li>
+                  </ul>
+                </div>
+                <div class="p-3 rounded border border-gray-200">
+                  <div class="font-semibold text-gray-700 mb-1">Range logic</div>
+                  <p id="rangeLogic" class="text-gray-700">—</p>
+                </div>
+              </div>
+            </details>
+          </section>
+        </div>
+
+        <!-- Content / E-E-A-T -->
+        <article class="bg-white p-6 rounded-lg shadow-sm mt-8 prose">
+          <h2>Authoritative data source &amp; methodology</h2>
+          <p><strong>Primary references:</strong></p>
+          <ul>
+            <li>EFSA Dietary Reference Values for protein (2012): adult Population Reference Intake ≈ <strong>0.83 g/kg/day</strong>. <a href="https://efsa.onlinelibrary.wiley.com/doi/10.2903/j.efsa.2012.2557" class="text-blue-600">EFSA Journal 10(2):2557</a></li>
+            <li>US/Canada DRI: Recommended Dietary Allowance (RDA) <strong>0.80 g/kg/day</strong> for adults. <a href="https://www.nal.usda.gov/human-nutrition-and-food-safety/dri-calculator" class="text-blue-600">USDA DRI Calculator</a></li>
+            <li>Sports nutrition consensus: higher intakes for trained individuals and energy deficits (e.g., ~<strong>1.2–2.2 g/kg/day</strong>) to support performance, retention of lean mass, and hypertrophy.</li>
+          </ul>
+          <p><em>Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.</em></p>
+
+          <h2>The formula explained</h2>
+          <div class="formula-box">
+            <p><strong>Body-weight basis</strong></p>
+            <p>$$ \text{Protein}_{\text{daily}} = m \times W_{kg} \quad \text{(grams/day)} $$</p>
+            <p>where \( m \) is the multiplier from the selected goal &amp; training focus.</p>
+            <p class="mt-3"><strong>Lean body mass basis</strong> (if body fat % provided)</p>
+            <p>$$ \text{Protein}_{\text{daily}} = m_{LBM} \times \text{LBM}_{kg}, \quad \text{with } \text{LBM}_{kg} = W_{kg} \times (1 - \tfrac{BF\%}{100}) $$</p>
+          </div>
+
+          <h2>Variable glossary</h2>
+          <table class="w-full text-left border border-gray-200 rounded">
+            <thead class="bg-gray-100">
+              <tr><th class="p-2">Symbol / Field</th><th class="p-2">Meaning</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="p-2">\(W_{kg}\)</td><td class="p-2">Body weight in kilograms</td></tr>
+              <tr><td class="p-2">\(BF\%\)</td><td class="p-2">Body fat percentage</td></tr>
+              <tr><td class="p-2">LBM</td><td class="p-2">Lean body mass = weight minus fat mass</td></tr>
+              <tr><td class="p-2"><code>goal</code></td><td class="p-2">Maintenance, fat loss, or muscle gain</td></tr>
+              <tr><td class="p-2"><code>training</code></td><td class="p-2">Sedentary, endurance, strength/hypertrophy, mixed</td></tr>
+              <tr><td class="p-2">\(m\)</td><td class="p-2">Protein multiplier (g/kg) from goal & training</td></tr>
+              <tr><td class="p-2">Per-meal</td><td class="p-2">Daily protein divided by number of meals</td></tr>
+            </tbody>
+          </table>
+
+          <h2>How it works: a step-by-step example</h2>
+          <p><strong>Example:</strong> 75&nbsp;kg lifter at ~18% body fat, goal: muscle gain, training: strength, 4 meals/day.</p>
+          <ol>
+            <li>LBM estimate: \( \text{LBM} = 75 \times (1 - 0.18) = 61.5 \text{ kg} \).</li>
+            <li>Strength &amp; hypertrophy (muscle gain) typical range \( m = 1.6–2.2 \text{ g/kg} \) (LBM basis often 2.0–2.6).</li>
+            <li>Choose mid-range: \( m = 2.0 \text{ g/kg} \) on body weight → \( 2.0 \times 75 = 150 \text{ g/day} \).</li>
+            <li>Per-meal: \( 150 / 4 = 37.5 \text{ g/meal} \).</li>
+          </ol>
+          <p>The calculator computes min–max range and a practical target centered within that range.</p>
+
+          <h2>Frequently asked questions</h2>
+          <details>
+            <summary>What range should I choose for fat loss?</summary>
+            <p>During energy deficits, higher protein (e.g., ~1.6–2.4 g/kg body weight; or ~2.0–3.0 g/kg LBM) helps retain lean mass. The calculator adjusts your range when you pick “Fat Loss”.</p>
+          </details>
+          <details>
+            <summary>Do I need protein right after training?</summary>
+            <p>Total daily intake dominates results, but distributing protein (3–5 feedings/day) with 0.3–0.5 g/kg per meal is a practical target many athletes use.</p>
+          </details>
+          <details>
+            <summary>Is more always better?</summary>
+            <p>Beyond your productive range, extra protein doesn’t add muscle. Balance with adequate carbs/fats for performance, recovery, and micronutrients.</p>
+          </details>
+          <details>
+            <summary>What if I’m vegetarian or vegan?</summary>
+            <p>Meet totals using varied sources (e.g., soy, legumes, grains, nuts). Complementary amino acids across the day support complete profiles.</p>
+          </details>
+          <details>
+            <summary>Medical considerations?</summary>
+            <p>This tool provides general education, not medical advice. If you have kidney disease or other conditions, follow your clinician’s guidance.</p>
+          </details>
+
+          <div class="mt-6 p-4 bg-gray-50 border border-gray-200 rounded text-sm text-gray-700">
+            <p><strong>Tool developed by Ugo Candido.</strong> Content reviewed by the CalcDomain Editorial Board.<br>
+            Last accuracy review: <time datetime="2025-10-30">October 30, 2025</time></p>
+          </div>
+        </article>
+      </section>
+
+      <!-- Sidebar -->
+      <aside class="w-full lg:w-1/3">
+        <div class="sticky top-24 space-y-6">
+          <div class="bg-gray-200 h-72 rounded-lg flex items-center justify-center text-gray-600">
+            Ad Placement (300×600)
+          </div>
+          <div class="bg-white p-6 rounded-lg shadow-sm">
+            <h3 class="font-bold text-lg mb-3">Why use this calculator</h3>
+            <ul class="list-disc list-inside text-sm text-gray-700 space-y-2">
+              <li>Daily and per-meal targets tailored to your goal.</li>
+              <li>Uses body weight or lean mass for precision.</li>
+              <li>Clear min–max ranges and evidence-based defaults.</li>
+            </ul>
+          </div>
+          <div class="bg-white p-6 rounded-lg shadow-sm">
+            <h3 class="font-bold text-lg mb-4">Related tools</h3>
+            <ul class="space-y-3 text-sm">
+              <li><a href="https://calcdomain.com/calorie" class="text-blue-600 hover:underline">Calorie Needs Calculator</a></li>
+              <li>Macro Split Planner</li>
+              <li><a href="https://calcdomain.com/hydration" class="text-blue-600 hover:underline">Hydration Calculator</a></li>
+            </ul>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="bg-white border-t">
+    <div class="container mx-auto px-6 py-8 text-center text-gray-600 text-sm">
+      <p>&copy; 2025 CalcDomain. All Rights Reserved.</p>
+      <div class="mt-4 space-x-4">
+        <a href="https://calcdomain.com/about" class="hover:text-blue-600 focus-ring">About</a>
+        <a href="https://calcdomain.com/contact" class="hover:text-blue-600 focus-ring">Contact</a>
+        <a href="https://calcdomain.com/privacy" class="hover:text-blue-600 focus-ring">Privacy</a>
+        <a href="https://calcdomain.com/terms" class="hover:text-blue-600 focus-ring">Terms</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Calculator Logic (defer) -->
+  <script defer>
+  (() => {
+    const el = (id) => document.getElementById(id);
+
+    const elements = {
+      unitSystem: el('unitSystem'),
+      bodyWeight: el('bodyWeight'),
+      bodyFat: el('bodyFat'),
+      height: el('height'),
+      goal: el('goal'),
+      training: el('training'),
+      meals: el('meals'),
+      basis: el('basis'),
+
+      // errors
+      bwError: el('bwError'),
+      bfError: el('bfError'),
+      hError:  el('hError'),
+      mealsError: el('mealsError'),
+
+      // tooltips
+      tips: {
+        bw: {btn: document.querySelector('[aria-controls="bwTip"]'), box: el('bwTip')},
+        bf: {btn: document.querySelector('[aria-controls="bfTip"]'), box: el('bfTip')},
+        meals: {btn: document.querySelector('[aria-controls="mealsTip"]'), box: el('mealsTip')}
+      },
+
+      // results
+      dailyProtein: el('dailyProtein'),
+      rangeProtein: el('rangeProtein'),
+      perMeal: el('perMeal'),
+      basisUsed: el('basisUsed'),
+
+      // details
+      normWeight: el('normWeight'),
+      normBf: el('normBf'),
+      normLbm: el('normLbm'),
+      normContext: el('normContext'),
+      rangeLogic: el('rangeLogic')
+    };
+
+    let chartInstance = null;
+
+    // Accessibility: toggle tooltips
+    Object.values(elements.tips).forEach(({btn, box}) => {
+      if (!btn || !box) return;
+      btn.addEventListener('click', () => {
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        box.classList.toggle('hidden', expanded);
+      });
+      btn.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); }
+      });
+    });
+
+    // Mobile menu
+    const mobileToggle = document.getElementById('mobile-menu-toggle');
+    const mobileMenu = document.getElementById('mobile-menu');
+    if (mobileToggle && mobileMenu) {
+      mobileToggle.addEventListener('click', () => {
+        const isHidden = mobileMenu.classList.contains('hidden');
+        mobileMenu.classList.toggle('hidden', !isHidden);
+        mobileToggle.setAttribute('aria-expanded', String(isHidden));
+      });
+    }
+
+    // Helpers
+    const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
+    const toNumber = (v) => (v === '' || v === null || isNaN(Number(v))) ? NaN : Number(v);
+    const fmt = (n) => isFinite(n) ? new Intl.NumberFormat(undefined, {maximumFractionDigits: 0}).format(n) : '—';
+    const fmt1 = (n) => isFinite(n) ? new Intl.NumberFormat(undefined, {maximumFractionDigits: 1}).format(n) : '—';
+    const unitLabel = () => elements.unitSystem.value === 'imperial' ? 'lb' : 'kg';
+
+    function convertToKg(weight, system) {
+      return system === 'imperial' ? weight * 0.45359237 : weight;
+    }
+    function convertHeightToCm(h, system) {
+      return system === 'imperial' ? h * 2.54 : h;
+    }
+
+    // Validation (on blur)
+    function validate() {
+      let ok = true;
+      // Body weight
+      const bw = toNumber(elements.bodyWeight.value);
+      elements.bwError.textContent = '';
+      if (!isFinite(bw)) { elements.bwError.textContent = 'Please enter your body weight.'; ok = false; }
+      else {
+        const min = elements.unitSystem.value === 'imperial' ? 45 : 20;
+        const max = elements.unitSystem.value === 'imperial' ? 880 : 400;
+        if (bw < min || bw > max) {
+          elements.bwError.textContent = `Enter a plausible value (${min}–${max} ${unitLabel()}).`;
+          ok = false;
+        }
+      }
+      // Body fat (optional)
+      const bf = toNumber(elements.bodyFat.value);
+      elements.bfError.textContent = '';
+      if (!isNaN(bf) && (bf < 2 || bf > 60)) {
+        elements.bfError.textContent = 'Body fat % should be between 2 and 60.';
+        ok = false;
+      }
+      // Height (optional)
+      const h = toNumber(elements.height.value);
+      elements.hError.textContent = '';
+      if (!isNaN(h)) {
+        const hcm = convertHeightToCm(h, elements.unitSystem.value);
+        if (hcm < 120 || hcm > 230) {
+          elements.hError.textContent = 'Height should be between 120 and 230 cm (approx).';
+          ok = false;
+        }
+      }
+      // Meals
+      const meals = toNumber(elements.meals.value);
+      elements.mealsError.textContent = '';
+      if (!isFinite(meals) || meals < 1 || meals > 8) {
+        elements.mealsError.textContent = 'Meals per day must be an integer between 1 and 8.';
+        ok = false;
+      }
+      return ok;
+    }
+
+    ['blur','change'].forEach(evt => {
+      [elements.bodyWeight, elements.bodyFat, elements.height, elements.meals].forEach(i => {
+        i.addEventListener(evt, () => { validate(); computeAndRender(); });
+      });
+    });
+    ['change','input'].forEach(evt => {
+      [elements.unitSystem, elements.goal, elements.training, elements.basis].forEach(i => {
+        i.addEventListener(evt, () => { validate(); computeAndRender(); });
+      });
+    });
+
+    // Range logic by goal & training (g/kg BW). We’ll adapt if using LBM.
+    function getMultipliers(goal, training) {
+      // Base min/max for BW (g/kg)
+      let min, max, note = [];
+      if (goal === 'maintenance') {
+        if (training === 'sedentary')      { min = 0.8; max = 1.0; note.push('Maintenance + sedentary'); }
+        else if (training === 'endurance') { min = 1.2; max = 1.6; note.push('Maintenance + endurance'); }
+        else if (training === 'strength')  { min = 1.6; max = 2.2; note.push('Maintenance + strength'); }
+        else                               { min = 1.2; max = 2.0; note.push('Maintenance + mixed'); }
+      } else if (goal === 'fatloss') {
+        if (training === 'sedentary')      { min = 1.2; max = 1.8; note.push('Cut + sedentary'); }
+        else if (training === 'endurance') { min = 1.4; max = 2.2; note.push('Cut + endurance'); }
+        else if (training === 'strength')  { min = 1.8; max = 2.4; note.push('Cut + strength'); }
+        else                               { min = 1.6; max = 2.2; note.push('Cut + mixed'); }
+        note.push('Higher protein helps lean mass retention in a deficit');
+      } else { // muscle gain
+        if (training === 'sedentary')      { min = 1.2; max = 1.6; note.push('Gain + low activity'); }
+        else if (training === 'endurance') { min = 1.4; max = 1.8; note.push('Gain + endurance'); }
+        else if (training === 'strength')  { min = 1.6; max = 2.2; note.push('Gain + strength'); }
+        else                               { min = 1.4; max = 2.0; note.push('Gain + mixed'); }
+      }
+      return {min, max, note: note.join('. ')};
+    }
+
+    function computeAndRender() {
+      if (!validate()) {
+        // Soft clear to avoid jumps
+        renderOutputs({daily: NaN, perMeal: NaN, min: NaN, max: NaN, basisUsed: '—', norm:{}, note:''});
+        return;
+      }
+
+      const system = elements.unitSystem.value;
+      const weightInput = toNumber(elements.bodyWeight.value);
+      const weightKg = convertToKg(weightInput, system);
+
+      const bf = toNumber(elements.bodyFat.value);
+      const hasBf = !isNaN(bf);
+      const lbmKg = hasBf ? weightKg * (1 - clamp(bf, 2, 60)/100) : NaN;
+
+      const goal = elements.goal.value;
+      const training = elements.training.value;
+      const {min, max, note} = getMultipliers(goal, training);
+
+      const basis = elements.basis.value;
+      const useLBM = basis === 'leanmass' && hasBf && lbmKg > 0;
+
+      // If LBM basis and cutting, use slightly higher LBM multipliers
+      let mMin = min, mMax = max;
+      if (useLBM && goal === 'fatloss') {
+        mMin = Math.max(min + 0.2, min); // gentle bump
+        mMax = Math.max(max + 0.4, max);
+      }
+
+      const meals = Math.round(clamp(toNumber(elements.meals.value), 1, 8));
+
+      const refMass = useLBM ? lbmKg : weightKg;
+      const targetMid = (mMin + mMax) / 2;
+      const daily = targetMid * refMass;
+      const perMeal = daily / meals;
+      const minG = mMin * refMass;
+      const maxG = mMax * refMass;
+
+      // Details
+      elements.normWeight.textContent = `${fmt1(weightKg)} kg`;
+      elements.normBf.textContent = hasBf ? `${fmt1(bf)} %` : '—';
+      elements.normLbm.textContent = useLBM ? `${fmt1(lbmKg)} kg` : (hasBf ? `${fmt1(lbmKg)} kg (LBM est.)` : '—');
+      elements.normContext.textContent = `${goal} + ${training}`;
+      elements.rangeLogic.textContent = note || '—';
+
+      renderOutputs({
+        daily, perMeal, min: minG, max: maxG,
+        basisUsed: useLBM ? 'Lean mass (g/kg LBM)' : 'Body weight (g/kg)',
+      });
+      renderChart(daily, minG, maxG);
+    }
+
+    function renderOutputs({daily, perMeal, min, max, basisUsed, norm, note}) {
+      elements.dailyProtein.textContent = isFinite(daily) ? `${fmt1(daily)} g` : '— g';
+      elements.rangeProtein.textContent = (isFinite(min) && isFinite(max)) ? `${fmt1(min)}–${fmt1(max)} g` : '— to — g';
+      elements.perMeal.textContent = isFinite(perMeal) ? `${fmt1(perMeal)} g` : '— g';
+      elements.basisUsed.textContent = basisUsed || '—';
+    }
+
+    function renderChart(daily, min, max) {
+      const ctx = document.getElementById('resultsChart');
+      if (!ctx) return;
+
+      const data = {
+        labels: ['Daily target', 'Min range', 'Max range'],
+        datasets: [{ data: [
+          isFinite(daily) ? daily : 0,
+          isFinite(min) ? min : 0,
+          isFinite(max) ? max : 0
+        ]}]
+      };
+
+      if (chartInstance) {
+        chartInstance.data = data;
+        chartInstance.update();
+      } else {
+        chartInstance = new Chart(ctx, {
+          type: 'bar',
+          data,
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, title: { display: true, text: 'grams protein / day' } } }
+          }
+        });
+      }
+    }
+
+    // Initialize defaults
+    computeAndRender();
+
+  })();
+  </script>
+</body>
+</html>

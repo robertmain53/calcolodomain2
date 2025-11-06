@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<link rel="canonical" href="https://calcdomain.com/gift-tax">
+
+
+
+
+
+ 
+<link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="shortcut icon" href="/favicon.ico" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<link rel="manifest" href="/site.webmanifest" />
+<meta charset="utf-8"/>
+<title>Gift Tax Calculator | US Federal Gift Tax Estimator</title>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<meta content="Authoritative, mobile-first Gift Tax Calculator for U.S. federal gift taxes. Estimate taxable gifts, lifetime exemption usage, and potential gift tax due. WCAG 2.1 AA accessible tool with clear explanations and IRS-sourced methodology." name="description"/>
+<meta content="Ugo Candido" name="author"/>
+
+<meta content="#ffffff" name="theme-color"/>
+<meta content="IE=edge" http-equiv="x-ua-compatible"/>
+<!-- Critical, mobile-first CSS (inline for optimal CWV) -->
+<style>
+    /* Design tokens */
+    :root{
+      --primary:#005A9C; --primary-2:#003F6E; --accent:#00A4E4;
+      --bg:#F8F9FA; --surface:#FFFFFF; --text:#212529; --muted:#6C757D;
+      --border:#DEE2E6; --success:#198754; --danger:#DC3545; --warning:#FFC107;
+      --radius-sm:6px; --radius-md:10px; --radius-lg:12px;
+      --shadow-sm:0 2px 4px rgba(0,0,0,.06); --shadow-md:0 8px 16px rgba(0,0,0,.08);
+      --touch:48px; --gap-sm:.5rem; --gap:.75rem; --gap-lg:1.5rem; --gap-xl:2rem;
+      --container:1200px;
+    }
+    @media (prefers-contrast: more){
+      :root{ --primary:#000080; --text:#000; --border:#000; --bg:#fff; }
+    }
+    @media (prefers-reduced-motion: reduce){
+      *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+    }
+
+    /* Base */
+    *,*::before,*::after{box-sizing:border-box}
+    html{font-size:clamp(16px,2.5vw,18px);line-height:1.6}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    img{max-width:100%;height:auto}
+    a{color:var(--primary);text-decoration:none}
+    a:hover{text-decoration:underline}
+    .skip-link{
+      position:absolute;left:8px;top:-40px;background:var(--primary);color:#fff;padding:.5rem .75rem;border-radius:0 0 4px 4px;z-index:1000
+    }
+    .skip-link:focus{top:0}
+    .container{max-width:var(--container);margin:0 auto;padding:0 clamp(1rem,4vw,2rem)}
+
+    /* Header (non-sticky for better mobile viewport) */
+    header{background:var(--surface);border-bottom:1px solid var(--border);box-shadow:var(--shadow-sm)}
+    .header-inner{display:grid;grid-template-columns:auto 1fr auto;gap:var(--gap);align-items:center;padding:.75rem 0}
+    .brand{font-weight:700;color:var(--primary);font-size:clamp(1.1rem,3vw,1.35rem)}
+    .site-search{display:flex;gap:.5rem;align-items:center}
+    .site-search input{flex:1 1 auto;min-width:0;padding:.6rem .8rem;border:1px solid var(--border);border-radius:8px}
+    .site-search button{min-height:var(--touch)}
+    .nav-btn{appearance:none;border:1px solid var(--border);background:var(--surface);border-radius:8px;min-height:var(--touch);padding:.5rem .75rem;cursor:pointer}
+    nav[aria-label="Main navigation"]{display:none}
+    @media (max-width:380px){
+      .header-inner{grid-template-columns:auto auto;grid-template-areas:"brand nav" "search search"}
+      .brand{grid-area:brand}
+      .site-search{grid-area:search}
+    }
+
+    /* Main layout */
+    main{padding:clamp(1rem,3vw,2rem) 0}
+    .page-title{margin:0 0 .5rem 0;color:var(--primary-2);font-weight:800;font-size:clamp(1.6rem,4vw,2.4rem)}
+    .lead{color:#2f343a;max-width:70ch}
+
+    .calculator-layout{display:grid;grid-template-columns:1fr;gap:var(--gap-xl);margin-top:1rem}
+    @media (min-width: 992px){ .calculator-layout{grid-template-columns: minmax(280px,440px) 1fr} }
+
+    /* Calculator card */
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:clamp(1rem,3vw,1.5rem)}
+    .calculator section h2, .content section h2{color:var(--primary-2)}
+    .form-group{margin-bottom:1rem}
+    label{display:block;font-weight:700;margin-bottom:.35rem}
+    .label-row{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+    .help-btn{
+      border:1px solid var(--border);background:var(--surface);border-radius:999px;
+      width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;
+      cursor:pointer;font-weight:700;color:var(--primary);line-height:1
+    }
+    .help-btn:focus{outline:3px solid var(--primary);outline-offset:2px}
+    .tooltip{display:none;margin:.35rem 0 0 0;padding:.6rem;border-left:3px solid var(--primary);background:#F1F7FC;border-radius:6px;color:#1f2a36}
+    .tooltip[data-open="true"]{display:block}
+    .input-wrap{position:relative}
+    .suffix, .prefix{
+      position:absolute;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none
+    }
+    .prefix{left:.75rem}
+    .suffix{right:.75rem}
+    input[type="number"], select{
+      width:100%;padding:.75rem 1rem;min-height:var(--touch);
+      border:1px solid var(--border);border-radius:8px
+    }
+    input[type="number"]{padding-left:2rem;padding-right:2.25rem}
+    fieldset{border:0;margin:0;padding:0}
+    .checkbox{display:flex;align-items:center;gap:.5rem}
+    .checkbox input{width:22px;height:22px}
+    .error{color:var(--danger);font-size:.9rem;margin-top:.35rem}
+    .actions{display:flex;gap:.75rem;flex-wrap:wrap;margin-top:1rem}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;min-height:var(--touch);min-width:var(--touch);padding:.75rem 1rem;border-radius:10px;border:1px solid transparent;cursor:pointer;font-weight:700}
+    .btn-primary{background:var(--primary);border-color:var(--primary);color:#fff}
+    .btn-secondary{background:transparent;border-color:var(--primary);color:var(--primary)}
+    .btn:focus{outline:3px solid var(--primary);outline-offset:2px}
+
+    /* Results */
+    .results{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:clamp(1rem,3vw,1.25rem)}
+    .results h2{margin-top:0}
+    .result-grid{display:grid;grid-template-columns:1fr;gap:.75rem;margin-top:.5rem}
+    @media (min-width: 640px){ .result-grid{grid-template-columns:repeat(2,1fr)} }
+    @media (min-width: 992px){ .result-grid{grid-template-columns:repeat(3,1fr)} }
+    .result-item{border:1px solid var(--border);border-radius:10px;padding:.75rem 1rem;background:#fafbfd;min-height:84px;display:flex;flex-direction:column;justify-content:center}
+    .result-label{color:var(--muted);font-size:.95rem}
+    .result-value{font-weight:800;font-size:1.2rem;color:#1c3b57}
+    .result-value.positive{color:var(--success)}
+    .result-value.negative{color:var(--danger)}
+    .status{display:flex;align-items:center;gap:.5rem;margin:.25rem 0 .5rem 0;padding:.5rem .75rem;border-radius:8px}
+    .status.ok{background:#E6F5EC;color:#0B6B2A;border:1px solid #BFE5CC}
+    .status.warn{background:#FFF4E5;color:#7A4D00;border:1px solid #FFDEB3}
+    .status.alert{background:#FDECEC;color:#7A1D1D;border:1px solid #F7CACA}
+
+    /* Content sections */
+    .content section{margin-top:clamp(1.25rem,3vw,1.75rem)}
+    .formula-box{background:#eef3f8;border:1px solid var(--border);border-radius:10px;padding:1rem;overflow:auto}
+    .glossary{display:grid;grid-template-columns:1fr;gap:.5rem}
+    @media (min-width: 720px){ .glossary{grid-template-columns:repeat(2,1fr)} }
+    .glossary-item{border:1px solid var(--border);border-radius:10px;background:#fff;padding:.75rem 1rem}
+    .author-box{margin-top:2rem;color:var(--muted);border-top:1px solid var(--border);padding-top:1rem;font-size:.95rem}
+
+    /* Utilities */
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  </style>
+<!-- KaTeX for LaTeX rendering (non-blocking) -->
+<link as="style" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" onload="this.onload=null;this.rel='stylesheet'" rel="preload"/>
+<noscript><link href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" rel="stylesheet"/></noscript>
+<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer="" src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<!-- JSON-LD structured data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Gift Tax Calculator",
+  "url": "https://calcdomain.com/gift-tax",
+  "description": "Authoritative U.S. federal gift tax calculator to estimate taxable gifts, lifetime exemption usage, and potential gift tax due. Built with IRS Instructions for Form 709 methodology.",
+  "inLanguage": "en",
+  "author": {
+    "@type": "Person",
+    "name": "Ugo Candido"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "CalcDomain"
+  },
+  "mainEntity": [
+    {
+      "@type": "HowTo",
+      "name": "How It Works: A Step-by-Step Example (2024)",
+      "description": "Compute taxable gifts and estimated gift tax using annual exclusions, deductions, and the lifetime exemption.",
+      "totalTime": "PT1M",
+      "tool": [
+        {
+          "@type": "Thing",
+          "name": "Gift Tax Calculator"
+        }
+      ],
+      "step": [
+        {
+          "@type": "HowToStep",
+          "name": "Inputs",
+          "text": "Year 2024; Total gifts $100,000 to 2 recipients; Gift-splitting elected; Prior taxable gifts $0; Charitable $0; Marital $0."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Annual exclusion",
+          "text": "Annual exclusion per donee is $18,000 per donor. With gift-splitting, it doubles to $36,000. For 2 recipients: $72,000."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Taxable gifts for the year",
+          "text": "Taxable gifts = $100,000 - $72,000 = $28,000."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Lifetime exemption impact",
+          "text": "Combined lifetime exemption (two spouses) = 2 × $13,610,000 = $27,220,000. With $0 prior gifts, the $28,000 is fully covered. No tax due; Form 709 required due to gift-splitting."
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Do I owe gift tax if I stay under the lifetime exemption?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Generally no. You may need to file Form 709 to report taxable gifts, but actual tax is typically due only after cumulative taxable gifts exceed the lifetime exemption for the year."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "When is Form 709 required?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "You must file Form 709 if you make gifts above the annual exclusion, make gifts of future interests, claim certain deductions, or elect gift-splitting with your spouse—even if no tax is ultimately due."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the annual exclusion?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It is the amount you may give to any one person each year without using your lifetime exemption. For example: $15,000 (2018–2021), $16,000 (2022), $17,000 (2023), $18,000 (2024)."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does gift-splitting work?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Married couples may elect to treat gifts made by one spouse as made half by each. This effectively doubles the annual exclusion per recipient and lets each spouse use their own lifetime exemption. A timely Form 709 is required for gift-splitting."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Are gifts to charity or a U.S. citizen spouse taxable?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Qualifying gifts to charities and gifts to a U.S. citizen spouse are generally deductible and do not use your lifetime exemption. Gifts to a non‑citizen spouse have a higher special annual limit and are outside this calculator’s scope."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which years does this calculator support?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It supports 2018–2024 values for annual exclusions and lifetime exemptions, based on IRS releases for those years."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="search.js" defer></script>
+<!-- MathJax for LaTeX formulas -->
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['\(','\)'], ['$', '$']],
+      displayMath: [['$','$'], ['\[','\]']]
+    },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<link rel="preload" href="/assets/js/mobile-menu.js" as="script">
+<link rel="preload" href="/assets/js/page-enhancements.js" as="script">
+
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to main content</a>
+<header role="banner">
+<div class="container header-inner">
+CalcDomain
+<form aria-label="Site-wide" class="site-search" role="search">
+<label class="sr-only" for="q">Search calculators</label>
+<input autocomplete="off" id="q" name="q" placeholder="Search calculators…" type="search"/>
+<button aria-label="Submit search" class="btn btn-secondary" type="submit">Search</button>
+</form>
+<button aria-controls="nav" aria-expanded="false" class="nav-btn" type="button">Menu</button>
+</div>
+</header>
+<main class="container" id="main" role="main">
+<h1 class="page-title">Gift Tax Calculator</h1>
+<p class="lead">Estimate your U.S. federal gift tax exposure in seconds. This calculator helps donors and advisors determine annual exclusion usage, taxable gifts, lifetime exemption impact, filing requirements (Form 709), and any estimated tax due—based on IRS rules.</p>
+<div aria-label="Gift tax calculator and guidance" class="calculator-layout" role="region">
+<!-- Calculator -->
+<aside aria-labelledby="calc-heading" class="card calculator">
+<section aria-describedby="calc-intro">
+<h2 id="calc-heading">Interactive Calculator</h2>
+<p class="sr-only" id="calc-intro">Enter your gift details to compute taxable gifts, lifetime exemption usage, and estimated tax.</p>
+<form id="giftForm" novalidate="">
+<div class="form-group">
+<label for="taxYear">Tax year *</label>
+<select aria-describedby="taxYearErr" aria-required="true" id="taxYear">
+<option selected="" value="2024">2024</option>
+<option value="2023">2023</option>
+<option value="2022">2022</option>
+<option value="2021">2021</option>
+<option value="2020">2020</option>
+<option value="2019">2019</option>
+<option value="2018">2018</option>
+</select>
+<div aria-live="polite" class="error" id="taxYearErr" role="alert"></div>
+</div>
+<div class="form-group">
+<div class="label-row">
+<label for="totalGifts">Total amount gifted (all recipients) *</label>
+<button aria-controls="tipTotalGifts" aria-expanded="false" class="help-btn" title="Help" type="button">?</button>
+</div>
+<div class="tooltip" id="tipTotalGifts" role="note">
+                Enter the sum gifted this year to all recipients before exclusions and deductions.
+              </div>
+<div class="input-wrap">
+<span aria-hidden="true" class="prefix">$</span>
+<input aria-describedby="totalGiftsErr tipTotalGifts" aria-required="true" id="totalGifts" inputmode="decimal" min="0" placeholder="e.g., 100000" step="0.01" type="number"/>
+<span aria-hidden="true" class="suffix">USD</span>
+</div>
+<div aria-live="polite" class="error" id="totalGiftsErr" role="alert"></div>
+</div>
+<div class="form-group">
+<div class="label-row">
+<label for="recipients">Number of recipients *</label>
+<button aria-controls="tipRecipients" aria-expanded="false" class="help-btn" title="Help" type="button">?</button>
+</div>
+<div class="tooltip" id="tipRecipients" role="note">
+                Count unique donees (people or trusts) receiving gifts this year.
+              </div>
+<input aria-describedby="recipientsErr tipRecipients" aria-required="true" id="recipients" min="1" step="1" type="number" value="1"/>
+<div aria-live="polite" class="error" id="recipientsErr" role="alert"></div>
+</div>
+<div class="form-group">
+<div class="checkbox">
+<input aria-describedby="splitTip" id="splitGifts" type="checkbox"/>
+<label for="splitGifts">Elect gift-splitting with spouse</label>
+</div>
+<div class="tooltip" id="splitTip" role="note">
+                Assumes both spouses consent on Form 709 and have available exemption. Annual exclusions and lifetime exemption are treated as combined for estimation.
+              </div>
+</div>
+<div class="form-group" hidden="" id="spousePriorWrap">
+<div class="label-row">
+<label for="spousePrior">Spouse prior taxable gifts (before this year)</label>
+<button aria-controls="tipSpousePrior" aria-expanded="false" class="help-btn" title="Help" type="button">?</button>
+</div>
+<div class="tooltip" id="tipSpousePrior" role="note">
+                For improved accuracy when splitting gifts, enter your spouse’s prior cumulative taxable gifts (after exclusions/deductions).
+              </div>
+<div class="input-wrap">
+<span aria-hidden="true" class="prefix">$</span>
+<input aria-describedby="spousePriorErr tipSpousePrior" id="spousePrior" inputmode="decimal" min="0" placeholder="e.g., 0" step="0.01" type="number"/>
+<span aria-hidden="true" class="suffix">USD</span>
+</div>
+<div aria-live="polite" class="error" id="spousePriorErr" role="alert"></div>
+</div>
+<div class="form-group">
+<div class="label-row">
+<label for="priorGifts">Your prior taxable gifts (before this year)</label>
+<button aria-controls="tipPrior" aria-expanded="false" class="help-btn" title="Help" type="button">?</button>
+</div>
+<div class="tooltip" id="tipPrior" role="note">
+                Cumulative taxable gifts from all previous years after annual exclusions and deductions. Used to estimate remaining lifetime exemption.
+              </div>
+<div class="input-wrap">
+<span aria-hidden="true" class="prefix">$</span>
+<input aria-describedby="priorGiftsErr tipPrior" id="priorGifts" inputmode="decimal" min="0" placeholder="e.g., 250000" step="0.01" type="number"/>
+<span aria-hidden="true" class="suffix">USD</span>
+</div>
+<div aria-live="polite" class="error" id="priorGiftsErr" role="alert"></div>
+</div>
+<div class="form-group">
+<div class="label-row">
+<label for="charitable">Charitable gifts eligible for deduction</label>
+<button aria-controls="tipCharity" aria-expanded="false" class="help-btn" title="Help" type="button">?</button>
+</div>
+<div class="tooltip" id="tipCharity" role="note">
+                Enter amounts given to qualifying charities this year (these generally reduce taxable gifts).
+              </div>
+<div class="input-wrap">
+<span aria-hidden="true" class="prefix">$</span>
+<input aria-describedby="charitableErr tipCharity" id="charitable" inputmode="decimal" min="0" placeholder="e.g., 5000" step="0.01" type="number"/>
+<span aria-hidden="true" class="suffix">USD</span>
+</div>
+<div aria-live="polite" class="error" id="charitableErr" role="alert"></div>
+</div>
+<div class="form-group">
+<div class="label-row">
+<label for="marital">Marital deduction (U.S. citizen spouse)</label>
+<button aria-controls="tipMarital" aria-expanded="false" class="help-btn" title="Help" type="button">?</button>
+</div>
+<div class="tooltip" id="tipMarital" role="note">
+                Gifts to a U.S. citizen spouse are generally unlimited and deductible. Non‑citizen spouse rules differ and are not included.
+              </div>
+<div class="input-wrap">
+<span aria-hidden="true" class="prefix">$</span>
+<input aria-describedby="maritalErr tipMarital" id="marital" inputmode="decimal" min="0" placeholder="e.g., 0" step="0.01" type="number"/>
+<span aria-hidden="true" class="suffix">USD</span>
+</div>
+<div aria-live="polite" class="error" id="maritalErr" role="alert"></div>
+</div>
+<div class="actions">
+<button aria-controls="results" class="btn btn-primary" id="calculateBtn" type="button">Calculate</button>
+<button class="btn btn-secondary" id="resetBtn" type="reset">Reset</button>
+</div>
+<p aria-live="polite" class="sr-only" id="calcStatus"></p>
+</form>
+</section>
+</aside>
+<!-- Results -->
+<section aria-labelledby="results-heading" aria-live="polite" class="results" id="results">
+<h2 id="results-heading">Results</h2>
+<div aria-live="polite" class="status ok" id="filingStatus" role="status">
+<span aria-hidden="true">✅</span>
+<span id="filingText">Enter values to see whether Form 709 is required.</span>
+</div>
+<div class="result-grid">
+<div class="result-item">
+<div class="result-label">Annual exclusion per recipient</div>
+<div class="result-value" id="annualExcl">$0.00</div>
+</div>
+<div class="result-item">
+<div class="result-label">Total annual exclusions applied</div>
+<div class="result-value" id="totalExcl">$0.00</div>
+</div>
+<div class="result-item">
+<div class="result-label">Taxable gifts this year</div>
+<div class="result-value" id="taxableThis">$0.00</div>
+</div>
+<div class="result-item">
+<div class="result-label">Lifetime exemption (effective)</div>
+<div class="result-value" id="lifetimeTotal">$0.00</div>
+</div>
+<div class="result-item">
+<div class="result-label">Remaining exemption before this gift</div>
+<div class="result-value" id="remainingBefore">$0.00</div>
+</div>
+<div class="result-item">
+<div class="result-label">Exemption used by this gift</div>
+<div class="result-value" id="usedNow">$0.00</div>
+</div>
+<div class="result-item">
+<div class="result-label">Amount over exemption (after gift)</div>
+<div class="result-value negative" id="overExemption">$0.00</div>
+</div>
+<div class="result-item">
+<div class="result-label">Estimated gift tax due now</div>
+<div class="result-value negative" id="taxDue">$0.00</div>
+</div>
+<div class="result-item">
+<div class="result-label">Cumulative taxable gifts (before → after)</div>
+<div class="result-value" id="cumulative">$0.00 → $0.00</div>
+</div>
+</div>
+<p style="margin-top:.75rem;color:var(--muted);font-size:.95rem">This estimator is for educational purposes and does not constitute tax advice. Always consult a qualified tax professional.</p>
+</section>
+</div>
+<!-- Authoritative content ecosystem -->
+<section class="content">
+<section>
+<h2>Data Source and Methodology</h2>
+<p>
+          Primary source: IRS, “Instructions for Form 709 (United States Gift (and Generation‑Skipping Transfer) Tax Return)”, 2024 Revision.
+          Direct link: <a href="https://www.irs.gov/instructions/i709" rel="nofollow noopener" target="_blank">irs.gov/instructions/i709</a>.
+          Annual exclusion and unified credit amounts for 2018–2024 are based on IRS releases (e.g., Rev. Proc. 2023‑34).
+        </p>
+<p><strong>All calculations strictly follow the formulas and data provided by this source.</strong></p>
+</section>
+<section>
+<h2>The Formula Explained</h2>
+<div class="formula-box">
+<p>1. Annual exclusions:</p>
+<p>$$E_{\text{total}} = r \times E_{y} \times s,\quad s = \begin{cases}2 &amp; \text{if gift-splitting}\\ 1 &amp; \text{otherwise}\end{cases}$$</p>
+<p>2. Taxable gifts for the year:</p>
+<p>$$T = \max\left(0,\; G - E_{\text{total}} - C - M\right)$$</p>
+<p>3. Effective lifetime exemption:</p>
+<p>$$L_{\text{eff}} = s \times L_{y}$$</p>
+<p>4. Exemption used by this gift:</p>
+<p>$$U = \min\left(T,\; \max(0, L_{\text{eff}} - P)\right)$$</p>
+<p>5. Estimated tax due now (τ is the progressive gift tax function from IRS rate schedule):</p>
+<p>$$\text{TaxDue} = \tau\!\left(\max\!\left(0, P+T - L_{\text{eff}}\right)\right) - \tau\!\left(\max\!\left(0, P - L_{\text{eff}}\right)\right)$$</p>
+</div>
+</section>
+<section>
+<h2>Glossary of Variables</h2>
+<div class="glossary" role="list">
+<div class="glossary-item" role="listitem"><strong>G (Total Gifts)</strong>: Total amount gifted to all recipients in the year.</div>
+<div class="glossary-item" role="listitem"><strong>r (Recipients)</strong>: Number of unique donees.</div>
+<div class="glossary-item" role="listitem"><strong>E_y (Annual Exclusion)</strong>: Per‑recipient annual exclusion for the selected year.</div>
+<div class="glossary-item" role="listitem"><strong>s (Splitting Factor)</strong>: 2 if electing gift‑splitting with spouse, 1 otherwise.</div>
+<div class="glossary-item" role="listitem"><strong>C (Charitable Deduction)</strong>: Qualifying gifts to charities in the year.</div>
+<div class="glossary-item" role="listitem"><strong>M (Marital Deduction)</strong>: Gifts to a U.S. citizen spouse (generally unlimited).</div>
+<div class="glossary-item" role="listitem"><strong>P (Prior Gifts)</strong>: Cumulative taxable gifts before this year. If splitting, includes spouse’s prior taxable gifts when provided.</div>
+<div class="glossary-item" role="listitem"><strong>L_y (Lifetime Exemption)</strong>: Unified credit equivalent for the selected year.</div>
+<div class="glossary-item" role="listitem"><strong>T (Taxable Gifts)</strong>: Current year gifts after exclusions and deductions.</div>
+<div class="glossary-item" role="listitem"><strong>U (Exemption Used Now)</strong>: Portion of T covered by remaining lifetime exemption.</div>
+<div class="glossary-item" role="listitem"><strong>τ(·)</strong>: IRS progressive gift tax rate function on taxable amounts above thresholds.</div>
+</div>
+</section>
+<section>
+<h2>How It Works: A Step-by-Step Example</h2>
+<p><strong>Scenario (2024):</strong> You and your spouse give a total of $100,000 to two adult children, elect gift‑splitting, and have no prior taxable gifts. No charitable or marital deductions apply.</p>
+<ol>
+<li>Annual exclusion per donor per donee is $18,000. With gift‑splitting, per donee exclusion doubles to $36,000. With 2 recipients: $36,000 × 2 = $72,000.</li>
+<li>Taxable gifts for the year: $100,000 − $72,000 = $28,000.</li>
+<li>Combined lifetime exemption: 2 × $13,610,000 = $27,220,000. Prior taxable gifts P = $0.</li>
+<li>Exemption used now: min($28,000, $27,220,000) = $28,000.</li>
+<li>Amount over exemption: $0 → Estimated gift tax due: $0.</li>
+<li>Form 709 filing is still required because you elected gift‑splitting.</li>
+</ol>
+</section>
+<section>
+<h2>Frequently Asked Questions (FAQ)</h2>
+<details>
+<summary>Do I owe gift tax if I stay under the lifetime exemption?</summary>
+          Generally no. You may need to file Form 709 to report taxable gifts, but tax is typically due only when cumulative taxable gifts exceed the lifetime exemption.
+        </details>
+<details>
+<summary>When must I file Form 709?</summary>
+          You must file if you exceed the annual exclusion to any donee, make gifts of future interests, elect gift‑splitting, or claim certain deductions. See the IRS Instructions for Form 709 for specifics.
+        </details>
+<details>
+<summary>What are the annual exclusion amounts?</summary>
+          2018–2021: $15,000; 2022: $16,000; 2023: $17,000; 2024: $18,000 (per recipient, per donor).
+        </details>
+<details>
+<summary>How does gift‑splitting affect my calculation?</summary>
+          It doubles the annual exclusion per recipient and lets each spouse use their own lifetime exemption. A timely Form 709 is required by both spouses to consent.
+        </details>
+<details>
+<summary>Are gifts to a spouse or charity taxable?</summary>
+          Gifts to a U.S. citizen spouse and qualifying charities are generally deductible and reduce taxable gifts. Gifts to a non‑citizen spouse have a special annual limit and are not modeled here.
+        </details>
+<details>
+<summary>Does this calculator include state gift taxes?</summary>
+          Federal gift tax is modeled. Most U.S. states do not impose a separate gift tax; check your state’s rules if applicable.
+        </details>
+<details>
+<summary>Which years are supported?</summary>
+          2018 through 2024 for annual exclusions and lifetime exemptions, using IRS data available for those years.
+        </details>
+</section>
+<div class="author-box">
+<p>Tool developed by <strong>Ugo Candido</strong>. Content verified by the <strong>CalcDomain Tax Research Team</strong>.<br/>
+        Last reviewed for accuracy on: September 13, 2025.</p>
+</div>
+</section>
+</main>
+<!-- Standard Footer --> 
+<!-- Calculator logic (deferred) -->
+<script defer="">
+    // KaTeX auto-render
+    document.addEventListener('DOMContentLoaded', function(){
+      if (window.renderMathInElement) {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left: "$$", right: "$$", display: true},
+            {left: "$", right: "$", display: false}
+          ]
+        });
+      }
+    });
+
+    (function(){
+      'use strict';
+
+      // IRS annual exclusion and lifetime exemption (2018–2024)
+      const YEAR_DATA = {
+        2018:{ exclusion:15000, lifetime:11180000 },
+        2019:{ exclusion:15000, lifetime:11400000 },
+        2020:{ exclusion:15000, lifetime:11580000 },
+        2021:{ exclusion:15000, lifetime:11700000 },
+        2022:{ exclusion:16000, lifetime:12060000 },
+        2023:{ exclusion:17000, lifetime:12920000 },
+        2024:{ exclusion:18000, lifetime:13610000 }
+      };
+
+      // IRS gift tax rate schedule (cumulative), per Instructions for Form 709
+      const RATE_TABLE = [
+        { upTo: 10000,    base: 0,      rate: .18,   threshold: 0 },
+        { upTo: 20000,    base: 1800,   rate: .20,   threshold: 10000 },
+        { upTo: 40000,    base: 3800,   rate: .22,   threshold: 20000 },
+        { upTo: 60000,    base: 8200,   rate: .24,   threshold: 40000 },
+        { upTo: 80000,    base: 13000,  rate: .26,   threshold: 60000 },
+        { upTo: 100000,   base: 18200,  rate: .28,   threshold: 80000 },
+        { upTo: 150000,   base: 23800,  rate: .30,   threshold: 100000 },
+        { upTo: 250000,   base: 38800,  rate: .32,   threshold: 150000 },
+        { upTo: 500000,   base: 70800,  rate: .34,   threshold: 250000 },
+        { upTo: 750000,   base: 155800, rate: .37,   threshold: 500000 },
+        { upTo: 1000000,  base: 248300, rate: .39,   threshold: 750000 },
+        { upTo: Infinity, base: 345800, rate: .40,   threshold: 1000000 }
+      ];
+
+      // Elements
+      const el = id => document.getElementById(id);
+      const taxYear = el('taxYear');
+      const totalGifts = el('totalGifts');
+      const recipients = el('recipients');
+      const splitGifts = el('splitGifts');
+      const spousePriorWrap = el('spousePriorWrap');
+      const spousePrior = el('spousePrior');
+      const priorGifts = el('priorGifts');
+      const charitable = el('charitable');
+      const marital = el('marital');
+
+      const annualExcl = el('annualExcl');
+      const totalExcl = el('totalExcl');
+      const taxableThis = el('taxableThis');
+      const lifetimeTotal = el('lifetimeTotal');
+      const remainingBefore = el('remainingBefore');
+      const usedNow = el('usedNow');
+      const overExemption = el('overExemption');
+      const taxDue = el('taxDue');
+      const cumulative = el('cumulative');
+
+      const filingStatus = el('filingStatus');
+      const filingText = el('filingText');
+      const calcBtn = el('calculateBtn');
+      const resetBtn = el('resetBtn');
+
+      // Errors
+      const err = {
+        taxYear: el('taxYearErr'),
+        totalGifts: el('totalGiftsErr'),
+        recipients: el('recipientsErr'),
+        priorGifts: el('priorGiftsErr'),
+        spousePrior: el('spousePriorErr'),
+        charitable: el('charitableErr'),
+        marital: el('maritalErr')
+      };
+
+      // Tooltips toggles
+      document.querySelectorAll('.help-btn').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const id = btn.getAttribute('aria-controls');
+          const tip = el(id);
+          const isOpen = tip.getAttribute('data-open') === 'true';
+          tip.setAttribute('data-open', String(!isOpen));
+          btn.setAttribute('aria-expanded', String(!isOpen));
+        });
+      });
+
+      splitGifts.addEventListener('change', ()=>{
+        spousePriorWrap.hidden = !splitGifts.checked;
+        compute();
+      });
+
+      // Formatters
+      const fmtUSD = (v)=> new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2}).format(v||0);
+
+      // Validation helpers
+      function setError(input, msg, idKey){
+        input.setAttribute('aria-invalid','true');
+        err[idKey].textContent = msg;
+      }
+      function clearError(input, idKey){
+        input.removeAttribute('aria-invalid');
+        err[idKey].textContent = '';
+      }
+
+      function validateField(input, idKey, opts={}){
+        const val = parseFloat(input.value);
+        if (input === recipients){
+          if (!Number.isInteger(Number(input.value)) || Number(input.value) < 1){
+            setError(input, 'Enter an integer of at least 1.', idKey);
+            return false;
+          }
+        } else if (input === taxYear){
+          if (!YEAR_DATA[taxYear.value]){
+            setError(input, 'Select a supported tax year.', idKey);
+            return false;
+          }
+        } else {
+          if (input.value === '' || isNaN(val)){
+            if (opts.required){
+              setError(input, 'Please enter a valid number.', idKey);
+              return false;
+            } else {
+              clearError(input, idKey);
+              return true;
+            }
+          }
+          if (val < 0){
+            setError(input, 'Value cannot be negative.', idKey);
+            return false;
+          }
+        }
+        clearError(input, idKey);
+        return true;
+      }
+
+      // Cross-field validation
+      function validateCross(){
+        const tg = Number(totalGifts.value||0);
+        const c = Number(charitable.value||0);
+        const m = Number(marital.value||0);
+        if (c+m > tg){
+          setError(charitable, 'Charitable + marital cannot exceed total gifts.', 'charitable');
+          setError(marital, 'Charitable + marital cannot exceed total gifts.', 'marital');
+          return false;
+        } else {
+          clearError(charitable, 'charitable');
+          clearError(marital, 'marital');
+        }
+        return true;
+      }
+
+      // Attach blur validation
+      taxYear.addEventListener('blur', ()=>validateField(taxYear,'taxYear',{required:true}));
+      totalGifts.addEventListener('blur', ()=>validateField(totalGifts,'totalGifts',{required:true}) && validateCross());
+      recipients.addEventListener('blur', ()=>validateField(recipients,'recipients',{required:true}));
+      priorGifts.addEventListener('blur', ()=>validateField(priorGifts,'priorGifts',{required:false}));
+      spousePrior.addEventListener('blur', ()=>validateField(spousePrior,'spousePrior',{required:false}));
+      charitable.addEventListener('blur', ()=>validateField(charitable,'charitable',{required:false}) && validateCross());
+      marital.addEventListener('blur', ()=>validateField(marital,'marital',{required:false}) && validateCross());
+
+      // Tax function τ(x) using IRS schedule
+      function giftTax(amount){
+        const a = Math.max(0, amount||0);
+        for (let i=0;i<RATE_TABLE.length;i++){
+          const br = RATE_TABLE[i];
+          if (a <= br.upTo){
+            return br.base + (a - br.threshold) * br.rate;
+          }
+        }
+        return 0;
+      }
+
+      function compute(){
+        // Basic validations (non-blocking for live preview)
+        const okBase = [
+          validateField(taxYear,'taxYear',{required:true}),
+          validateField(totalGifts,'totalGifts',{required:true}),
+          validateField(recipients,'recipients',{required:true}),
+          validateField(priorGifts,'priorGifts',{required:false}),
+          validateField(charitable,'charitable',{required:false}),
+          validateField(marital,'marital',{required:false}),
+        ].every(Boolean);
+        if (splitGifts.checked){
+          validateField(spousePrior,'spousePrior',{required:false});
+        }
+        if (!validateCross()) return;
+
+        const year = YEAR_DATA[taxYear.value];
+        const G = Number(totalGifts.value||0);
+        const r = Math.max(1, Math.floor(Number(recipients.value||1)));
+        const s = splitGifts.checked ? 2 : 1;
+        const C = Number(charitable.value||0);
+        const M = Number(marital.value||0);
+        const Pself = Number(priorGifts.value||0);
+        const Psp = splitGifts.checked ? Number(spousePrior.value||0) : 0;
+        const P = Pself + Psp;
+
+        // Annual exclusions (cap cannot exceed G in effect)
+        const E_y = year.exclusion;
+        const perDonee = E_y * s;
+        const E_total = Math.min(G, perDonee * r);
+
+        // Taxable gifts this year
+        const T = Math.max(0, G - E_total - C - M);
+
+        // Effective lifetime exemption
+        const L_eff = year.lifetime * s;
+
+        // Remaining exemption before current gift
+        const remaining = Math.max(0, L_eff - Math.min(P, L_eff));
+
+        // Exemption used by this gift
+        const U = Math.min(T, remaining);
+
+        // Cumulative positions
+        const cumBefore = P;
+        const cumAfter = P + T;
+
+        // Over exemption amounts
+        const overBefore = Math.max(0, cumBefore - L_eff);
+        const overAfter = Math.max(0, cumAfter - L_eff);
+
+        // Estimated gift tax due now (incremental)
+        const taxBefore = giftTax(overBefore);
+        const taxAfter = giftTax(overAfter);
+        const taxNow = Math.max(0, taxAfter - taxBefore);
+
+        // Filing requirement
+        // File if taxable gifts T > 0, or gift-splitting elected, or deductions claimed (often reported).
+        let file = false;
+        let fileReason = '';
+        if (splitGifts.checked){
+          file = true; fileReason = 'Gift-splitting election requires Form 709 by both spouses.';
+        } else if (T > 0){
+          file = true; fileReason = 'You made taxable gifts above the annual exclusion.';
+        } else if (C > 0 || M > 0){
+          // Often still file when claiming deductions for reportable gifts; conservative message.
+          file = true; fileReason = 'You claimed deductions that may require reporting on Form 709.';
+        }
+
+        // Update UI
+        annualExcl.textContent = fmtUSD(perDonee);
+        totalExcl.textContent = fmtUSD(E_total);
+        taxableThis.textContent = fmtUSD(T);
+        lifetimeTotal.textContent = fmtUSD(L_eff);
+        remainingBefore.textContent = fmtUSD(remaining);
+        usedNow.textContent = fmtUSD(U);
+        overExemption.textContent = fmtUSD(overAfter);
+        taxDue.textContent = fmtUSD(taxNow);
+        cumulative.textContent = fmtUSD(cumBefore) + ' → ' + fmtUSD(cumAfter);
+
+        if (!okBase && G === 0){
+          filingStatus.className = 'status ok';
+          filingText.textContent = 'Enter values to see whether Form 709 is required.';
+        } else if (file){
+          filingStatus.className = 'status warn';
+          filingText.textContent = 'Form 709 likely required: ' + fileReason;
+        } else {
+          filingStatus.className = 'status ok';
+          filingText.textContent = 'Form 709 likely not required (no taxable gifts and no gift‑splitting). See IRS rules for exceptions.';
+        }
+      }
+
+      // Live compute on input
+      ['change','input'].forEach(evt=>{
+        document.getElementById('giftForm').addEventListener(evt, (e)=>{
+          if (e.target === document.getElementById('giftForm')) return;
+          compute();
+        });
+      });
+
+      // Buttons
+      calcBtn.addEventListener('click', compute);
+      resetBtn.addEventListener('click', ()=>{
+        setTimeout(()=>{
+          spousePriorWrap.hidden = true;
+          document.querySelectorAll('.tooltip').forEach(t=>t.setAttribute('data-open','false'));
+          Object.values(err).forEach(d => d.textContent = '');
+          document.querySelectorAll('#giftForm [aria-invalid="true"]').forEach(i=>i.removeAttribute('aria-invalid'));
+          compute();
+        }, 0);
+      });
+
+      // Initial compute
+      compute();
+    })();
+  </script>
+
+</body></html>

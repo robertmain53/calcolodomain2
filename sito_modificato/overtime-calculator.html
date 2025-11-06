@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="canonical" href="https://calcdomain.com/overtime-calculator">
+
+
+
+
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Overtime Calculator — Weekly & Daily Thresholds with Jurisdiction Presets</title>
+  <meta name="description" content="Calculate overtime pay with weekly and daily thresholds. Supports US FLSA, California, Singapore MOM, and custom rules. Get regular pay, OT 1.5x/2.0x, totals, and a clean breakdown." />
+  
+
+  <!-- Icons / PWA -->
+  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+
+  <!-- TailwindCSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js for results breakdown -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+
+  <!-- MathJax for LaTeX formulas -->
+  <script defer id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  <style>
+    body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Apple Color Emoji','Segoe UI Emoji'; }
+    .prose { max-width: 65ch; }
+    .prose h2 { font-size: 1.5rem; font-weight: 700; margin-top: 2rem; margin-bottom: 0.75rem; }
+    .prose h3 { font-size: 1.125rem; font-weight: 600; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+    .prose p { margin-bottom: 1rem; line-height: 1.65; }
+    .prose ul, .prose ol { margin-left: 1.25rem; margin-bottom: 1rem; }
+    .formula-box { background:#f3f4f6; border:1px solid #d1d5db; border-radius:10px; padding:1rem; overflow-x:auto; font-family: ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+    .result-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1rem; text-align: center; }
+    .result-card h4 { font-size: 0.95rem; color: #4b5563; margin-bottom: 0.25rem; }
+    .result-card p { font-size: 1.5rem; font-weight: 800; color: #1d4ed8; }
+    .kbd { border:1px solid #d1d5db; border-bottom-width:2px; border-radius:6px; padding: 0 0.35rem; font-weight:600; background:#f9fafb; }
+    /* Focus styles */
+    :is(button, a, input, select, summary, details)[tabindex]:focus,
+    button:focus, a:focus, input:focus, select:focus, summary:focus {
+      outline: 3px solid #2563eb;
+      outline-offset: 2px;
+      border-radius: 6px;
+    }
+    /* Prevent CLS on results */
+    #results { min-height: 340px; }
+    /* Accessible hidden helper */
+    .sr-only-focusable:focus { position: static; width: auto; height: auto; clip: auto; }
+    /* Tooltip panel */
+    .tooltip-panel[hidden] { display: none; }
+    @media print {
+      body * { visibility: hidden; }
+      #print-section, #print-section * { visibility: visible; }
+      #print-section { position: absolute; left: 0; top: 0; width: 100%; }
+      #chartContainer { display: none !important; }
+    }
+  </style>
+
+  <!-- JSON-LD: WebPage -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Overtime Calculator",
+    "description": "Compute overtime pay using weekly and daily thresholds with presets for US FLSA, California and Singapore. Detailed breakdown of regular hours, OT 1.5x and 2.0x, and total pay.",
+    "url": "https://calcdomain.com/overtime-calculator",
+    "inLanguage": "en",
+    "author": { "@type": "Person", "name": "Ugo Candido" },
+    "publisher": { "@type": "Organization", "name": "CalcDomain" }
+  }
+  </script>
+
+  <!-- JSON-LD: Breadcrumbs -->
+  <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Lifestyle & Everyday",
+      "item": "https://calcdomain.com/lifestyle-everyday"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Time Date",
+      "item": "https://calcdomain.com/subcategories/time-date"
+    },
+    {
+      "@type": "ListItem",
+      "position": 4,
+      "name": "Overtime Calculator",
+      "item": "https://calcdomain.com/overtime-calculator"
+    }
+  ]
+}</script>
+
+  <!-- JSON-LD: HowTo -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "How to calculate overtime pay",
+    "description": "A step-by-step guide to compute regular and overtime pay using weekly and daily thresholds.",
+    "step": [
+      {"@type":"HowToStep","name":"Choose jurisdiction preset","text":"Select US FLSA, California, Singapore, or Custom."},
+      {"@type":"HowToStep","name":"Enter hourly rate and currency","text":"Provide your base hourly rate and pick a currency."},
+      {"@type":"HowToStep","name":"Enter daily hours","text":"Fill Mon–Sun hours worked. The tool totals weekly hours automatically."},
+      {"@type":"HowToStep","name":"Adjust thresholds (Custom only)","text":"Set weekly threshold, daily thresholds, and multipliers for OT tiers."},
+      {"@type":"HowToStep","name":"Review results","text":"See regular hours, OT 1.5x, OT 2.0x, and total pay with a chart and printable table."}
+    ]
+  }
+  </script>
+
+  <!-- JSON-LD: WebApplication (the calculator) -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"WebApplication",
+    "name":"Overtime Calculator",
+    "applicationCategory":"BusinessApplication",
+    "operatingSystem":"Any",
+    "offers": { "@type":"Offer", "price":"0", "priceCurrency":"USD" },
+    "author": { "@type":"Person", "name":"Ugo Candido" }
+  }
+  </script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <!-- Header (non-sticky per spec) -->
+  <header class="bg-white border-b">
+    <nav class="container mx-auto px-4 lg:px-6 py-4">
+      <div class="flex items-center justify-between">
+        <a href="https://calcdomain.com" class="text-2xl font-extrabold text-blue-600">CalcDomain</a>
+        <div class="hidden md:flex items-center gap-6 text-sm">
+          <a class="text-gray-700 hover:text-blue-600" href="https://calcdomain.com/search">Search</a>
+          Categories
+        </div>
+        <button id="mobileToggle" class="md:hidden p-2 rounded" aria-expanded="false" aria-controls="mobileMenu" aria-label="Open menu">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+      </div>
+      <div id="mobileMenu" class="md:hidden mt-3 hidden">
+        <a class="block py-2 text-gray-700 hover:text-blue-600" href="https://calcdomain.com/search">Search</a>
+        Categories
+      </div>
+    </nav>
+  </header>
+
+  <main class="container mx-auto px-4 lg:px-6 py-8">
+    <div class="flex flex-col lg:flex-row gap-8">
+      <section class="w-full lg:w-2/3">
+        <nav class="text-sm text-gray-600 mb-4" aria-label="Breadcrumb">
+          <a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo;
+          <a href="https://calcdomain.com/lifestyle-everyday" class="hover:text-blue-600">Lifestyle &amp; Everyday</a> &raquo;
+          <a href="https://calcdomain.com/subcategories/time-date" class="hover:text-blue-600">Time and Date</a> &raquo;
+          <span class="text-gray-900">Overtime Calculator</span>
+        </nav>
+
+        <div id="print-section" class="bg-white p-6 rounded-xl shadow-sm">
+          <h1 class="text-3xl font-extrabold text-gray-900 mb-3">overtime calculator</h1>
+          <p class="text-gray-700 mb-6">
+            Compute regular pay and overtime pay with weekly and daily thresholds. Choose a preset (US FLSA, California, Singapore) or define custom rules. Perfect for employees, managers, and contractors who need a clear, defensible breakdown.
+          </p>
+
+          <!-- Calculator UI -->
+          <section id="calculator" class="space-y-6" aria-labelledby="calcHeading">
+            <h2 id="calcHeading" class="text-xl font-bold text-gray-900">Calculator</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Currency -->
+              <div>
+                <label for="currency" class="block text-sm font-medium text-gray-800">Currency <span aria-hidden="true" class="text-red-600">*</span></label>
+                <select id="currency" aria-required="true" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                  <option value="USD" selected>USD — $</option>
+                  <option value="EUR">EUR — €</option>
+                  <option value="GBP">GBP — £</option>
+                  <option value="SGD">SGD — S$</option>
+                  <option value="AUD">AUD — A$</option>
+                  <option value="CAD">CAD — C$</option>
+                </select>
+                <p id="currencyHelp" class="text-xs text-gray-500 mt-1">Used only for formatting results.</p>
+              </div>
+
+              <!-- Hourly rate with tooltip -->
+              <div>
+                <div class="flex items-center justify-between">
+                  <label for="hourlyRate" class="block text-sm font-medium text-gray-800">Base Hourly Rate <span aria-hidden="true" class="text-red-600">*</span></label>
+                  <button type="button" class="ml-2 text-sm text-blue-700 underline" id="btnRateTip" aria-expanded="false" aria-controls="rateTip">?</button>
+                </div>
+                <input type="number" id="hourlyRate" inputmode="decimal" min="0" step="0.01" value="25" aria-required="true" aria-describedby="hourlyRateError rateTip" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
+                <p id="hourlyRateError" class="mt-1 text-sm text-red-700" role="alert" aria-live="polite"></p>
+                <div id="rateTip" class="tooltip-panel mt-2 p-3 border border-blue-200 rounded-md bg-blue-50 text-sm text-blue-900" hidden>
+                  Enter your base rate before overtime multipliers. Exclude allowances/bonuses unless your contract includes them in the OT base.
+                </div>
+              </div>
+
+              <!-- Jurisdiction Preset -->
+              <div>
+                <label for="preset" class="block text-sm font-medium text-gray-800">Jurisdiction Preset</label>
+                <select id="preset" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" aria-describedby="presetHelp">
+                  <option value="us_flsa" selected>US FLSA — Weekly 40h @ 1.5×</option>
+                  <option value="california">California — Daily &gt;8h @ 1.5×, &gt;12h @ 2.0×</option>
+                  <option value="singapore">Singapore MOM — Weekly &gt;44h @ 1.5× (cap rules apply)</option>
+                  <option value="custom">Custom — Set your own thresholds</option>
+                </select>
+                <p id="presetHelp" class="text-xs text-gray-500 mt-1">Presets auto-fill thresholds; you can still fine-tune under “Rules”.</p>
+              </div>
+
+              <!-- Week starting -->
+              <div>
+                <label for="weekStart" class="block text-sm font-medium text-gray-800">Week Starts On</label>
+                <select id="weekStart" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                  <option value="monday" selected>Monday</option>
+                  <option value="sunday">Sunday</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Rules (Customizable) -->
+            <fieldset class="border border-gray-200 rounded-lg p-4">
+              <legend class="px-2 text-sm font-semibold text-gray-800">Rules</legend>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label for="weeklyThreshold" class="block text-sm font-medium text-gray-800">Weekly OT Threshold (hours)</label>
+                  <input type="number" id="weeklyThreshold" min="0" step="0.25" value="40" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" aria-describedby="weeklyHelp weeklyThresholdError" />
+                  <p id="weeklyThresholdError" class="mt-1 text-sm text-red-700" role="alert"></p>
+                  <p id="weeklyHelp" class="text-xs text-gray-500 mt-1">Hours beyond this in a week become overtime (tier 1) unless already daily OT.</p>
+                </div>
+                <div>
+                  <label for="dailyT1" class="block text-sm font-medium text-gray-800">Daily OT Tier 1 Threshold (h)</label>
+                  <input type="number" id="dailyT1" min="0" step="0.25" value="8" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" aria-describedby="dailyT1Help" />
+                  <p id="dailyT1Help" class="text-xs text-gray-500 mt-1">e.g., California: 8</p>
+                </div>
+                <div>
+                  <label for="dailyT2" class="block text-sm font-medium text-gray-800">Daily OT Tier 2 Threshold (h)</label>
+                  <input type="number" id="dailyT2" min="0" step="0.25" value="12" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" aria-describedby="dailyT2Help" />
+                  <p id="dailyT2Help" class="text-xs text-gray-500 mt-1">e.g., California: 12</p>
+                </div>
+                <div>
+                  <label for="multT1" class="block text-sm font-medium text-gray-800">OT Tier 1 Multiplier</label>
+                  <input type="number" id="multT1" min="1" step="0.01" value="1.5" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
+                </div>
+                <div>
+                  <label for="multT2" class="block text-sm font-medium text-gray-800">OT Tier 2 Multiplier</label>
+                  <input type="number" id="multT2" min="1" step="0.01" value="2.0" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
+                </div>
+                <div>
+                  <label for="applyDaily" class="block text-sm font-medium text-gray-800">Apply Daily Rules</label>
+                  <select id="applyDaily" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                </div>
+              </div>
+            </fieldset>
+
+            <!-- Hours table -->
+            <div class="overflow-x-auto border border-gray-200 rounded-lg">
+              <table class="min-w-full text-sm">
+                <thead class="bg-gray-100 text-gray-700">
+                  <tr>
+                    <th class="px-4 py-2 text-left">Day</th>
+                    <th class="px-4 py-2 text-left">Hours Worked</th>
+                    <th class="px-4 py-2 text-left">Notes</th>
+                  </tr>
+                </thead>
+                <tbody id="hoursBody" class="align-middle">
+                  <!-- Rows will be injected -->
+                </tbody>
+              </table>
+            </div>
+
+            <div class="flex flex-wrap gap-3">
+              <button id="resetBtn" class="px-4 py-3 rounded-lg bg-gray-100 border border-gray-300 hover:bg-gray-200">Reset</button>
+              <button id="printBtn" class="px-4 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Print</button>
+            </div>
+          </section>
+
+          <!-- Results -->
+          <section id="results" class="mt-8 bg-blue-50 border border-blue-100 rounded-xl p-6">
+            <h2 class="text-xl font-bold text-gray-900 mb-4">Results</h2>
+            <div class="flex flex-col md:flex-row gap-6">
+              <div class="w-full md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="result-card">
+                  <h4>Regular Hours</h4>
+                  <p id="regularHours">0.00</p>
+                </div>
+                <div class="result-card">
+                  <h4>OT 1.5× Hours</h4>
+                  <p id="ot1Hours">0.00</p>
+                </div>
+                <div class="result-card">
+                  <h4>OT 2.0× Hours</h4>
+                  <p id="ot2Hours">0.00</p>
+                </div>
+                <div class="result-card">
+                  <h4>Total Hours</h4>
+                  <p id="totalHours">0.00</p>
+                </div>
+                <div class="result-card">
+                  <h4>Regular Pay</h4>
+                  <p id="regularPay">$0.00</p>
+                </div>
+                <div class="result-card">
+                  <h4>Overtime Pay</h4>
+                  <p id="overtimePay">$0.00</p>
+                </div>
+                <div class="result-card sm:col-span-2">
+                  <h4>Total Pay</h4>
+                  <p id="totalPay">$0.00</p>
+                </div>
+              </div>
+              <div class="w-full md:w-1/3" id="chartContainer">
+                <canvas id="payChart" aria-label="Pay breakdown chart"></canvas>
+              </div>
+            </div>
+
+            <details class="mt-6 bg-white rounded-lg">
+              <summary class="font-semibold text-gray-800 px-3 py-2">View Detailed Breakdown</summary>
+              <div id="breakdownContainer" class="mt-4 overflow-x-auto border border-gray-200 rounded-lg">
+                <table class="min-w-full text-sm text-right">
+                  <thead class="bg-gray-100 text-gray-700 uppercase">
+                    <tr>
+                      <th class="px-4 py-2 text-left">Day</th>
+                      <th class="px-4 py-2">Hours</th>
+                      <th class="px-4 py-2">Regular</th>
+                      <th class="px-4 py-2">OT 1.5×</th>
+                      <th class="px-4 py-2">OT 2.0×</th>
+                    </tr>
+                  </thead>
+                  <tbody id="breakdownBody"></tbody>
+                </table>
+              </div>
+            </details>
+          </section>
+        </div>
+
+        <!-- Authoritative content -->
+        <article class="bg-white p-6 rounded-xl shadow-sm mt-8 prose">
+          <h2>Data source and methodology</h2>
+          <p><strong>AuthoritativeDataSource:</strong> <a href="https://www.dol.gov/agencies/whd/flsa" target="_blank" rel="nofollow noopener">U.S. Department of Labor — Fair Labor Standards Act (FLSA)</a> (federal overtime rules) and <a href="https://www.dir.ca.gov/dlse/Overtime.htm" target="_blank" rel="nofollow noopener">California DIR — Overtime</a> (daily overtime & double time), plus <a href="https://www.mom.gov.sg/employment-practices/salary/overtime" target="_blank" rel="nofollow noopener">Singapore MOM — Overtime</a>. All links accessed for rule definitions and examples. <em>Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.</em></p>
+
+          <h2>The formula explained</h2>
+          <div class="formula-box">
+            For a base hourly rate \( r \), hours worked \( h_d \) on day \( d \), and thresholds:
+            <br/><br/>
+            Daily split (if enabled):
+            \[
+              \begin{aligned}
+              \text{reg}_d &= \min(h_d, T_{1}) \\
+              \text{ot1}_d &= \min\big(\max(h_d - T_{1}, 0), \max(T_{2}-T_{1}, 0)\big) \\
+              \text{ot2}_d &= \max(h_d - T_{2}, 0)
+              \end{aligned}
+            \]
+            Weekly adjustment (tier-1) with threshold \( W \):
+            \[
+              \text{extraOT1} = \max\big(H_{\text{total}} - W - \sum_d \text{ot1}_d - \sum_d \text{ot2}_d,\, 0\big)
+            \]
+            Regular hours are reduced by \(\text{extraOT1}\).
+            <br/><br/>
+            Pay:
+            \[
+              \begin{aligned}
+              P_{\text{reg}} &= r \cdot H_{\text{reg}} \\
+              P_{\text{ot1}} &= (m_1 \cdot r) \cdot H_{\text{ot1}} \\
+              P_{\text{ot2}} &= (m_2 \cdot r) \cdot H_{\text{ot2}} \\
+              P_{\text{total}} &= P_{\text{reg}} + P_{\text{ot1}} + P_{\text{ot2}}
+              \end{aligned}
+            \]
+          </div>
+
+          <h2>Glossary of variables</h2>
+          <ul>
+            <li><strong>r</strong>: Base hourly rate.</li>
+            <li><strong>W</strong>: Weekly overtime threshold (hours/week).</li>
+            <li><strong>T<sub>1</sub>, T<sub>2</sub></strong>: Daily thresholds for OT tier 1 and tier 2.</li>
+            <li><strong>m<sub>1</sub>, m<sub>2</sub></strong>: Multipliers for OT tier 1 and tier 2.</li>
+            <li><strong>H<sub>reg</sub>, H<sub>ot1</sub>, H<sub>ot2</sub></strong>: Regular, OT tier 1, and OT tier 2 hours for the week.</li>
+          </ul>
+
+          <h2>How it works: a step-by-step example</h2>
+          <p><strong>Preset:</strong> California. <strong>Rate:</strong> \$25/h. <strong>Hours:</strong> 9, 10, 8, 12, 6, 0, 0 (Mon–Sun).</p>
+          <ol>
+            <li>Daily split:
+              <ul>
+                <li>Mon 9h → 8h reg, 1h OT1</li>
+                <li>Tue 10h → 8h reg, 2h OT1</li>
+                <li>Wed 8h → 8h reg</li>
+                <li>Thu 12h → 8h reg, 4h OT1</li>
+                <li>Fri 6h → 6h reg</li>
+              </ul>
+            </li>
+            <li>Totals before weekly rule: reg 38h, OT1 7h, OT2 0h; total hours 45h.</li>
+            <li>Weekly rule (40h): extraOT1 = max(45 − 40 − 7 − 0, 0) = 5 − 7 = 0 → no extra weekly OT.</li>
+            <li>Pay: reg \$25×38 = \$950; OT1 1.5×\$25×7 = \$262.50; total = \$1,212.50.</li>
+          </ol>
+
+          <h2>FAQ</h2>
+          <details>
+            <summary>Does FLSA require daily overtime?</summary>
+            <p>No. The federal FLSA uses a <em>weekly</em> threshold (typically 40 hours). Some states (e.g., California) add daily rules.</p>
+          </details>
+          <details>
+            <summary>Can I change multipliers (e.g., 1.75×)?</summary>
+            <p>Yes. Use the Custom preset and set the tier multipliers as needed.</p>
+          </details>
+          <details>
+            <summary>How are weekly and daily rules combined?</summary>
+            <p>Daily OT is computed first; then any remaining hours above the weekly threshold are treated as additional Tier-1 overtime (no double counting).</p>
+          </details>
+          <details>
+            <summary>Are allowances or bonuses included in the overtime base?</summary>
+            <p>Often they are excluded, but this depends on contract and local law. When in doubt, consult HR or a labor professional.</p>
+          </details>
+          <details>
+            <summary>Does Singapore have a monthly cap on OT?</summary>
+            <p>Yes, Singapore MOM policies include caps (e.g., 72 OT hours/month) and specific eligibility rules. This calculator focuses on weekly arithmetic; always check current MOM guidance.</p>
+          </details>
+          <details>
+            <summary>Is this calculator legal advice?</summary>
+            <p>No. It is an educational tool; verify with the applicable labor authority or a qualified advisor for your situation.</p>
+          </details>
+
+          <div class="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+            <p><strong>Tool developed by Ugo Candido.</strong> Content verified by the CalcDomain Editorial Board.<br>
+            Last accuracy review: <time datetime="2025-10-27">October 27, 2025</time></p>
+          </div>
+        </article>
+      </section>
+
+      <aside class="w-full lg:w-1/3">
+        <div class="sticky top-24 space-y-6">
+          <div class="bg-gray-200 h-72 rounded-lg flex items-center justify-center text-gray-600">Ad Placement (300×600)</div>
+          <div class="bg-white p-6 rounded-xl shadow-sm">
+            <h3 class="font-bold text-lg mb-3">Why use this calculator</h3>
+            <ul class="list-disc list-inside text-sm text-gray-700 space-y-2">
+              <li>Jurisdiction presets + custom rules.</li>
+              <li>Accessible and printable weekly breakdown.</li>
+              <li>Clear separation of regular, OT 1.5× and OT 2.0× hours.</li>
+            </ul>
+          </div>
+          <div class="bg-white p-6 rounded-xl shadow-sm">
+            <h3 class="font-bold text-lg mb-3">Related everyday tools</h3>
+            <ul class="space-y-2 text-sm">
+              <li>Shift Differential Calculator</li>
+              <li>Take-Home Pay Calculator</li>
+              <li>Work Hours (Timesheet) Calculator</li>
+            </ul>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="bg-white border-t">
+    <div class="container mx-auto px-6 py-8 text-center text-gray-600 text-sm">
+      <p>&copy; 2025 CalcDomain. All Rights Reserved.</p>
+      <div class="mt-4 space-x-4">
+        <a href="https://calcdomain.com/about" class="hover:text-blue-600">About</a>
+        <a href="https://calcdomain.com/contact" class="hover:text-blue-600">Contact</a>
+        <a href="https://calcdomain.com/privacy" class="hover:text-blue-600">Privacy</a>
+        <a href="https://calcdomain.com/terms" class="hover:text-blue-600">Terms</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Logic (defer by default due to end-of-body placement) -->
+  <script>
+    (function() {
+      const $ = (id) => document.getElementById(id);
+
+      // Mobile menu
+      const mobileToggle = $('mobileToggle');
+      const mobileMenu = $('mobileMenu');
+      if (mobileToggle) {
+        mobileToggle.addEventListener('click', () => {
+          const expanded = mobileToggle.getAttribute('aria-expanded') === 'true';
+          mobileToggle.setAttribute('aria-expanded', String(!expanded));
+          mobileMenu.classList.toggle('hidden');
+        });
+      }
+
+      // Tooltip
+      const btnRateTip = $('btnRateTip');
+      const rateTip = $('rateTip');
+      btnRateTip.addEventListener('click', () => {
+        const expanded = btnRateTip.getAttribute('aria-expanded') === 'true';
+        btnRateTip.setAttribute('aria-expanded', String(!expanded));
+        rateTip.hidden = expanded;
+      });
+
+      // Build hours table
+      const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+      const hoursBody = $('hoursBody');
+      const breakdownBody = $('breakdownBody');
+      const inputs = {};
+      days.forEach((d, i) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td class="px-4 py-2 text-left font-medium text-gray-800">${d}</td>
+          <td class="px-4 py-2">
+            <input type="number" id="h_${i}" min="0" max="24" step="0.25" value="${i < 5 ? 8 : 0}" 
+              aria-describedby="err_h_${i}" class="w-32 px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
+            <p id="err_h_${i}" class="text-sm text-red-700 mt-1" role="alert"></p>
+          </td>
+          <td class="px-4 py-2 text-left">
+            <input type="text" id="n_${i}" class="w-full max-w-xs px-3 py-2 border border-gray-200 rounded-md" placeholder="Optional notes" />
+          </td>`;
+        hoursBody.appendChild(row);
+        inputs['h_'+i] = $('h_'+i);
+      });
+
+      // Elements
+      const currencyEl = $('currency');
+      const hourlyRateEl = $('hourlyRate');
+      const presetEl = $('preset');
+      const weekStartEl = $('weekStart');
+
+      const weeklyThresholdEl = $('weeklyThreshold');
+      const dailyT1El = $('dailyT1');
+      const dailyT2El = $('dailyT2');
+      const multT1El = $('multT1');
+      const multT2El = $('multT2');
+      const applyDailyEl = $('applyDaily');
+
+      const regularHoursEl = $('regularHours');
+      const ot1HoursEl = $('ot1Hours');
+      const ot2HoursEl = $('ot2Hours');
+      const totalHoursEl = $('totalHours');
+      const regularPayEl = $('regularPay');
+      const overtimePayEl = $('overtimePay');
+      const totalPayEl = $('totalPay');
+
+      const hourlyRateError = $('hourlyRateError');
+      const weeklyThresholdError = $('weeklyThresholdError');
+
+      const resetBtn = $('resetBtn');
+      const printBtn = $('printBtn');
+
+      let chart;
+
+      function fmtMoney(val, currency) {
+        try {
+          return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(val || 0);
+        } catch {
+          return new Intl.NumberFormat().format(val || 0);
+        }
+      }
+      function fmtNum(val) {
+        return (Math.round((val || 0) * 100) / 100).toFixed(2);
+      }
+
+      function applyPreset() {
+        const p = presetEl.value;
+        if (p === 'us_flsa') {
+          weeklyThresholdEl.value = 40;
+          dailyT1El.value = 24; // effectively disable daily by setting high threshold
+          dailyT2El.value = 24;
+          multT1El.value = 1.5;
+          multT2El.value = 2.0;
+          applyDailyEl.value = 'no';
+        } else if (p === 'california') {
+          weeklyThresholdEl.value = 40;
+          dailyT1El.value = 8;
+          dailyT2El.value = 12;
+          multT1El.value = 1.5;
+          multT2El.value = 2.0;
+          applyDailyEl.value = 'yes';
+        } else if (p === 'singapore') {
+          weeklyThresholdEl.value = 44;
+          dailyT1El.value = 24;
+          dailyT2El.value = 24;
+          multT1El.value = 1.5;
+          multT2El.value = 2.0;
+          applyDailyEl.value = 'no';
+        } else {
+          // custom – leave as is
+        }
+        compute();
+      }
+
+      function validateField(el, errEl, {min=0, max=Infinity, required=false} = {}) {
+        const v = parseFloat(el.value);
+        let msg = '';
+        if (required && (el.value === '' || isNaN(v))) {
+          msg = 'Please enter a value.';
+        } else if (!isNaN(v)) {
+          if (v < min) msg = `Must be ≥ ${min}.`;
+          if (v > max) msg = `Must be ≤ ${max}.`;
+        }
+        errEl.textContent = msg;
+        return !msg;
+      }
+
+      // On-blur validation
+      hourlyRateEl.addEventListener('blur', () => validateField(hourlyRateEl, hourlyRateError, {min:0, required:true}));
+      weeklyThresholdEl.addEventListener('blur', () => validateField(weeklyThresholdEl, weeklyThresholdError, {min:0}));
+
+      // Compute engine
+      function compute() {
+        const curr = currencyEl.value;
+        const rate = parseFloat(hourlyRateEl.value) || 0;
+        const weeklyThreshold = parseFloat(weeklyThresholdEl.value) || Infinity;
+        const T1 = parseFloat(dailyT1El.value) || Infinity;
+        const T2 = parseFloat(dailyT2El.value) || Infinity;
+        const m1 = parseFloat(multT1El.value) || 1.5;
+        const m2 = parseFloat(multT2El.value) || 2.0;
+        const useDaily = applyDailyEl.value === 'yes';
+
+        // Gather hours
+        const hours = [];
+        for (let i=0; i<7; i++) {
+          const el = inputs['h_'+i];
+          // inline validation per row
+          const err = $('err_h_'+i);
+          const ok = validateField(el, err, {min:0, max:24});
+          if (!ok) return; // early exit until fixed
+          hours.push(parseFloat(el.value) || 0);
+        }
+
+        // Optionally rotate by week start (Monday/Sunday) for display consistency (not affecting totals)
+        const rotated = hours.slice();
+        if (weekStartEl.value === 'sunday') {
+          // Move Sunday (index 6) to front for presentation if needed – not required for totals
+        }
+
+        // Daily split
+        let reg = 0, ot1 = 0, ot2 = 0;
+        const dailyRows = [];
+        hours.forEach((h, idx) => {
+          let r = h, o1 = 0, o2 = 0;
+          if (useDaily) {
+            const dreg = Math.min(h, T1);
+            const dot1 = Math.min(Math.max(h - T1, 0), Math.max(T2 - T1, 0));
+            const dot2 = Math.max(h - T2, 0);
+            r = dreg; o1 = dot1; o2 = dot2;
+          }
+          reg += r; ot1 += o1; ot2 += o2;
+          dailyRows.push({ day: idx, hours: h, r, o1, o2 });
+        });
+
+        const totalHrs = hours.reduce((a,b)=>a+b,0);
+
+        // Weekly adjustment (extra OT1 without double-counting)
+        const extraOT1 = Math.max(totalHrs - weeklyThreshold - ot1 - ot2, 0);
+        const adjReg = Math.max(reg - extraOT1, 0);
+        const finalOT1 = ot1 + extraOT1;
+        const finalOT2 = ot2;
+
+        // Pay
+        const regPay = rate * adjReg;
+        const ot1Pay = (rate * m1) * finalOT1;
+        const ot2Pay = (rate * m2) * finalOT2;
+        const totalPay = regPay + ot1Pay + ot2Pay;
+
+        // UI update
+        regularHoursEl.textContent = fmtNum(adjReg);
+        ot1HoursEl.textContent = fmtNum(finalOT1);
+        ot2HoursEl.textContent = fmtNum(finalOT2);
+        totalHoursEl.textContent = fmtNum(totalHrs);
+        regularPayEl.textContent = fmtMoney(regPay, curr);
+        overtimePayEl.textContent = fmtMoney(ot1Pay + ot2Pay, curr);
+        totalPayEl.textContent = fmtMoney(totalPay, curr);
+
+        // Breakdown table
+        breakdownBody.innerHTML = '';
+        const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+        dailyRows.forEach((row, i) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="px-4 py-2 text-left">${dayNames[i]}</td>
+            <td class="px-4 py-2">${fmtNum(row.hours)}</td>
+            <td class="px-4 py-2">${fmtNum(Math.max(0, row.r - (i===-1?extraOT1:0)))}</td>
+            <td class="px-4 py-2">${fmtNum(row.o1)}</td>
+            <td class="px-4 py-2">${fmtNum(row.o2)}</td>`;
+          breakdownBody.appendChild(tr);
+        });
+
+        // Chart
+        const ctx = document.getElementById('payChart');
+        const data = {
+          labels: ['Regular Pay', 'OT 1.5× Pay', 'OT 2.0× Pay'],
+          datasets: [{ data: [regPay, ot1Pay, ot2Pay] }]
+        };
+        if (!chart) {
+          chart = new Chart(ctx, {
+            type: 'doughnut',
+            data,
+            options: { plugins: { legend: { position: 'bottom' } }, responsive: true, maintainAspectRatio: false }
+          });
+        } else {
+          chart.data = data;
+          chart.update();
+        }
+      }
+
+      // Events
+      [currencyEl, hourlyRateEl, presetEl, weekStartEl,
+       weeklyThresholdEl, dailyT1El, dailyT2El, multT1El, multT2El, applyDailyEl]
+      .forEach(el => el.addEventListener('input', () => {
+        if (el === presetEl) applyPreset(); else compute();
+      }));
+
+      for (let i=0;i<7;i++) {
+        inputs['h_'+i].addEventListener('input', compute);
+        inputs['h_'+i].addEventListener('blur', () => validateField(inputs['h_'+i], $('err_h_'+i), {min:0, max:24}));
+      }
+
+      resetBtn.addEventListener('click', () => {
+        currencyEl.value = 'USD';
+        hourlyRateEl.value = 25;
+        presetEl.value = 'us_flsa';
+        weekStartEl.value = 'monday';
+        weeklyThresholdEl.value = 40;
+        dailyT1El.value = 24;
+        dailyT2El.value = 24;
+        multT1El.value = 1.5;
+        multT2El.value = 2.0;
+        applyDailyEl.value = 'no';
+        for (let i=0;i<7;i++) {
+          inputs['h_'+i].value = i<5 ? 8 : 0;
+          $('err_h_'+i).textContent = '';
+        }
+        compute();
+      });
+
+      printBtn.addEventListener('click', () => window.print());
+
+      // Initialize
+      applyPreset();
+      compute();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="canonical" href="https://calcdomain.com/sheathing-calculator">
+
+
+
+
+
+<link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="shortcut icon" href="/favicon.ico" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<link rel="manifest" href="/site.webmanifest" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Sheathing Calculator - Estimate Plywood &amp; OSB Sheets</title>
+<meta name="description" content="Accurately estimate the number of plywood or OSB sheets required for walls, roofs, or gables. This tool accounts for multiple areas, openings, and waste factor.">
+
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" integrity="sha384-sN1MATC9LqBYsv2PCErZ8YhXFrv2zk/kP6pfQyJmZ3S1iLpHNlrdQshcNQCDuMhF" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js" integrity="sha384-hIoBPJpTadx52GfLhpKshs3S/EKjM+hI1aDTRLzOThSSbAVgt9sbXU/m4O0mE/N3" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js" integrity="sha384-43gviWU0YVjaD4hL/EimGuEbF28eQLGYh0Q/J2mXJzqs/aR/vKIdCjFwS-M/7sN8" crossorigin="anonymous"></script>
+
+<style>
+/* Base styles from template */
+body { font-family: 'Inter', sans-serif; }
+.prose { max-width: 65ch; }
+.prose h2 { font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; }
+.prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+.prose p { margin-bottom: 1rem; line-height: 1.6; }
+.prose ul, .prose ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+.prose li { margin-bottom: 0.5rem; }
+.formula-box {
+background:#f3f4f6; border:1px solid #d1d5db; border-radius:8px; padding:1.5rem;
+overflow-x:auto; font-size: 1.1rem; text-align: center;
+}
+details > summary { cursor: pointer; font-weight: 600; padding: 0.5rem 0; }
+details[open] > summary { margin-bottom: 0.5rem; }
+.result-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 1.25rem; text-align: center; }
+.result-card h4 { font-size: 0.95rem; color: #6b7280; margin-bottom: 0.25rem; font-weight: 500; }
+.result-card p { font-size: 1.75rem; font-weight: 700; color: #2563eb; }
+
+/* Custom styles for calculator */
+.input-error-msg {
+color: #dc2626; /* text-red-600 */
+font-size: 0.875rem; /* text-sm */
+margin-top: 0.25rem; /* mt-1 */
+}
+.input-error {
+border-color: #dc2626 !important; /* border-red-500 */
+}
+.input-error:focus {
+border-color: #dc2626 !important; /* border-red-500 */
+box-shadow: 0 0 0 2px #fecaca; /* ring-red-200 */
+}
+/* Accessible focus */
+:focus-visible {
+outline: 3px solid #2563eb !important;
+outline-offset: 1px;
+box-shadow: none !important;
+}
+/* Ensure tooltip buttons are clear */
+.tooltip-btn {
+background: none; border: none; padding: 0.25rem;
+margin-left: 0.25rem; cursor: pointer; color: #6b7280;
+border-radius: 9999px;
+}
+.tooltip-btn:hover { color: #1d4ed8; }
+.tooltip-text {
+font-size: 0.875rem; color: #4b5563;
+background: #f3f4f6; padding: 0.75rem;
+border-radius: 8px; margin-top: 0.5rem;
+border: 1px solid #e5e7eb;
+}
+
+/* Dynamic row styles */
+.dynamic-row {
+display: grid;
+grid-template-columns: 1fr 1fr 1fr auto;
+gap: 1rem;
+align-items: center;
+margin-bottom: 1rem;
+}
+.dynamic-row-simple {
+display: grid;
+grid-template-columns: 1fr 1fr auto;
+gap: 1rem;
+align-items: center;
+margin-bottom: 1rem;
+}
+.remove-btn {
+background: #fee2e2; color: #b91c1c;
+border: none; border-radius: 9999px;
+width: 36px; height: 36px;
+min-width: 36px; /* Ensure 48px with padding in practice */
+display: flex; align-items: center; justify-content: center;
+font-weight: 600; cursor: pointer;
+}
+.remove-btn:hover { background: #fecaca; }
+
+/* Mobile adjustments */
+@media (max-width: 640px) {
+.dynamic-row { grid-template-columns: 1fr 1fr; }
+.dynamic-row .row-type { grid-column: 1 / 3; }
+.dynamic-row .row-remove { grid-column: 1 / 3; justify-self: end; }
+.dynamic-row-simple { grid-template-columns: 1fr 1fr; }
+.dynamic-row-simple .row-remove { grid-column: 1 / 3; justify-self: end; }
+}
+
+@media print {
+body * { visibility: hidden; }
+#print-section, #print-section * { visibility: visible; }
+#print-section { position: absolute; left: 0; top: 0; width: 100%; }
+#results-chart-container { display: none !important; }
+}
+</style>
+
+<script type="application/ld+json">
+{
+"@context": "https://schema.org",
+"@type": "WebPage",
+"name": "Sheathing Calculator - Estimate Plywood & OSB Sheets",
+"description": "Accurately estimate the number of plywood or OSB sheets required for walls, roofs, or gables. This tool accounts for multiple areas, openings, and waste factor.",
+"url": "https://calcdomain.com/sheathing-calculator",
+"inLanguage": "en",
+"author": { "@type": "Person", "name": "Ugo Candido" },
+"publisher": { "@type": "Organization", "name": "CalcDomain" }
+}
+</script>
+<script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Construction & DIY",
+      "item": "https://calcdomain.com/construction-diy"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Materials Estimation",
+      "item": "https://calcdomain.com/subcategories/construction-diy-materials-estimation"
+    },
+    {
+      "@type": "ListItem",
+      "position": 4,
+      "name": "Sheathing Calculator",
+      "item": "https://calcdomain.com/sheathing-calculator"
+    }
+  ]
+}</script>
+<script type="application/ld+json">
+{
+"@context": "https://schema.org",
+"@type": "HowTo",
+"name": "How to Use the Sheathing Calculator",
+"description": "A step-by-step guide to calculating the number of sheathing sheets (plywood, OSB) for your project.",
+"step": [
+{
+"@type": "HowToStep",
+"name": "Step 1: Enter Sheet Dimensions",
+"text": "Select a standard sheet size (e.g., 4'x8') or enter custom dimensions in feet."
+},
+{
+"@type": "HowToStep",
+"name": "Step 2: Add Areas to Cover",
+"text": "Click 'Add Area' for each wall, roof section, or floor. Select 'Rectangle' or 'Triangle' (for gables) and enter the dimensions in feet."
+},
+{
+"@type": "HowToStep",
+"name": "Step 3: Add Openings (Optional)",
+"text": "Click 'Add Opening' for each window, door, or other cutout. Enter the dimensions in feet. The calculator will subtract this area."
+},
+{
+"@type": "HowToStep",
+"name": "Step 4: Set Waste Factor and Cost",
+"text": "Enter a waste factor (10-15% is common) to account for cuts and errors. Optionally, add the cost per sheet to estimate total project cost."
+},
+{
+"@type": "HowToStep",
+"name": "Step 5: Review Results",
+"text": "The calculator displays the 'Total Sheets Needed' (rounded up), total area, total waste, and total cost."
+}
+]
+}
+</script>
+<script src="search.js" defer></script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+<header class="bg-white shadow-sm">
+<nav class="container mx-auto px-4 lg:px-6 py-4">
+<div class="flex justify-between items-center">
+<a href="https://calcdomain.com" class="text-2xl font-bold text-blue-600">CalcDomain</a>
+
+<div class="w-full max-w-md hidden md:block mx-8">
+<div class="relative">
+<input type="search" id="search-input" placeholder="Search for a calculator..."
+class="w-full py-2 px-4 pr-12 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+autocomplete="off">
+<svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
+fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+</svg>
+<div id="search-results" class="absolute top-full left-0 right-0 hidden bg-white border border-gray-200 rounded-lg shadow-lg mt-2 max-h-96 overflow-y-auto z-50"></div>
+</div>
+</div>
+
+<div class="hidden md:flex items-center space-x-6 text-sm">
+<a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600">Advanced Search</a>
+Categories
+</div>
+
+<button id="mobile-menu-toggle" class="md:hidden p-2" aria-label="Open menu">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+d="M4 6h16M4 12h16M4 18h16"></path>
+</svg>
+</button>
+</div>
+
+<div id="mobile-menu" class="md:hidden mt-4 hidden">
+<div class="space-y-2">
+<a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
+Categories
+</div>
+</div>
+</nav>
+</header>
+
+<main class="container mx-auto px-4 lg:px-6 py-10">
+<div class="flex flex-col lg:flex-row gap-8">
+
+<section class="w-full lg:w-2/3">
+<nav class="text-sm text-gray-600 mb-4" aria-label="Breadcrumb">
+<a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo;
+<a href="https://calcdomain.com/construction-diy" class="hover:text-blue-600">Construction</a> &raquo;
+<a href="https://calcdomain.com/subcategories/construction-diy-materials-estimation" class="hover:text-blue-600">Materials Estimation</a> &raquo;
+<span class="text-gray-900">Sheathing Calculator</span>
+</nav>
+
+<div id="print-section" class="bg-white p-6 rounded-lg shadow-md">
+<h1 class="text-3xl font-extrabold text-gray-900 mb-2">Sheathing Calculator</h1>
+<p class="text-gray-600 mb-6">Accurately estimate the number of plywood or OSB sheets required for your wall, roof, or flooring project. This tool accounts for multiple areas, gables, and cutouts for windows or doors to provide a precise material list.</p>
+
+<form id="calculator-ui" class="space-y-6" onsubmit="return false;">
+
+<fieldset class="space-y-4 p-4 border rounded-lg">
+<legend class="text-lg font-semibold px-2">1. Sheet Specifications</legend>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div>
+<label for="sheetSize" class="block text-sm font-medium text-gray-700">Standard Sheet Size <span class="text-red-500">*</span></label>
+<select id="sheetSize"
+class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+aria-required="true" aria-describedby="sheetSize-error">
+<option value="4x8" selected>4 ft x 8 ft (32 sq ft)</option>
+<option value="4x9">4 ft x 9 ft (36 sq ft)</option>
+<option value="4x10">4 ft x 10 ft (40 sq ft)</option>
+<option value="4x12">4 ft x 12 ft (48 sq ft)</option>
+<option value="other">Other (Enter Custom)</option>
+</select>
+<div id="sheetSize-error" class="input-error-msg" aria-live="polite"></div>
+</div>
+</div>
+<div id="customSheetSize" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+<div>
+<label for="sheetWidth" class="block text-sm font-medium text-gray-700">Custom Sheet Width (ft) <span class="text-red-500">*</span></label>
+<input type="number" id="sheetWidth" step="0.01" min="0"
+class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+aria-required="true" aria-describedby="sheetWidth-error">
+<div id="sheetWidth-error" class="input-error-msg" aria-live="polite"></div>
+</div>
+<div>
+<label for="sheetHeight" class="block text-sm font-medium text-gray-700">Custom Sheet Height (ft) <span class="text-red-500">*</span></label>
+<input type="number" id="sheetHeight" step="0.01" min="0"
+class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+aria-required="true" aria-describedby="sheetHeight-error">
+<div id="sheetHeight-error" class="input-error-msg" aria-live="polite"></div>
+</div>
+</div>
+</fieldset>
+
+<fieldset class="space-y-4 p-4 border rounded-lg">
+<legend class="text-lg font-semibold px-2">2. Areas to Cover</legend>
+<div id="areasList" class="space-y-3">
+</div>
+<button type="button" id="addAreaBtn"
+class="w-full md:w-auto px-4 py-2 bg-blue-100 text-blue-700 font-medium rounded-md hover:bg-blue-200">
++ Add Area (Wall, Roof, Gable)
+</button>
+<div id="areasList-error" class="input-error-msg" aria-live="polite"></div>
+</fieldset>
+
+<fieldset class="space-y-4 p-4 border rounded-lg">
+<legend class="text-lg font-semibold px-2">3. Openings (Optional)</legend>
+<p class="text-sm text-gray-500">Add any windows, doors, or other cutouts to subtract from the total area.</p>
+<div id="openingsList" class="space-y-3">
+</div>
+<button type="button" id="addOpeningBtn"
+class="w-full md:w-auto px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-md hover:bg-gray-200">
++ Add Opening
+</button>
+</fieldset>
+
+<fieldset class="space-y-4 p-4 border rounded-lg">
+<legend class="text-lg font-semibold px-2">4. Configuration</legend>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div>
+<label for="wasteFactor" class="block text-sm font-medium text-gray-700">
+Waste Factor (%) <span class="text-red-500">*</span>
+<button type="button" class="tooltip-btn" aria-label="Waste factor information" aria-describedby="waste-tooltip-text">
+<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+</button>
+</label>
+<input type="number" id="wasteFactor" value="10" step="1" min="0"
+class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+aria-required="true" aria-describedby="wasteFactor-error waste-tooltip-text">
+<div id="waste-tooltip-text" role="tooltip" class="tooltip-text hidden">
+Enter a percentage to account for cuts, material defects, and errors. 10-15% is common.
+</div>
+<div id="wasteFactor-error" class="input-error-msg" aria-live="polite"></div>
+</div>
+<div>
+<label for="sheetCost" class="block text-sm font-medium text-gray-700">Cost per Sheet (Optional)</label>
+<input type="number" id="sheetCost" step="0.01" min="0"
+class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+aria-describedby="sheetCost-error">
+<div id="sheetCost-error" class="input-error-msg" aria-live="polite"></div>
+</div>
+</div>
+</fieldset>
+
+<div class="flex flex-col sm:flex-row gap-4">
+<button type="button" id="calculateBtn"
+class="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white font-bold rounded-md shadow-sm hover:bg-blue-700">
+Calculate
+</button>
+<button type="button" id="resetBtn"
+class="w-full sm:w-auto px-6 py-3 bg-white text-gray-700 font-medium rounded-md border border-gray-300 shadow-sm hover:bg-gray-50">
+Reset
+</button>
+</div>
+</form>
+
+<section id="results" class="mt-8 bg-blue-50 border border-blue-100 rounded-lg p-6" style="min-height: 220px;" aria-live="polite" aria-atomic="true">
+<p id="results-placeholder" class="text-gray-500">Enter your project details above to see the results.</p>
+</section>
+</div>
+<article class="bg-white p-6 rounded-lg shadow-md mt-8 prose">
+<h2>Data Source and Methodology</h2>
+<p>
+<strong>Data Source:</strong> <cite>2024 Standard Construction Estimator</cite>, 72nd ed. (ISBN 978-1572183962).
+Methodology aligns with standard industry practices for material takeoff and waste estimation.
+</p>
+<p>All calculations are based on standard geometric formulas and user-provided inputs. We recommend purchasing slightly more material than calculated to account for unforeseen issues.</p>
+
+<h2>The Formula Explained</h2>
+<p>The calculator determines the total sheets by following these steps:</p>
+<ol>
+<li>
+<strong>Calculate Area per Sheet:</strong> The area of a single sheathing panel.
+<div class="formula-box">
+$ A_{\text{sheet}} = \text{Sheet Width} \times \text{Sheet Height} $
+</div>
+</li>
+<li>
+<strong>Calculate Total Coverage Area:</strong> Sum all rectangular and triangular areas.
+<div class="formula-box">
+$ A_{\text{areas}} = \sum (W_{\text{rect}} \times H_{\text{rect}}) + \sum (0.5 \times W_{\text{tri}} \times H_{\text{tri}}) $
+</div>
+</li>
+<li>
+<strong>Calculate Total Opening Area:</strong> Sum all window and door cutout areas.
+<div class="formula-box">
+$ A_{\text{openings}} = \sum (W_{\text{opening}} \times H_{\text{opening}}) $
+</div>
+</li>
+<li>
+<strong>Calculate Net Area:</strong> Subtract openings from the total coverage area.
+<div class="formula-box">
+$ A_{\text{net}} = A_{\text{areas}} - A_{\text{openings}} $
+</div>
+</li>
+<li>
+<strong>Calculate Total Sheets Required:</strong> Divide the net area by the area per sheet, apply the waste factor, and round up (ceiling) to the nearest whole number.
+<div class="formula-box">
+$ \text{Total Sheets} = \lceil \frac{A_{\text{net}}}{A_{\text{sheet}}} \times (1 + \frac{\text{Waste Factor \%}}{100}) \rceil $
+</div>
+</li>
+</ol>
+
+<h2>Glossary of Variables</h2>
+<ul>
+<li><strong>Sheet Size (4x8, etc.):</strong> The standard dimension of one panel of plywood or OSB, typically in feet.</li>
+<li><strong>Area (Rectangle):</strong> A standard wall or roof section, calculated as $ \text{Width} \times \text{Height} $.</li>
+<li><strong>Area (Triangle):</strong> Used for gable ends, calculated as $ 0.5 \times \text{Base Width} \times \text{Height} $.</li>
+<li><strong>Opening:</strong> A cutout (window, door) that does not require sheathing. Its area is subtracted from the total.</li>
+<li><strong>Waste Factor (%):</strong> An added percentage (e.g., 10%) to account for material lost during cutting, mistakes, or unusable panel sections.</li>
+<li><strong>Total Sheets Needed:</strong> The final, rounded-up number of sheets you should purchase.</li>
+</ul>
+
+<h2>How it Works: A Step-by-Step Example</h2>
+<p>Let's estimate the sheathing for a gable-end wall with one window.</p>
+<ul>
+<li><strong>Project:</strong> One 20' wide wall, 10' high to the eaves, with an 8' high gable peak.</li>
+<li><strong>Window:</strong> One 3' wide by 4' high window.</li>
+<li><strong>Materials:</strong> Standard 4'x8' (32 sq ft) sheets.</li>
+<li><strong>Waste Factor:</strong> 10%.</li>
+</ul>
+<p><strong>1. Input Areas:</strong></p>
+<ul>
+<li>Add <strong>Area 1 (Rectangle)</strong>: 20 ft Width, 10 ft Height
+<ul><li>$ \text{Area} = 20 \times 10 = 200 \text{ sq ft} $</li></ul>
+</li>
+<li>Add <strong>Area 2 (Triangle)</strong>: 20 ft Width, 8 ft Height
+<ul><li>$ \text{Area} = 0.5 \times 20 \times 8 = 80 \text{ sq ft} $</li></ul>
+</li>
+<li><strong>Total Area:</strong> $ 200 + 80 = 280 \text{ sq ft} $</li>
+</ul>
+<p><strong>2. Input Openings:</strong></p>
+<ul>
+<li>Add <strong>Opening 1</strong>: 3 ft Width, 4 ft Height
+<ul><li>$ \text{Area} = 3 \times 4 = 12 \text{ sq ft} $</li></ul>
+</li>
+</ul>
+<p><strong>3. Calculation:</strong></p>
+<ul>
+<li><strong>Net Area:</strong> $ 280 \text{ (Total)} - 12 \text{ (Opening)} = 268 \text{ sq ft} $</li>
+<li><strong>Raw Sheets:</strong> $ 268 \text{ sq ft} / 32 \text{ sq ft per sheet} = 8.375 \text{ sheets} $</li>
+<li><strong>Add 10% Waste:</strong> $ 8.375 \times 1.10 = 9.2125 \text{ sheets} $</li>
+<li><strong>Final Result:</strong> $ \lceil 9.2125 \rceil = $ <strong>10 sheets needed</strong>.</li>
+</ul>
+
+<h2>Frequently Asked Questions (FAQ)</h2>
+<details>
+<summary>What is a typical waste factor for sheathing?</summary>
+<p>A waste factor of <strong>10% to 15%</strong> is standard for sheathing. 10% is suitable for simple rectangular areas, while 15% (or more) is safer for complex roofs with many angles, dormers, or hips.</p>
+</details>
+<details>
+<summary>Does this calculator work for roof sheathing?</summary>
+<p>Yes. You can input roof sections as rectangles (for simple roofs) or triangles/trapezoids (for hip roofs). For trapezoids, you can split them into one rectangle and one or two triangles.</p>
+</details>
+<details>
+<summary>How do I measure a triangular gable end?</summary>
+<p>Measure the <strong>base width</strong> of the triangle (which is the same as the wall width) and the <strong>vertical height</strong> (from the center of the base to the highest peak).</p>
+</details>
+<details>
+<summary>Should I always subtract openings?</summary>
+<p>It's recommended. While you will cut sheets to fit around windows, subtracting the area prevents you from over-buying. The waste factor helps account for the off-cuts created by these openings.</p>
+</details>
+<details>
+<summary>What's the difference between OSB and Plywood?</summary>
+<p>OSB (Oriented Strand Board) and Plywood serve the same structural purpose as sheathing. The choice depends on cost, local building codes, and moisture exposure. This calculator works for both, as they are typically sold in the same standard sheet sizes (e.g., 4x8).</p>
+</details>
+<details>
+<summary>Can I use this for flooring?</summary>
+<p>Yes. Enter the room's dimensions as a rectangular area. If the room is L-shaped, add it as two separate rectangular areas. Be sure to select the correct sheet size for your subfloor material.</p>
+</details>
+
+<div class="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
+<p><strong>Tool developed by Ugo Candido.</strong> Construction methodology reviewed by the CalcDomain Editorial Board.<br>
+Last accuracy review: <time datetime="2025-10-24">October 24, 2025</time></p>
+</div>
+</article>
+</section>
+
+<aside class="w-full lg:w-1/3">
+<div class="sticky top-24 space-y-6">
+<div class="bg-gray-200 h-72 rounded-lg flex items-center justify-center text-gray-500">
+Ad Placement (300×600)
+</div>
+<div class="bg-white p-6 rounded-lg shadow-md">
+<h3 class="font-bold text-lg mb-3">Why Use This Calculator</h3>
+<ul class="list-disc list-inside text-sm text-gray-600 space-y-2">
+<li>Get precise estimates by adding multiple, complex areas.</li>
+<li>Calculate for triangular gable ends, not just simple walls.</li>
+<li>Automatically subtracts window and door cutouts.</li>
+<li>Includes a waste factor for realistic material ordering.</li>
+<li>Estimate total cost by adding your local price per sheet.</li>
+</ul>
+</div>
+<div class="bg-white p-6 rounded-lg shadow-md">
+<h3 class="font-bold text-lg mb-4">Related Construction Tools</h3>
+<ul class="space-y-3 text-sm">
+<li><a href="https://calcdomain.com/concrete-calculator" class="text-blue-600 hover:underline">Concrete Slab Calculator</a></li>
+<li>Framing (Stud) Calculator</li>
+<li><a href="https://calcdomain.com/drywall-calculator" class="text-blue-600 hover:underline">Drywall Calculator</a></li>
+<li><a href="https://calcdomain.com/paint-calculator" class="text-blue-600 hover:underline">Paint Calculator</a></li>
+<li><a href="https://calcdomain.com/roofing-calculator" class="text-blue-600 hover:underline">Roofing Calculator</a></li>
+</ul>
+</div>
+</div>
+</aside>
+</div>
+</main>
+
+<footer class="bg-white border-t">
+<div class="container mx-auto px-6 py-8 text-center text-gray-600 text-sm">
+<p>&copy; 2025 CalcDomain. All Rights Reserved.</p>
+<div class="mt-4 space-x-4">
+<a href="https://calcdomain.com/about" class="hover:text-blue-600">About</a>
+<a href="https://calcdomain.com/contact" class="hover:text-blue-600">Contact</a>
+<a href="https://calcdomain.com/privacy" class="hover:text-blue-600">Privacy</a>
+<a href="https://calcdomain.com/terms" class="hover:text-blue-600">Terms</a>
+</div>
+</div>
+</footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+// --- Element Cache ---
+const elements = {
+sheetSize: document.getElementById('sheetSize'),
+customSheetSize: document.getElementById('customSheetSize'),
+sheetWidth: document.getElementById('sheetWidth'),
+sheetHeight: document.getElementById('sheetHeight'),
+areasList: document.getElementById('areasList'),
+openingsList: document.getElementById('openingsList'),
+addAreaBtn: document.getElementById('addAreaBtn'),
+addOpeningBtn: document.getElementById('addOpeningBtn'),
+wasteFactor: document.getElementById('wasteFactor'),
+sheetCost: document.getElementById('sheetCost'),
+calculateBtn: document.getElementById('calculateBtn'),
+resetBtn: document.getElementById('resetBtn'),
+results: document.getElementById('results'),
+resultsPlaceholder: document.getElementById('results-placeholder'),
+// Tooltip
+wasteTooltipBtn: document.querySelector('[aria-describedby="waste-tooltip-text"]'),
+wasteTooltipText: document.getElementById('waste-tooltip-text'),
+};
+
+let chartInstance = null;
+let areaCounter = 0;
+let openingCounter = 0;
+
+// --- Formatters ---
+const fmtCurrency = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
+const fmtNumber = (val) => new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(val || 0);
+
+// --- Event Listeners ---
+elements.sheetSize.addEventListener('change', toggleCustomSheetSize);
+elements.addAreaBtn.addEventListener('click', addAreaRow);
+elements.addOpeningBtn.addEventListener('click', addOpeningRow);
+elements.calculateBtn.addEventListener('click', calculateSheathing);
+elements.resetBtn.addEventListener('click', resetCalculator);
+
+// Event delegation for dynamic remove buttons
+elements.areasList.addEventListener('click', handleRemoveRow);
+elements.openingsList.addEventListener('click', handleRemoveRow);
+
+// Tooltip toggle
+elements.wasteTooltipBtn.addEventListener('click', () => {
+elements.wasteTooltipText.classList.toggle('hidden');
+});
+
+// Auto-render LaTeX
+renderMathInElement(document.body, {
+delimiters: [
+{left: '$$', right: '$$', display: true},
+{left: '$', right: '$', display: false},
+]
+});
+
+// --- UI Functions ---
+
+function toggleCustomSheetSize() {
+const isOther = elements.sheetSize.value === 'other';
+elements.customSheetSize.classList.toggle('hidden', !isOther);
+elements.sheetWidth.required = isOther;
+elements.sheetHeight.required = isOther;
+}
+
+function addAreaRow() {
+areaCounter++;
+const rowId = `area-row-${areaCounter}`;
+const row = document.createElement('div');
+row.className = 'dynamic-row';
+row.id = rowId;
+row.innerHTML = `
+<div class="row-type">
+<label for="areaType${areaCounter}" class="sr-only">Area ${areaCounter} Type</label>
+<select id="areaType${areaCounter}"
+class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+data-type="type">
+<option value="rect" selected>Rectangle (Wall)</option>
+<option value="tri">Triangle (Gable)</option>
+</select>
+</div>
+<div>
+<label for="areaWidth${areaCounter}" class="sr-only">Area ${areaCounter} Width (ft)</label>
+<input type="number" id="areaWidth${areaCounter}" data-type="width" min="0" step="0.01" placeholder="Width (ft)"
+class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+aria-label="Area ${areaCounter} Width in feet">
+</div>
+<div>
+<label for="areaHeight${areaCounter}" class="sr-only">Area ${areaCounter} Height (ft)</label>
+<input type="number" id="areaHeight${areaCounter}" data-type="height" min="0" step="0.01" placeholder="Height (ft)"
+class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+aria-label="Area ${areaCounter} Height in feet">
+</div>
+<button type="button" class="remove-btn row-remove" data-remove-id="${rowId}" aria-label="Remove Area ${areaCounter}">
+&times;
+</button>
+`;
+elements.areasList.appendChild(row);
+clearError('areasList');
+}
+
+function addOpeningRow() {
+openingCounter++;
+const rowId = `opening-row-${openingCounter}`;
+const row = document.createElement('div');
+row.className = 'dynamic-row-simple';
+row.id = rowId;
+row.innerHTML = `
+<div>
+<label for="openingWidth${openingCounter}" class="sr-only">Opening ${openingCounter} Width (ft)</label>
+<input type="number" id="openingWidth${openingCounter}" data-type="width" min="0" step="0.01" placeholder="Width (ft)"
+class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+aria-label="Opening ${openingCounter} Width in feet">
+</div>
+<div>
+<label for="openingHeight${openingCounter}" class="sr-only">Opening ${openingCounter} Height (ft)</label>
+<input type="number" id="openingHeight${openingCounter}" data-type="height" min="0" step="0.01" placeholder="Height (ft)"
+class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+aria-label="Opening ${openingCounter} Height in feet">
+</div>
+<button type="button" class="remove-btn row-remove" data-remove-id="${rowId}" aria-label="Remove Opening ${openingCounter}">
+&times;
+</button>
+`;
+elements.openingsList.appendChild(row);
+}
+
+function handleRemoveRow(event) {
+const removeBtn = event.target.closest('[data-remove-id]');
+if (removeBtn) {
+const rowId = removeBtn.dataset.removeId;
+document.getElementById(rowId).remove();
+}
+}
+
+function resetCalculator() {
+elements.sheetSize.value = '4x8';
+elements.sheetWidth.value = '';
+elements.sheetHeight.value = '';
+elements.wasteFactor.value = '10';
+elements.sheetCost.value = '';
+elements.areasList.innerHTML = '';
+elements.openingsList.innerHTML = '';
+areaCounter = 0;
+openingCounter = 0;
+
+toggleCustomSheetSize();
+clearAllErrors();
+
+elements.results.innerHTML = '';
+elements.results.appendChild(elements.resultsPlaceholder);
+if (chartInstance) {
+chartInstance.destroy();
+chartInstance = null;
+}
+}
+
+// --- Validation ---
+function showError(id, message) {
+const el = document.getElementById(id);
+const errorEl = document.getElementById(id + '-error');
+if (el) el.classList.add('input-error');
+if (errorEl) errorEl.textContent = message;
+}
+
+function clearError(id) {
+const el = document.getElementById(id);
+const errorEl = document.getElementById(id + '-error');
+if (el) el.classList.remove('input-error');
+if (errorEl) errorEl.textContent = '';
+}
+
+function clearAllErrors() {
+const errorFields = [
+'sheetSize', 'sheetWidth', 'sheetHeight',
+'areasList', 'wasteFactor', 'sheetCost'
+];
+errorFields.forEach(clearError);
+
+document.querySelectorAll('.dynamic-row input, .dynamic-row-simple input').forEach(input => {
+input.classList.remove('input-error');
+});
+}
+
+// --- Calculation Logic ---
+
+function getSheetArea() {
+clearError('sheetSize');
+clearError('sheetWidth');
+clearError('sheetHeight');
+const size = elements.sheetSize.value;
+
+let width, height;
+
+if (size === 'other') {
+width = parseFloat(elements.sheetWidth.value);
+height = parseFloat(elements.sheetHeight.value);
+
+let valid = true;
+if (isNaN(width) || width <= 0) {
+showError('sheetWidth', 'Width must be greater than 0');
+valid = false;
+}
+if (isNaN(height) || height <= 0) {
+showError('sheetHeight', 'Height must be greater than 0');
+valid = false;
+}
+if (!valid) return null;
+
+} else {
+[width, height] = size.split('x').map(parseFloat);
+}
+
+return { area: width * height, width, height };
+}
+
+function getListTotalArea(listElement, listErrorId) {
+let totalArea = 0;
+let isValid = true;
+const rows = listElement.querySelectorAll('.dynamic-row, .dynamic-row-simple');
+
+if (listErrorId && rows.length === 0) {
+showError(listErrorId, 'Please add at least one area.');
+return { totalArea: 0, isValid: false };
+}
+
+rows.forEach(row => {
+const type = row.querySelector('[data-type="type"]')?.value || 'rect';
+const widthInput = row.querySelector('[data-type="width"]');
+const heightInput = row.querySelector('[data-type="height"]');
+
+const width = parseFloat(widthInput.value);
+const height = parseFloat(heightInput.value);
+
+let rowValid = true;
+if (isNaN(width) || width <= 0) {
+widthInput.classList.add('input-error');
+rowValid = false;
+} else {
+widthInput.classList.remove('input-error');
+}
+
+if (isNaN(height) || height <= 0) {
+heightInput.classList.add('input-error');
+rowValid = false;
+} else {
+heightInput.classList.remove('input-error');
+}
+
+if (rowValid) {
+let area = (type === 'tri') ? (0.5 * width * height) : (width * height);
+totalArea += area;
+} else {
+isValid = false;
+}
+});
+
+if (isValid) clearError(listErrorId);
+return { totalArea, isValid };
+}
+
+function calculateSheathing() {
+clearAllErrors();
+let isValid = true;
+
+// 1. Get Sheet Area
+const sheetInfo = getSheetArea();
+if (!sheetInfo) {
+isValid = false;
+}
+const areaPerSheet = sheetInfo ? sheetInfo.area : 0;
+
+// 2. Get Total Coverage Area
+const { totalArea: totalCoverArea, isValid: areasValid } = getListTotalArea(elements.areasList, 'areasList');
+if (!areasValid) {
+isValid = false;
+}
+
+// 3. Get Total Opening Area
+const { totalArea: totalOpeningArea, isValid: openingsValid } = getListTotalArea(elements.openingsList, null);
+// Openings are optional, so openingsValid only matters if rows exist but are invalid
+if (!openingsValid) {
+isValid = false;
+}
+
+// 4. Get Waste & Cost
+const wasteFactor = parseFloat(elements.wasteFactor.value);
+if (isNaN(wasteFactor) || wasteFactor < 0) {
+showError('wasteFactor', 'Waste must be 0 or greater.');
+isValid = false;
+}
+
+const costPerSheet = parseFloat(elements.sheetCost.value) || 0;
+if (costPerSheet < 0) {
+showError('sheetCost', 'Cost cannot be negative.');
+isValid = false;
+}
+
+if (!isValid) {
+elements.results.innerHTML = '';
+elements.results.appendChild(elements.resultsPlaceholder);
+elements.resultsPlaceholder.textContent = 'Please fix the errors above to calculate.';
+return;
+}
+
+// 5. Perform Calculations
+const netArea = Math.max(0, totalCoverArea - totalOpeningArea);
+if (netArea <= 0) {
+displayResults(0, 0, 0, 0, 0); // Show 0 if no area
+return;
+}
+
+const rawSheets = netArea / areaPerSheet;
+const sheetsWithWaste = rawSheets * (1 + (wasteFactor / 100));
+const totalSheets = Math.ceil(sheetsWithWaste);
+const totalCost = totalSheets * costPerSheet;
+const totalWasteSqFt = (totalSheets * areaPerSheet) - netArea;
+
+displayResults(totalSheets, netArea, totalCost, totalWasteSqFt, areaPerSheet);
+}
+
+// --- Display Results ---
+
+function displayResults(totalSheets, netArea, totalCost, totalWasteSqFt, areaPerSheet) {
+elements.results.innerHTML = `
+<div class="flex flex-col md:flex-row gap-6">
+<div class="w-full md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+<div class="result-card bg-blue-600 text-white">
+<h4 class="font-medium text-blue-100">Total Sheets Needed</h4>
+<p class="text-3xl">${fmtNumber(totalSheets)}</p>
+</div>
+<div class="result-card">
+<h4>Total Area to Cover</h4>
+<p>${fmtNumber(netArea)} sq ft</p>
+</div>
+<div class="result-card">
+<h4>Estimated Waste Area</h4>
+<p>${fmtNumber(totalWasteSqFt)} sq ft</p>
+</div>
+<div class="result-card">
+<h4>Total Estimated Cost</h4>
+<p>${(totalCost > 0) ? fmtCurrency(totalCost) : '—'}</p>
+</div>
+</div>
+<div class="w-full md:w-1/3">
+<div id="results-chart-container" class="h-48">
+<canvas id="resultsChart" aria-label="Chart showing net area versus waste area"></canvas>
+</div>
+</div>
+</div>
+`;
+
+// Render Chart
+const ctx = document.getElementById('resultsChart');
+if (!ctx) return;
+
+const data = {
+labels: ['Net Area', 'Waste Area'],
+datasets: [{
+data: [Math.max(0, netArea), Math.max(0, totalWasteSqFt)],
+backgroundColor: ['#2563eb', '#f97316'] // blue-600, orange-500
+}]
+};
+
+if (chartInstance) {
+chartInstance.data = data;
+chartInstance.update();
+} else {
+chartInstance = new Chart(ctx, {
+type: 'doughnut',
+data,
+options: {
+plugins: {
+legend: { position: 'bottom', labels: { boxWidth: 12 } },
+tooltip: {
+callbacks: {
+label: function(context) {
+let label = context.label || '';
+let value = context.raw || 0;
+return ` ${label}: ${fmtNumber(value)} sq ft`;
+}
+}
+}
+},
+responsive: true,
+maintainAspectRatio: false
+}
+});
+}
+}
+
+// Initial setup
+toggleCustomSheetSize();
+addAreaRow(); // Start with one area row
+});
+</script>
+
+</body>
+</html>

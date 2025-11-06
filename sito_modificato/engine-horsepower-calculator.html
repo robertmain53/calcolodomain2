@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="canonical" href="https://calcdomain.com/engine-horsepower-calculator">
+
+
+
+
+
+  <!-- Meta -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Engine Horsepower Calculator — Torque × RPM, Wheel vs. Crank HP</title>
+  <meta name="description" content="Calculate engine horsepower from torque and RPM. Switch units (lb·ft / N·m), estimate drivetrain (wheel vs. crank) losses, and convert between hp and kW. Includes formulas, examples, glossary, and FAQs." />
+  
+
+  <!-- Icons / PWA (optional placeholders) -->
+  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+
+  <!-- Tailwind (utility CSS inline for CWV; CDN for brevity here) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- MathJax for LaTeX rendering -->
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
+          id="MathJax-script"
+          data-tex-macros='{"\\lbft":"\\,\\mathrm{lb\\cdot ft}","\\Nm":"\\,\\mathrm{N\\cdot m}"}'></script>
+
+  <!-- Minimal scoped styles (no CLS, strong focus ring, print) -->
+  <style>
+    :root{--ring: #2563eb;}
+    html,body{font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;}
+    .prose{max-width: 70ch}
+    .prose h2{font-size:1.5rem;font-weight:700;margin-top:2rem;margin-bottom:0.75rem}
+    .prose h3{font-size:1.15rem;font-weight:600;margin-top:1.25rem;margin-bottom:0.5rem}
+    .formula-box{background:#f3f4f6;border:1px solid #e5e7eb;border-radius:10px;padding:1rem;overflow:auto}
+    .result-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1rem;text-align:center}
+    .result-card h4{font-size:.9rem;color:#4b5563;margin-bottom:.25rem}
+    .result-card p{font-size:1.65rem;font-weight:800;color:#1d4ed8}
+    .minh-results{min-height: 210px} /* prevent CLS when results render */
+    input, select, button, details summary {min-height:48px}
+    input:focus, select:focus, button:focus, a:focus {outline: 3px solid var(--ring); outline-offset: 2px; border-radius: 6px}
+    .err{color:#b91c1c;font-size:.875rem;margin-top:.375rem}
+    details>summary{cursor:pointer}
+    @media print{
+      header, nav[aria-label="Breadcrumb"], aside, footer, #chartWrap {display:none !important}
+      main{padding:0}
+      #print-section{position:static; box-shadow:none}
+    }
+  </style>
+
+  <!-- JSON-LD: WebPage -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Engine Horsepower Calculator",
+    "url": "https://calcdomain.com/engine-horsepower-calculator",
+    "inLanguage": "en",
+    "description": "Compute engine horsepower from torque and RPM with unit switching and drivetrain loss estimation; outputs wheel and crank power in hp and kW.",
+    "author": { "@type": "Person", "name": "Ugo Candido" },
+    "publisher": { "@type": "Organization", "name": "CalcDomain" },
+    "dateModified": "2025-10-27"
+  }
+  </script>
+
+  <!-- JSON-LD: Breadcrumb -->
+  <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Lifestyle & Everyday",
+      "item": "https://calcdomain.com/lifestyle-everyday"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Automotive",
+      "item": "https://calcdomain.com/subcategories/automotive"
+    },
+    {
+      "@type": "ListItem",
+      "position": 4,
+      "name": "Engine Horsepower Calculator",
+      "item": "https://calcdomain.com/engine-horsepower-calculator"
+    }
+  ]
+}</script>
+
+  <!-- JSON-LD: HowTo -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"HowTo",
+    "name":"How to compute engine horsepower from torque and RPM",
+    "description":"Enter torque, select units, enter RPM, and optionally set drivetrain loss to see wheel vs. crank power in hp and kW.",
+    "step":[
+      {"@type":"HowToStep","name":"Enter torque","text":"Input torque value and choose lb·ft or N·m."},
+      {"@type":"HowToStep","name":"Enter RPM","text":"Provide engine speed at which torque applies."},
+      {"@type":"HowToStep","name":"Set drivetrain loss (optional)","text":"Choose a typical range for your drivetrain to estimate crank vs. wheel power."},
+      {"@type":"HowToStep","name":"Read results","text":"View horsepower and kilowatts at wheel and crank; copy or print as needed."}
+    ]
+  }
+  </script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <!-- Header (non-sticky by requirement) -->
+  <header class="bg-white border-b">
+    <div class="container mx-auto px-4 lg:px-6 py-4 flex items-center justify-between">
+      <a href="https://calcdomain.com" class="text-2xl font-extrabold text-blue-600">CalcDomain</a>
+      <nav class="hidden md:flex gap-6 text-sm">
+        <a class="hover:text-blue-600" href="https://calcdomain.com/search">Advanced Search</a>
+        Categories
+      </nav>
+      <button id="menuBtn" class="md:hidden px-3 py-2 border rounded" aria-expanded="false" aria-controls="mnav">Menu</button>
+    </div>
+    <div id="mnav" class="container mx-auto px-4 lg:px-6 pb-4 hidden">
+      <div class="md:hidden flex flex-col gap-2 text-sm">
+        <a class="hover:text-blue-600" href="https://calcdomain.com/search">Advanced Search</a>
+        Categories
+      </div>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 lg:px-6 py-8">
+    <!-- Breadcrumb -->
+    <nav class="text-sm text-gray-600 mb-4" aria-label="Breadcrumb">
+      <a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo;
+      <a href="https://calcdomain.com/lifestyle-everyday" class="hover:text-blue-600">Everyday Life</a> &raquo;
+      <a href="https://calcdomain.com/subcategories/automotive" class="hover:text-blue-600">Automotive</a> &raquo;
+      <span class="text-gray-900">Engine Horsepower Calculator</span>
+    </nav>
+
+    <div class="flex flex-col lg:flex-row gap-8">
+      <!-- Main column -->
+      <section class="w-full lg:w-2/3">
+        <div id="print-section" class="bg-white p-6 rounded-lg shadow-md">
+          <h1 class="text-3xl font-extrabold mb-2">engine horsepower calculator</h1>
+          <p class="text-gray-700 mb-6">
+            Quickly compute engine power from <strong>torque × RPM</strong>, switch between <em>lb·ft</em> and <em>N·m</em>, and estimate
+            <strong>wheel (WHP)</strong> vs. <strong>crank (BHP)</strong> using a drivetrain loss. Built for tuners, engineers, and curious drivers.
+          </p>
+
+          <!-- Calculator -->
+          <section id="calculator" aria-labelledby="calcHeading" class="space-y-6">
+            <h2 id="calcHeading" class="sr-only">Calculator inputs</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Torque -->
+              <div>
+                <label for="torque" class="block text-sm font-medium text-gray-800">
+                  Torque* <span class="sr-only">(required)</span>
+                </label>
+                <div class="flex gap-2 items-center">
+                  <input type="number" id="torque" inputmode="decimal" step="0.01" min="0" aria-required="true"
+                         aria-describedby="torqueHelp torqueErr"
+                         class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                         placeholder="e.g., 300" />
+                  <select id="torqueUnit" class="mt-1 px-3 py-2 border border-gray-300 rounded-md">
+                    <option value="lbft">lb·ft</option>
+                    <option value="Nm">N·m</option>
+                  </select>
+                  <button type="button" class="mt-1 px-2 py-2 border rounded" id="torqueTipBtn" aria-expanded="false" aria-controls="torqueHelp" aria-label="Torque help">?</button>
+                </div>
+                <p id="torqueHelp" class="text-gray-600 text-sm mt-1 hidden">
+                  Engine twisting force at the crank. Use <strong>lb·ft</strong> (US) or <strong>N·m</strong> (SI). Dyno torque at the rollers is typically higher due to gear multiplication—use engine torque if known.
+                </p>
+                <p id="torqueErr" class="err" role="alert" aria-live="polite"></p>
+              </div>
+
+              <!-- RPM -->
+              <div>
+                <label for="rpm" class="block text-sm font-medium text-gray-800">
+                  Engine speed (RPM)* <span class="sr-only">(required)</span>
+                </label>
+                <div class="flex gap-2 items-center">
+                  <input type="number" id="rpm" inputmode="numeric" step="1" min="1" aria-required="true"
+                         aria-describedby="rpmHelp rpmErr"
+                         class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                         placeholder="e.g., 5252" />
+                  <button type="button" class="mt-1 px-2 py-2 border rounded" id="rpmTipBtn" aria-expanded="false" aria-controls="rpmHelp" aria-label="RPM help">?</button>
+                </div>
+                <p id="rpmHelp" class="text-gray-600 text-sm mt-1 hidden">
+                  Engine speed at which the torque value applies. On power graphs, torque (lb·ft) and horsepower lines cross at <strong>5252 RPM</strong>.
+                </p>
+                <p id="rpmErr" class="err" role="alert" aria-live="polite"></p>
+              </div>
+
+              <!-- Drivetrain loss -->
+              <div>
+                <label for="loss" class="block text-sm font-medium text-gray-800">
+                  Drivetrain loss (%)
+                </label>
+                <div class="flex gap-2 items-center">
+                  <input type="number" id="loss" inputmode="decimal" step="0.1" min="0" max="40"
+                         aria-describedby="lossHelp lossErr"
+                         class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                         placeholder="e.g., 15" />
+                  <button type="button" class="mt-1 px-2 py-2 border rounded" id="lossTipBtn" aria-expanded="false" aria-controls="lossHelp" aria-label="Drivetrain loss help">?</button>
+                </div>
+                <p id="lossHelp" class="text-gray-600 text-sm mt-1 hidden">
+                  Approximate parasitic losses (gearbox, diff, tires). Typical rough bands: FWD 10–15%, RWD 15–18%, AWD 18–25%. Use actual dyno/ OEM data if available.
+                </p>
+                <p id="lossErr" class="err" role="alert" aria-live="polite"></p>
+              </div>
+
+              <!-- Output preference -->
+              <div>
+                <label for="powerUnit" class="block text-sm font-medium text-gray-800">Primary output unit</label>
+                <select id="powerUnit" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                  <option value="hp" selected>horsepower (hp)</option>
+                  <option value="kW">kilowatt (kW)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap gap-3">
+              <button id="calcBtn" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Calculate</button>
+              <button id="resetBtn" class="px-4 py-2 border rounded">Reset</button>
+              <button id="printBtn" class="px-4 py-2 border rounded">Print</button>
+            </div>
+          </section>
+
+          <!-- Results -->
+          <section id="results" aria-labelledby="resHeading" class="mt-8">
+            <h2 id="resHeading" class="sr-only">Results</h2>
+            <div class="minh-results">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="result-card">
+                  <h4>Wheel Power (WHP)</h4>
+                  <p id="whp">—</p>
+                  <div class="text-xs text-gray-600" id="whpSub">at selected unit</div>
+                </div>
+                <div class="result-card">
+                  <h4>Crank Power (BHP)</h4>
+                  <p id="bhp">—</p>
+                  <div class="text-xs text-gray-600" id="bhpSub">est. corrected for loss</div>
+                </div>
+                <div class="result-card">
+                  <h4>Power (kW)</h4>
+                  <p id="kw">—</p>
+                  <div class="text-xs text-gray-600">SI equivalent</div>
+                </div>
+                <div class="result-card">
+                  <h4>Power (hp)</h4>
+                  <p id="hp">—</p>
+                  <div class="text-xs text-gray-600">Imperial equivalent</div>
+                </div>
+              </div>
+              <div id="chartWrap" class="mt-6">
+                <!-- reserved space for potential chart; intentionally omitted to keep bundle light & INP low -->
+              </div>
+            </div>
+
+            <details class="mt-6 bg-white border rounded-lg">
+              <summary class="px-4 py-3 font-semibold">Show calculation details</summary>
+              <div class="p-4 text-sm text-gray-700 space-y-1" id="calcDetails"></div>
+            </details>
+          </section>
+        </div>
+
+        <!-- Authoritative content -->
+        <article class="bg-white p-6 rounded-lg shadow-md mt-8 prose">
+          <section>
+            <h2>Data source &amp; methodology</h2>
+            <p><strong>AuthoritativeDataSource:</strong> <a class="text-blue-600 underline" href="https://www.iso.org/standard/70078.html" rel="nofollow">ISO 1585:2020 — Road vehicles — Engine test code — Net power</a>. Also consistent with <a class="text-blue-600 underline" href="https://en.wikipedia.org/wiki/Horsepower" rel="nofollow">SAE J1349 horsepower definition</a> and the standard torque–speed relationships used by dyno manufacturers. <em>All calculations strictly follow the formulas and unit relationships provided by these sources.</em></p>
+          </section>
+
+          <section>
+            <h2>The formula explained</h2>
+            <div class="formula-box">
+              <p>
+                Imperial horsepower (hp) from torque in lb·ft and rotational speed in rpm:
+                \[
+                  P_{\mathrm{hp}}=\frac{T_{\mathrm{lb\cdot ft}}\cdot n_{\mathrm{rpm}}}{5252}
+                \]
+                where \(5252=\frac{33{,}000~\mathrm{ft\cdot lbf/min}}{2\pi~\mathrm{rad/rev}}\).
+              </p>
+              <p>
+                SI kilowatts from torque in N·m and rpm:
+                \[
+                  P_{\mathrm{kW}}=\frac{T_{\mathrm{N\cdot m}}\cdot n_{\mathrm{rpm}}}{9549}
+                \]
+                (constant derives from unit conversion \(P=T\omega\) with \(\omega=2\pi n/60\)).
+              </p>
+              <p>
+                Conversions: \(\;1~\mathrm{kW}=1.3410229~\mathrm{hp}\;\) and \(\;1~\mathrm{hp}=0.7456999~\mathrm{kW}\).
+              </p>
+              <p>
+                Drivetrain correction (estimate): if wheel power \(P_w\) and loss fraction \(L\), then crank/bhp \(P_c=\frac{P_w}{1-L}\); conversely \(P_w=P_c(1-L)\).
+              </p>
+            </div>
+          </section>
+
+          <section>
+            <h2>Glossary of variables</h2>
+            <ul>
+              <li><strong>Torque (T)</strong> — engine twisting force at the crankshaft (lb·ft or N·m).</li>
+              <li><strong>Engine speed (n)</strong> — revolutions per minute (RPM) at which torque applies.</li>
+              <li><strong>WHP</strong> — power measured at the wheels (after drivetrain losses).</li>
+              <li><strong>BHP</strong> — brake horsepower, power at crankshaft, net of auxiliaries per test standard.</li>
+              <li><strong>Loss (%)</strong> — estimated parasitic losses through transmission, differential, tires.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>How it works: a step-by-step example</h2>
+            <p><em>Inputs:</em> T = 300 lb·ft, n = 5,000 rpm, loss = 15%.</p>
+            <ol>
+              <li>Compute hp: \(P_{\mathrm{hp}} = 300\times 5000 / 5252 \approx 285.7~\mathrm{hp}\).</li>
+              <li>Convert to kW: \(P_{\mathrm{kW}} \approx 285.7 \times 0.7457 \approx 213.1~\mathrm{kW}\).</li>
+              <li>Wheel vs. crank: if 15% loss, WHP ≈ \(P_c(1-L)\Rightarrow 285.7\times0.85\approx 242.8~\mathrm{hp}\).</li>
+            </ol>
+            <p>Result: <strong>≈243 WHP</strong> and <strong>≈286 BHP</strong> at 5,000 rpm.</p>
+          </section>
+
+          <section>
+            <h2>FAQ</h2>
+            <details>
+              <summary>Why do torque (lb·ft) and horsepower lines cross at 5252 RPM?</summary>
+              <p>Because \(P_{\mathrm{hp}} = T_{\mathrm{lb\cdot ft}}\cdot n/5252\). When \(n=5252\), numeric values of hp and lb·ft are equal.</p>
+            </details>
+            <details>
+              <summary>Is “BHP” the same as “SAE net” power?</summary>
+              <p>Modern net power ratings follow standards (e.g., ISO 1585, SAE J1349). “BHP” colloquially refers to crankshaft power under specified accessory loads; check which standard a figure uses.</p>
+            </details>
+            <details>
+              <summary>What drivetrain loss should I pick?</summary>
+              <p>Ranges vary by layout and hardware; 10–25% is common. The most reliable method is measuring both wheel power on a chassis dyno and applying the manufacturer’s published correction.</p>
+            </details>
+            <details>
+              <summary>Can I compute power from N·m and RPM directly?</summary>
+              <p>Yes: \(P_{\mathrm{kW}}=T_{\mathrm{N\cdot m}}\cdot n/9549\). The tool converts between hp and kW automatically.</p>
+            </details>
+            <details>
+              <summary>Does gear ratio affect the result?</summary>
+              <p>The torque×RPM formula uses engine torque at the crank. Gear ratios multiply torque at the wheels but also change wheel speed; engine power stays the same (minus losses).</p>
+            </details>
+            <details>
+              <summary>What about correction factors (temperature, pressure, humidity)?</summary>
+              <p>Laboratory standards (ISO 1585, SAE J1349) specify atmospheric corrections for net power certification. This calculator focuses on the base torque–speed relation.</p>
+            </details>
+            <details>
+              <summary>Is metric horsepower (PS/CV) the same as hp?</summary>
+              <p>No. 1 PS ≈ 0.7355 kW and 1 hp ≈ 0.7457 kW. Differences are small but relevant in spec sheets.</p>
+            </details>
+          </section>
+
+          <div class="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+            <p><strong>Tool developed by Ugo Candido.</strong> Content verified by the CalcDomain Editorial Board.<br>
+              Last accuracy review: <time datetime="2025-10-27">October 27, 2025</time>
+            </p>
+          </div>
+        </article>
+      </section>
+
+      <!-- Aside -->
+      <aside class="w-full lg:w-1/3">
+        <div class="sticky top-24 space-y-6">
+          <div class="bg-gray-200 h-72 rounded-lg flex items-center justify-center text-gray-600">
+            Ad Placement (300×600)
+          </div>
+
+          <div class="bg-white p-6 rounded-lg shadow-md">
+            <h3 class="font-bold text-lg mb-3">Why this calculator wins</h3>
+            <ul class="list-disc list-inside text-gray-700 text-sm space-y-2">
+              <li>Unit-aware input with accessible tooltips and inline validation.</li>
+              <li>Clear WHP vs. BHP split with explicit drivetrain correction.</li>
+              <li>LaTeX formulas, glossary, and standards-based methodology.</li>
+            </ul>
+          </div>
+
+          <div class="bg-white p-6 rounded-lg shadow-md">
+            <h3 class="font-bold text-lg mb-4">Related automotive tools</h3>
+            <ul class="space-y-2 text-sm">
+              <li>Torque Converter Slip</li>
+              <li>Gear Ratio &amp; Speed</li>
+              <li>Power-to-Weight</li>
+            </ul>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="bg-white border-t">
+    <div class="container mx-auto px-6 py-8 text-center text-gray-600 text-sm">
+      <p>&copy; 2025 CalcDomain. All Rights Reserved.</p>
+      <div class="mt-4 space-x-4">
+        <a href="https://calcdomain.com/about" class="hover:text-blue-600">About</a>
+        <a href="https://calcdomain.com/contact" class="hover:text-blue-600">Contact</a>
+        <a href="https://calcdomain.com/privacy" class="hover:text-blue-600">Privacy</a>
+        <a href="https://calcdomain.com/terms" class="hover:text-blue-600">Terms</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Lightweight JS (defer for INP; placed before </body>) -->
+  <script defer>
+    // Mobile menu
+    (function(){
+      const btn = document.getElementById('menuBtn');
+      const nav = document.getElementById('mnav');
+      if(btn && nav){
+        btn.addEventListener('click', () => {
+          const isOpen = nav.classList.toggle('hidden') ? false : true;
+          btn.setAttribute('aria-expanded', String(isOpen));
+        });
+      }
+    })();
+
+    // Accessible tooltip toggles
+    function toggleHelp(btnId, helpId){
+      const btn = document.getElementById(btnId);
+      const help = document.getElementById(helpId);
+      if(!btn || !help) return;
+      btn.addEventListener('click', () => {
+        const nowOpen = help.classList.toggle('hidden') ? false : true;
+        btn.setAttribute('aria-expanded', String(nowOpen));
+      });
+      btn.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); }
+      });
+    }
+    toggleHelp('torqueTipBtn','torqueHelp');
+    toggleHelp('rpmTipBtn','rpmHelp');
+    toggleHelp('lossTipBtn','lossHelp');
+
+    // Elements
+    const el = {
+      torque: document.getElementById('torque'),
+      torqueUnit: document.getElementById('torqueUnit'),
+      rpm: document.getElementById('rpm'),
+      loss: document.getElementById('loss'),
+      powerUnit: document.getElementById('powerUnit'),
+      calcBtn: document.getElementById('calcBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      printBtn: document.getElementById('printBtn'),
+      errT: document.getElementById('torqueErr'),
+      errR: document.getElementById('rpmErr'),
+      errL: document.getElementById('lossErr'),
+      whp: document.getElementById('whp'),
+      bhp: document.getElementById('bhp'),
+      kw: document.getElementById('kw'),
+      hp: document.getElementById('hp'),
+      whpSub: document.getElementById('whpSub'),
+      bhpSub: document.getElementById('bhpSub'),
+      calcDetails: document.getElementById('calcDetails')
+    };
+
+    // Utilities
+    const clamp = (v,min,max)=>Math.min(Math.max(v,min),max);
+    const fmt = new Intl.NumberFormat(undefined, {maximumFractionDigits:2});
+    const toKW_fromNm = (Tnm, rpm) => (Tnm * rpm) / 9549;
+    const toHP_fromLbft = (Tlbft, rpm) => (Tlbft * rpm) / 5252;
+    const kw2hp = kw => kw * 1/0.7456998715822702; // 1 kW = 0.745699... kW/hp -> hp = kW/0.745699...
+    const hp2kw = hp => hp * 0.7456998715822702;
+
+    // Validation (on blur)
+    function validateTorque(){
+      const v = parseFloat(el.torque.value);
+      if(isNaN(v) || v <= 0){
+        el.errT.textContent = "Please enter a torque greater than 0.";
+        return false;
+      }
+      el.errT.textContent = "";
+      return true;
+    }
+    function validateRPM(){
+      const v = parseFloat(el.rpm.value);
+      if(isNaN(v) || v < 1){
+        el.errR.textContent = "RPM must be an integer ≥ 1.";
+        return false;
+      }
+      if(v > 20000){
+        el.errR.textContent = "RPM seems unusually high; check your input.";
+        return true; // soft warning
+      }
+      el.errR.textContent = "";
+      return true;
+    }
+    function validateLoss(){
+      const v = el.loss.value === "" ? NaN : parseFloat(el.loss.value);
+      if(isNaN(v)){ el.errL.textContent = ""; return true; }
+      if(v < 0 || v > 40){
+        el.errL.textContent = "Loss should be between 0% and 40% for realistic road cars.";
+        return false;
+      }
+      el.errL.textContent = "";
+      return true;
+    }
+    el.torque.addEventListener('blur', validateTorque);
+    el.rpm.addEventListener('blur', validateRPM);
+    el.loss.addEventListener('blur', validateLoss);
+
+    // Core compute
+    function compute(){
+      if(!validateTorque() | !validateRPM() | !validateLoss()) return;
+
+      const torque = parseFloat(el.torque.value);
+      const rpm = parseFloat(el.rpm.value);
+      const unitT = el.torqueUnit.value; // 'lbft' or 'Nm'
+      const lossPct = el.loss.value === "" ? 0 : clamp(parseFloat(el.loss.value), 0, 40);
+      const lossFrac = lossPct / 100;
+
+      // Calculate power at crank from torque and rpm (unit-aware)
+      let bhp, kw;
+      if(unitT === 'lbft'){
+        const hpImp = toHP_fromLbft(torque, rpm); // hp
+        bhp = hpImp;
+        kw = hp2kw(hpImp);
+      } else {
+        const kwSI = toKW_fromNm(torque, rpm); // kW
+        kw = kwSI;
+        bhp = kw2hp(kwSI);
+      }
+
+      // Wheel vs. crank
+      const whp = bhp * (1 - lossFrac);
+
+      // Update UI in both units
+      const prim = el.powerUnit.value; // 'hp' or 'kW'
+      if(prim === 'hp'){
+        el.whp.textContent = `${fmt.format(whp)} hp`;
+        el.bhp.textContent = `${fmt.format(bhp)} hp`;
+        el.kw.textContent = `${fmt.format(kw)} kW`;
+        el.hp.textContent = `${fmt.format(bhp)} hp`;
+        el.whpSub.textContent = "wheel horsepower (after loss)";
+        el.bhpSub.textContent = `crank horsepower (loss ${fmt.format(lossPct)}%)`;
+      } else {
+        el.whp.textContent = `${fmt.format(hp2kw(whp))} kW`;
+        el.bhp.textContent = `${fmt.format(hp2kw(bhp))} kW`;
+        el.kw.textContent = `${fmt.format(kw)} kW`;
+        el.hp.textContent = `${fmt.format(bhp)} hp`;
+        el.whpSub.textContent = "wheel kilowatts (after loss)";
+        el.bhpSub.textContent = `crank kilowatts (loss ${fmt.format(lossPct)}%)`;
+      }
+
+      // Details
+      const lines = [];
+      if(unitT === 'lbft'){
+        lines.push(`Using P(hp) = T(lb·ft) × RPM / 5252 → ${torque} × ${rpm} / 5252 = ${fmt.format(bhp)} hp`);
+      } else {
+        lines.push(`Using P(kW) = T(N·m) × RPM / 9549 → ${torque} × ${rpm} / 9549 = ${fmt.format(kw)} kW`);
+      }
+      if(lossPct>0){
+        lines.push(`Wheel power = crank × (1 − loss) = ${fmt.format(bhp)} hp × (1 − ${fmt.format(lossPct)}%) = ${fmt.format(whp)} hp`);
+      } else {
+        lines.push(`No drivetrain loss applied (0%). Wheel power equals crank power.`);
+      }
+      el.calcDetails.innerHTML = lines.map(l=>`<div>• ${l}</div>`).join('');
+    }
+
+    // Buttons
+    el.calcBtn.addEventListener('click', compute);
+    el.powerUnit.addEventListener('change', compute);
+    ['torque','rpm','torqueUnit','loss'].forEach(id=>{
+      const n = el[id]; if(n) n.addEventListener('input', () => { /* live but light */ });
+    });
+    el.resetBtn.addEventListener('click', () => {
+      el.torque.value = '';
+      el.rpm.value = '';
+      el.loss.value = '';
+      el.torqueUnit.value = 'lbft';
+      el.powerUnit.value = 'hp';
+      el.errT.textContent = el.errR.textContent = el.errL.textContent = '';
+      el.whp.textContent = el.bhp.textContent = el.kw.textContent = el.hp.textContent = '—';
+      el.calcDetails.innerHTML = '';
+    });
+    el.printBtn.addEventListener('click', () => window.print());
+  </script>
+</body>
+</html>

@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="canonical" href="https://calcdomain.com/excavation-calculator">
+
+
+
+
+
+<link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="shortcut icon" href="/favicon.ico" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<link rel="manifest" href="/site.webmanifest" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Excavation Calculator: Volume, Spoil, Swell &amp; Truck Loads</title>
+<meta name="description" content="Calculate excavation volume (cubic yards/meters), soil swell (bulking), spoil, and truck loads. Get accurate estimates for trench, footing, or basement excavation.">
+
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']]
+  },
+  svg: {
+    fontCache: 'global'
+  }
+};
+</script>
+<script type="text/javascript" id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+</script>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body { font-family: 'Inter', sans-serif; }
+.prose { max-width: 65ch; }
+.prose h2 { font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem; }
+.prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+.prose p { margin-bottom: 1rem; line-height: 1.6; }
+.prose ul, .prose ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+.prose li { margin-bottom: 0.5rem; }
+.prose table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+.prose th, .prose td { border: 1px solid #d1d5db; padding: 0.5rem 0.75rem; text-align: left; }
+.prose thead th { background-color: #f3f4f6; }
+.formula-box {
+background:#f3f4f6; border:1px solid #d1d5db; border-radius:8px; padding:1.5rem;
+overflow-x:auto; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+text-align: center;
+}
+details > summary { cursor: pointer; font-weight: 600; padding: 0.5rem 0; }
+details[open] > summary { margin-bottom: 0.5rem; }
+
+/* Result Card Styles */
+.result-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.25rem;
+  min-height: 150px; /* Prevents CLS */
+}
+.result-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 1.25rem; text-align: center; box-shadow: 0 1px 3px 0 rgba(0,0,0,0.03); }
+.result-card h4 { font-size: 0.95rem; font-weight: 500; color: #6b7280; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.result-card p { font-size: 1.75rem; font-weight: 700; color: #2563eb; }
+.result-card .sub-value { font-size: 0.9rem; color: #4b5563; margin-top: 0.25rem; }
+
+/* Accessible Focus Ring */
+*:focus-visible {
+  outline: 3px solid #3b82f6 !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4) !important;
+  border-radius: 2px;
+}
+/* Disable focus ring for mouse users */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Accessible Tooltip */
+.tooltip-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.tooltip-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 9999px;
+  width: 20px;
+  height: 20px;
+  margin-left: 0.25rem;
+  padding: 0;
+  cursor: pointer;
+  color: #6b7280;
+}
+.tooltip-btn:hover { background-color: #f3f4f6; }
+.tooltip-btn svg { width: 16px; height: 16px; }
+.tooltip-text {
+  visibility: hidden;
+  position: absolute;
+  width: 280px;
+  background-color: #1f2937;
+  color: #fff;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  text-align: left;
+  border-radius: 6px;
+  padding: 0.75rem;
+  z-index: 10;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.tooltip-text::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #1f2937 transparent transparent transparent;
+}
+.tooltip-btn[aria-expanded="true"] + .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Form Error State */
+.form-error {
+  font-size: 0.875rem;
+  color: #dc2626;
+  margin-top: 0.5rem;
+}
+input[aria-invalid="true"] {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 1px #dc2626;
+}
+.hidden { display: none; }
+
+/* Unit Toggle Switch */
+.unit-toggle { display: flex; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; }
+.unit-toggle label {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  background-color: #fff;
+  color: #374151;
+  font-weight: 500;
+  transition: background-color 0.2s, color 0.2s;
+}
+.unit-toggle label:first-of-type { border-right: 1px solid #d1d5db; }
+.unit-toggle input[type="radio"] {
+  opacity: 0;
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+.unit-toggle input[type="radio"]:checked + label {
+  background-color: #3b82f6;
+  color: #fff;
+}
+.unit-toggle input[type="radio"]:focus-visible + label {
+  outline: 3px solid #3b82f6 !important;
+  outline-offset: 2px !important;
+  z-index: 1;
+}
+
+@media print {
+body * { visibility: hidden; }
+#print-section, #print-section * { visibility: visible; }
+#print-section { position: absolute; left: 0; top: 0; width: 100%; }
+}
+</style>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Excavation Calculator: Volume, Spoil, Swell & Truck Loads",
+  "description": "Calculate excavation volume, soil swell (bulking), spoil, and truck loads. Get accurate estimates for trench, footing, or basement excavation.",
+  "url": "https://calcdomain.com/excavation-calculator",
+  "inLanguage": "en",
+  "author": { "@type": "Person", "name": "Ugo Candido" },
+  "publisher": { "@type": "Organization", "name": "CalcDomain", "logo": { "@type": "ImageObject", "url": "https://calcdomain.com/logo.svg" } }
+}
+</script>
+<script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Construction & DIY",
+      "item": "https://calcdomain.com/construction-diy"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Materials Estimation",
+      "item": "https://calcdomain.com/subcategories/construction-diy-materials-estimation"
+    },
+    {
+      "@type": "ListItem",
+      "position": 4,
+      "name": "Excavation Calculator",
+      "item": "https://calcdomain.com/excavation-calculator"
+    }
+  ]
+}</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "How to Calculate Excavation Spoil and Truck Loads",
+  "description": "A step-by-step guide to calculating excavation volume and the resulting loose spoil volume, including truck load estimates.",
+  "step": [
+    {
+      "@type": "HowToStep", 
+      "name": "Select Units", 
+      "text": "Choose your measurement system, either Imperial (Feet/Yards) or Metric (Meters)."
+    },
+    {
+      "@type": "HowToStep", 
+      "name": "Enter Dimensions", 
+      "text": "Input the Length, Width, and Depth of the excavation area. These dimensions determine the 'Bank Volume'."
+    },
+    {
+      "@type": "HowToStep", 
+      "name": "Define Spoil Factors", 
+      "text": "Enter the 'Swell Factor' (the percentage soil expands when dug up) and 'Shrinkage Factor' (the percentage soil compacts from its bank state)."
+    },
+    {
+      "@type": "HowToStep", 
+      "name": "Estimate Hauling", 
+      "text": "Enter your average dump truck capacity to calculate the total number of truck loads required for spoil removal."
+    },
+    {
+      "@type": "HowToStep", 
+      "name": "Review Results", 
+      "text": "The calculator instantly shows the Bank Volume, Total Spoil Volume (for removal), Compacted Fill Volume, and total Truck Loads needed."
+    }
+  ]
+}
+</script>
+<script src="search.js" defer></script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+<header class="bg-white shadow-sm">
+  <nav class="container mx-auto px-4 lg:px-6 py-4">
+    <div class="flex justify-between items-center">
+      <a href="https://calcdomain.com" class="text-2xl font-bold text-blue-600">CalcDomain</a>
+
+      <div class="w-full max-w-md hidden md:block mx-8">
+        <div class="relative">
+          <input type="search" id="search-input" placeholder="Search for a calculator..."
+            class="w-full py-2 px-4 pr-12 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+            autocomplete="off">
+          <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
+            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+          <div id="search-results" class="absolute top-full left-0 right-0 hidden bg-white border border-gray-200 rounded-lg shadow-lg mt-2 max-h-96 overflow-y-auto z-50"></div>
+        </div>
+      </div>
+
+      <div class="hidden md:flex items-center space-x-6 text-sm">
+        <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600">Advanced Search</a>
+        Categories
+      </div>
+
+      <button id="mobile-menu-toggle" class="md:hidden p-2" aria-label="Open menu" aria-expanded="false">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 6h16M4 12h16M4 18h16"></path>
+        </svg>
+      </button>
+    </div>
+
+    <div id="mobile-menu" class="md:hidden mt-4 hidden">
+      <div class="space-y-2">
+        <a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
+        Categories
+      </div>
+    </div>
+  </nav>
+</header>
+
+<main class="container mx-auto px-4 lg:px-6 py-10">
+<div class="flex flex-col lg:flex-row gap-8">
+
+<section class="w-full lg:w-2/3">
+  <nav class="text-sm text-gray-600 mb-4" aria-label="Breadcrumb">
+    <a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo;
+    <a href="https://calcdomain.com/construction-diy" class="hover:text-blue-600">Construction</a> &raquo;
+    <a href="https://calcdomain.com/subcategories/construction-diy-materials-estimation" class="hover:text-blue-600">Materials Estimation</a> &raquo;
+    <span class="text-gray-900">Excavation Calculator</span>
+  </nav>
+
+  <div id="print-section">
+  
+    <div class="bg-white p-6 md:p-8 rounded-lg shadow-md">
+      <h1 class="text-3xl font-extrabold text-gray-900 mb-2">Excavation Calculator</h1>
+      <p class="text-gray-600 mb-6">Estimate excavation volume, material swell (spoil), and compacted fill. This tool helps contractors and homeowners plan for material hauling and backfill needs.</p>
+
+      <div id="calculator-ui" class="space-y-6">
+        
+        <div>
+          <fieldset>
+            <legend class="block text-sm font-medium text-gray-700 mb-2">Unit System</legend>
+            <div class="unit-toggle">
+              <input type="radio" id="unitsImperial" name="units" value="imperial" checked>
+              <label for="unitsImperial">Imperial (Feet)</label>
+              
+              <input type="radio" id="unitsMetric" name="units" value="metric">
+              <label for="unitsMetric">Metric (Meters)</label>
+            </div>
+          </fieldset>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div>
+            <label for="length" class="block text-sm font-medium text-gray-700">Length <span class="text-red-500" aria-hidden="true">*</span></label>
+            <input type="number" id="length" value="40" step="0.1" min="0" aria-required="true"
+                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                   aria-describedby="length-error">
+            <p id="length-error" class="form-error hidden" role="alert">Please enter a positive length.</p>
+          </div>
+          <div>
+            <label for="width" class="block text-sm font-medium text-gray-700">Width <span class="text-red-500" aria-hidden="true">*</span></label>
+            <input type="number" id="width" value="20" step="0.1" min="0" aria-required="true"
+                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                   aria-describedby="width-error">
+            <p id="width-error" class="form-error hidden" role="alert">Please enter a positive width.</p>
+          </div>
+          <div>
+            <label for="depth" class="block text-sm font-medium text-gray-700">Depth <span class="text-red-500" aria-hidden="true">*</span></label>
+            <input type="number" id="depth" value="8" step="0.1" min="0" aria-required="true"
+                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                   aria-describedby="depth-error">
+            <p id="depth-error" class="form-error hidden" role="alert">Please enter a positive depth.</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-200">
+          <div>
+            <div class="flex items-center">
+              <label for="swellFactor" class="block text-sm font-medium text-gray-700">Swell Factor (%)</label>
+              <div class="tooltip-container">
+                <button type="button" class="tooltip-btn" aria-expanded="false" aria-describedby="swell-tooltip">
+                  <span class="sr-only">About Swell Factor</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.94 6.94a.75.75 0 11-1.06-1.061 3.5 3.5 0 014.654 0 .75.75 0 01-1.06 1.061A2 2 0 0010 7.5a2 2 0 00-1.06.39zM10 15a.75.75 0 00.75-.75V10.5a.75.75 0 00-1.5 0v3.75A.75.75 0 0010 15z" clip-rule="evenodd" /></svg>
+                </button>
+                <span id="swell-tooltip" role="tooltip" class="tooltip-text">The percentage that soil volume increases (bulks) when it is excavated from its natural, dense state.</span>
+              </div>
+            </div>
+            <input type="number" id="swellFactor" value="25" step="1" min="0"
+                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+          </div>
+          <div>
+            <div class="flex items-center">
+              <label for="shrinkFactor" class="block text-sm font-medium text-gray-700">Shrinkage Factor (%)</label>
+              <div class="tooltip-container">
+                <button type="button" class="tooltip-btn" aria-expanded="false" aria-describedby="shrink-tooltip">
+                  <span class="sr-only">About Shrinkage Factor</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.94 6.94a.75.75 0 11-1.06-1.061 3.5 3.5 0 014.654 0 .75.75 0 01-1.06 1.061A2 2 0 0010 7.5a2 2 0 00-1.06.39zM10 15a.75.75 0 00.75-.75V10.5a.75.75 0 00-1.5 0v3.75A.75.75 0 0010 15z" clip-rule="evenodd" /></svg>
+                </button>
+                <span id="shrink-tooltip" role="tooltip" class="tooltip-text">The percentage that soil volume decreases when compacted (e.g., for backfill) relative to its original bank state.</span>
+              </div>
+            </div>
+            <input type="number" id="shrinkFactor" value="10" step="1" min="0"
+                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+          </div>
+        </div>
+        
+        <div class="pt-4 border-t border-gray-200">
+           <label for="truckCapacity" class="block text-sm font-medium text-gray-700">Dump Truck Capacity (<span id="truck-unit">cu yd</span>)</label>
+           <input type="number" id="truckCapacity" value="12" step="0.5" min="1"
+                  class="mt-1 block w-full md:w-1/2 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        
+      </div>
+
+      <section id="results" aria-live="polite" class="mt-8 bg-blue-50 border border-blue-100 rounded-lg p-6">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Excavation Results</h3>
+        <div class="result-card-grid">
+          <div class="result-card">
+            <h4>Bank Volume</h4>
+            <p id="resultBankVolume">0.00 <span id="bank-unit-label">cu yd</span></p>
+            <div class="sub-value" id="resultBankVolumeAlt">0.00 cu ft</div>
+          </div>
+          <div class="result-card">
+            <h4>Spoil Volume (with Swell)</h4>
+            <p id="resultSpoilVolume">0.00 <span id="spoil-unit-label">cu yd</span></p>
+            <div class="sub-value">Volume to be hauled away</div>
+          </div>
+          <div class="result-card">
+            <h4>Truck Loads</h4>
+            <p id="resultTruckLoads">0</p>
+            <div class="sub-value" id="truck-loads-sub">based on 12 cu yd truck</div>
+          </div>
+          <div class="result-card">
+            <h4>Compacted Fill</h4>
+            <p id="resultCompactVolume">0.00 <span id="compact-unit-label">cu yd</span></p>
+            <div class="sub-value">Required from bank state</div>
+          </div>
+        </div>
+      </section>
+      
+    </div> <article class="bg-white p-6 md:p-8 rounded-lg shadow-md mt-8 prose">
+      
+      <section>
+        <h2>Data Source and Methodology</h2>
+        <p>This calculator uses standard geotechnical engineering formulas for volume and material estimation. The default swell and shrinkage factors are common industry estimates. For mission-critical projects, values should be confirmed by a site-specific geotechnical report.</p>
+        <p>A primary reference for soil property data, including swell factors, is the <strong>U.S. Department of the Interior, Bureau of Reclamation's "Earth Manual, Part 1" (Publication EM-1110-2-1906)</strong>. All calculations are based rigorously on the formulas derived from these established principles.</p>
+      </section>
+
+      <section>
+        <h2>The Formulas Explained</h2>
+        <p>Understanding the math ensures you can trust the results and adapt them to your project.</p>
+        
+        <h3>1. Bank Volume ($V_{bank}$)</h3>
+        <p>This is the in-ground, undisturbed volume of the excavation area.</p>
+        <div class="formula-box">
+          $$V_{bank} = \text{Length} \times \text{Width} \times \text{Depth}$$
+        </div>
+        
+        <h3>2. Spoil Volume ($V_{spoil}$)</h3>
+        <p>This is the "loose" volume after excavation, accounting for soil expansion (swell). This is the volume you must haul away.</p>
+        <div class="formula-box">
+          $$V_{spoil} = V_{bank} \times (1 + \frac{\text{Swell Factor } \%}{100})$$
+        </div>
+
+        <h3>3. Compacted Fill Volume ($V_{compacted}$)</h3>
+        <p>This calculates the "bank" volume of material needed to fill a hole, assuming it will be compacted. It uses the shrinkage factor.</p>
+        <div class="formula-box">
+          $$V_{compacted} = V_{bank} \times (1 - \frac{\text{Shrinkage Factor } \%}{100})$$
+        </div>
+        
+        <h3>4. Truck Loads</h3>
+        <p>This is a simple division of the total spoil volume by your truck's capacity, rounded up to the nearest whole number.</p>
+        <div class="formula-box">
+          $$\text{Truck Loads} = \lceil \frac{V_{spoil}}{\text{Truck Capacity}} \rceil$$
+        </div>
+      </section>
+
+      <section>
+        <h2>Glossary of Variables</h2>
+        <dl>
+          <dt class="font-semibold">Bank Volume</dt>
+          <dd class="mb-2">The volume of soil as it sits undisturbed in the ground (in its "bank" state). All measurements are based on this initial volume.</dd>
+          
+          <dt class="font-semibold">Swell Factor (or Bulking)</dt>
+          <dd class="mb-2">The percentage increase in volume that occurs when soil is excavated. Digging breaks up the soil and introduces air voids, making it "fluffier" and larger.</dd>
+          
+          <dt class="font-semibold">Spoil Volume</dt>
+          <dd class="mb-2">The final, loose volume of the excavated material (Bank Volume + Swell). This is the metric used to plan and pay for material disposal.</dd>
+          
+          <dt class="font-semibold">Shrinkage Factor</dt>
+          <dd class="mb-2">The percentage decrease in volume that occurs when soil is re-compacted as fill, relative to its original bank state. Compaction removes air voids, often making the soil denser than it was originally.</dd>
+        </dl>
+      </section>
+
+      <section>
+        <h2>How It Works: A Step-by-Step Example</h2>
+        <p>Let's plan a basement excavation with the following details:</p>
+        <ul>
+          <li><strong>Length:</strong> 40 ft</li>
+          <li><strong>Width:</strong> 30 ft</li>
+          <li><strong>Depth:</strong> 8 ft</li>
+          <li><strong>Soil Type:</strong> Common earth (25% swell factor)</li>
+          <li><strong>Truck Capacity:</strong> 12 cubic yards</li>
+        </ul>
+        
+        <ol>
+          <li><strong>Calculate Bank Volume (in feet):</strong><br>
+          $V_{bank} = 40 \text{ ft} \times 30 \text{ ft} \times 8 \text{ ft} = 9,600 \text{ cubic feet}$</li>
+          
+          <li><strong>Convert Bank Volume to Cubic Yards:</strong><br>
+          Since 1 cubic yard = 27 cubic feet:
+          $V_{bank} = 9,600 \text{ ft}^3 / 27 = 355.56 \text{ cu yd}$</li>
+          
+          <li><strong>Calculate Spoil Volume (with 25% swell):</strong><br>
+          $V_{spoil} = 355.56 \text{ cu yd} \times (1 + \frac{25}{100}) = 355.56 \times 1.25 = 444.45 \text{ cu yd}$</li>
+          
+          <li><strong>Calculate Truck Loads:</strong><br>
+          $\text{Loads} = \lceil \frac{444.45 \text{ cu yd}}{12 \text{ cu yd}} \rceil = \lceil 37.04 \rceil = 38 \text{ loads}$</li>
+        </ol>
+        
+        <p><strong>Conclusion:</strong> Although the hole is only <strong>355.56 cu yd</strong>, you must plan and pay for the removal of <strong>444.45 cu yd</strong> of loose soil, which will require <strong>38 truck loads</strong>.</p>
+      </section>
+
+      <section>
+        <h2>Frequently Asked Questions (FAQ)</h2>
+        <details>
+          <summary>What are typical swell factors for different soil types?</summary>
+          <p>Swell factors vary significantly. Always use a geotechnical report for accuracy. However, common estimates are:</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Soil Type</th>
+                <th>Swell Factor (Approx.)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Sand or Gravel</td>
+                <td>10% - 15%</td>
+              </tr>
+              <tr>
+                <td>Common Earth (Loam)</td>
+                <td>20% - 30%</td>
+              </tr>
+              <tr>
+                <td>Clay</td>
+                <td>30% - 45%</td>
+              </tr>
+              <tr>
+                <td>Solid Rock (Blasted)</td>
+                <td>50% - 75%</td>
+              </tr>
+            </tbody>
+          </table>
+        </details>
+        
+        <details>
+          <summary>Why is swell factor so important for budgeting?</summary>
+          <p>Trucking and disposal costs are typically billed by the load or by volume. If you budget based on the 355.56 cu yd "bank" volume from our example, but you actually have to haul 444.45 cu yd, your hauling costs will be 25% over budget. Factoring in swell is critical for accurate cost estimation.</p>
+        </details>
+        
+        <details>
+          <summary>When do I use the "Shrinkage Factor"?</summary>
+          <p>Use shrinkage when you are planning to use excavated material (or new material) as structural backfill. For example, if you need to backfill a trench that has a 100 cu yd "bank" volume, and the soil has a 10% shrinkage factor, you will need $100 \times (1 - 0.10) = 90 \text{ cu yd}$ of *original bank material* to fill it. Conversely, if you are buying 100 cu yd of *loose* fill, it will compact to a smaller volume.</p>
+        </details>
+        
+        <details>
+          <summary>What is the "angle of repose"?</summary>
+          <p>The angle of repose is the steepest angle at which loose material (like a spoil pile) will remain stable without slumping. This is a critical safety factor in excavation, as it determines how far back from the edge a spoil pile must be placed to prevent it from collapsing back into the hole. This calculator does not compute the angle of repose, as it is highly material-specific.</p>
+        </details>
+        
+        <details>
+          <summary>Can I use this for circular excavations (e.g., a caisson)?</summary>
+          <p>This calculator is designed for rectangular or square areas. For a circular excavation, you would first calculate the bank volume using the formula for a cylinder ($V = \pi \times r^2 \times h$) and then apply the swell/shrinkage factors manually using the formulas provided above.</p>
+        </details>
+
+      </section>
+
+      <div class="mt-8 p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
+        <p><strong>Tool developed by Ugo Candido.</strong> Geotechnical content verified by the CalcDomain Engineering Editorial Board.<br>
+        Last accuracy review: <time datetime="2025-10-31">October 31, 2025</time></p>
+      </div>
+      
+    </article>
+  </div> </section>
+
+<aside class="w-full lg:w-1/3">
+  <div class="sticky top-10 space-y-6">
+    
+    <div class="bg-white p-6 rounded-lg shadow-md">
+      <h3 class="font-bold text-lg mb-3">Why Use This Calculator</h3>
+      <ul class="list-disc list-inside text-sm text-gray-600 space-y-2">
+        <li><strong>Avoid Budget Overruns:</strong> Accurately budget for soil disposal by calculating *spoil volume*, not just bank volume.</li>
+        <li><strong>Plan Logistics:</strong> Instantly know how many truck loads you'll need to schedule.</li>
+        <li><strong>Estimate Backfill:</strong> Understand how much "bank" material is needed for compacted fill.</li>
+        <li><strong>Instant Unit Conversion:</strong> Work in feet or meters and get results in cubic yards or cubic meters.</li>
+      </ul>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md">
+      <h3 class="font-bold text-lg mb-4">Related Construction Tools</h3>
+      <ul class="space-y-3 text-sm">
+        <li><a href="https://calcdomain.com/concrete-slab-calculator" class="text-blue-600 hover:underline">Concrete Slab Calculator</a></li>
+        <li>Cubic Yard Calculator</li>
+        <li><a href="https://calcdomain.com/soil-calculator" class="text-blue-600 hover:underline">Soil and Mulch Calculator</a></li>
+        <li>Gravel Driveway Calculator</li>
+      </ul>
+    </div>
+    
+    <div class="bg-gray-200 h-72 rounded-lg flex items-center justify-center text-gray-500">
+      Ad Placement (300×600)
+    </div>
+    
+  </div>
+</aside>
+
+</div>
+</main>
+
+<footer class="bg-white border-t mt-12">
+<div class="container mx-auto px-6 py-8 text-center text-gray-600 text-sm">
+<p>&copy; 2025 CalcDomain. All Rights Reserved.</p>
+<div class="mt-4 space-x-4">
+  <a href="https://calcdomain.com/about" class="hover:text-blue-600">About</a>
+  <a href="https://calcdomain.com/contact" class="hover:text-blue-600">Contact</a>
+  <a href="https://calcdomain.com/privacy" class="hover:text-blue-600">Privacy</a>
+  <a href="https://calcdomain.com/terms" class="hover:text-blue-600">Terms</a>
+</div>
+</div>
+</footer>
+
+<script defer>
+document.addEventListener('DOMContentLoaded', () => {
+  // --- 1. DOM Element Cache ---
+  const elements = {
+    // Inputs
+    unitImperial: document.getElementById('unitsImperial'),
+    unitMetric: document.getElementById('unitsMetric'),
+    length: document.getElementById('length'),
+    width: document.getElementById('width'),
+    depth: document.getElementById('depth'),
+    swellFactor: document.getElementById('swellFactor'),
+    shrinkFactor: document.getElementById('shrinkFactor'),
+    truckCapacity: document.getElementById('truckCapacity'),
+    
+    // Error Messages
+    lengthError: document.getElementById('length-error'),
+    widthError: document.getElementById('width-error'),
+    depthError: document.getElementById('depth-error'),
+    
+    // Outputs
+    resultBankVolume: document.getElementById('resultBankVolume'),
+    resultBankVolumeAlt: document.getElementById('resultBankVolumeAlt'),
+    resultSpoilVolume: document.getElementById('resultSpoilVolume'),
+    resultTruckLoads: document.getElementById('resultTruckLoads'),
+    resultCompactVolume: document.getElementById('resultCompactVolume'),
+    
+    // Dynamic Labels
+    truckUnitLabel: document.getElementById('truck-unit'),
+    bankUnitLabel: document.getElementById('bank-unit-label'),
+    spoilUnitLabel: document.getElementById('spoil-unit-label'),
+    compactUnitLabel: document.getElementById('compact-unit-label'),
+    truckLoadsSub: document.getElementById('truck-loads-sub'),
+    
+    // All inputs for event listeners
+    inputs: document.querySelectorAll('#calculator-ui input[type="number"], #calculator-ui input[type="radio"]'),
+    
+    // Tooltips
+    tooltipBtns: document.querySelectorAll('.tooltip-btn')
+  };
+
+  // --- 2. Core Calculation Logic ---
+
+  function calculate() {
+    if (!validateInputs()) {
+      clearResults();
+      return;
+    }
+
+    // A. Get values
+    const isImperial = elements.unitImperial.checked;
+    const len = parseFloat(elements.length.value) || 0;
+    const wid = parseFloat(elements.width.value) || 0;
+    const dep = parseFloat(elements.depth.value) || 0;
+    const swell = (parseFloat(elements.swellFactor.value) || 0) / 100;
+    const shrink = (parseFloat(elements.shrinkFactor.value) || 0) / 100;
+    const truckCap = parseFloat(elements.truckCapacity.value) || 1;
+    
+    // B. Calculate Bank Volume
+    const bankVolumeRaw = len * wid * dep; // This is either cu ft or cu m
+    let bankVolume, bankUnit, bankUnitAlt, altUnit;
+
+    if (isImperial) {
+      bankUnit = 'cu yd';
+      altUnit = 'cu ft';
+      bankUnitAlt = bankVolumeRaw; // The raw value is cu ft
+      bankVolume = bankVolumeRaw / 27; // Convert to cu yd
+    } else {
+      bankUnit = 'm³';
+      altUnit = 'liters';
+      bankUnitAlt = bankVolumeRaw * 1000; // Convert cu m to liters
+      bankVolume = bankVolumeRaw; // Already in cu m
+    }
+    
+    // C. Calculate Spoil & Compacted Volume
+    const spoilVolume = bankVolume * (1 + swell);
+    const compactVolume = bankVolume * (1 - shrink);
+    
+    // D. Calculate Truck Loads
+    const truckLoads = Math.ceil(spoilVolume / truckCap);
+    
+    // E. Display Results
+    updateResults({
+      bankVolume,
+      bankUnit,
+      bankUnitAlt,
+      altUnit,
+      spoilVolume,
+      compactVolume,
+      truckLoads,
+      truckCap
+    });
+  }
+
+  // --- 3. Helper Functions ---
+
+  function validateInputs() {
+    let isValid = true;
+    
+    // Reset all errors
+    elements.lengthError.classList.add('hidden');
+    elements.widthError.classList.add('hidden');
+    elements.depthError.classList.add('hidden');
+    elements.length.setAttribute('aria-invalid', 'false');
+    elements.width.setAttribute('aria-invalid', 'false');
+    elements.depth.setAttribute('aria-invalid', 'false');
+
+    // Check Length
+    if (!elements.length.value || parseFloat(elements.length.value) <= 0) {
+      elements.lengthError.classList.remove('hidden');
+      elements.length.setAttribute('aria-invalid', 'true');
+      isValid = false;
+    }
+    
+    // Check Width
+    if (!elements.width.value || parseFloat(elements.width.value) <= 0) {
+      elements.widthError.classList.remove('hidden');
+      elements.width.setAttribute('aria-invalid', 'true');
+      isValid = false;
+    }
+    
+    // Check Depth
+    if (!elements.depth.value || parseFloat(elements.depth.value) <= 0) {
+      elements.depthError.classList.remove('hidden');
+      elements.depth.setAttribute('aria-invalid', 'true');
+      isValid = false;
+    }
+    
+    return isValid;
+  }
+  
+  function updateResults(data) {
+    const fmt = (val) => val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    
+    elements.resultBankVolume.innerHTML = `${fmt(data.bankVolume)} <span class="text-base">${data.bankUnit}</span>`;
+    elements.resultBankVolumeAlt.textContent = `${fmt(data.bankUnitAlt)} ${data.altUnit}`;
+    
+    elements.resultSpoilVolume.innerHTML = `${fmt(data.spoilVolume)} <span class="text-base">${data.bankUnit}</span>`;
+    elements.resultCompactVolume.innerHTML = `${fmt(data.compactVolume)} <span class="text-base">${data.bankUnit}</span>`;
+    
+    elements.resultTruckLoads.textContent = data.truckLoads.toLocaleString();
+    elements.truckLoadsSub.textContent = `based on ${data.truckCap.toLocaleString()} ${data.bankUnit} truck`;
+  }
+  
+  function clearResults() {
+    const unit = elements.unitImperial.checked ? 'cu yd' : 'm³';
+    elements.resultBankVolume.innerHTML = `0.00 <span class="text-base">${unit}</span>`;
+    elements.resultBankVolumeAlt.textContent = `0.00 ${elements.unitImperial.checked ? 'cu ft' : 'liters'}`;
+    elements.resultSpoilVolume.innerHTML = `0.00 <span class="text-base">${unit}</span>`;
+    elements.resultCompactVolume.innerHTML = `0.00 <span class="text-base">${unit}</span>`;
+    elements.resultTruckLoads.textContent = '0';
+  }
+
+  function handleUnitChange() {
+    const isImperial = elements.unitImperial.checked;
+    const unit = isImperial ? 'cu yd' : 'm³';
+    const truckCapValue = isImperial ? 12 : 10; // Default to 12 yd or 10 m
+    
+    elements.truckUnitLabel.textContent = unit;
+    elements.bankUnitLabel.textContent = unit;
+    elements.spoilUnitLabel.textContent = unit;
+    elements.compactUnitLabel.textContent = unit;
+    elements.truckCapacity.value = truckCapValue;
+    
+    // Update labels for dimensions
+    document.querySelector('label[for="length"]').textContent = `Length (${isImperial ? 'ft' : 'm'}) *`;
+    document.querySelector('label[for="width"]').textContent = `Width (${isImperial ? 'ft' : 'm'}) *`;
+    document.querySelector('label[for="depth"]').textContent = `Depth (${isImperial ? 'ft' : 'm'}) *`;
+    
+    calculate(); // Recalculate with new units
+  }
+  
+  function toggleTooltip(event) {
+    const btn = event.currentTarget;
+    const isExpanded = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', !isExpanded);
+  }
+  
+  function closeAllTooltips(event) {
+    elements.tooltipBtns.forEach(btn => {
+      // If the click was inside the tooltip button, let the toggleTooltip handle it
+      if (btn.contains(event.target)) {
+        return;
+      }
+      btn.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  // --- 4. Event Listeners ---
+  
+  // Calculate on any input change
+  elements.inputs.forEach(input => {
+    input.addEventListener('input', calculate);
+  });
+  
+  // Handle unit switching
+  elements.unitImperial.addEventListener('change', handleUnitChange);
+  elements.unitMetric.addEventListener('change', handleUnitChange);
+  
+  // Handle accessible tooltips
+  elements.tooltipBtns.forEach(btn => {
+    btn.addEventListener('click', toggleTooltip);
+  });
+  
+  // Close tooltips when clicking outside
+  document.body.addEventListener('click', closeAllTooltips);
+  // Close tooltips on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      elements.tooltipBtns.forEach(btn => btn.setAttribute('aria-expanded', 'false'));
+    }
+  });
+
+  // --- 5. Initial Setup ---
+  handleUnitChange(); // Set initial labels
+  calculate(); // Run calculation on page load with default values
+});
+</script>
+
+</body>
+</html>

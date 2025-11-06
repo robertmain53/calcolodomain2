@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="canonical" href="https://calcdomain.com/credit-card-payoff-calculator">
+
+
+
+
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Credit Card Payoff Calculator — Cut Interest, Plan Your Debt-Free Date</title>
+  <meta name="description" content="Interactive credit card payoff calculator: model fixed payments, target months, or minimum payments. See interest, payoff date, and a month-by-month schedule." />
+  
+  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+
+  <!-- Tailwind & Chart.js (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- MathJax for LaTeX formulas -->
+  <script>
+    window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] } };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  <style>
+    :root { --focus: #1d4ed8; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif; }
+    .prose { max-width: 68ch; }
+    .prose h2 { font-size: 1.5rem; font-weight: 700; margin-top: 2rem; margin-bottom: .75rem; }
+    .prose h3 { font-size: 1.125rem; font-weight: 700; margin-top: 1.25rem; margin-bottom: .5rem; }
+    .prose p, .prose li { line-height: 1.65; }
+    .formula-box { background:#f3f4f6; border:1px solid #e5e7eb; border-radius:.75rem; padding:1rem; overflow:auto; }
+    details > summary { cursor: pointer; font-weight: 600; padding: .5rem 0; }
+    details[open] > summary { margin-bottom: .25rem; }
+    /* Results min-height to prevent CLS */
+    #results { min-height: 320px; }
+    /* Visible focus */
+    :where(a, button, [role="button"], input, select, textarea, summary):focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+      border-radius: .5rem;
+    }
+    /* Touch targets */
+    .touch-target { min-height: 48px; min-width: 48px; }
+    /* Error text */
+    .err { color:#b91c1c; }
+    .hint { color:#4b5563; }
+    .result-card { background:#fff; border:1px solid #e5e7eb; border-radius:.75rem; padding:1rem; text-align:center; }
+    .result-card h4 { font-size:.95rem; color:#6b7280; margin-bottom:.25rem; }
+    .result-card p { font-size:1.6rem; font-weight:800; color:#1d4ed8; }
+    @media print {
+      body * { visibility: hidden; }
+      #print-section, #print-section * { visibility: visible; }
+      #print-section { position: absolute; left:0; top:0; width:100%; }
+      #results-chart-container { display:none !important; }
+    }
+  </style>
+
+  <!-- JSON-LD: WebPage -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"WebPage",
+    "name":"Credit Card Payoff Calculator",
+    "description":"Model fixed payments, target months, or minimum payments to plan your credit card payoff. See interest costs, payoff date, and an itemized schedule.",
+    "url":"https://calcdomain.com/credit-card-payoff-calculator",
+    "inLanguage":"en",
+    "author":{"@type":"Person","name":"Ugo Candido"},
+    "publisher":{"@type":"Organization","name":"CalcDomain"}
+  }
+  </script>
+
+  <!-- JSON-LD: Breadcrumbs -->
+  <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Finance",
+      "item": "https://calcdomain.com/finance"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Loans & Debt",
+      "item": "https://calcdomain.com/subcategories/finance-loans-debt"
+    },
+    {
+      "@type": "ListItem",
+      "position": 4,
+      "name": "Credit Card Payoff Calculator",
+      "item": "https://calcdomain.com/credit-card-payoff-calculator"
+    }
+  ]
+}</script>
+
+  <!-- JSON-LD: FAQPage -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"FAQPage",
+    "mainEntity":[
+      {"@type":"Question","name":"How do I calculate the payment to pay off my card in a set number of months?","acceptedAnswer":{"@type":"Answer","text":"Use the target months mode. The calculator applies the amortization formula M = B * r / (1 - (1+r)^-n), where r = APR/12 and n is months, to find the required payment."}},
+      {"@type":"Question","name":"Why does my balance grow under minimum payments?","acceptedAnswer":{"@type":"Answer","text":"If your minimum payment doesn’t at least cover monthly interest, the unpaid interest capitalizes and the balance grows. Increase your payment until it exceeds interest accrued each month."}},
+      {"@type":"Question","name":"Does this calculator include compounding?","acceptedAnswer":{"@type":"Answer","text":"Yes, it assumes monthly compounding typical of credit cards (APR/12 per month)."}},
+      {"@type":"Question","name":"Can I add extra payments?","acceptedAnswer":{"@type":"Answer","text":"Yes, use the extra monthly payment field to simulate principal prepayments and see the time and interest saved."}},
+      {"@type":"Question","name":"What minimum payment should I use?","acceptedAnswer":{"@type":"Answer","text":"Issuers typically use a formula like max(Min% × balance, Floor$). Set the Min% and Floor$ fields to match your statement footnote for realistic results."}},
+      {"@type":"Question","name":"Is the result a guarantee from my card issuer?","acceptedAnswer":{"@type":"Answer","text":"No. Results are estimates for planning. Your issuer’s calculation method, fees, and timing can differ. Always verify with your statement and issuer."}}
+    ]
+  }
+  </script>
+
+  <!-- JSON-LD: HowTo -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"HowTo",
+    "name":"How to plan your credit card payoff",
+    "step":[
+      {"@type":"HowToStep","name":"Enter card details","text":"Input balance and APR (from your statement)."},
+      {"@type":"HowToStep","name":"Choose mode","text":"Either set a fixed monthly payment or choose a target months to be debt-free."},
+      {"@type":"HowToStep","name":"(Optional) Configure minimums & extras","text":"Adjust Min% and Floor$ to match your issuer. Add an extra monthly payment to prepay principal."},
+      {"@type":"HowToStep","name":"Review results","text":"See total interest, payoff date, and month-by-month schedule. Fine-tune payments to hit your goal."}
+    ]
+  }
+  </script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <!-- Header (non-sticky as requested) -->
+  <header class="bg-white border-b">
+    <nav class="container mx-auto px-4 lg:px-6 py-4">
+      <div class="flex items-center justify-between">
+        <a href="https://calcdomain.com" class="text-2xl font-bold text-blue-700">CalcDomain</a>
+        <div class="hidden md:flex items-center gap-6 text-sm">
+          <a href="https://calcdomain.com/search" class="hover:text-blue-700">Advanced Search</a>
+          Categories
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="container mx-auto px-4 lg:px-6 py-8">
+    <div class="flex flex-col lg:flex-row gap-8">
+      <!-- Main column -->
+      <section class="w-full lg:w-2/3">
+        <!-- Breadcrumb -->
+        <nav class="text-sm text-gray-600 mb-4" aria-label="Breadcrumb">
+          <a href="https://calcdomain.com" class="hover:text-blue-700">Home</a> &raquo;
+          <a href="https://calcdomain.com/finance" class="hover:text-blue-700">Finance</a> &raquo;
+          <a href="https://calcdomain.com/subcategories/finance-loans-debt" class="hover:text-blue-700">Loans &amp; Debt</a> &raquo;
+          <span class="text-gray-900">Credit Card Payoff Calculator</span>
+        </nav>
+
+        <div id="print-section" class="bg-white p-6 rounded-lg shadow">
+          <h1 class="text-3xl font-extrabold mb-2">credit card payoff calculator</h1>
+          <p class="text-gray-700 mb-6">
+            Plan your debt-free date and slash interest. Enter your credit card balance and APR, then choose a fixed payment
+            or a target number of months. Get instant totals, payoff date, and a month-by-month schedule you can print.
+          </p>
+
+          <!-- Calculator UI -->
+          <section aria-labelledby="calc-title" class="space-y-6" id="calculator-ui">
+            <h2 id="calc-title" class="sr-only">Calculator</h2>
+
+            <!-- Card details -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Balance -->
+              <div>
+                <label for="balance" class="block text-sm font-medium text-gray-800">Balance* </label>
+                <div class="relative">
+                  <input type="number" id="balance" inputmode="decimal" step="0.01" min="0" value="5000"
+                         aria-required="true" aria-describedby="balance-hint balance-err"
+                         class="touch-target mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500" />
+                  <p id="balance-hint" class="hint mt-1 text-xs">Your current statement balance.</p>
+                  <p id="balance-err" class="err mt-1 text-xs" hidden></p>
+                </div>
+              </div>
+
+              <!-- APR -->
+              <div>
+                <div class="flex items-center gap-2">
+                  <label for="apr" class="block text-sm font-medium text-gray-800">APR (%)*</label>
+                  <button type="button" id="apr-tip-btn" class="touch-target px-2 py-1 text-xs rounded border hover:bg-gray-50"
+                          aria-expanded="false" aria-controls="apr-tip">?</button>
+                </div>
+                <input type="number" id="apr" inputmode="decimal" step="0.01" min="0" value="19.99"
+                       aria-required="true" aria-describedby="apr-tip apr-err"
+                       class="touch-target mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500" />
+                <p id="apr-tip" class="hint mt-1 text-xs hidden">Use purchase APR from your statement. Monthly rate = APR ÷ 12.</p>
+                <p id="apr-err" class="err mt-1 text-xs" hidden></p>
+              </div>
+
+              <!-- Extra payment -->
+              <div>
+                <label for="extra" class="block text-sm font-medium text-gray-800">Extra monthly payment (optional)</label>
+                <input type="number" id="extra" inputmode="decimal" step="1" min="0" value="0"
+                       aria-describedby="extra-hint extra-err"
+                       class="touch-target mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500" />
+                <p id="extra-hint" class="hint mt-1 text-xs">Added on top of your calculated or chosen payment.</p>
+                <p id="extra-err" class="err mt-1 text-xs" hidden></p>
+              </div>
+
+              <!-- Start month -->
+              <div>
+                <label for="startMonth" class="block text-sm font-medium text-gray-800">First payment month</label>
+                <input type="month" id="startMonth" class="touch-target mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500" />
+              </div>
+            </div>
+
+            <!-- Mode selection -->
+            <fieldset class="mt-2 border border-gray-200 rounded-lg p-4">
+              <legend class="text-sm font-semibold text-gray-900">Payoff mode</legend>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                <label class="flex items-center gap-3">
+                  <input type="radio" name="mode" id="mode-fixed" value="fixed" class="touch-target"
+                         checked />
+                  <span class="text-sm">Fixed monthly payment</span>
+                </label>
+                <label class="flex items-center gap-3">
+                  <input type="radio" name="mode" id="mode-target" value="target" class="touch-target" />
+                  <span class="text-sm">Target months to payoff</span>
+                </label>
+              </div>
+
+              <!-- Fixed payment row -->
+              <div id="fixed-row" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                <div>
+                  <label for="fixedPayment" class="block text-sm font-medium text-gray-800">Your monthly payment*</label>
+                  <input type="number" id="fixedPayment" inputmode="decimal" step="1" min="0" value="200"
+                         aria-required="true" aria-describedby="fixed-hint fixed-err"
+                         class="touch-target mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500" />
+                  <p id="fixed-hint" class="hint mt-1 text-xs">Enter the amount you can commit each month.</p>
+                  <p id="fixed-err" class="err mt-1 text-xs" hidden></p>
+                </div>
+
+                <!-- Minimum payment settings -->
+                <div>
+                  <div class="flex items-center gap-2">
+                    <label class="block text-sm font-medium text-gray-800" for="minPct">Minimum payment rules</label>
+                    <button type="button" id="min-tip-btn" class="touch-target px-2 py-1 text-xs rounded border hover:bg-gray-50"
+                            aria-expanded="false" aria-controls="min-tip">?</button>
+                  </div>
+                  <div class="grid grid-cols-2 gap-3 mt-1">
+                    <div>
+                      <label for="minPct" class="block text-xs text-gray-700">Min % of balance</label>
+                      <input type="number" id="minPct" step="0.01" min="0" value="2"
+                             aria-describedby="min-tip"
+                             class="touch-target mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div>
+                      <label for="minFloor" class="block text-xs text-gray-700">Min $ floor</label>
+                      <input type="number" id="minFloor" step="1" min="0" value="25"
+                             aria-describedby="min-tip"
+                             class="touch-target mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                  </div>
+                  <p id="min-tip" class="hint mt-1 text-xs hidden">Common issuers: max( Min% × balance, Floor$ ). Adjust to match your statement.</p>
+                </div>
+              </div>
+
+              <!-- Target months row -->
+              <div id="target-row" class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4 hidden">
+                <div>
+                  <label for="targetMonths" class="block text-sm font-medium text-gray-800">Target months*</label>
+                  <input type="number" id="targetMonths" inputmode="numeric" step="1" min="1" value="24"
+                         aria-required="true" aria-describedby="target-err"
+                         class="touch-target mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500" />
+                  <p id="target-err" class="err mt-1 text-xs" hidden></p>
+                </div>
+                <div class="md:col-span-2">
+                  <p class="hint text-xs mt-7">We’ll compute the payment needed to hit your target (plus any extra you add).</p>
+                </div>
+              </div>
+            </fieldset>
+
+            <!-- Action buttons -->
+            <div class="flex flex-wrap gap-3">
+              <button id="calcBtn" class="touch-target px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">Calculate</button>
+              <button id="printBtn" class="touch-target px-4 py-2 rounded-md border hover:bg-gray-50">Print schedule</button>
+              <button id="resetBtn" class="touch-target px-4 py-2 rounded-md border hover:bg-gray-50">Reset</button>
+            </div>
+          </section>
+
+          <!-- Results -->
+          <section aria-labelledby="results-title" id="results" class="mt-8 bg-blue-50 border border-blue-100 rounded-lg p-6">
+            <h2 class="sr-only" id="results-title">Results</h2>
+            <div class="flex flex-col md:flex-row gap-6">
+              <div class="w-full md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="result-card">
+                  <h4>Monthly Payment</h4>
+                  <p id="resPayment">$0.00</p>
+                </div>
+                <div class="result-card">
+                  <h4>Months to Payoff</h4>
+                  <p id="resMonths">—</p>
+                </div>
+                <div class="result-card">
+                  <h4>Total Interest</h4>
+                  <p id="resInterest">$0.00</p>
+                </div>
+                <div class="result-card">
+                  <h4>Payoff Date</h4>
+                  <p id="resDate">—</p>
+                </div>
+              </div>
+              <div class="w-full md:w-1/3">
+                <div id="results-chart-container" class="h-40">
+                  <canvas id="resultsChart" aria-label="Principal versus interest share chart"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <p id="minWarn" class="mt-4 text-sm text-amber-700 hidden">Warning: Your fixed payment is below monthly interest and causes negative amortization. Increase your payment.</p>
+            <p id="boundWarn" class="mt-2 text-sm text-amber-700 hidden">Note: Payment was capped by the minimum payment rule for some months.</p>
+
+            <details class="mt-6 bg-white rounded-lg" id="scheduleDetails">
+              <summary class="font-semibold text-gray-900">View Payment Schedule</summary>
+              <div class="mt-4 overflow-x-auto border border-gray-200 rounded-lg" id="scheduleContainer">
+                <table class="min-w-full text-sm text-right">
+                  <thead class="bg-gray-100 text-gray-700 uppercase">
+                    <tr>
+                      <th class="px-4 py-2 text-left">#</th>
+                      <th class="px-4 py-2 text-left">Date</th>
+                      <th class="px-4 py-2">Payment</th>
+                      <th class="px-4 py-2">Interest</th>
+                      <th class="px-4 py-2">Principal</th>
+                      <th class="px-4 py-2">Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody id="scheduleBody"></tbody>
+                </table>
+              </div>
+            </details>
+          </section>
+        </div>
+
+        <!-- Authoritative content -->
+        <section class="bg-white p-6 rounded-lg shadow mt-8 prose">
+          <h2>Authoritative data source & methodology</h2>
+          <p><strong>AuthoritativeDataSource:</strong> U.S. Consumer Financial Protection Bureau (CFPB) credit card disclosures and common issuer methodologies; Federal Reserve Board—Truth in Lending (Regulation Z, 12 CFR Part 1026) guidance on APR disclosure. All computations assume monthly compounding at APR/12 and standard amortization or minimum payment rules.</p>
+          <ul>
+            <li>CFPB: “Understand Your Credit Card Statement” (educational guidance).</li>
+            <li>Federal Reserve Board: “Truth in Lending (Regulation Z), APR Disclosures” (technical basis).</li>
+          </ul>
+          <p><em>Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.</em></p>
+
+          <h2>The formula explained</h2>
+          <div class="formula-box">
+            <p><strong>Monthly rate:</strong> $ r = \\dfrac{\\text{APR}}{12} $</p>
+            <p><strong>Payment for target months:</strong> $ M = \\dfrac{B\\,r}{1 - (1+r)^{-n}} $</p>
+            <p><strong>Months for a fixed payment (when $M &gt; B\\,r$):</strong> $ n = -\\dfrac{\\ln\\left(1 - \\dfrac{B\\,r}{M}\\right)}{\\ln(1+r)} $</p>
+            <p><strong>Interest each month:</strong> $ I_m = \\text{Balance}_{m-1} \\times r $; &nbsp; <strong>Principal paid:</strong> $ P_m = M - I_m $.</p>
+          </div>
+
+          <h2>Glossary of variables</h2>
+          <ul>
+            <li><strong>B</strong> – Starting balance.</li>
+            <li><strong>APR</strong> – Annual Percentage Rate; nominal annual rate quoted by your card.</li>
+            <li><strong>r</strong> – Monthly rate (APR/12 as a decimal).</li>
+            <li><strong>M</strong> – Monthly payment (either chosen or calculated).</li>
+            <li><strong>n</strong> – Number of months to payoff.</li>
+            <li><strong>Minimum payment rule</strong> – max(Min% × balance, Floor$), customizable to match your issuer.</li>
+          </ul>
+
+          <h2>How it works: a step-by-step example</h2>
+          <h3>Example</h3>
+          <p>Balance B = $5,000, APR = 19.99% (r ≈ 0.1999/12 ≈ 0.01666). Target months n = 24.</p>
+          <p>Required payment: $ $M = \\dfrac{5000\\times0.01666}{1-(1+0.01666)^{-24}} \\approx \\$252.\\,$ Adding a $50 extra payment makes $M \\approx \\$302, reducing interest and potentially shaving months if rounded.</p>
+
+          <h2>FAQs</h2>
+          <details>
+            <summary>Does this include fees or promo APRs?</summary>
+            <p>No. Fees, deferred interest, or promotional APRs vary by issuer. Enter an effective APR or split scenarios.</p>
+          </details>
+          <details>
+            <summary>Why is my result different from my statement “Payoff in X years” box?</summary>
+            <p>Issuers may round differently, apply fees, use billing-cycle day counts, or change minimum rules; this tool uses transparent monthly compounding and your inputs.</p>
+          </details>
+          <details>
+            <summary>What payment avoids negative amortization?</summary>
+            <p>At minimum, pay monthly interest: $B\\,r$. The calculator flags if your fixed payment is below interest.</p>
+          </details>
+          <details>
+            <summary>Can I simulate only minimum payments?</summary>
+            <p>Set your fixed payment equal to the minimum formula shown (or leave fixed low) and review months to payoff; if it never declines, increase payment.</p>
+          </details>
+          <details>
+            <summary>Will paying biweekly help?</summary>
+            <p>This tool models monthly billing cycles. Paying the same total monthly earlier in the cycle reduces average daily balance slightly—check your issuer’s rules.</p>
+          </details>
+
+          <div class="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+            <p><strong>Strumento sviluppato da Ugo Candido.</strong> Contenuti verificati da, CalcDomain Editorial Board.<br>
+            Ultima revisione per l'accuratezza in data: <time datetime="2025-10-30">October 30, 2025</time></p>
+          </div>
+        </section>
+      </section>
+
+      <!-- Aside -->
+      <aside class="w-full lg:w-1/3">
+        <div class="sticky top-6 space-y-6">
+          <div class="bg-gray-200 h-72 rounded-lg flex items-center justify-center text-gray-600">
+            Ad Placement (300×600)
+          </div>
+          <div class="bg-white p-6 rounded-lg shadow">
+            <h3 class="font-bold text-lg mb-3">Why this beats typical calculators</h3>
+            <ul class="list-disc list-inside text-sm text-gray-700 space-y-2">
+              <li>Three modes: fixed payment, target months, and realistic minimum rules.</li>
+              <li>Negative-amortization guardrails and clear warnings.</li>
+              <li>Printable, auditor-friendly schedule with transparent math.</li>
+            </ul>
+          </div>
+          <div class="bg-white p-6 rounded-lg shadow">
+            <h3 class="font-bold text-lg mb-4">Related debt tools</h3>
+            <ul class="space-y-3 text-sm">
+              <li>Snowball vs. Avalanche Planner</li>
+              <li>Balance Transfer Savings</li>
+              <li><a class="text-blue-700 hover:underline" href="https://calcdomain.com/loan-amortization">Loan Amortization Schedule</a></li>
+              <li><a class="text-blue-700 hover:underline" href="https://calcdomain.com/apr">APR Calculator</a></li>
+            </ul>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="bg-white border-t">
+    <div class="container mx-auto px-6 py-8 text-center text-gray-600 text-sm">
+      <p>&copy; 2025 CalcDomain. All Rights Reserved.</p>
+      <div class="mt-4 space-x-4">
+        <a href="https://calcdomain.com/about" class="hover:text-blue-700">About</a>
+        <a href="https://calcdomain.com/contact" class="hover:text-blue-700">Contact</a>
+        <a href="https://calcdomain.com/privacy" class="hover:text-blue-700">Privacy</a>
+        <a href="https://calcdomain.com/terms" class="hover:text-blue-700">Terms</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Calculator Logic (defer) -->
+  <script defer>
+    document.addEventListener('DOMContentLoaded', () => {
+      const $ = (id) => document.getElementById(id);
+      const el = {
+        balance: $('balance'),
+        apr: $('apr'),
+        extra: $('extra'),
+        startMonth: $('startMonth'),
+        modeFixed: $('mode-fixed'),
+        modeTarget: $('mode-target'),
+        fixedRow: $('fixed-row'),
+        targetRow: $('target-row'),
+        fixedPayment: $('fixedPayment'),
+        minPct: $('minPct'),
+        minFloor: $('minFloor'),
+        targetMonths: $('targetMonths'),
+        calcBtn: $('calcBtn'),
+        printBtn: $('printBtn'),
+        resetBtn: $('resetBtn'),
+        // errors/warnings
+        balanceErr: $('balance-err'),
+        aprErr: $('apr-err'),
+        extraErr: $('extra-err'),
+        fixedErr: $('fixed-err'),
+        targetErr: $('target-err'),
+        minWarn: $('minWarn'),
+        boundWarn: $('boundWarn'),
+        // results
+        resPayment: $('resPayment'),
+        resMonths: $('resMonths'),
+        resInterest: $('resInterest'),
+        resDate: $('resDate'),
+        scheduleBody: $('scheduleBody'),
+        scheduleDetails: $('scheduleDetails'),
+        // tooltips
+        aprTipBtn: $('apr-tip-btn'),
+        aprTip: $('apr-tip'),
+        minTipBtn: $('min-tip-btn'),
+        minTip: $('min-tip')
+      };
+
+      let chartInstance = null;
+
+      // Accessibility tooltips
+      function toggleTip(btn, tip) {
+        const open = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!open));
+        tip.classList.toggle('hidden');
+      }
+      el.aprTipBtn.addEventListener('click', () => toggleTip(el.aprTipBtn, el.aprTip));
+      el.minTipBtn.addEventListener('click', () => toggleTip(el.minTipBtn, el.minTip));
+
+      // Mode toggle
+      function refreshMode() {
+        const isFixed = el.modeFixed.checked;
+        el.fixedRow.classList.toggle('hidden', !isFixed);
+        el.targetRow.classList.toggle('hidden', isFixed);
+      }
+      el.modeFixed.addEventListener('change', refreshMode);
+      el.modeTarget.addEventListener('change', refreshMode);
+      refreshMode();
+
+      // Formatting helpers
+      const fmtCurrency = (v) => new Intl.NumberFormat(undefined, { style:'currency', currency:'USD' }).format(isFinite(v) ? v : 0);
+      const fmtInt = (v) => new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(v||0);
+      const monthAdd = (yyyyMm, add) => {
+        const d = yyyyMm ? new Date(yyyyMm + '-01') : new Date();
+        d.setMonth(d.getMonth() + add);
+        return d;
+      };
+      const monthLabel = (d) => new Intl.DateTimeFormat(undefined, { year:'numeric', month:'short' }).format(d);
+
+      // Validation
+      function setError(elInput, elErr, msg) {
+        if (msg) {
+          elErr.textContent = msg;
+          elErr.hidden = false;
+          elInput.setAttribute('aria-invalid','true');
+        } else {
+          elErr.textContent = '';
+          elErr.hidden = true;
+          elInput.removeAttribute('aria-invalid');
+        }
+      }
+      function validateNumber(input, errEl, {min = 0, required = false} = {}) {
+        const raw = input.value.trim();
+        const val = Number(raw);
+        if (required && raw === '') { setError(input, errEl, 'This field is required.'); return null; }
+        if (!isFinite(val)) { setError(input, errEl, 'Enter a valid number.'); return null; }
+        if (val < min) { setError(input, errEl, `Must be ≥ ${min}.`); return null; }
+        setError(input, errEl, '');
+        return val;
+      }
+      // on-blur inline validation
+      [['balance','balanceErr', {min:0, required:true}],
+       ['apr','aprErr', {min:0, required:true}],
+       ['extra','extraErr', {min:0, required:false}],
+       ['fixedPayment','fixedErr', {min:0, required:true}],
+       ['targetMonths','targetErr', {min:1, required:true}]
+      ].forEach(([id, errId, opts])=>{
+        const input = el[id];
+        const err = el[errId];
+        input.addEventListener('blur', ()=>validateNumber(input, err, opts));
+      });
+
+      // Core calculation
+      function compute() {
+        // Inputs
+        const B = validateNumber(el.balance, el.balanceErr, {min:0, required:true}); if (B===null) return null;
+        const APR = validateNumber(el.apr, el.aprErr, {min:0, required:true}); if (APR===null) return null;
+        const extra = validateNumber(el.extra, el.extraErr, {min:0, required:false}); if (extra===null) return null;
+        const r = APR/100/12; // monthly rate
+        const startYm = el.startMonth.value;
+
+        let schedule = [];
+        let months = 0;
+        let totalInterest = 0;
+        let minBoundUsed = false;
+        let monthlyPaymentShown = 0;
+        let payoffDate = '—';
+        let negativeAm = false;
+
+        if (el.modeFixed.checked) {
+          let M = validateNumber(el.fixedPayment, el.fixedErr, {min:0, required:true}); if (M===null) return null;
+          const minPct = Math.max(0, Number(el.minPct.value)||0);
+          const minFloor = Math.max(0, Number(el.minFloor.value)||0);
+
+          let bal = B;
+          let i = 0;
+          const cap = 1200; // hard safety cap (100 years)
+          while (bal > 0 && i < cap) {
+            const date = monthAdd(startYm, i);
+            const interest = bal * r;
+            // Minimum payment rule (applied before extra)
+            const minPay = Math.max(bal * (minPct/100), minFloor);
+            let pay = Math.max(M, minPay);
+            if (pay === minPay && pay > M) minBoundUsed = true;
+
+            // Add extra payment after base/min comparison
+            pay += extra;
+
+            if (pay <= interest + 0.01) { // guard negative amortization
+              negativeAm = true;
+              // Nudge to cover interest
+              pay = interest + Math.max(1, extra);
+            }
+            if (pay > bal + interest) pay = bal + interest;
+
+            const principal = pay - interest;
+            bal = Math.max(0, bal - principal);
+            totalInterest += interest;
+            schedule.push({
+              k: i+1, date, payment: pay, interest, principal, balance: bal
+            });
+            i++;
+          }
+          months = schedule.length;
+          monthlyPaymentShown = (Math.max(M, Math.max(B*(Number(el.minPct.value||0)/100), Number(el.minFloor.value||0)))) + extra;
+          payoffDate = months ? monthLabel(monthAdd(startYm, months-1)) : '—';
+        } else {
+          // Target months
+          const n = validateNumber(el.targetMonths, el.targetErr, {min:1, required:true}); if (n===null) return null;
+          const baseM = r === 0 ? (B / n) : (B * r) / (1 - Math.pow(1 + r, -n));
+          const M = baseM + (Number(el.extra.value)||0);
+          monthlyPaymentShown = M;
+
+          let bal = B;
+          for (let i=0; i<n; i++) {
+            const date = monthAdd(el.startMonth.value, i);
+            const interest = bal * r;
+            let pay = Math.min(M, bal + interest);
+            const principal = pay - interest;
+            bal = Math.max(0, bal - principal);
+            totalInterest += interest;
+            schedule.push({ k:i+1, date, payment: pay, interest, principal, balance: bal });
+            if (bal <= 0) { break; }
+          }
+          // If not fully paid due to rounding, add final month
+          if (schedule.length && schedule[schedule.length-1].balance > 0) {
+            let bal = schedule[schedule.length-1].balance;
+            const date = monthAdd(el.startMonth.value, schedule.length);
+            const interest = bal * r;
+            const pay = bal + interest;
+            const principal = pay - interest;
+            schedule.push({ k:schedule.length+1, date, payment: pay, interest, principal, balance: 0 });
+          }
+          months = schedule.length;
+          payoffDate = months ? monthLabel(schedule[schedule.length-1].date) : '—';
+        }
+
+        return { schedule, months, totalInterest, monthlyPaymentShown, payoffDate, minBoundUsed, negativeAm, B };
+      }
+
+      function render(res) {
+        if (!res) return;
+        const { schedule, months, totalInterest, monthlyPaymentShown, payoffDate, minBoundUsed, negativeAm, B } = res;
+        // Results
+        el.resPayment.textContent = fmtCurrency(monthlyPaymentShown);
+        el.resMonths.textContent = months ? fmtInt(months) : '—';
+        el.resInterest.textContent = fmtCurrency(totalInterest);
+        el.resDate.textContent = payoffDate || '—';
+        // Warnings
+        el.minWarn.classList.toggle('hidden', !negativeAm);
+        el.boundWarn.classList.toggle('hidden', !minBoundUsed);
+
+        // Schedule table
+        el.scheduleBody.innerHTML = '';
+        const fmt = new Intl.NumberFormat(undefined, { style:'currency', currency:'USD' });
+        const dateFmt = new Intl.DateTimeFormat(undefined, { year:'numeric', month:'short' });
+        schedule.forEach(row => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="px-4 py-2 text-left">${row.k}</td>
+            <td class="px-4 py-2 text-left">${dateFmt.format(row.date)}</td>
+            <td class="px-4 py-2">${fmt.format(row.payment)}</td>
+            <td class="px-4 py-2">${fmt.format(row.interest)}</td>
+            <td class="px-4 py-2">${fmt.format(row.principal)}</td>
+            <td class="px-4 py-2">${fmt.format(row.balance)}</td>
+          `;
+          el.scheduleBody.appendChild(tr);
+        });
+        if (schedule.length) {
+          el.scheduleDetails.open = true;
+        }
+
+        // Chart
+        const interestPortion = totalInterest;
+        const principalPortion = Math.max(0, B);
+        const data = {
+          labels: ['Principal', 'Interest'],
+          datasets: [{
+            data: [principalPortion, interestPortion],
+            backgroundColor: ['#1d4ed8', '#f97316']
+          }]
+        };
+        const ctx = document.getElementById('resultsChart');
+        if (chartInstance) {
+          chartInstance.data = data;
+          chartInstance.update();
+        } else if (ctx) {
+          chartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data,
+            options: { plugins:{ legend:{ position:'bottom' } }, responsive:true, maintainAspectRatio:false }
+          });
+        }
+      }
+
+      // Buttons
+      el.calcBtn.addEventListener('click', () => { render(compute()); });
+      el.printBtn.addEventListener('click', () => window.print());
+      el.resetBtn.addEventListener('click', () => {
+        el.balance.value = 5000;
+        el.apr.value = 19.99;
+        el.extra.value = 0;
+        el.startMonth.value = '';
+        el.modeFixed.checked = true;
+        el.fixedPayment.value = 200;
+        el.minPct.value = 2;
+        el.minFloor.value = 25;
+        el.targetMonths.value = 24;
+        refreshMode();
+        ['balanceErr','aprErr','extraErr','fixedErr','targetErr'].forEach(id=>{
+          const e = $(id); e.hidden = true; e.textContent = '';
+        });
+        render(compute());
+      });
+
+      // Recalc on input changes (responsive UX)
+      ['balance','apr','extra','startMonth','fixedPayment','minPct','minFloor','targetMonths','mode-fixed','mode-target']
+        .forEach(id => $(id).addEventListener('input', () => render(compute())));
+
+      // Initial render
+      render(compute());
+    });
+  </script>
+</body>
+</html>

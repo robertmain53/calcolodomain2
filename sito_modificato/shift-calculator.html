@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="canonical" href="https://calcdomain.com/shift-calculator">
+
+
+
+
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shift Calculator – Work Hours, Overtime, Pay & Rounding</title>
+  <meta name="description" content="Calculate total work hours across multiple shifts (including overnight), break deductions, rounding, daily/weekly overtime, and gross pay. Export CSV and print a clean summary." />
+  
+
+  <!-- Icons / PWA (optional placeholders to avoid 404) -->
+  <link rel="icon" type="image/png" href="https://calcdomain.com/favicon-96x96.png" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="https://calcdomain.com/favicon.svg" />
+  <link rel="shortcut icon" href="https://calcdomain.com/favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="https://calcdomain.com/apple-touch-icon.png" />
+  <link rel="manifest" href="https://calcdomain.com/site.webmanifest" />
+
+  <!-- Tailwind + Inter -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- MathJax for LaTeX formulas -->
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  <style>
+    :root { --focus-ring: 3px solid #2563eb; }
+    body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'; }
+    .prose { max-width: 70ch; }
+    .prose h2 { font-size: 1.5rem; font-weight: 700; margin-top: 2rem; margin-bottom: 0.75rem; }
+    .prose h3 { font-size: 1.15rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; }
+    .prose p, .prose li { line-height: 1.7; }
+    .formula-box { background:#f8fafc; border:1px solid #e5e7eb; border-radius:10px; padding:1rem; overflow-x:auto; }
+    .result-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1rem; }
+    .result-card h4 { font-size:.95rem; color:#6b7280; margin-bottom:.25rem; }
+    .result-card p { font-size:1.6rem; font-weight:800; color:#1d4ed8; }
+    .kbd { font-variant-ligatures: none; border: 1px solid #e5e7eb; border-bottom-width: 3px; padding: .1rem .35rem; border-radius: .375rem; background:#fff; }
+    /* Visible focus */
+    :where(a, button, input, select, textarea, summary, [role="button"]):focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(37,99,235,.35); }
+    /* Prevent CLS: set min-heights where dynamic content appears */
+    #results-area { min-height: 260px; }
+    #table-wrapper { min-height: 160px; }
+    @media print {
+      body { background: #fff; }
+      header, nav[aria-label="Breadcrumb"], aside, .no-print { display: none !important; }
+      #print-section { position: static; }
+      .result-card p { color:#000 !important; }
+      table { page-break-inside:auto; }
+      tr { page-break-inside:avoid; page-break-after:auto; }
+    }
+    /* Tooltip panel */
+    .tip-panel[hidden] { display: none; }
+  </style>
+
+  <!-- JSON-LD: WebPage -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"WebPage",
+    "name":"Shift Calculator",
+    "description":"Compute total hours, overtime and gross pay across multiple shifts with break deductions and rounding rules. Export CSV and print.",
+    "url":"https://calcdomain.com/shift-calculator",
+    "inLanguage":"en",
+    "author":{"@type":"Person","name":"Ugo Candido"},
+    "publisher":{"@type":"Organization","name":"CalcDomain"}
+  }
+  </script>
+
+  <!-- JSON-LD: Breadcrumb -->
+  <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Lifestyle & Everyday",
+      "item": "https://calcdomain.com/lifestyle-everyday"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Time and Date",
+      "item": "https://calcdomain.com/subcategories/time-date"
+    },
+    {
+      "@type": "ListItem",
+      "position": 4,
+      "name": "Shift Calculator",
+      "item": "https://calcdomain.com/shift-calculator"
+    }
+  ]
+}</script>
+
+  <!-- JSON-LD: HowTo -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"HowTo",
+    "name":"How to calculate worked hours with breaks and overtime",
+    "step":[
+      {"@type":"HowToStep","name":"Add shifts","text":"Enter the date, start and end time. The tool handles overnight shifts automatically."},
+      {"@type":"HowToStep","name":"Set breaks & rounding","text":"Specify unpaid break minutes and choose an optional rounding rule (none, 5, 6, 10, 15 minutes)."},
+      {"@type":"HowToStep","name":"Configure overtime","text":"Set daily and/or weekly thresholds and multipliers for overtime pay."},
+      {"@type":"HowToStep","name":"Review totals","text":"See total hours, regular hours, overtime hours, gross pay and export CSV or print a clean summary."}
+    ]
+  }
+  </script>
+
+  <!-- JSON-LD: FAQ -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"FAQPage",
+    "mainEntity":[
+      {"@type":"Question","name":"Does it handle overnight shifts?","acceptedAnswer":{"@type":"Answer","text":"Yes. If the end time is earlier than the start time, the calculator assumes the shift crosses midnight and adds 24 hours to the end time for duration."}},
+      {"@type":"Question","name":"How does rounding work?","acceptedAnswer":{"@type":"Answer","text":"Rounding is applied to the total worked minutes after breaks using the selected increment and 'nearest' strategy. For example, 7 minutes rounds to 5 if the increment is 5."}},
+      {"@type":"Question","name":"Can I compute overtime pay?","acceptedAnswer":{"@type":"Answer","text":"Yes. You can set daily and weekly thresholds and multipliers. Daily overtime is computed per shift; weekly overtime is computed after summing the week."}},
+      {"@type":"Question","name":"Do breaks reduce overtime?","acceptedAnswer":{"@type":"Answer","text":"Yes. Unpaid breaks are subtracted from each shift before overtime is evaluated."}},
+      {"@type":"Question","name":"Is this legal advice?","acceptedAnswer":{"@type":"Answer","text":"No. Regulations vary by jurisdiction and employer policy. This tool is for planning and estimation only."}},
+      {"@type":"Question","name":"Can I export results?","acceptedAnswer":{"@type":"Answer","text":"Yes. You can export a CSV of all shifts and totals, or print a clean report."}}
+    ]
+  }
+  </script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <!-- Header (non-sticky per requirements) -->
+  <header class="bg-white border-b">
+    <div class="container mx-auto px-4 lg:px-6 py-4 flex items-center justify-between">
+      <a href="https://calcdomain.com" class="text-2xl font-bold text-blue-600">CalcDomain</a>
+      <nav class="hidden md:flex gap-6 text-sm">
+        <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600">Advanced Search</a>
+        Categories
+      </nav>
+      <a class="md:hidden text-sm text-blue-600" href="https://calcdomain.com/search">Search</a>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 lg:px-6 py-8">
+    <div class="flex flex-col lg:flex-row gap-8">
+      <!-- Main content -->
+      <section class="w-full lg:w-2/3">
+        <nav class="text-sm text-gray-600 mb-4" aria-label="Breadcrumb">
+          <a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo;
+          <a href="https://calcdomain.com/lifestyle-everyday" class="hover:text-blue-600">Lifestyle &amp; Everyday</a> &raquo;
+          <a href="https://calcdomain.com/subcategories/time-date" class="hover:text-blue-600">Time and Date</a> &raquo;
+          <span class="text-gray-900">Shift Calculator</span>
+        </nav>
+
+        <div id="print-section" class="bg-white p-6 rounded-lg shadow-md">
+          <h1 class="text-3xl font-extrabold text-gray-900 mb-3">shift calculator</h1>
+          <p class="text-gray-700 mb-6">
+            Quickly total work time across multiple shifts (including overnight), subtract unpaid breaks, apply rounding, and compute daily/weekly overtime and gross pay. Ideal for employees, managers, contractors, and payroll pre-checks.
+          </p>
+
+          <!-- Calculator -->
+          <section aria-labelledby="calc-title" class="space-y-6">
+            <h2 id="calc-title" class="sr-only">Shift calculator inputs</h2>
+
+            <!-- Global settings -->
+            <fieldset class="border border-gray-200 rounded-lg p-4">
+              <legend class="font-semibold px-2">Settings</legend>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
+                <div>
+                  <label for="payRate" class="block text-sm font-medium text-gray-800">Pay rate (per hour) *</label>
+                  <div class="flex items-center gap-2">
+                    <input type="number" inputmode="decimal" id="payRate" aria-required="true"
+                           class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                           step="0.01" min="0" value="20" aria-describedby="payRate_err payRate_tip">
+                    <button type="button" class="px-2 py-1 rounded border no-print" aria-expanded="false"
+                            aria-controls="payRate_tip">?</button>
+                  </div>
+                  <p id="payRate_tip" class="text-sm text-gray-600 mt-1 tip-panel" hidden>Hourly base pay used for regular-time calculations. Overtime multipliers apply to this rate.</p>
+                  <p id="payRate_err" class="text-sm text-red-600 mt-1" aria-live="polite"></p>
+                </div>
+
+                <div>
+                  <label for="currency" class="block text-sm font-medium text-gray-800">Currency</label>
+                  <select id="currency" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" aria-describedby="currency_tip">
+                    <option value="USD" selected>USD</option>
+                    <option value="EUR">EUR</option>
+                    <option value="GBP">GBP</option>
+                  </select>
+                  <p id="currency_tip" class="text-sm text-gray-600 mt-1">Display currency for results. No FX conversion is performed.</p>
+                </div>
+
+                <div>
+                  <label for="rounding" class="block text-sm font-medium text-gray-800">Rounding rule</label>
+                  <select id="rounding" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" aria-describedby="rounding_tip">
+                    <option value="0" selected>None</option>
+                    <option value="5">Nearest 5 minutes</option>
+                    <option value="6">Nearest 6 minutes (tenth hour)</option>
+                    <option value="10">Nearest 10 minutes</option>
+                    <option value="15">Nearest 15 minutes (quarter hour)</option>
+                  </select>
+                  <p id="rounding_tip" class="text-sm text-gray-600 mt-1">Rounding is applied to each shift’s worked time after breaks.</p>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-800">Overtime rules</label>
+                  <div class="grid grid-cols-2 gap-3 mt-1" role="group" aria-describedby="ot_desc">
+                    <div class="flex items-center gap-2">
+                      <input id="dailyOTchk" type="checkbox" class="h-5 w-5">
+                      <label for="dailyOTchk" class="text-sm">Daily OT</label>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                      <input id="dailyOTthr" type="number" min="0" step="0.25" class="px-3 py-2 border rounded" value="8" aria-label="Daily threshold (hours)">
+                      <input id="dailyOTmult" type="number" min="1" step="0.1" class="px-3 py-2 border rounded" value="1.5" aria-label="Daily overtime multiplier">
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <input id="weeklyOTchk" type="checkbox" class="h-5 w-5" checked>
+                      <label for="weeklyOTchk" class="text-sm">Weekly OT</label>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                      <input id="weeklyOTthr" type="number" min="0" step="0.5" class="px-3 py-2 border rounded" value="40" aria-label="Weekly threshold (hours)">
+                      <input id="weeklyOTmult" type="number" min="1" step="0.1" class="px-3 py-2 border rounded" value="1.5" aria-label="Weekly overtime multiplier">
+                    </div>
+                  </div>
+                  <p id="ot_desc" class="text-sm text-gray-600 mt-1">Overtime hours/pay are informational and depend on jurisdiction/employer policies.</p>
+                </div>
+              </div>
+            </fieldset>
+
+            <!-- Shifts table -->
+            <fieldset class="border border-gray-200 rounded-lg p-4">
+              <legend class="font-semibold px-2">Shifts</legend>
+
+              <div id="table-wrapper" class="mt-3 overflow-x-auto border border-gray-100 rounded-lg">
+                <table class="min-w-full text-sm">
+                  <thead class="bg-gray-100 text-gray-700">
+                    <tr>
+                      <th class="text-left px-3 py-2">Date</th>
+                      <th class="text-left px-3 py-2">Start *</th>
+                      <th class="text-left px-3 py-2">End *</th>
+                      <th class="text-right px-3 py-2">Unpaid break (min)</th>
+                      <th class="text-right px-3 py-2">Worked (h)</th>
+                      <th class="text-right px-3 py-2">Daily OT (h)</th>
+                      <th class="px-3 py-2"><span class="sr-only">Actions</span></th>
+                    </tr>
+                  </thead>
+                  <tbody id="shiftBody"></tbody>
+                </table>
+              </div>
+
+              <div class="mt-3 flex flex-wrap gap-3 no-print">
+                <button id="addShiftBtn" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold">Add shift</button>
+                <button id="addWeekBtn" class="px-4 py-2 rounded-lg bg-slate-700 text-white font-semibold">Add Mon–Sun</button>
+                <button id="clearBtn" class="px-4 py-2 rounded-lg border font-semibold">Clear</button>
+              </div>
+            </fieldset>
+
+          </section>
+
+          <!-- Results -->
+          <section id="results-area" class="mt-8 bg-blue-50 border border-blue-100 rounded-lg p-6">
+            <h2 class="text-xl font-bold mb-4">Results</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="result-card"><h4>Total shifts</h4><p id="res_shifts">0</p></div>
+              <div class="result-card"><h4>Total hours</h4><p id="res_hours">0.00</p></div>
+              <div class="result-card"><h4>Regular hours</h4><p id="res_regular">0.00</p></div>
+              <div class="result-card"><h4>Overtime hours</h4><p id="res_ot">0.00</p></div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+              <div class="result-card"><h4>Daily OT hours</h4><p id="res_daily_ot">0.00</p></div>
+              <div class="result-card"><h4>Weekly OT hours</h4><p id="res_weekly_ot">0.00</p></div>
+              <div class="result-card"><h4>Gross pay</h4><p id="res_pay">$0.00</p></div>
+            </div>
+            <div class="mt-4 flex flex-wrap gap-3 no-print">
+              <button id="exportBtn" class="px-4 py-2 rounded-lg bg-emerald-600 text-white font-semibold">Export CSV</button>
+              <button id="printBtn" class="px-4 py-2 rounded-lg border font-semibold">Print</button>
+            </div>
+          </section>
+
+          <!-- Authoritative content -->
+          <article class="bg-white p-6 rounded-lg shadow-sm mt-8 prose">
+            <h2>Data source &amp; methodology</h2>
+            <p><strong>AuthoritativeDataSource:</strong> ISO 8601-1:2019 (Date and time — Representations for information interchange) and broadly used payroll conventions for rounding and overtime thresholds (employer/jurisdiction specific). For regulatory contexts, consult the EU Working Time Directive 2003/88/EC or the U.S. Department of Labor FLSA guidance.</p>
+            <ul>
+              <li>ISO 8601-1:2019 — Date/time arithmetic.</li>
+              <li>EU Working Time Directive 2003/88/EC — Maximum weekly hours, rest breaks (jurisdictional policy).</li>
+              <li>U.S. DOL FLSA Fact Sheet (e.g., #22) — Overtime (jurisdictional policy).</li>
+            </ul>
+            <p><em>“Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.”</em></p>
+
+            <h2>The formula explained</h2>
+            <div class="formula-box">
+              Worked minutes per shift (with overnight handling and rounding):<br/>
+              \\[
+                m_{worked} = \\operatorname{round}_{q}\\!\\Big(\\max\\{0,\\; (t_{end} - t_{start})_{24h} - m_{break}\\}\\Big)
+              \\]
+              where \\( (t_{end} - t_{start})_{24h} = \\begin{cases}
+                (t_{end}-t_{start}) & t_{end} \\ge t_{start}\\\\
+                (t_{end}+24\\,\\mathrm{h}-t_{start}) & t_{end} < t_{start}
+              \\end{cases} \\) and \\( q \\in \\{0,5,6,10,15\\}\\) minutes.<br/><br/>
+              Daily overtime (if enabled):<br/>
+              \\[
+                h^{\\text{OT}}_{d} = \\max\\big(0,\\; h_{worked,d} - T_d\\big)
+              \\]
+              Weekly overtime (if enabled):<br/>
+              \\[
+                h^{\\text{OT}}_{w} = \\max\\big(0,\\; h_{worked,w} - T_w\\big)
+              \\]
+              Gross pay estimate:<br/>
+              \\[
+                \\text{Pay} = r \\cdot h_{reg} + (\\alpha_d r)\\cdot h^{\\text{OT}}_{d} + (\\alpha_w r)\\cdot h^{\\text{OT}}_{w}
+              \\]
+              where \\(r\\) is hourly rate, \\(\\alpha_d,\\alpha_w\\) are multipliers, and hours are split into regular vs. OT buckets.
+            </div>
+
+            <h2>Glossary of variables</h2>
+            <ul>
+              <li><strong>Date</strong>: Calendar date of the shift.</li>
+              <li><strong>Start/End</strong>: Local times; if end &lt; start, the shift is treated as crossing midnight.</li>
+              <li><strong>Unpaid break (min)</strong>: Minutes subtracted from the raw duration.</li>
+              <li><strong>Rounding rule</strong>: Nearest increment applied to worked minutes (after break).</li>
+              <li><strong>Daily/Weekly thresholds</strong>: Hours after which overtime buckets start.</li>
+              <li><strong>Multipliers</strong>: Factor applied to base hourly rate for OT hours.</li>
+            </ul>
+
+            <h2>How it works: a step-by-step example</h2>
+            <p><strong>Inputs</strong>: Two shifts this week. Rounding: 15 min. Daily OT: 8 h ×1.5. Weekly OT: 40 h ×1.5. Pay rate: $20/h.</p>
+            <ol>
+              <li>Shift A: 2025-10-20, 09:00–17:30, 30 min break → raw 8.5 h − 0.5 h = 8.0 h → rounded 8.0 h → daily OT 0.0 h.</li>
+              <li>Shift B: 2025-10-21, 22:00–06:15 (overnight), 15 min break → raw 8.25 h − 0.25 h = 8.0 h → rounded 8.0 h → daily OT 0.0 h.</li>
+              <li>Weekly totals so far: 16.0 h. Weekly OT not triggered. Gross pay = 16 × $20 = $320.</li>
+            </ol>
+
+            <h2>Frequently asked questions</h2>
+            <details><summary>Does rounding apply before or after breaks?</summary><p>After. The calculator subtracts unpaid breaks from the raw duration, then applies the rounding rule.</p></details>
+            <details><summary>How are daily and weekly overtime combined?</summary><p>Daily OT is computed per shift; weekly OT is computed from the weekly total. Totals are displayed separately to support diverse policies. Consult your jurisdiction to avoid double counting.</p></details>
+            <details><summary>What if I forget to enter a break?</summary><p>The tool assumes zero unpaid break if the field is empty or 0. Many workplaces enforce specific break policies; confirm with your employer.</p></details>
+            <details><summary>Can I use decimal hours?</summary><p>Yes—results are shown in decimal hours for clarity (e.g., 7.75 h = 7 hours 45 minutes).</p></details>
+            <details><summary>Which week does the calculator use for weekly OT?</summary><p>Weeks are grouped Monday–Sunday. Adding a pre-filled Mon–Sun grid helps keep entries aligned.</p></details>
+
+            <div class="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+              <p><strong>Tool developed by Ugo Candido.</strong> Content verified by CalcDomain Editorial Board.<br/>
+              Last accuracy review: <time datetime="2025-10-27">October 27, 2025</time></p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- Sidebar -->
+      <aside class="w-full lg:w-1/3">
+        <div class="sticky top-24 space-y-6">
+          <div class="bg-white p-6 rounded-lg shadow-sm">
+            <h3 class="font-bold text-lg mb-3">Why this calculator stands out</h3>
+            <ul class="list-disc list-inside text-sm text-gray-700 space-y-2">
+              <li>Multi-shift, overnight, break deductions & rounding.</li>
+              <li>Daily & weekly overtime with configurable multipliers.</li>
+              <li>Inline validation, accessible tooltips, CSV export & print.</li>
+            </ul>
+          </div>
+          <div class="bg-gray-200 h-72 rounded-lg flex items-center justify-center text-gray-500 no-print">
+            Ad placement (300×600)
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="bg-white border-t">
+    <div class="container mx-auto px-6 py-8 text-center text-gray-600 text-sm">
+      <p>&copy; 2025 CalcDomain. All Rights Reserved.</p>
+      <div class="mt-4 space-x-4">
+        <a href="https://calcdomain.com/about" class="hover:text-blue-600">About</a>
+        <a href="https://calcdomain.com/contact" class="hover:text-blue-600">Contact</a>
+        <a href="https://calcdomain.com/privacy" class="hover:text-blue-600">Privacy</a>
+        <a href="https://calcdomain.com/terms" class="hover:text-blue-600">Terms</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Calculator Logic (placed before </body>) -->
+  <script>
+  (function(){
+    const $ = (id) => document.getElementById(id);
+    const els = {
+      // Settings
+      payRate: $('payRate'), currency: $('currency'),
+      rounding: $('rounding'),
+      dailyOTchk: $('dailyOTchk'), dailyOTthr: $('dailyOTthr'), dailyOTmult: $('dailyOTmult'),
+      weeklyOTchk: $('weeklyOTchk'), weeklyOTthr: $('weeklyOTthr'), weeklyOTmult: $('weeklyOTmult'),
+      // Shifts
+      shiftBody: $('shiftBody'),
+      addShiftBtn: $('addShiftBtn'), addWeekBtn: $('addWeekBtn'), clearBtn: $('clearBtn'),
+      // Results
+      res_shifts: $('res_shifts'), res_hours: $('res_hours'),
+      res_regular: $('res_regular'), res_ot: $('res_ot'),
+      res_daily_ot: $('res_daily_ot'), res_weekly_ot: $('res_weekly_ot'),
+      res_pay: $('res_pay'),
+      exportBtn: $('exportBtn'), printBtn: $('printBtn')
+    };
+
+    // Accessible tooltip toggles
+    document.querySelectorAll('button[aria-controls]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const panel = document.getElementById(btn.getAttribute('aria-controls'));
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        panel.hidden = expanded;
+      });
+    });
+
+    // Focus ring minimum target size
+    function ensureMinimumTarget(el){ el.style.minHeight='48px'; el.style.minWidth='48px'; }
+    [els.addShiftBtn, els.addWeekBtn, els.clearBtn, els.exportBtn, els.printBtn].forEach(ensureMinimumTarget);
+
+    // State
+    let shifts = []; // {id, date, start, end, breakMin, workedMin, dailyOTMin}
+    const weekStartsOn = 1; // Monday
+
+    // Helpers
+    const nf2 = (x) => (Math.round(x*100)/100).toFixed(2);
+    function fmtCurrency(val, code){
+      try { return new Intl.NumberFormat(undefined,{style:'currency',currency:code}).format(val); }
+      catch { return code + ' ' + nf2(val); }
+    }
+    function parseTimeToMinutes(t){
+      // "HH:MM"
+      if(!t || !/^\d{2}:\d{2}$/.test(t)) return NaN;
+      const [H,M] = t.split(':').map(Number);
+      return H*60 + M;
+    }
+    function minutesDiffStartEnd(startMin, endMin){
+      // handle overnight if end < start
+      if (isNaN(startMin) || isNaN(endMin)) return NaN;
+      let diff = endMin - startMin;
+      if (diff < 0) diff += 24*60;
+      return diff;
+    }
+    function applyRounding(mins, inc){
+      if(!inc || inc === 0) return mins;
+      return Math.round(mins / inc) * inc;
+    }
+    function dateStr(d){ return d ?? ''; }
+
+    // Validation
+    function setError(el, msgId, message){
+      const msgEl = $(msgId);
+      if (!msgEl) return;
+      msgEl.textContent = message || '';
+      el.setAttribute('aria-describedby', [el.getAttribute('aria-describedby')||'', msgId].join(' ').trim());
+    }
+    function clearError(el, msgId){ setError(el, msgId, ''); }
+
+    // UI Row
+    function makeRow(s){
+      const tr = document.createElement('tr');
+      tr.dataset.id = s.id;
+      tr.innerHTML = `
+        <td class="px-3 py-2 align-middle">
+          <input type="date" class="w-full px-2 py-2 border rounded" value="${s.date}" aria-label="Date">
+        </td>
+        <td class="px-3 py-2 align-middle">
+          <div>
+            <input type="time" class="w-full px-2 py-2 border rounded" value="${s.start}" aria-label="Start time" aria-describedby="start_${s.id}_err">
+            <p id="start_${s.id}_err" class="text-xs text-red-600 mt-1" aria-live="polite"></p>
+          </div>
+        </td>
+        <td class="px-3 py-2 align-middle">
+          <div>
+            <input type="time" class="w-full px-2 py-2 border rounded" value="${s.end}" aria-label="End time" aria-describedby="end_${s.id}_err">
+            <p id="end_${s.id}_err" class="text-xs text-red-600 mt-1" aria-live="polite"></p>
+          </div>
+        </td>
+        <td class="px-3 py-2 align-middle text-right">
+          <input type="number" class="w-full px-2 py-2 border rounded text-right" value="${s.breakMin}" min="0" step="1" aria-label="Unpaid break minutes">
+        </td>
+        <td class="px-3 py-2 align-middle text-right"><span class="font-semibold" data-field="worked">0.00</span></td>
+        <td class="px-3 py-2 align-middle text-right"><span class="font-semibold text-amber-700" data-field="dailyOT">0.00</span></td>
+        <td class="px-3 py-2 align-middle text-center">
+          <button type="button" class="px-3 py-2 rounded border no-print" title="Remove row" aria-label="Remove row">Remove</button>
+        </td>
+      `;
+      return tr;
+    }
+
+    function addShift(dateDefault){
+      const id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()+Math.random());
+      const s = { id, date: dateDefault || new Date().toISOString().slice(0,10), start: '09:00', end: '17:00', breakMin: 30, workedMin: 0, dailyOTMin: 0 };
+      shifts.push(s);
+      const row = makeRow(s);
+      els.shiftBody.appendChild(row);
+      wireRow(row, s);
+      recalc();
+    }
+
+    function addWeek(){
+      // Monday to Sunday of current week
+      const now = new Date();
+      const day = (now.getDay()+6)%7; // Monday=0
+      const monday = new Date(now); monday.setDate(now.getDate()-day);
+      for(let i=0;i<7;i++){
+        const d = new Date(monday); d.setDate(monday.getDate()+i);
+        addShift(d.toISOString().slice(0,10));
+      }
+    }
+
+    function wireRow(tr, s){
+      const [dateEl, startEl, endEl, breakEl] = tr.querySelectorAll('input');
+      const removeBtn = tr.querySelector('button');
+
+      function onBlurValidateTime(el, msgId){
+        el.addEventListener('blur', ()=>{
+          const ok = /^\d{2}:\d{2}$/.test(el.value);
+          setError(el, msgId, ok ? '' : 'Please enter time as HH:MM');
+        });
+      }
+      onBlurValidateTime(startEl, `start_${s.id}_err`);
+      onBlurValidateTime(endEl, `end_${s.id}_err`);
+
+      [dateEl, startEl, endEl, breakEl].forEach(inp=>{
+        inp.addEventListener('input', ()=>{
+          s.date = dateEl.value;
+          s.start = startEl.value;
+          s.end = endEl.value;
+          s.breakMin = Math.max(0, Number(breakEl.value||0));
+          recalc();
+        });
+      });
+
+      removeBtn.addEventListener('click', ()=>{
+        shifts = shifts.filter(x => x.id !== s.id);
+        tr.remove();
+        recalc();
+      });
+    }
+
+    // Group by ISO week (Mon-Sun)
+    function mondayOf(dateStr){
+      const d = new Date(dateStr+"T00:00:00");
+      if (isNaN(d)) return null;
+      const day = (d.getDay()+6)%7; // Monday=0
+      const m = new Date(d); m.setDate(d.getDate()-day);
+      m.setHours(0,0,0,0);
+      return m;
+    }
+    function weekKey(dateStr){
+      const m = mondayOf(dateStr); if(!m) return 'unknown';
+      return m.toISOString().slice(0,10);
+    }
+
+    function compute(){
+      const inc = Number(els.rounding.value||0);
+      const dailyOTOn = els.dailyOTchk.checked;
+      const dailyThr = Number(els.dailyOTthr.value||0)*60;
+      const weeklyOTOn = els.weeklyOTchk.checked;
+      const weeklyThr = Number(els.weeklyOTthr.value||0)*60;
+
+      // per-shift compute
+      shifts.forEach(s=>{
+        const startMin = parseTimeToMinutes(s.start);
+        const endMin   = parseTimeToMinutes(s.end);
+        const raw = minutesDiffStartEnd(startMin, endMin);
+        const afterBreak = Math.max(0, raw - (Number(s.breakMin)||0));
+        const rounded = applyRounding(afterBreak, inc);
+        s.workedMin = rounded;
+
+        // daily OT
+        s.dailyOTMin = dailyOTOn ? Math.max(0, rounded - dailyThr) : 0;
+      });
+
+      // Weekly buckets
+      const byWeek = new Map();
+      for(const s of shifts){
+        const key = weekKey(s.date);
+        if(!byWeek.has(key)) byWeek.set(key, []);
+        byWeek.get(key).push(s);
+      }
+
+      let totalMin=0, dailyOTmin=0, weeklyOTmin=0;
+      byWeek.forEach(list=>{
+        const weekTotal = list.reduce((acc, s)=> acc + s.workedMin, 0);
+        const weekOT = weeklyOTOn ? Math.max(0, weekTotal - weeklyThr) : 0;
+        weeklyOTmin += weekOT;
+        totalMin += weekTotal;
+        dailyOTmin += list.reduce((acc, s)=> acc + s.dailyOTMin, 0);
+      });
+
+      // Regular hours (not double counting in total display):
+      // Show both daily and weekly OT separately; "Overtime hours" = union-approx display = max(dailyOT, weeklyOT) for a conservative, non-additive headline.
+      const totalH = totalMin/60;
+      const dailyOTH = dailyOTmin/60;
+      const weeklyOTH = weeklyOTmin/60;
+      const headlineOTH = Math.max(dailyOTH, weeklyOTH);
+      const regularH = Math.max(0, totalH - headlineOTH);
+
+      // Pay
+      const rate = Number(els.payRate.value||0);
+      const multD = Math.max(1, Number(els.dailyOTmult.value||1));
+      const multW = Math.max(1, Number(els.weeklyOTmult.value||1));
+      // Informational pay split
+      const payReg = regularH * rate;
+      const payDaily = dailyOTH * rate * multD;
+      const payWeekly = weeklyOTH * rate * multW;
+      const gross = payReg + payDaily + payWeekly;
+
+      return {
+        totalH, dailyOTH, weeklyOTH, headlineOTH, regularH, gross,
+        rate, currency: els.currency.value
+      };
+    }
+
+    function recalc(){
+      // Update per-row worked/OT
+      els.shiftBody.querySelectorAll('tr').forEach(tr=>{
+        const id = tr.dataset.id;
+        const s = shifts.find(x=> x.id===id);
+        if (!s) return;
+        const workedEl = tr.querySelector('[data-field="worked"]');
+        const dailyOTEl = tr.querySelector('[data-field="dailyOT"]');
+        if (workedEl) workedEl.textContent = nf2(s.workedMin/60);
+        if (dailyOTEl) dailyOTEl.textContent = nf2(s.dailyOTMin/60);
+      });
+
+      const stats = compute();
+      els.res_shifts.textContent = String(shifts.length);
+      els.res_hours.textContent = nf2(stats.totalH);
+      els.res_regular.textContent = nf2(stats.regularH);
+      els.res_ot.textContent = nf2(stats.headlineOTH);
+      els.res_daily_ot.textContent = nf2(stats.dailyOTH);
+      els.res_weekly_ot.textContent = nf2(stats.weeklyOTH);
+      els.res_pay.textContent = fmtCurrency(stats.gross, stats.currency);
+    }
+
+    // CSV export
+    function toCSV(){
+      const hdr = ['Date','Start','End','Break(min)','Worked(h)','Daily OT(h)'];
+      const rows = shifts.map(s=>[
+        s.date, s.start, s.end, s.breakMin,
+        (s.workedMin/60).toFixed(2),
+        (s.dailyOTMin/60).toFixed(2)
+      ]);
+      const stats = compute();
+      rows.push([]);
+      rows.push(['Totals','','','',
+        stats.totalH.toFixed(2),
+        stats.dailyOTH.toFixed(2)
+      ]);
+      rows.push(['Weekly OT (h)','','','', stats.weeklyOTH.toFixed(2), '']);
+      rows.push(['Gross pay','','','', stats.gross.toFixed(2)+' '+stats.currency,'']);
+
+      const csv = [hdr, ...rows].map(r=> r.map(v=>{
+        const s=String(v??''); return /[",\n]/.test(s) ? `"${s.replace(/"https://calcdomain.com/g,'""')}"` : s;
+      }).join(',')).join('\n');
+
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'shift-calculator.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 1000);
+    }
+
+    // Printing
+    els.printBtn.addEventListener('click', ()=> window.print());
+    els.exportBtn.addEventListener('click', toCSV);
+
+    // Buttons
+    els.addShiftBtn.addEventListener('click', ()=> addShift());
+    els.addWeekBtn.addEventListener('click', addWeek);
+    els.clearBtn.addEventListener('click', ()=>{
+      shifts = []; els.shiftBody.innerHTML = ''; recalc();
+    });
+
+    // Inline validation on blur for payRate
+    els.payRate.addEventListener('blur', ()=>{
+      const v = Number(els.payRate.value||0);
+      if (isNaN(v) || v < 0) setError(els.payRate, 'payRate_err', 'Enter a valid non-negative hourly rate (e.g., 20 or 20.50).');
+      else clearError(els.payRate, 'payRate_err');
+    });
+
+    // Seed with one shift
+    addShift();
+  })();
+  </script>
+</body>
+</html>
