@@ -220,7 +220,7 @@
           </div>
           <div class="hidden md:flex items-center space-x-6">
             <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600 transition-colors">Advanced Search</a>
-            <a href="https://calcdomain.com/categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
+            <a href="https://calcdomain.com/#categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
           </div>
           <button id="mobile-menu-toggle" class="md:hidden p-2" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" type="button">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
@@ -235,7 +235,7 @@
           </div>
           <div class="space-y-2">
             <a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
-            <a href="https://calcdomain.com/categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
+            <a href="https://calcdomain.com/#categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
           </div>
         </nav>
       </nav>
@@ -366,7 +366,7 @@
                 <div>
                   <h3 class="font-semibold cursor-pointer" data-faq-toggle>When should I use the Law of Cosines instead of the Law of Sines?</h3>
                   <div class="faq-content hidden mt-2 pl-4">
-                    <p>Use the Law of Cosines in two specific scenarios: \n1. **SSS Case:** When you know all three sides and need to find an angle.\n2. **SAS Case:** When you know two sides and the angle between them (the included angle) and need to find the opposite side. \nFor all other solvable cases (ASA, AAS), the Law of Sines is generally used.</p>
+                    <p>Use the Law of Cosines in two specific scenarios: \n1. **SSS Case:** When you know all three sides and need to find an angle.\n2. **SAS Case:** When you know two sides and the angle between them (the included angle) and need to find the opposite side. \nFor all other solvable cases (ASA, AAS), the Law of Sines is sufficient.</p>
                   </div>
                 </div>
                 <div>
@@ -424,6 +424,12 @@
                 
                 // --- UI Switching Logic ---
                 function updateInputFields() {
+                    // Clear all inputs first, except for example values for SSS
+                    Object.values(inputs).forEach(input => input.value = '');
+                    inputs.a.value = '8';
+                    inputs.b.value = '12';
+                    inputs.c.value = '15';
+
                     if (currentCase === 'SSS') {
                         inputs.a.disabled = false; inputs.a.classList.remove('bg-gray-100');
                         inputs.b.disabled = false; inputs.b.classList.remove('bg-gray-100');
@@ -436,6 +442,10 @@
                         caseSASBtn.classList.replace('bg-blue-100', 'bg-gray-200');
                         caseSASBtn.classList.remove('border-blue-300');
                     } else if (currentCase === 'SAS') {
+                         // Set example values for SAS (a, b, gamma)
+                        inputs.a.value = 10;
+                        inputs.b.value = 12;
+                        inputs.gamma.value = 35;
                         inputs.a.disabled = false; inputs.a.classList.remove('bg-gray-100');
                         inputs.b.disabled = false; inputs.b.classList.remove('bg-gray-100');
                         inputs.c.disabled = true; inputs.c.classList.add('bg-gray-100'); inputs.c.value = '';
@@ -447,10 +457,7 @@
                         caseSSSBtn.classList.replace('bg-blue-100', 'bg-gray-200');
                         caseSSSBtn.classList.remove('border-blue-300');
                         
-                        // Set example values for SAS
-                        inputs.a.value = 10;
-                        inputs.b.value = 12;
-                        inputs.gamma.value = 35;
+                       
                     }
                     resultsContainer.classList.add('hidden');
                     errorMessage.textContent = '';
@@ -475,31 +482,30 @@
                         let missingCount = [a, b, c, alpha, beta, gamma].filter(n => n === null).length;
 
                         // 1. Validation and Setup
-                        if (missingCount !== 3) {
-                            throw new Error('Please enter exactly 3 known values for the selected case.');
-                        }
                         if (currentCase === 'SSS') {
-                            if (!validateTriangle(a, b, c)) {
-                                throw new Error('Invalid Triangle: The sum of any two sides must be greater than the third side.');
-                            }
+                            if ([a, b, c].filter(n => n !== null).length !== 3) throw new Error('For SSS, enter all three side lengths (a, b, c).');
+                            if (!validateTriangle(a, b, c)) throw new Error('Invalid Triangle: The sum of any two sides must be greater than the third side.');
                             startingCase = 'SSS: Sides a, b, c are known.';
                         } else if (currentCase === 'SAS') {
-                            if (isNaN(a) || isNaN(b) || isNaN(gamma)) {
-                                throw new Error('For SAS, enter two sides (a, b) and the included angle ($\gamma$ or $C$).');
-                            }
+                            if (!isNaN(alpha) || !isNaN(beta)) throw new Error('For SAS, only the included angle (gamma) should be entered with the two adjacent sides (a, b).');
+                            if (isNaN(a) || isNaN(b) || isNaN(gamma)) throw new Error('For SAS, enter two sides (a, b) and the included angle (gamma).');
                             startingCase = 'SAS: Sides a, b and included angle $\\gamma$ are known.';
+                        } else {
+                            throw new Error('Please select a valid case (SSS or SAS) and ensure 3 values are entered for that case.');
                         }
                         
+                        // Check angles < 180
+                        if (alpha > 180 || beta > 180 || gamma > 180) {
+                             throw new Error('Angles cannot be greater than 180 degrees.');
+                        }
+
                         // 2. Law of Cosines (Find the first missing value)
-                        let firstAngleFound = '';
-                        let firstSideFound = '';
                         
                         if (currentCase === 'SSS') {
                             // Find angle alpha first: A = cos⁻¹((b² + c² - a²) / 2bc)
                             const cosA = (b * b + c * c - a * a) / (2 * b * c);
-                            if (Math.abs(cosA) > 1 + 1e-9) throw new Error('The triangle inequality check failed to prevent a non-real angle. Invalid side lengths.');
+                            if (Math.abs(cosA) > 1 + 1e-9) throw new Error('Triangle inequality check failed to prevent a non-real angle.');
                             alpha = Math.acos(cosA) * R_TO_D;
-                            firstAngleFound = '\\alpha';
                             
                             steps += `<p>1. <strong>Law of Cosines (Find $\\alpha$):</strong> $\\alpha = \\cos^{-1} \\left( \\frac{b^2 + c^2 - a^2}{2bc} \\right)$</p>`;
                             steps += `<p class="formula-box text-center">$\\alpha = \\cos^{-1} \\left( \\frac{${formatNumber(b)}^2 + ${formatNumber(c)}^2 - ${formatNumber(a)}^2}{2 \\cdot ${formatNumber(b)} \\cdot ${formatNumber(c)}} \\right) \\approx ${formatNumber(alpha)}^\\circ$</p>`;
@@ -507,9 +513,8 @@
                         } else if (currentCase === 'SAS') {
                             // Find side c first: c² = a² + b² - 2ab cos(C)
                             const c_sq = a * a + b * b - 2 * a * b * Math.cos(gamma * D_TO_R);
-                            if (c_sq <= 0) throw new Error('Calculation resulted in a non-real side length.');
+                            if (c_sq <= 1e-9) throw new Error('Calculation resulted in a non-real or zero side length.');
                             c = Math.sqrt(c_sq);
-                            firstSideFound = 'c';
                             
                             steps += `<p>1. <strong>Law of Cosines (Find side $c$):</strong> $c^2 = a^2 + b^2 - 2ab \\cos(\\gamma)$</p>`;
                             steps += `<p class="formula-box text-center">$c^2 = ${formatNumber(a)}^2 + ${formatNumber(b)}^2 - 2 \\cdot ${formatNumber(a)} \\cdot ${formatNumber(b)} \\cos(${formatNumber(gamma)}^\\circ) \\approx ${formatNumber(c_sq)}$</p>`;
@@ -517,53 +522,84 @@
                         }
                         
                         // 3. Law of Sines (Find second angle)
-                        // Use Law of Sines to find the angle opposite the shorter known side to avoid the ambiguous case
+                        // Find a second angle, say beta, using Law of Sines: sin(B)/b = sin(C)/c
                         
-                        let angleToFind, sideKnown;
-                        if (currentCase === 'SSS' || (currentCase === 'SAS' && a <= b)) {
-                            angleToFind = 'beta'; // Find smallest angle first (opposite smallest side)
-                            sideKnown = 'b';
-                        } else {
-                            angleToFind = 'alpha'; // Find smallest angle first (opposite smallest side)
-                            sideKnown = 'a';
-                        }
-                        
-                        let angleKnown, sideToFind;
-                        if (currentCase === 'SSS') {
-                            angleKnown = 'gamma'; sideToFind = 'c';
-                        } else {
-                            angleKnown = 'gamma'; sideToFind = 'c'; // We already found c
-                        }
-                        
-                        // Use the Law of Sines pair where the angle is opposite the side *just* found (c)
-                        let ratioSide = c;
-                        let ratioAngle = gamma;
-                        
-                        // Find a second angle, say alpha, using Law of Sines: sin(A)/a = sin(C)/c
-                        if (isNaN(alpha)) {
-                            const sinA = (a / c) * Math.sin(gamma * D_TO_R);
-                            alpha = Math.asin(sinA) * R_TO_D;
-                            steps += `<p>2. <strong>Law of Sines (Find $\\alpha$):</strong> $\\sin(\\alpha) = \\frac{a \\sin(\\gamma)}{c}$</p>`;
-                            steps += `<p class="formula-box text-center">$\\alpha = \\sin^{-1} \\left( \\frac{${formatNumber(a)} \\sin(${formatNumber(gamma)}^\\circ)}{${formatNumber(c)}} \\right) \\approx ${formatNumber(alpha)}^\\circ$</p>`;
-                        } else if (isNaN(gamma)) {
-                            // This path is usually not taken in standard SAS/SSS solving, but for robustness
-                            const sinC = (c / a) * Math.sin(alpha * D_TO_R);
-                            gamma = Math.asin(sinC) * R_TO_D;
-                            steps += `<p>2. <strong>Law of Sines (Find $\\gamma$):</strong> $\\gamma = \\sin^{-1} \\left( \\frac{c \\sin(\\alpha)}{a} \\right) \\approx ${formatNumber(gamma)}^\\circ$</p>`;
+                        if (isNaN(beta)) {
+                            // Use Law of Sines with the largest known side/angle pair (which is c/gamma from SAS, or a/alpha from SSS)
+                            let angleKnown, sideKnown;
+                            if (currentCase === 'SSS') {
+                                angleKnown = alpha; sideKnown = a;
+                            } else {
+                                angleKnown = gamma; sideKnown = c;
+                            }
+                            
+                            const sinB = (b / sideKnown) * Math.sin(angleKnown * D_TO_R);
+                            if (Math.abs(sinB) > 1 + 1e-9) throw new Error('Invalid Law of Sines calculation result.');
+                            beta = Math.asin(sinB) * R_TO_D;
+                            
+                            steps += `<p>2. <strong>Law of Sines (Find $\\beta$):</strong> $\\sin(\\beta) = \\frac{b \\sin(\\text{known angle})}{\\text{known side}}$</p>`;
+                            steps += `<p class="formula-box text-center">$\\beta = \\sin^{-1} \\left( \\frac{${formatNumber(b)} \\sin(${formatNumber(angleKnown)}^\\circ)}{${formatNumber(sideKnown)}} \\right) \\approx ${formatNumber(beta)}^\\circ$</p>`;
                         }
 
                         // 4. Find the last angle (Angle Sum Rule)
-                        beta = 180 - alpha - gamma;
-                        steps += `<p>3. <strong>Angle Sum Rule (Find $\\beta$):</strong> $\\beta = 180^\\circ - \\alpha - \\gamma \\approx 180^\\circ - ${formatNumber(alpha)}^\\circ - ${formatNumber(gamma)}^\\circ \\approx ${formatNumber(beta)}^\\circ$</p>`;
+                        gamma = 180 - alpha - beta;
+                        steps += `<p>3. <strong>Angle Sum Rule (Find last angle):</strong> $\\text{Angle} = 180^\\circ - \\alpha - \\beta \\approx ${formatNumber(gamma)}^\\circ$</p>`;
                         
+                        // Re-assign angles based on which one was found last
+                        if (currentCase === 'SSS') {
+                            // gamma was found last
+                        } else if (currentCase === 'SAS') {
+                             // beta was found second, alpha was found last
+                             alpha = 180 - beta - gamma; // recalculate alpha to be the final one based on the order
+                             steps.splice(3, 0, `<p>3. <strong>Angle Sum Rule (Find $\\alpha$):</strong> $\\alpha = 180^\\circ - \\beta - \\gamma \\approx ${formatNumber(alpha)}^\\circ$</p>`);
+                        }
+                        
+                        // Ensure all angles are correctly assigned for final output
+                        let A_final = (currentCase === 'SAS') ? alpha : alpha;
+                        let B_final = (currentCase === 'SAS') ? beta : beta;
+                        let C_final = (currentCase === 'SAS') ? gamma : gamma;
+
+                        if (currentCase === 'SSS') {
+                            const temp_alpha = alpha;
+                            alpha = temp_alpha; // Alpha is the angle found by LoC in SSS
+                            const temp_gamma = 180 - temp_alpha - beta;
+                            // Find gamma first using LoC: gamma = cos⁻¹((a² + b² - c²) / 2ab)
+                            const cosC = (a * a + b * b - c * c) / (2 * a * b);
+                            gamma = Math.acos(cosC) * R_TO_D;
+                            // Find alpha last: 180 - beta - gamma
+                            alpha = 180 - beta - gamma;
+                        }
+                        
+                        // Rerunning to ensure correct assignment logic for final display:
+                        // SSS: a, b, c -> gamma (LoC) -> beta (LoS) -> alpha (Sum)
+                        if (currentCase === 'SSS') {
+                            const cosC = (a * a + b * b - c * c) / (2 * a * b);
+                            const C_val = Math.acos(cosC) * R_TO_D;
+                            const sinB = (b / c) * Math.sin(C_val * D_TO_R);
+                            const B_val = Math.asin(sinB) * R_TO_D;
+                            const A_val = 180 - C_val - B_val;
+                            A_final = A_val; B_final = B_val; C_final = C_val;
+                            
+                        } else if (currentCase === 'SAS') {
+                            // SAS: a, b, gamma -> c (LoC) -> alpha (LoS) -> beta (Sum)
+                            const c_sq = a * a + b * b - 2 * a * b * Math.cos(gamma * D_TO_R);
+                            const C_val = Math.sqrt(c_sq);
+                            const sinA = (a / C_val) * Math.sin(gamma * D_TO_R);
+                            const A_val = Math.asin(sinA) * R_TO_D;
+                            const B_val = 180 - A_val - gamma;
+                            a = a; b = b; c = C_val;
+                            A_final = A_val; B_final = B_val; C_final = gamma;
+                        }
+                        
+
                         // Final Validation Check
-                        if (beta <= 0 || alpha <= 0 || gamma <= 0 || formatNumber(alpha + beta + gamma) !== '180') {
+                        if (A_final <= 0 || B_final <= 0 || C_final <= 0 || formatNumber(A_final + B_final + C_final) !== '180') {
                              throw new Error('Calculated angles are invalid. Please check side lengths.');
                         }
                         
                         // 5. Final Output
                         resultSides.innerHTML = `a = ${formatNumber(a)}<br>b = ${formatNumber(b)}<br>c = ${formatNumber(c)}`;
-                        resultAngles.innerHTML = `$\\alpha = ${formatNumber(alpha)}^\\circ$<br>$\\beta = ${formatNumber(beta)}^\\circ$<br>$\\gamma = ${formatNumber(gamma)}^\\circ$`;
+                        resultAngles.innerHTML = `$\\alpha = ${formatNumber(A_final)}^\\circ$<br>$\\beta = ${formatNumber(B_final)}^\\circ$<br>$\\gamma = ${formatNumber(C_final)}^\\circ$`;
                         stepByStep.innerHTML = steps;
                         resultsContainer.classList.remove('hidden');
 
