@@ -1,242 +1,489 @@
 <!DOCTYPE html>
-<html lang="en"><head>
-<link rel="canonical" href="https://calcdomain.com/substitution-cipher-solver">
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Substitution Cipher Solver — Simple Substitution Decoder</title>
+    <meta name="description" content="Interactive substitution cipher solver. Paste ciphertext, try frequency analysis, edit the letter mapping, auto-suggest keys with hill-climb heuristic and decode messages client-side." />
+    <link rel="canonical" href="https://calcdomain.com/substitution-cipher-solver" />
 
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
 
-
-
-
- 
-<link rel="icon" type="image/png" href="https://calcdomain.com/favicon-96x96.png" sizes="96x96" />
-<link rel="icon" type="image/svg+xml" href="https://calcdomain.com/favicon.svg" />
-<link rel="shortcut icon" href="https://calcdomain.com/favicon.ico" />
-<link rel="apple-touch-icon" sizes="180x180" href="https://calcdomain.com/apple-touch-icon.png" />
-<link rel="manifest" href="https://calcdomain.com/site.webmanifest" />
-<meta charset="utf-8">
-<meta content="width=device-width, initial-scale=1.0" name="viewport">
-<title>Simple Substitution Cipher Solver</title>
-<meta content="Solve substitution ciphers with ease using our interactive calculator. Ideal for cryptography enthusiasts and students." name="description">
-<meta content="Ugo Candido" name="author">
-
-<style>
-        :root {
-            --primary-color: #005A9C;
-            --background-color: #F8F9FA;
-            --text-color: #212529;
-            --border-color: #DEE2E6;
-            --surface-color: #FFFFFF;
-            --success-color: #28a745;
-            --danger-color: #dc3545;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--background-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 0;
-        }
-
-        .container {
-            max-width: 800px;
-            margin: auto;
-            padding: 1rem;
-        }
-
-        h1, h2 {
-            color: var(--primary-color);
-        }
-
-        .calculator-layout {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 2rem;
-            margin-top: 1rem;
-        }
-
-        .calculator-container, .results-container, .content-container {
-            background-color: var(--surface-color);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 1.5rem;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 0.75rem;
-            margin-bottom: 1rem;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            font-size: 1rem;
-        }
-
-        .form-control:focus {
-            outline: 3px solid var(--primary-color);
-            border-color: var(--primary-color);
-        }
-
-        .results-container {
-            margin-top: 2rem;
-            min-height: 150px;
-        }
-
-        .result-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 0.5rem 0;
-        }
-
-        .result-value {
-            font-weight: bold;
-            color: var(--success-color);
-        }
-
-        .error-message {
-            color: var(--danger-color);
-            font-size: 0.875rem;
-        }
-
-        .content-container section {
-            margin-top: 2rem;
-        }
-
-        .formula-box {
-            background-color: #e9ecef;
-            padding: 1rem;
-            border-radius: 6px;
-            margin: 1rem 0;
-            overflow-x: auto;
-        }
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .prose { max-width: 65ch; margin-left: auto; margin-right: auto; }
+        .formula-box { background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; padding: 1rem; overflow-x: auto; margin: 1rem 0; }
+        .kbd { background:#111827;color:white;padding:2px 6px;border-radius:4px;font-size:.8rem }
+        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace; }
+        textarea { min-height:140px; }
+        .letter-cell { width:2.2rem; height:2.2rem; display:inline-flex; align-items:center; justify-content:center; border-radius:6px; border:1px solid #e5e7eb; background:#fff; cursor:pointer; user-select:none; }
+        .letter-cell.fixed { background:#f3f4f6; }
+        .letter-input { width:40px; text-align:center; border:1px solid #e5e7eb; border-radius:6px; padding:.25rem; }
+        .btn { background:#2563eb; color:white; padding:.5rem .75rem; border-radius:6px; font-weight:600; }
     </style>
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "WebPage",
-  "name": "Simple Substitution Cipher Solver",
-  "description": "Solve substitution ciphers with ease using our interactive calculator.",
-  "url": "https://calcdomain.com/substitution-cipher-solver",
-  "author": {
-    "@type": "Person",
-    "name": "Ugo Candido"
-  },
-  "publisher": {
-    "@type": "Organization",
-    "name": "Cryptography Tools Inc."
-  },
-  "mainEntity": {
-    "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "What is a substitution cipher?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "A substitution cipher is a method of encoding by which units of plaintext are replaced with ciphertext."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "How does this solver work?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "This solver attempts to decode substitution ciphers by analyzing letter frequency and pattern recognition."
-        }
-      }
-    ]
-  }
-}
-  </script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="search.js" defer></script>
-<!-- MathJax for LaTeX formulas -->
-<script>
-  window.MathJax = {
-    tex: {
-      inlineMath: [['\(','\)'], ['$', '$']],
-      displayMath: [['$','$'], ['\[','\]']]
-    },
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
 
-</head>
-<body>
-
-<div class="container">
-<h1>Simple Substitution Cipher Solver</h1>
-<p>This tool helps cryptography enthusiasts and students solve substitution ciphers, a common problem in code-breaking exercises. Enter the ciphertext, and our solver will attempt to find the plaintext.</p>
-<div class="calculator-layout">
-<section aria-labelledby="calculator-heading" class="calculator-container" id="cipher-solver">
-<h2 id="calculator-heading">Cipher Input</h2>
-<label for="cipherText">Enter Ciphertext *</label>
-<textarea aria-describedby="cipherTextError" aria-required="true" class="form-control" id="cipherText" rows="5"></textarea>
-<div aria-live="polite" class="error-message" id="cipherTextError" role="alert"></div>
-<button class="form-control" id="solveButton" onclick="solveCipher()">Solve Cipher</button>
-</section>
-<section aria-labelledby="results-heading" class="results-container" id="results">
-<h2 id="results-heading">Results</h2>
-<div class="result-item">
-<span class="result-label">Decoded Text:</span>
-<span class="result-value" id="decodedText">N/A</span>
-</div>
-</section>
-</div>
-<section class="content-container">
-<section>
-<h2>Data Source and Methodology</h2>
-<p>All calculations are based on the principles of frequency analysis in cryptography. For more information, visit <a href="https://www.guballa.de/substitution-solver" target="_blank">this source</a>. All calculations strictly follow the formulas and data provided by this source.</p>
-</section>
-<section>
-<h2>The Formula Explained</h2>
-<div class="formula-box">
-<p><strong>Frequency Analysis:</strong> The solver identifies the most common letters in the ciphertext and replaces them with the most common letters in the language.</p>
-</div>
-</section>
-<section>
-<h2>Glossary of Terms</h2>
-<ul>
-<li><strong>Ciphertext:</strong> The encoded message that needs to be deciphered.</li>
-<li><strong>Plaintext:</strong> The original message before encoding.</li>
-<li><strong>Frequency Analysis:</strong> A technique used to break ciphers by studying the frequency of letters or groups of letters in the ciphertext.</li>
-</ul>
-</section>
-<section>
-<h2>Frequently Asked Questions (FAQ)</h2>
-<h3>What is a substitution cipher?</h3>
-<p>A substitution cipher is a method of encoding by which units of plaintext are replaced with ciphertext.</p>
-<h3>How does this solver work?</h3>
-<p>This solver attempts to decode substitution ciphers by analyzing letter frequency and pattern recognition.</p>
-<h3>Is this tool free to use?</h3>
-<p>Yes, this tool is completely free to use for educational purposes.</p>
-<h3>What is frequency analysis?</h3>
-<p>Frequency analysis is a cryptanalysis technique that studies the frequency of letters or groups of letters in a ciphertext.</p>
-<h3>Can this tool solve all substitution ciphers?</h3>
-<p>While it can solve many, some ciphers may require additional context or clues to solve accurately.</p>
-</section>
-<div class="author-box">
-<p>Tool developed by Ugo Candido. Content reviewed by the Cryptography Tools Inc. Team. Last reviewed for accuracy on: October 15, 2023.</p>
-</div>
-</section>
-</div>
-<script>
-        function solveCipher() {
-            const cipherText = document.getElementById('cipherText').value.trim();
-            if (cipherText === '') {
-                document.getElementById('cipherTextError').textContent = 'Please enter the ciphertext to solve.';
-                return;
-            } else {
-                document.getElementById('cipherTextError').textContent = '';
-            }
-
-            // Placeholder for cipher-solving logic
-            const decodedText = "Example decoded text"; // This should be replaced with actual logic
-            document.getElementById('decodedText').textContent = decodedText;
-        }
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-7MB5V1LZRN"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-7MB5V1LZRN');
     </script>
 
+    <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA" />
 
-</body></html>
+    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
+    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
+
+    <script async src="//www.ezojs.com/ezoic/sa.min.js"></script>
+    <script>
+        window.ezstandalone = window.ezstandalone || {};
+        ezstandalone.cmd = ezstandalone.cmd || [];
+    </script>
+
+    <script type="application/ld+json">
+    {
+      "@context":"https://schema.org",
+      "@graph":[
+        {
+          "@type":"BreadcrumbList",
+          "itemListElement":[
+            {"@type":"ListItem","position":1,"name":"Home","item":"https://calcdomain.com/"},
+            {"@type":"ListItem","position":2,"name":"Math & Conversions","item":"https://calcdomain.com/math-conversions"},
+            {"@type":"ListItem","position":3,"name":"Substitution Cipher Solver","item":"https://calcdomain.com/substitution-cipher-solver"}
+          ]
+        },
+        {
+          "@type":"FAQPage",
+          "mainEntity":[
+            {
+              "@type":"Question",
+              "name":"What is a substitution cipher?",
+              "acceptedAnswer":{"@type":"Answer","text":"A substitution cipher replaces each letter of plaintext with another letter. A 'simple' substitution uses a fixed permutation of the alphabet."}
+            },
+            {
+              "@type":"Question",
+              "name":"Can this tool break substitution ciphers automatically?",
+              "acceptedAnswer":{"@type":"Answer","text":"This tool uses frequency analysis plus a heuristic hill-climbing routine to propose likely keys; success depends on ciphertext length and language content."}
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939"
+         crossorigin="anonymous"></script>
+
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+      <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
+        <div class="flex justify-between items-center">
+          <a href="https://calcdomain.com" class="text-2xl font-bold text-blue-600">CalcDomain</a>
+          <div class="hidden md:flex items-center space-x-6">
+            <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600 transition-colors">Advanced Search</a>
+            <a href="https://calcdomain.com/categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
+          </div>
+          <button id="mobile-menu-toggle" class="md:hidden p-2" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" type="button">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+          </button>
+        </div>
+      </nav>
+    </header>
+
+    <div class="container mx-auto px-4 py-8">
+
+      <!-- breadcrumb (generated from sitemap) -->
+      <nav id="breadcrumb-container" class="text-sm mb-4 text-gray-600" aria-label="Breadcrumb">
+        <ol class="flex flex-wrap items-center gap-2">
+          <li><a href="https://calcdomain.com" class="text-blue-600 hover:underline">Home</a></li>
+          <li aria-hidden="true">/</li>
+          <li><a href="https://calcdomain.com/math-conversions" class="text-blue-600 hover:underline">Math &amp; Conversions</a></li>
+          <li aria-hidden="true">/</li>
+          <li class="text-gray-500" aria-current="page">Substitution Cipher Solver</li>
+        </ol>
+      </nav>
+
+      <div class="flex flex-col lg:flex-row gap-8">
+
+        <main class="w-full lg:w-2/3">
+          <div class="bg-white p-6 rounded-lg shadow-md">
+            <h1 class="text-3xl font-bold mb-3">Substitution Cipher Solver</h1>
+            <p class="text-gray-700 mb-4">Paste your ciphertext below and either edit the letter mapping manually or use <span class="kbd">Auto-suggest</span> to try a best-fit solution. The solver provides frequency analysis, decode preview, and a basic hill-climbing optimizer that seeks a key maximizing common English word matches.</p>
+
+            <label class="block mb-2 font-semibold">Ciphertext</label>
+            <textarea id="cipher-input" class="w-full border border-gray-300 rounded-md px-3 py-2 mono" placeholder="Paste ciphertext here...">Gsrh rh z hvxivg nvhhztv</textarea>
+
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+              <button id="btn-frequency" class="btn">Frequency analysis</button>
+              <button id="btn-auto" class="btn">Auto-suggest key</button>
+              <button id="btn-hill" class="btn">Hill-climb refine (fast)</button>
+            </div>
+
+            <div class="mt-6">
+              <h2 class="text-lg font-semibold mb-2">Letter mapping (cipher → plaintext)</h2>
+              <p class="text-xs text-gray-500 mb-2">Click a target letter to change mapping; use Reset to restore identity mapping or Frequency to seed mapping.</p>
+              <div id="mapping-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+              <div class="mt-3 flex gap-2">
+                <button id="btn-apply" class="btn">Apply mapping</button>
+                <button id="btn-reset" class="px-3 py-2 border rounded-md">Reset</button>
+                <button id="btn-random" class="px-3 py-2 border rounded-md">Random key</button>
+                <button id="btn-copy" class="px-3 py-2 border rounded-md">Copy plaintext</button>
+              </div>
+            </div>
+
+            <div class="mt-6">
+              <h2 class="text-lg font-semibold mb-2">Decoded preview</h2>
+              <div id="decoded-preview" class="bg-gray-50 border border-gray-200 rounded-md p-4 mono min-h-[120px]"></div>
+            </div>
+
+            <div class="mt-6 prose">
+              <h2>How it works</h2>
+              <p>The substitution solver supports manual mapping and two automated helpers:</p>
+              <ol>
+                <li><strong>Frequency seed:</strong> maps the most frequent ciphertext letters to the most frequent English letters (ETAOIN SHRDLU...), a good starting point.</li>
+                <li><strong>Hill-climb refine:</strong> performs many small random swaps in the candidate key and keeps swaps that increase a simple score (number of recognized common words) — this heuristic often converges to readable plaintext for medium/long ciphertexts.</li>
+              </ol>
+
+              <h3>Limitations</h3>
+              <p>Short ciphertext or non-standard language reduces success rate. This tool is intended for learning and quick solving — for hardened cryptanalysis you may want statistical models and larger corpora.</p>
+            </div>
+
+          </div>
+        </main>
+
+        <aside class="w-full lg:w-1/3">
+          <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-lg font-semibold mb-4">Related ciphers & tools</h2>
+            <ul class="space-y-2">
+              <li><a href="https://calcdomain.com/atbash-cipher" class="text-blue-600 hover:underline">Atbash Cipher (encode/decode)</a></li>
+              <li><a href="https://calcdomain.com/caesar-cipher" class="text-blue-600 hover:underline">Caesar Cipher</a></li>
+              <li><a href="https://calcdomain.com/rot13" class="text-blue-600 hover:underline">ROT13</a></li>
+              <li><a href="https://calcdomain.com/vigenere-cipher" class="text-blue-600 hover:underline">Vigenère Cipher</a></li>
+              <li><a href="https://calcdomain.com/hill-cipher" class="text-blue-600 hover:underline">Hill Cipher</a></li>
+            </ul>
+            <p class="text-xs text-gray-500 mt-3">Links generated from sitemap (used to determine category & related pages). :contentReference[oaicite:1]{index=1}</p>
+          </div>
+
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-lg font-semibold mb-4">Tips</h2>
+            <ul class="text-sm text-gray-700 space-y-2">
+              <li>Look for short common words (the, and, of) and repeated patterns — these help identify mappings.</li>
+              <li>Use the mapping grid to 'lock' letters you are sure about (click the padlock icon) so automated routines don't change them.</li>
+              <li>For long ciphertexts the hill-climber is much more effective.</li>
+            </ul>
+          </div>
+        </aside>
+
+      </div>
+    </div>
+
+    <footer class="bg-gray-900 text-white py-12">
+      <div class="container mx-auto px-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div>
+            <h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+            <p class="text-gray-400 mb-4">Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.</p>
+          </div>
+          <div>
+            <h4 class="text-lg font-semibold mb-4">Categories</h4>
+            <ul class="space-y-2">
+              <li><a href="https://calcdomain.com/finance" class="text-gray-400 hover:text-white">Finance</a></li>
+              <li><a href="https://calcdomain.com/health-fitness" class="text-gray-400 hover:text-white">Health & Fitness</a></li>
+              <li><a href="https://calcdomain.com/math-conversions" class="text-gray-400 hover:text-white">Math & Conversions</a></li>
+              <li><a href="https://calcdomain.com/lifestyle-everyday" class="text-gray-400 hover:text-white">Lifestyle & Everyday</a></li>
+              <li><a href="https://calcdomain.com/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+            <ul class="space-y-2">
+              <li><a href="https://calcdomain.com/mortgage-payment" class="text-gray-400 hover:text-white">Mortgage Calculator</a></li>
+              <li><a href="https://calcdomain.com/percentage-calculator" class="text-gray-400 hover:text-white">Percentage Calculator</a></li>
+              <li><a href="https://calcdomain.com/bmi-calculator" class="text-gray-400 hover:text-white">BMI Calculator</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="text-lg font-semibold mb-4">Support</h4>
+            <ul class="space-y-2">
+              <li><a href="https://calcdomain.com/about" class="text-gray-400 hover:text-white">About Us</a></li>
+              <li><a href="https://calcdomain.com/contact" class="text-gray-400 hover:text-white">Contact</a></li>
+              <li><a href="https://calcdomain.com/privacy" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+          <p>&copy; 2025 CalcDomain. All Rights Reserved.</p>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+    (function(){
+      // Utilities
+      const ALPH = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      function sanitizeLetters(s){ return (s||"").toUpperCase().replace(/[^A-Z]/g,''); }
+      function countFreq(text){
+        const freq = {};
+        for(const c of ALPH) freq[c]=0;
+        for(const ch of sanitizeLetters(text)) freq[ch] = (freq[ch]||0)+1;
+        return freq;
+      }
+      function englishFreqOrder(){ return "ETAOINSHRDLCUMWFGYPBVKJXQZ"; }
+
+      // DOM refs
+      const cipherInput = document.getElementById('cipher-input');
+      const mappingGrid = document.getElementById('mapping-grid');
+      const decodedPreview = document.getElementById('decoded-preview');
+      const btnFreq = document.getElementById('btn-frequency');
+      const btnAuto = document.getElementById('btn-auto');
+      const btnHill = document.getElementById('btn-hill');
+      const btnApply = document.getElementById('btn-apply');
+      const btnReset = document.getElementById('btn-reset');
+      const btnRandom = document.getElementById('btn-random');
+      const btnCopy = document.getElementById('btn-copy');
+
+      // Small English dictionary for scoring (common words)
+      const commonWords = ["THE","BE","TO","OF","AND","A","IN","THAT","HAVE","I","IT","FOR","NOT","ON","WITH","HE","AS","YOU","DO","AT","THIS","BUT","HIS","BY","FROM","THEY","WE","SAY","HER","SHE","OR","AN","WILL","MY","ONE","ALL","WOULD","THERE","THEIR","WHAT","SO","UP","OUT","IF","ABOUT","WHO","GET","WHICH","GO","ME"];
+
+      // State: current key as mapping object cipher->plain (A->X means cipher 'A' maps to plaintext 'X')
+      let key = {}; // object mapping 'A'..'Z' => 'A'..'Z'
+      let locked = {}; // locked letters that automated routines won't change (cipher letter locked)
+
+      // Initialize identity mapping
+      function initIdentity(){
+        key = {};
+        locked = {};
+        for(const c of ALPH) { key[c]=c; locked[c]=false; }
+      }
+
+      function renderMappingGrid(){
+        mappingGrid.innerHTML = "";
+        // two columns: show cipher letter and input for plaintext
+        for(const c of ALPH){
+          const row = document.createElement('div');
+          row.className = "flex items-center gap-3";
+          const cell = document.createElement('div');
+          cell.className = "letter-cell";
+          cell.textContent = c;
+          row.appendChild(cell);
+
+          const input = document.createElement('input');
+          input.className = "letter-input mono";
+          input.value = key[c] || '';
+          input.maxLength = 1;
+          input.dataset.cipher = c;
+          input.addEventListener('input', (e)=>{
+            const v = (e.target.value || "").toUpperCase().replace(/[^A-Z]/g,'').slice(0,1);
+            e.target.value = v;
+            key[c] = v || '';
+            updateDecoded();
+          });
+          row.appendChild(input);
+
+          const lockBtn = document.createElement('button');
+          lockBtn.title = "Lock/Unlock letter (automated routines won't change locked mappings)";
+          lockBtn.className = "px-2 py-1 border rounded-md text-sm";
+          lockBtn.dataset.cipher = c;
+          updateLockBtn(lockBtn, c);
+          lockBtn.addEventListener('click', ()=>{
+            locked[c] = !locked[c];
+            updateLockBtn(lockBtn, c);
+          });
+          row.appendChild(lockBtn);
+
+          mappingGrid.appendChild(row);
+        }
+      }
+      function updateLockBtn(btn, cipher){
+        btn.textContent = locked[cipher] ? "🔒" : "🔓";
+      }
+
+      function applyFrequencySeed(){
+        const text = cipherInput.value;
+        const freq = countFreq(text);
+        // sort cipher letters by frequency desc
+        const cipherSorted = Object.keys(freq).sort((a,b)=>freq[b]-freq[a]);
+        const eng = englishFreqOrder();
+        // map top frequent cipher letters to english frequency order
+        for(let i=0;i<cipherSorted.length;i++){
+          const c = cipherSorted[i];
+          if(locked[c]) continue;
+          key[c] = eng[i] || '';
+        }
+        // fill remaining unmapped with unused letters
+        fillRemaining();
+        renderMappingGrid(); // update inputs
+        updateDecoded();
+      }
+
+      function fillRemaining(){
+        // find used plaintext letters
+        const used = new Set(Object.values(key).filter(Boolean));
+        const unused = ALPH.split('').filter(l=>!used.has(l));
+        for(const c of ALPH){
+          if(!key[c] || key[c]===''){
+            if(locked[c]) continue;
+            key[c] = unused.shift() || '';
+          }
+        }
+      }
+
+      function decodeWithKey(k){
+        const txt = cipherInput.value;
+        let out = '';
+        for(const ch of txt){
+          const up = ch.toUpperCase();
+          if(/[A-Z]/.test(up)){
+            const mapped = (k[up] || '?');
+            // preserve case
+            out += (ch === up) ? mapped : mapped.toLowerCase();
+          } else {
+            out += ch;
+          }
+        }
+        return out;
+      }
+
+      function updateDecoded(){
+        decodedPreview.textContent = decodeWithKey(key);
+        // also update inputs grid values to reflect key (in case changed programmatically)
+        const inputs = mappingGrid.querySelectorAll('input.letter-input');
+        inputs.forEach(inp => {
+          const c = inp.dataset.cipher;
+          inp.value = key[c] || '';
+        });
+      }
+
+      function resetKey(){
+        initIdentity();
+        renderMappingGrid();
+        updateDecoded();
+      }
+
+      function randomizeKey(){
+        const pool = ALPH.split('');
+        // shuffle
+        for(let i=pool.length-1;i>0;i--){
+          const j = Math.floor(Math.random()*(i+1));
+          [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+        for(let i=0;i<ALPH.length;i++){
+          const c = ALPH[i];
+          if(locked[c]) continue;
+          key[c] = pool.shift();
+        }
+        renderMappingGrid();
+        updateDecoded();
+      }
+
+      // scoring function based on number of common words found
+      function scorePlaintext(plain){
+        const tokens = plain.toUpperCase().split(/[^A-Z]+/).filter(Boolean);
+        let score = 0;
+        for(const w of tokens){
+          if(commonWords.includes(w)) score += 2;
+          if(w.length>3 && commonWords.includes(w.slice(0,3))) score += 0.5;
+        }
+        // also penalize non-letters or many '?' placeholders
+        const qCount = (plain.match(/\?/g) || []).length;
+        score -= qCount*0.25;
+        return score;
+      }
+
+      // hill-climb: try random swaps among unmapped/unlocked cipher->plain assignments
+      function hillClimb(iterations=1000, callbackProgress){
+        // working copy
+        let currentKey = Object.assign({}, key);
+        let currentScore = scorePlaintext(decodeWithKey(currentKey));
+        const letters = ALPH.split('');
+        for(let it=0; it<iterations; it++){
+          // choose two cipher letters to swap their mapped plaintexts, but avoid locked ones
+          const free = letters.filter(l=>!locked[l]);
+          if(free.length < 2) break;
+          const i = Math.floor(Math.random()*free.length);
+          let j = Math.floor(Math.random()*free.length);
+          while(j===i) j = Math.floor(Math.random()*free.length);
+          const a = free[i], b = free[j];
+          // swap plaintext mapping for a and b
+          const tmp = currentKey[a]; currentKey[a] = currentKey[b]; currentKey[b] = tmp;
+          const newScore = scorePlaintext(decodeWithKey(currentKey));
+          if(newScore >= currentScore){
+            currentScore = newScore;
+            // accept swap
+            // reflect to global key as improvement
+            key[a] = currentKey[a];
+            key[b] = currentKey[b];
+            if(callbackProgress && (it % 50 === 0)) callbackProgress(it, currentScore);
+          } else {
+            // revert
+            const tmp2 = currentKey[a]; currentKey[a] = currentKey[b]; currentKey[b] = tmp2;
+          }
+        }
+        // final apply
+        fillRemaining();
+        renderMappingGrid();
+        updateDecoded();
+      }
+
+      // Auto-suggest: frequency seed + short hill climb
+      function autoSuggest(){
+        applyFrequencySeed();
+        // small local hill climb to refine
+        hillClimb(600, (it, score)=>{ /* progress optional */ });
+      }
+
+      // Event handlers
+      btnFreq.addEventListener('click', ()=>{ applyFrequencySeed(); });
+      btnAuto.addEventListener('click', ()=>{ autoSuggest(); });
+      btnHill.addEventListener('click', ()=>{ 
+        // run longer hill climb but keep UI responsive
+        const iterations = 2500;
+        // run in small chunks to avoid blocking for very long
+        const chunk = 300;
+        let done = 0;
+        function step(){
+          if(done >= iterations){
+            // finished
+            return;
+          }
+          hillClimb(chunk);
+          done += chunk;
+          setTimeout(step, 20);
+        }
+        step();
+      });
+      btnApply.addEventListener('click', () => { updateDecoded(); });
+      btnReset.addEventListener('click', ()=>{ resetKey(); });
+      btnRandom.addEventListener('click', ()=>{ randomizeKey(); });
+      btnCopy.addEventListener('click', ()=>{
+        const txt = decodedPreview.textContent;
+        navigator.clipboard?.writeText(txt).then(()=>alert('Plaintext copied to clipboard'), ()=>alert('Copy failed'));
+      });
+
+      // On first load
+      initIdentity();
+      renderMappingGrid();
+      updateDecoded();
+
+      // Seed example mapping when user pastes long input: optional behaviour handled via freq button.
+
+      // Allow mapping grid clicks to focus inputs
+      mappingGrid.addEventListener('click', (e)=>{
+        const inp = e.target.closest('input.letter-input');
+        if(inp) inp.focus();
+      });
+
+    })();
+    </script>
+
+</body>
+</html>
