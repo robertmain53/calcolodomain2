@@ -29,10 +29,11 @@ Ecco i 3 ASSET FONDAMENTALI per questo progetto:
 In allegato trovi il `template_master_INTERNA.html`. Useremo questo per OGNI pagina di calcolatore. Nota i segnaposto `%%NOME_SEGNAPOSTO%%`.
 
 
+html
+```
 
-```html
 
-<!DOCTYPE html>
+ <!DOCTYPE html>
 
 <html lang="%%LANGUAGE%%">
 
@@ -142,7 +143,7 @@ In allegato trovi il `template_master_INTERNA.html`. Useremo questo per OGNI pag
 
             <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600 transition-colors">Advanced Search</a>
 
-            <a href="https://calcdomain.com/#categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
+            <a href="https://calcdomain.com/categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
 
           </div>
 
@@ -172,7 +173,7 @@ In allegato trovi il `template_master_INTERNA.html`. Useremo questo per OGNI pag
 
             <a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
 
-            <a href="https://calcdomain.com/#categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
+            <a href="https://calcdomain.com/categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
 
           </div>
 
@@ -336,13 +337,9 @@ In allegato trovi il `template_master_INTERNA.html`. Useremo questo per OGNI pag
 
 </body>
 
-</html> ```
-
-ASSET 2: Il Guscio Template (Homepage)
-
-Questo è il template_master_HOMEPAGE.html. Lo useremo SOLO per la pagina index.html.
-
-```HTML
+</html>
+ASSET 2: Il Guscio Template (Homepage) Questo è il template_master_HOMEPAGE.html. Lo useremo SOLO per la pagina index.html.
+HTML
 
 <!DOCTYPE html>
 
@@ -440,7 +437,7 @@ Questo è il template_master_HOMEPAGE.html. Lo useremo SOLO per la pagina index.
 
             <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600 transition-colors">Advanced Search</a>
 
-            <a href="https://calcdomain.com/#categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
+            <a href="https://calcdomain.com/categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
 
           </div>
 
@@ -470,7 +467,7 @@ Questo è il template_master_HOMEPAGE.html. Lo useremo SOLO per la pagina index.
 
             <a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
 
-            <a href="https://calcdomain.com/#categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
+            <a href="https://calcdomain.com/categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
 
           </div>
 
@@ -600,7 +597,10 @@ Questo è il template_master_HOMEPAGE.html. Lo useremo SOLO per la pagina index.
 
 </body>
 
-</html>
+</html> 
+
+
+
 
 ```
 
