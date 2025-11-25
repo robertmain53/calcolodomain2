@@ -81,7 +81,7 @@ cat > "$OUTPUT_DIR/kw-to-hp-converter.html" << 'EOF'
               "@type": "ListItem",
               "position": 2,
               "name": "Math & Conversions",
-              "item": "https://calcdomain.com/categories/math-conversions"
+              "item": "https://calcdomain.com/#categories/math-conversions"
             },
             {
               "@type": "ListItem",
@@ -148,7 +148,7 @@ cat > "$OUTPUT_DIR/kw-to-hp-converter.html" << 'EOF'
           </div>
           <div class="hidden md:flex items-center space-x-6">
             <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600 transition-colors">Advanced Search</a>
-            <a href="https://calcdomain.com/categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
+            <a href="https://calcdomain.com/#categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
           </div>
           <button id="mobile-menu-toggle" class="md:hidden p-2" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" type="button">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
@@ -163,7 +163,7 @@ cat > "$OUTPUT_DIR/kw-to-hp-converter.html" << 'EOF'
           </div>
           <div class="space-y-2">
             <a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
-            <a href="https://calcdomain.com/categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
+            <a href="https://calcdomain.com/#categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
           </div>
         </nav>
       </nav>
@@ -177,7 +177,7 @@ cat > "$OUTPUT_DIR/kw-to-hp-converter.html" << 'EOF'
             <span class="text-gray-400 mx-1">/</span>
           </li>
           <li>
-            <a href="https://calcdomain.com/categories/math-conversions" class="text-blue-600 hover:underline">Math &amp; Conversions</a>
+            <a href="https://calcdomain.com/#categories/math-conversions" class="text-blue-600 hover:underline">Math &amp; Conversions</a>
             <span class="text-gray-400 mx-1">/</span>
           </li>
           <li>
@@ -526,7 +526,7 @@ cat > "$OUTPUT_DIR/joules-to-kwh.html" << 'EOF'
               "@type": "ListItem",
               "position": 2,
               "name": "Math & Conversions",
-              "item": "https://calcdomain.com/categories/math-conversions"
+              "item": "https://calcdomain.com/#categories/math-conversions"
             },
             {
               "@type": "ListItem",
@@ -593,7 +593,7 @@ cat > "$OUTPUT_DIR/joules-to-kwh.html" << 'EOF'
           </div>
           <div class="hidden md:flex items-center space-x-6">
             <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600 transition-colors">Advanced Search</a>
-            <a href="https://calcdomain.com/categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
+            <a href="https://calcdomain.com/#categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
           </div>
           <button id="mobile-menu-toggle" class="md:hidden p-2" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" type="button">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
@@ -608,7 +608,7 @@ cat > "$OUTPUT_DIR/joules-to-kwh.html" << 'EOF'
           </div>
           <div class="space-y-2">
             <a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
-            <a href="https://calcdomain.com/categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
+            <a href="https://calcdomain.com/#categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
           </div>
         </nav>
       </nav>
@@ -622,7 +622,7 @@ cat > "$OUTPUT_DIR/joules-to-kwh.html" << 'EOF'
             <span class="text-gray-400 mx-1">/</span>
           </li>
           <li>
-            <a href="https://calcdomain.com/categories/math-conversions" class="text-blue-600 hover:underline">Math &amp; Conversions</a>
+            <a href="https://calcdomain.com/#categories/math-conversions" class="text-blue-600 hover:underline">Math &amp; Conversions</a>
             <span class="text-gray-400 mx-1">/</span>
           </li>
           <li>
@@ -948,7 +948,7 @@ cat > "$OUTPUT_DIR/psi-to-kpa.html" << 'EOF'
               "@type": "ListItem",
               "position": 2,
               "name": "Math & Conversions",
-              "item": "https://calcdomain.com/categories/math-conversions"
+              "item": "https://calcdomain.com/#categories/math-conversions"
             },
             {
               "@type": "ListItem",
@@ -1015,7 +1015,7 @@ cat > "$OUTPUT_DIR/psi-to-kpa.html" << 'EOF'
           </div>
           <div class="hidden md:flex items-center space-x-6">
             <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600 transition-colors">Advanced Search</a>
-            <a href="https://calcdomain.com/categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
+            <a href="https://calcdomain.com/#categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
           </div>
           <button id="mobile-menu-toggle" class="md:hidden p-2" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" type="button">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
@@ -1030,7 +1030,7 @@ cat > "$OUTPUT_DIR/psi-to-kpa.html" << 'EOF'
           </div>
           <div class="space-y-2">
             <a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
-            <a href="https://calcdomain.com/categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
+            <a href="https://calcdomain.com/#categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
           </div>
         </nav>
       </nav>
@@ -1044,7 +1044,7 @@ cat > "$OUTPUT_DIR/psi-to-kpa.html" << 'EOF'
             <span class="text-gray-400 mx-1">/</span>
           </li>
           <li>
-            <a href="https://calcdomain.com/categories/math-conversions" class="text-blue-600 hover:underline">Math &amp; Conversions</a>
+            <a href="https://calcdomain.com/#categories/math-conversions" class="text-blue-600 hover:underline">Math &amp; Conversions</a>
             <span class="text-gray-400 mx-1">/</span>
           </li>
           <li>

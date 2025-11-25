@@ -57,7 +57,7 @@ def breadcrumb_html(last_name: str, last_url: str) -> str:
         <span class="text-gray-400 mx-1">/</span>
       </li>
       <li>
-        <a href="https://calcdomain.com/categories/math-conversions" class="text-blue-600 hover:underline">Math &amp; Conversions</a>
+        <a href="https://calcdomain.com/#categories/math-conversions" class="text-blue-600 hover:underline">Math &amp; Conversions</a>
         <span class="text-gray-400 mx-1">/</span>
       </li>
       <li>
@@ -85,7 +85,7 @@ def schema_breadcrumb(name: str, url: str) -> str:
           "@type": "ListItem",
           "position": 2,
           "name": "Math & Conversions",
-          "item": "https://calcdomain.com/categories/math-conversions"
+          "item": "https://calcdomain.com/#categories/math-conversions"
         }},
         {{
           "@type": "ListItem",
