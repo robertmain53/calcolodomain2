@@ -81,7 +81,7 @@ cat > "$OUTPUT_DIR/kw-to-hp-converter.html" << 'EOF'
               "@type": "ListItem",
               "position": 2,
               "name": "Math & Conversions",
-              "item": "https://calcdomain.com/#categories/math-conversions"
+              "item": "https://calcdomain.com/categories/math-conversions"
             },
             {
               "@type": "ListItem",
@@ -177,7 +177,7 @@ cat > "$OUTPUT_DIR/kw-to-hp-converter.html" << 'EOF'
             <span class="text-gray-400 mx-1">/</span>
           </li>
           <li>
-            <a href="https://calcdomain.com/#categories/math-conversions" class="text-blue-600 hover:underline">Math &amp; Conversions</a>
+            <a href="https://calcdomain.com/categories/math-conversions" class="text-blue-600 hover:underline">Math &amp; Conversions</a>
             <span class="text-gray-400 mx-1">/</span>
           </li>
           <li>
@@ -526,7 +526,7 @@ cat > "$OUTPUT_DIR/joules-to-kwh.html" << 'EOF'
               "@type": "ListItem",
               "position": 2,
               "name": "Math & Conversions",
-              "item": "https://calcdomain.com/#categories/math-conversions"
+              "item": "https://calcdomain.com/categories/math-conversions"
             },
             {
               "@type": "ListItem",
@@ -622,7 +622,7 @@ cat > "$OUTPUT_DIR/joules-to-kwh.html" << 'EOF'
             <span class="text-gray-400 mx-1">/</span>
           </li>
           <li>
-            <a href="https://calcdomain.com/#categories/math-conversions" class="text-blue-600 hover:underline">Math &amp; Conversions</a>
+            <a href="https://calcdomain.com/categories/math-conversions" class="text-blue-600 hover:underline">Math &amp; Conversions</a>
             <span class="text-gray-400 mx-1">/</span>
           </li>
           <li>
@@ -948,7 +948,7 @@ cat > "$OUTPUT_DIR/psi-to-kpa.html" << 'EOF'
               "@type": "ListItem",
               "position": 2,
               "name": "Math & Conversions",
-              "item": "https://calcdomain.com/#categories/math-conversions"
+              "item": "https://calcdomain.com/categories/math-conversions"
             },
             {
               "@type": "ListItem",
@@ -1044,7 +1044,7 @@ cat > "$OUTPUT_DIR/psi-to-kpa.html" << 'EOF'
             <span class="text-gray-400 mx-1">/</span>
           </li>
           <li>
-            <a href="https://calcdomain.com/#categories/math-conversions" class="text-blue-600 hover:underline">Math &amp; Conversions</a>
+            <a href="https://calcdomain.com/categories/math-conversions" class="text-blue-600 hover:underline">Math &amp; Conversions</a>
             <span class="text-gray-400 mx-1">/</span>
           </li>
           <li>
