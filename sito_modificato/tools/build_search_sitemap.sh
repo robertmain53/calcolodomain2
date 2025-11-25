@@ -4,11 +4,17 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-VENV="${VENV:-/home/yeahupsrl/.venv}"
-PY="$VENV/bin/python"
+# Prefer an activated venv, otherwise use VENV override, otherwise fallback to python3.
+if [ -n "${VIRTUAL_ENV:-}" ]; then
+  PY="$VIRTUAL_ENV/bin/python"
+elif [ -n "${VENV:-}" ]; then
+  PY="$VENV/bin/python"
+else
+  PY="$(command -v python3 || true)"
+fi
 
-if [ ! -x "$PY" ]; then
-  echo "ERROR: Python venv not found at $PY"
+if [ -z "$PY" ] || [ ! -x "$PY" ]; then
+  echo "ERROR: Python not found. Activate your venv or set VENV to its path." >&2
   exit 1
 fi
 
