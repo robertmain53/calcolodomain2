@@ -693,7 +693,6 @@ Per favore, conferma di aver ricevuto e compreso questi 3 Asset e questo flusso 
 
 # PROMPT 2
 
-
 "*** RICHIESTA DI CREAZIONE NUOVO CALCOLATORE ***
 
 1.  **Target (URL Piatto):** /matrix-inverse
@@ -710,3 +709,10 @@ Per favore, conferma di aver ricevuto e compreso questi 3 Asset e questo flusso 
  * https://www.geeksforgeeks.org/maths/inverse-of-matrix/ 
  * https://www.maplesoft.com/support/help/Maple/view.aspx?path=LinearAlgebra/MatrixInverse 
  * https://textbooks.math.gatech.edu/ila/matrix-inverses.html"
+
+
+ # PER RIGENERARE SEACH E SITEMAP
+
+cd sito_modificato/tools
+./build_search_sitemap.sh
+
