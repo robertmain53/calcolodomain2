@@ -2,6 +2,8 @@ import os
 import time
 import csv
 import re
+from dotenv import load_dotenv
+load_dotenv()
 
 from openai import OpenAI
 
