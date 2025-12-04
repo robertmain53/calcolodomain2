@@ -1,690 +1,914 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
+<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shift Calculator – Work Hours, Breaks & Pay (Daily, Weekly & Rotating)</title>
+<meta name="description" content="Free shift calculator to track work hours, breaks, overtime and pay. Supports multiple shifts per day, overnight shifts, weekly totals and rotating shift schedules. Export and reuse.">
 <link rel="canonical" href="https://calcdomain.com/shift-calculator">
 
+<link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="shortcut icon" href="/favicon.ico" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<link rel="manifest" href="/site.webmanifest" />
 
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    body { font-family: 'Inter', sans-serif; }
+    .card-hover { transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; }
+    .card-hover:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+    .prose { max-width: 65ch; margin-left: auto; margin-right: auto; }
+    .prose h2 { font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; }
+    .prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+    .prose p { margin-bottom: 1rem; line-height: 1.6; }
+    .prose ul, .prose ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+    .prose li { margin-bottom: 0.5rem; }
+    .formula-box { background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; padding: 1rem; overflow-x: auto; margin: 1rem 0; }
+    .tab-active { border-color: #2563eb; color: #1d4ed8; background-color: #eff6ff; }
+    .input-small::-webkit-outer-spin-button,
+    .input-small::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .input-small[type=number] { -moz-appearance: textfield; }
+</style>
 
+<!-- Google tag (gtag.js) --> <script async src="https://www.googletagmanager.com/gtag/js?id=G-7MB5V1LZRN"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-7MB5V1LZRN'); </script> <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA" /> <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script> <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script> <script async src="//www.ezojs.com/ezoic/sa.min.js"></script> <script> window.ezstandalone = window.ezstandalone || {}; ezstandalone.cmd = ezstandalone.cmd || []; </script>
 
-
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Shift Calculator – Work Hours, Overtime, Pay & Rounding</title>
-  <meta name="description" content="Calculate total work hours across multiple shifts (including overnight), break deductions, rounding, daily/weekly overtime, and gross pay. Export CSV and print a clean summary." />
-  
-
-  <!-- Icons / PWA (optional placeholders to avoid 404) -->
-  <link rel="icon" type="image/png" href="https://calcdomain.com/favicon-96x96.png" sizes="96x96" />
-  <link rel="icon" type="image/svg+xml" href="https://calcdomain.com/favicon.svg" />
-  <link rel="shortcut icon" href="https://calcdomain.com/favicon.ico" />
-  <link rel="apple-touch-icon" sizes="180x180" href="https://calcdomain.com/apple-touch-icon.png" />
-  <link rel="manifest" href="https://calcdomain.com/site.webmanifest" />
-
-  <!-- Tailwind + Inter -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-
-  <!-- MathJax for LaTeX formulas -->
-  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-
-  <style>
-    :root { --focus-ring: 3px solid #2563eb; }
-    body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji','Segoe UI Emoji'; }
-    .prose { max-width: 70ch; }
-    .prose h2 { font-size: 1.5rem; font-weight: 700; margin-top: 2rem; margin-bottom: 0.75rem; }
-    .prose h3 { font-size: 1.15rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; }
-    .prose p, .prose li { line-height: 1.7; }
-    .formula-box { background:#f8fafc; border:1px solid #e5e7eb; border-radius:10px; padding:1rem; overflow-x:auto; }
-    .result-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1rem; }
-    .result-card h4 { font-size:.95rem; color:#6b7280; margin-bottom:.25rem; }
-    .result-card p { font-size:1.6rem; font-weight:800; color:#1d4ed8; }
-    .kbd { font-variant-ligatures: none; border: 1px solid #e5e7eb; border-bottom-width: 3px; padding: .1rem .35rem; border-radius: .375rem; background:#fff; }
-    /* Visible focus */
-    :where(a, button, input, select, textarea, summary, [role="button"]):focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(37,99,235,.35); }
-    /* Prevent CLS: set min-heights where dynamic content appears */
-    #results-area { min-height: 260px; }
-    #table-wrapper { min-height: 160px; }
-    @media print {
-      body { background: #fff; }
-      header, nav[aria-label="Breadcrumb"], aside, .no-print { display: none !important; }
-      #print-section { position: static; }
-      .result-card p { color:#000 !important; }
-      table { page-break-inside:auto; }
-      tr { page-break-inside:avoid; page-break-after:auto; }
-    }
-    /* Tooltip panel */
-    .tip-panel[hidden] { display: none; }
-  </style>
-
-  <!-- JSON-LD: WebPage -->
-  <script type="application/ld+json">
+<script type="application/ld+json">
   {
-    "@context":"https://schema.org",
-    "@type":"WebPage",
-    "name":"Shift Calculator",
-    "description":"Compute total hours, overtime and gross pay across multiple shifts with break deductions and rounding rules. Export CSV and print.",
-    "url":"https://calcdomain.com/shift-calculator",
-    "inLanguage":"en",
-    "author":{"@type":"Person","name":"Ugo Candido"},
-    "publisher":{"@type":"Organization","name":"CalcDomain"}
-  }
-  </script>
-
-  <!-- JSON-LD: Breadcrumb -->
-  <script type="application/ld+json">{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Shift Calculator – Work Hours, Breaks & Pay",
+    "url": "https://calcdomain.com/shift-calculator",
+    "description": "Free shift calculator to track work hours, breaks, overtime and pay. Supports multiple shifts per day, overnight shifts, weekly totals and rotating shift schedules.",
+    "breadcrumb": {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://calcdomain.com" },
+        { "@type": "ListItem", "position": 2, "name": "Lifestyle & Everyday", "item": "https://calcdomain.com/categories/lifestyle-everyday" },
+        { "@type": "ListItem", "position": 3, "name": "Time & Date", "item": "https://calcdomain.com/time-date" },
+        { "@type": "ListItem", "position": 4, "name": "Shift Calculator", "item": "https://calcdomain.com/shift-calculator" }
+      ]
     },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "Lifestyle & Everyday",
-      "item": "https://calcdomain.com/lifestyle-everyday"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Time and Date",
-      "item": "https://calcdomain.com/subcategories/time-date"
-    },
-    {
-      "@type": "ListItem",
-      "position": 4,
-      "name": "Shift Calculator",
-      "item": "https://calcdomain.com/shift-calculator"
-    }
-  ]
-}</script>
-
-  <!-- JSON-LD: HowTo -->
-  <script type="application/ld+json">
-  {
-    "@context":"https://schema.org",
-    "@type":"HowTo",
-    "name":"How to calculate worked hours with breaks and overtime",
-    "step":[
-      {"@type":"HowToStep","name":"Add shifts","text":"Enter the date, start and end time. The tool handles overnight shifts automatically."},
-      {"@type":"HowToStep","name":"Set breaks & rounding","text":"Specify unpaid break minutes and choose an optional rounding rule (none, 5, 6, 10, 15 minutes)."},
-      {"@type":"HowToStep","name":"Configure overtime","text":"Set daily and/or weekly thresholds and multipliers for overtime pay."},
-      {"@type":"HowToStep","name":"Review totals","text":"See total hours, regular hours, overtime hours, gross pay and export CSV or print a clean summary."}
+    "mainEntity": [
+      {
+        "@type": "HowTo",
+        "name": "How to use the shift calculator",
+        "step": [
+          { "@type": "HowToStep", "position": 1, "name": "Choose mode", "text": "Select Daily Shifts, Weekly Timesheet, or Rotating Schedule depending on what you need to calculate." },
+          { "@type": "HowToStep", "position": 2, "name": "Enter shift times", "text": "For each shift, enter start time, end time, and unpaid break duration. Overnight shifts are supported." },
+          { "@type": "HowToStep", "position": 3, "name": "Add hourly rate and overtime rules", "text": "Optionally enter your base hourly rate and overtime threshold and multiplier to calculate pay." },
+          { "@type": "HowToStep", "position": 4, "name": "Review totals", "text": "Read the results for total hours, regular hours, overtime hours, and estimated pay for the day, week, or full rotation." }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Does the shift calculator handle overnight shifts?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. If the end time is earlier than the start time, the calculator automatically assumes the shift ends the next day and calculates the correct duration."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I calculate overtime pay with this tool?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "You can enter an hourly rate, an overtime threshold in hours, and an overtime multiplier. The calculator splits your hours into regular and overtime and estimates total pay."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I use the shift calculator for a full week?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Use the Weekly Timesheet tab to enter up to three shifts per day for seven days. The tool will total hours and pay for the entire week."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I calculate rotating shift schedules?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Use the Rotating Schedule tab. Define the pattern length in days, enter the hours worked on each day in the pattern, and the calculator will project total hours and average weekly hours over any number of weeks."
+            }
+          }
+        ]
+      }
     ]
   }
-  </script>
+</script>
+</head> 
+<body class="bg-gray-50 text-gray-800">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
 
-  <!-- JSON-LD: FAQ -->
-  <script type="application/ld+json">
-  {
-    "@context":"https://schema.org",
-    "@type":"FAQPage",
-    "mainEntity":[
-      {"@type":"Question","name":"Does it handle overnight shifts?","acceptedAnswer":{"@type":"Answer","text":"Yes. If the end time is earlier than the start time, the calculator assumes the shift crosses midnight and adds 24 hours to the end time for duration."}},
-      {"@type":"Question","name":"How does rounding work?","acceptedAnswer":{"@type":"Answer","text":"Rounding is applied to the total worked minutes after breaks using the selected increment and 'nearest' strategy. For example, 7 minutes rounds to 5 if the increment is 5."}},
-      {"@type":"Question","name":"Can I compute overtime pay?","acceptedAnswer":{"@type":"Answer","text":"Yes. You can set daily and weekly thresholds and multipliers. Daily overtime is computed per shift; weekly overtime is computed after summing the week."}},
-      {"@type":"Question","name":"Do breaks reduce overtime?","acceptedAnswer":{"@type":"Answer","text":"Yes. Unpaid breaks are subtracted from each shift before overtime is evaluated."}},
-      {"@type":"Question","name":"Is this legal advice?","acceptedAnswer":{"@type":"Answer","text":"No. Regulations vary by jurisdiction and employer policy. This tool is for planning and estimation only."}},
-      {"@type":"Question","name":"Can I export results?","acceptedAnswer":{"@type":"Answer","text":"Yes. You can export a CSV of all shifts and totals, or print a clean report."}}
-    ]
-  }
-  </script>
-</head>
-<body class="bg-gray-50 text-gray-900">
-  <!-- Header (non-sticky per requirements) -->
-  <header class="bg-white border-b">
-    <div class="container mx-auto px-4 lg:px-6 py-4 flex items-center justify-between">
+<header class="bg-white shadow-sm sticky top-0 z-50">
+  <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
+    <div class="flex justify-between items-center">
       <a href="https://calcdomain.com" class="text-2xl font-bold text-blue-600">CalcDomain</a>
-      <nav class="hidden md:flex gap-6 text-sm">
-        <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600">Advanced Search</a>
-        Categories
-      </nav>
-      <a class="md:hidden text-sm text-blue-600" href="https://calcdomain.com/search">Search</a>
-    </div>
-  </header>
-
-  <main class="container mx-auto px-4 lg:px-6 py-8">
-    <div class="flex flex-col lg:flex-row gap-8">
-      <!-- Main content -->
-      <section class="w-full lg:w-2/3">
-        <nav class="text-sm text-gray-600 mb-4" aria-label="Breadcrumb">
-          <a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo;
-          <a href="https://calcdomain.com/lifestyle-everyday" class="hover:text-blue-600">Lifestyle &amp; Everyday</a> &raquo;
-          <a href="https://calcdomain.com/subcategories/time-date" class="hover:text-blue-600">Time and Date</a> &raquo;
-          <span class="text-gray-900">Shift Calculator</span>
-        </nav>
-
-        <div id="print-section" class="bg-white p-6 rounded-lg shadow-md">
-          <h1 class="text-3xl font-extrabold text-gray-900 mb-3">shift calculator</h1>
-          <p class="text-gray-700 mb-6">
-            Quickly total work time across multiple shifts (including overnight), subtract unpaid breaks, apply rounding, and compute daily/weekly overtime and gross pay. Ideal for employees, managers, contractors, and payroll pre-checks.
-          </p>
-
-          <!-- Calculator -->
-          <section aria-labelledby="calc-title" class="space-y-6">
-            <h2 id="calc-title" class="sr-only">Shift calculator inputs</h2>
-
-            <!-- Global settings -->
-            <fieldset class="border border-gray-200 rounded-lg p-4">
-              <legend class="font-semibold px-2">Settings</legend>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
-                <div>
-                  <label for="payRate" class="block text-sm font-medium text-gray-800">Pay rate (per hour) *</label>
-                  <div class="flex items-center gap-2">
-                    <input type="number" inputmode="decimal" id="payRate" aria-required="true"
-                           class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-                           step="0.01" min="0" value="20" aria-describedby="payRate_err payRate_tip">
-                    <button type="button" class="px-2 py-1 rounded border no-print" aria-expanded="false"
-                            aria-controls="payRate_tip">?</button>
-                  </div>
-                  <p id="payRate_tip" class="text-sm text-gray-600 mt-1 tip-panel" hidden>Hourly base pay used for regular-time calculations. Overtime multipliers apply to this rate.</p>
-                  <p id="payRate_err" class="text-sm text-red-600 mt-1" aria-live="polite"></p>
-                </div>
-
-                <div>
-                  <label for="currency" class="block text-sm font-medium text-gray-800">Currency</label>
-                  <select id="currency" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" aria-describedby="currency_tip">
-                    <option value="USD" selected>USD</option>
-                    <option value="EUR">EUR</option>
-                    <option value="GBP">GBP</option>
-                  </select>
-                  <p id="currency_tip" class="text-sm text-gray-600 mt-1">Display currency for results. No FX conversion is performed.</p>
-                </div>
-
-                <div>
-                  <label for="rounding" class="block text-sm font-medium text-gray-800">Rounding rule</label>
-                  <select id="rounding" class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" aria-describedby="rounding_tip">
-                    <option value="0" selected>None</option>
-                    <option value="5">Nearest 5 minutes</option>
-                    <option value="6">Nearest 6 minutes (tenth hour)</option>
-                    <option value="10">Nearest 10 minutes</option>
-                    <option value="15">Nearest 15 minutes (quarter hour)</option>
-                  </select>
-                  <p id="rounding_tip" class="text-sm text-gray-600 mt-1">Rounding is applied to each shift’s worked time after breaks.</p>
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-gray-800">Overtime rules</label>
-                  <div class="grid grid-cols-2 gap-3 mt-1" role="group" aria-describedby="ot_desc">
-                    <div class="flex items-center gap-2">
-                      <input id="dailyOTchk" type="checkbox" class="h-5 w-5">
-                      <label for="dailyOTchk" class="text-sm">Daily OT</label>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
-                      <input id="dailyOTthr" type="number" min="0" step="0.25" class="px-3 py-2 border rounded" value="8" aria-label="Daily threshold (hours)">
-                      <input id="dailyOTmult" type="number" min="1" step="0.1" class="px-3 py-2 border rounded" value="1.5" aria-label="Daily overtime multiplier">
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <input id="weeklyOTchk" type="checkbox" class="h-5 w-5" checked>
-                      <label for="weeklyOTchk" class="text-sm">Weekly OT</label>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
-                      <input id="weeklyOTthr" type="number" min="0" step="0.5" class="px-3 py-2 border rounded" value="40" aria-label="Weekly threshold (hours)">
-                      <input id="weeklyOTmult" type="number" min="1" step="0.1" class="px-3 py-2 border rounded" value="1.5" aria-label="Weekly overtime multiplier">
-                    </div>
-                  </div>
-                  <p id="ot_desc" class="text-sm text-gray-600 mt-1">Overtime hours/pay are informational and depend on jurisdiction/employer policies.</p>
-                </div>
-              </div>
-            </fieldset>
-
-            <!-- Shifts table -->
-            <fieldset class="border border-gray-200 rounded-lg p-4">
-              <legend class="font-semibold px-2">Shifts</legend>
-
-              <div id="table-wrapper" class="mt-3 overflow-x-auto border border-gray-100 rounded-lg">
-                <table class="min-w-full text-sm">
-                  <thead class="bg-gray-100 text-gray-700">
-                    <tr>
-                      <th class="text-left px-3 py-2">Date</th>
-                      <th class="text-left px-3 py-2">Start *</th>
-                      <th class="text-left px-3 py-2">End *</th>
-                      <th class="text-right px-3 py-2">Unpaid break (min)</th>
-                      <th class="text-right px-3 py-2">Worked (h)</th>
-                      <th class="text-right px-3 py-2">Daily OT (h)</th>
-                      <th class="px-3 py-2"><span class="sr-only">Actions</span></th>
-                    </tr>
-                  </thead>
-                  <tbody id="shiftBody"></tbody>
-                </table>
-              </div>
-
-              <div class="mt-3 flex flex-wrap gap-3 no-print">
-                <button id="addShiftBtn" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold">Add shift</button>
-                <button id="addWeekBtn" class="px-4 py-2 rounded-lg bg-slate-700 text-white font-semibold">Add Mon–Sun</button>
-                <button id="clearBtn" class="px-4 py-2 rounded-lg border font-semibold">Clear</button>
-              </div>
-            </fieldset>
-
-          </section>
-
-          <!-- Results -->
-          <section id="results-area" class="mt-8 bg-blue-50 border border-blue-100 rounded-lg p-6">
-            <h2 class="text-xl font-bold mb-4">Results</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div class="result-card"><h4>Total shifts</h4><p id="res_shifts">0</p></div>
-              <div class="result-card"><h4>Total hours</h4><p id="res_hours">0.00</p></div>
-              <div class="result-card"><h4>Regular hours</h4><p id="res_regular">0.00</p></div>
-              <div class="result-card"><h4>Overtime hours</h4><p id="res_ot">0.00</p></div>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-              <div class="result-card"><h4>Daily OT hours</h4><p id="res_daily_ot">0.00</p></div>
-              <div class="result-card"><h4>Weekly OT hours</h4><p id="res_weekly_ot">0.00</p></div>
-              <div class="result-card"><h4>Gross pay</h4><p id="res_pay">$0.00</p></div>
-            </div>
-            <div class="mt-4 flex flex-wrap gap-3 no-print">
-              <button id="exportBtn" class="px-4 py-2 rounded-lg bg-emerald-600 text-white font-semibold">Export CSV</button>
-              <button id="printBtn" class="px-4 py-2 rounded-lg border font-semibold">Print</button>
-            </div>
-          </section>
-
-          <!-- Authoritative content -->
-          <article class="bg-white p-6 rounded-lg shadow-sm mt-8 prose">
-            <h2>Data source &amp; methodology</h2>
-            <p><strong>AuthoritativeDataSource:</strong> ISO 8601-1:2019 (Date and time — Representations for information interchange) and broadly used payroll conventions for rounding and overtime thresholds (employer/jurisdiction specific). For regulatory contexts, consult the EU Working Time Directive 2003/88/EC or the U.S. Department of Labor FLSA guidance.</p>
-            <ul>
-              <li>ISO 8601-1:2019 — Date/time arithmetic.</li>
-              <li>EU Working Time Directive 2003/88/EC — Maximum weekly hours, rest breaks (jurisdictional policy).</li>
-              <li>U.S. DOL FLSA Fact Sheet (e.g., #22) — Overtime (jurisdictional policy).</li>
-            </ul>
-            <p><em>“Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.”</em></p>
-
-            <h2>The formula explained</h2>
-            <div class="formula-box">
-              Worked minutes per shift (with overnight handling and rounding):<br/>
-              \\[
-                m_{worked} = \\operatorname{round}_{q}\\!\\Big(\\max\\{0,\\; (t_{end} - t_{start})_{24h} - m_{break}\\}\\Big)
-              \\]
-              where \\( (t_{end} - t_{start})_{24h} = \\begin{cases}
-                (t_{end}-t_{start}) & t_{end} \\ge t_{start}\\\\
-                (t_{end}+24\\,\\mathrm{h}-t_{start}) & t_{end} < t_{start}
-              \\end{cases} \\) and \\( q \\in \\{0,5,6,10,15\\}\\) minutes.<br/><br/>
-              Daily overtime (if enabled):<br/>
-              \\[
-                h^{\\text{OT}}_{d} = \\max\\big(0,\\; h_{worked,d} - T_d\\big)
-              \\]
-              Weekly overtime (if enabled):<br/>
-              \\[
-                h^{\\text{OT}}_{w} = \\max\\big(0,\\; h_{worked,w} - T_w\\big)
-              \\]
-              Gross pay estimate:<br/>
-              \\[
-                \\text{Pay} = r \\cdot h_{reg} + (\\alpha_d r)\\cdot h^{\\text{OT}}_{d} + (\\alpha_w r)\\cdot h^{\\text{OT}}_{w}
-              \\]
-              where \\(r\\) is hourly rate, \\(\\alpha_d,\\alpha_w\\) are multipliers, and hours are split into regular vs. OT buckets.
-            </div>
-
-            <h2>Glossary of variables</h2>
-            <ul>
-              <li><strong>Date</strong>: Calendar date of the shift.</li>
-              <li><strong>Start/End</strong>: Local times; if end &lt; start, the shift is treated as crossing midnight.</li>
-              <li><strong>Unpaid break (min)</strong>: Minutes subtracted from the raw duration.</li>
-              <li><strong>Rounding rule</strong>: Nearest increment applied to worked minutes (after break).</li>
-              <li><strong>Daily/Weekly thresholds</strong>: Hours after which overtime buckets start.</li>
-              <li><strong>Multipliers</strong>: Factor applied to base hourly rate for OT hours.</li>
-            </ul>
-
-            <h2>How it works: a step-by-step example</h2>
-            <p><strong>Inputs</strong>: Two shifts this week. Rounding: 15 min. Daily OT: 8 h ×1.5. Weekly OT: 40 h ×1.5. Pay rate: $20/h.</p>
-            <ol>
-              <li>Shift A: 2025-10-20, 09:00–17:30, 30 min break → raw 8.5 h − 0.5 h = 8.0 h → rounded 8.0 h → daily OT 0.0 h.</li>
-              <li>Shift B: 2025-10-21, 22:00–06:15 (overnight), 15 min break → raw 8.25 h − 0.25 h = 8.0 h → rounded 8.0 h → daily OT 0.0 h.</li>
-              <li>Weekly totals so far: 16.0 h. Weekly OT not triggered. Gross pay = 16 × $20 = $320.</li>
-            </ol>
-
-            <h2>Frequently asked questions</h2>
-            <details><summary>Does rounding apply before or after breaks?</summary><p>After. The calculator subtracts unpaid breaks from the raw duration, then applies the rounding rule.</p></details>
-            <details><summary>How are daily and weekly overtime combined?</summary><p>Daily OT is computed per shift; weekly OT is computed from the weekly total. Totals are displayed separately to support diverse policies. Consult your jurisdiction to avoid double counting.</p></details>
-            <details><summary>What if I forget to enter a break?</summary><p>The tool assumes zero unpaid break if the field is empty or 0. Many workplaces enforce specific break policies; confirm with your employer.</p></details>
-            <details><summary>Can I use decimal hours?</summary><p>Yes—results are shown in decimal hours for clarity (e.g., 7.75 h = 7 hours 45 minutes).</p></details>
-            <details><summary>Which week does the calculator use for weekly OT?</summary><p>Weeks are grouped Monday–Sunday. Adding a pre-filled Mon–Sun grid helps keep entries aligned.</p></details>
-
-            <div class="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
-              <p><strong>Tool developed by Ugo Candido.</strong> Content verified by CalcDomain Editorial Board.<br/>
-              Last accuracy review: <time datetime="2025-10-27">October 27, 2025</time></p>
-            </div>
-          </article>
+      <div class="w-full max-w-md hidden md:block mx-8">
+        <div class="relative">
+          <input type="search" id="search-input" placeholder="Search for a calculator..." class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" />
+          <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          <div id="search-results" class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200"></div>
         </div>
-      </section>
-
-      <!-- Sidebar -->
-      <aside class="w-full lg:w-1/3">
-        <div class="sticky top-24 space-y-6">
-          <div class="bg-white p-6 rounded-lg shadow-sm">
-            <h3 class="font-bold text-lg mb-3">Why this calculator stands out</h3>
-            <ul class="list-disc list-inside text-sm text-gray-700 space-y-2">
-              <li>Multi-shift, overnight, break deductions & rounding.</li>
-              <li>Daily & weekly overtime with configurable multipliers.</li>
-              <li>Inline validation, accessible tooltips, CSV export & print.</li>
-            </ul>
-          </div>
-          <div class="bg-gray-200 h-72 rounded-lg flex items-center justify-center text-gray-500 no-print">
-            Ad placement (300×600)
-          </div>
-        </div>
-      </aside>
+      </div>
+      <div class="hidden md:flex items-center space-x-6">
+        <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600 transition-colors">Advanced Search</a>
+        <a href="https://calcdomain.com/categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
+      </div>
+      <button id="mobile-menu-toggle" class="md:hidden p-2" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" type="button">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+      </button>
     </div>
-  </main>
+    <nav id="mobile-menu" class="md:hidden mt-4 hidden" aria-label="Mobile menu" role="navigation">
+      <div class="mb-4">
+        <div class="relative">
+          <input type="search" id="mobile-search-input" placeholder="Search calculators..." class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+        </div>
+      </div>
+      <div class="space-y-2">
+        <a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
+        <a href="https://calcdomain.com/categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
+      </div>
+    </nav>
+  </nav>
+</header>
 
-  <footer class="bg-white border-t">
-    <div class="container mx-auto px-6 py-8 text-center text-gray-600 text-sm">
-      <p>&copy; 2025 CalcDomain. All Rights Reserved.</p>
-      <div class="mt-4 space-x-4">
-        <a href="https://calcdomain.com/about" class="hover:text-blue-600">About</a>
-        <a href="https://calcdomain.com/contact" class="hover:text-blue-600">Contact</a>
-        <a href="https://calcdomain.com/privacy" class="hover:text-blue-600">Privacy</a>
-        <a href="https://calcdomain.com/terms" class="hover:text-blue-600">Terms</a>
+<div class="container mx-auto px-4 py-8">
+  <nav id="breadcrumb-container" class="text-sm mb-4 text-gray-600">
+    <a href="https://calcdomain.com" class="text-blue-600 hover:underline">Home</a>
+    <span class="mx-1">/</span>
+    <a href="https://calcdomain.com/categories/lifestyle-everyday" class="text-blue-600 hover:underline">Lifestyle & Everyday</a>
+    <span class="mx-1">/</span>
+    <a href="https://calcdomain.com/time-date" class="text-blue-600 hover:underline">Time & Date</a>
+    <span class="mx-1">/</span>
+    <span class="text-gray-700">Shift Calculator</span>
+  </nav>
+  <div class="flex flex-col lg:flex-row gap-8">
+    <main class="w-full lg:w-2/3">
+      <div class="bg-white p-6 rounded-lg shadow-md">
+        <header class="mb-6">
+          <h1 class="text-2xl md:text-3xl font-bold mb-2">Shift Calculator</h1>
+          <p class="text-gray-600">Calculate work hours, breaks, overtime and pay for daily shifts, weekly timesheets, and rotating schedules. Supports overnight and multiple shifts per day.</p>
+        </header>
+
+        <!-- Tabs -->
+        <div class="mb-4 border-b border-gray-200">
+          <nav class="flex flex-wrap gap-2" aria-label="Shift calculator modes">
+            <button type="button" data-tab="daily" class="tab-btn tab-active px-3 py-2 text-sm font-medium border-b-2 border-transparent rounded-t-md focus:outline-none">Daily Shifts</button>
+            <button type="button" data-tab="weekly" class="tab-btn px-3 py-2 text-sm font-medium border-b-2 border-transparent rounded-t-md focus:outline-none">Weekly Timesheet</button>
+            <button type="button" data-tab="rotating" class="tab-btn px-3 py-2 text-sm font-medium border-b-2 border-transparent rounded-t-md focus:outline-none">Rotating Schedule</button>
+          </nav>
+        </div>
+
+        <!-- DAILY SHIFTS TAB -->
+        <section id="tab-daily" class="tab-panel">
+          <div class="grid md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Number of shifts today</label>
+              <select id="daily-shift-count" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                <option value="1">1 shift</option>
+                <option value="2">2 shifts</option>
+                <option value="3">3 shifts</option>
+              </select>
+              <p class="text-xs text-gray-500 mt-1">Use multiple shifts for split shifts or unpaid lunch breaks.</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Time format</label>
+              <select id="daily-time-format" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                <option value="24">24-hour (13:30)</option>
+                <option value="12">12-hour (1:30 PM)</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="daily-shifts-container" class="space-y-4 mb-4">
+            <!-- Shift rows injected by JS -->
+          </div>
+
+          <div class="grid md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Hourly rate (optional)</label>
+              <div class="flex">
+                <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">$</span>
+                <input id="daily-hourly-rate" type="number" min="0" step="0.01" class="input-small flex-1 border-gray-300 rounded-r-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. 18.50">
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Overtime after (hours)</label>
+              <input id="daily-ot-threshold" type="number" min="0" step="0.25" class="input-small w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. 8">
+              <p class="text-xs text-gray-500 mt-1">Leave blank for no overtime.</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Overtime multiplier</label>
+              <input id="daily-ot-multiplier" type="number" min="1" step="0.1" class="input-small w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. 1.5">
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-3 mb-4">
+            <button id="daily-calc-btn" type="button" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-blue-700 focus:outline-none">
+              Calculate daily hours
+            </button>
+            <button id="daily-clear-btn" type="button" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 focus:outline-none">
+              Clear
+            </button>
+          </div>
+
+          <div id="daily-results" class="hidden border border-gray-200 rounded-md p-4 bg-gray-50 text-sm">
+            <h2 class="font-semibold mb-2">Daily summary</h2>
+            <p><span class="font-medium">Total worked:</span> <span id="daily-total-hours">0</span> hours</p>
+            <p><span class="font-medium">Regular hours:</span> <span id="daily-regular-hours">0</span></p>
+            <p><span class="font-medium">Overtime hours:</span> <span id="daily-ot-hours">0</span></p>
+            <p><span class="font-medium">Estimated pay:</span> <span id="daily-pay">$0.00</span></p>
+            <p class="text-xs text-gray-500 mt-2">Note: All times are rounded to the nearest minute. Pay is an estimate and does not include taxes or deductions.</p>
+          </div>
+        </section>
+
+        <!-- WEEKLY TIMESHEET TAB -->
+        <section id="tab-weekly" class="tab-panel hidden">
+          <p class="text-sm text-gray-600 mb-3">Track up to three shifts per day for a full week. Great for hourly employees, freelancers, and managers.</p>
+
+          <div class="grid md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Time format</label>
+              <select id="weekly-time-format" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                <option value="24">24-hour (13:30)</option>
+                <option value="12">12-hour (1:30 PM)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Hourly rate (optional)</label>
+              <div class="flex">
+                <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">$</span>
+                <input id="weekly-hourly-rate" type="number" min="0" step="0.01" class="input-small flex-1 border-gray-300 rounded-r-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. 20">
+              </div>
+            </div>
+          </div>
+
+          <div class="grid md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Daily OT after (hours)</label>
+              <input id="weekly-daily-ot-threshold" type="number" min="0" step="0.25" class="input-small w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. 8">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Weekly OT after (hours)</label>
+              <input id="weekly-weekly-ot-threshold" type="number" min="0" step="0.5" class="input-small w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. 40">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Overtime multiplier</label>
+              <input id="weekly-ot-multiplier" type="number" min="1" step="0.1" class="input-small w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. 1.5">
+            </div>
+          </div>
+
+          <div class="overflow-x-auto mb-4">
+            <table class="min-w-full text-xs md:text-sm border border-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-2 py-2 border-b text-left font-semibold">Day</th>
+                  <th class="px-2 py-2 border-b text-left font-semibold">Shift</th>
+                  <th class="px-2 py-2 border-b text-left font-semibold">Start</th>
+                  <th class="px-2 py-2 border-b text-left font-semibold">End</th>
+                  <th class="px-2 py-2 border-b text-left font-semibold">Unpaid break (min)</th>
+                  <th class="px-2 py-2 border-b text-left font-semibold">Hours</th>
+                </tr>
+              </thead>
+              <tbody id="weekly-tbody">
+                <!-- Rows injected by JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="flex flex-wrap gap-3 mb-4">
+            <button id="weekly-calc-btn" type="button" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-blue-700 focus:outline-none">
+              Calculate weekly hours
+            </button>
+            <button id="weekly-clear-btn" type="button" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 focus:outline-none">
+              Clear
+            </button>
+          </div>
+
+          <div id="weekly-results" class="hidden border border-gray-200 rounded-md p-4 bg-gray-50 text-sm">
+            <h2 class="font-semibold mb-2">Weekly summary</h2>
+            <p><span class="font-medium">Total worked:</span> <span id="weekly-total-hours">0</span> hours</p>
+            <p><span class="font-medium">Regular hours:</span> <span id="weekly-regular-hours">0</span></p>
+            <p><span class="font-medium">Overtime hours:</span> <span id="weekly-ot-hours">0</span></p>
+            <p><span class="font-medium">Estimated pay:</span> <span id="weekly-pay">$0.00</span></p>
+          </div>
+        </section>
+
+        <!-- ROTATING SCHEDULE TAB -->
+        <section id="tab-rotating" class="tab-panel hidden">
+          <p class="text-sm text-gray-600 mb-3">Model rotating or continental shifts (e.g. 4 on / 4 off, 2-2-3). Enter the pattern once and project hours over weeks.</p>
+
+          <div class="grid md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Pattern length (days)</label>
+              <input id="rot-pattern-days" type="number" min="1" max="31" step="1" value="7" class="input-small w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+              <p class="text-xs text-gray-500 mt-1">How many days before the pattern repeats.</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Project over (weeks)</label>
+              <input id="rot-weeks" type="number" min="1" max="52" step="1" value="4" class="input-small w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Hours per day in pattern</label>
+              <p class="text-xs text-gray-500">Fill in hours worked on each day (0 for days off).</p>
+            </div>
+          </div>
+
+          <div id="rot-days-container" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <!-- Pattern day inputs injected by JS -->
+          </div>
+
+          <div class="grid md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Hourly rate (optional)</label>
+              <div class="flex">
+                <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">$</span>
+                <input id="rot-hourly-rate" type="number" min="0" step="0.01" class="input-small flex-1 border-gray-300 rounded-r-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. 22">
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Weekly OT after (hours)</label>
+              <input id="rot-weekly-ot-threshold" type="number" min="0" step="0.5" class="input-small w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. 40">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Overtime multiplier</label>
+              <input id="rot-ot-multiplier" type="number" min="1" step="0.1" class="input-small w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. 1.5">
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-3 mb-4">
+            <button id="rot-calc-btn" type="button" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-blue-700 focus:outline-none">
+              Calculate rotation
+            </button>
+            <button id="rot-clear-btn" type="button" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 focus:outline-none">
+              Clear
+            </button>
+          </div>
+
+          <div id="rot-results" class="hidden border border-gray-200 rounded-md p-4 bg-gray-50 text-sm">
+            <h2 class="font-semibold mb-2">Rotation summary</h2>
+            <p><span class="font-medium">Total period:</span> <span id="rot-period-weeks">0</span> weeks (<span id="rot-period-days">0</span> days)</p>
+            <p><span class="font-medium">Total hours:</span> <span id="rot-total-hours">0</span></p>
+            <p><span class="font-medium">Average hours per week:</span> <span id="rot-avg-weekly-hours">0</span></p>
+            <p><span class="font-medium">Estimated pay for period:</span> <span id="rot-pay">$0.00</span></p>
+          </div>
+        </section>
+
+        <!-- EXPLANATION -->
+        <section class="prose mt-8">
+          <h2>How this shift calculator works</h2>
+          <p>This shift calculator is designed to be more flexible than a simple hours-between-times tool. It supports:</p>
+          <ul>
+            <li>Multiple shifts per day (e.g. split shifts or unpaid lunch breaks)</li>
+            <li>Overnight shifts that cross midnight</li>
+            <li>Weekly timesheets with daily and weekly overtime rules</li>
+            <li>Rotating shift patterns such as 4-on/4-off or 2-2-3 schedules</li>
+          </ul>
+
+          <h3>Time calculation formula</h3>
+          <p>For each shift, the worked time is:</p>
+          <div class="formula-box text-sm">
+            <p><strong>1.</strong> Convert start and end times to minutes since midnight.</p>
+            <p><strong>2.</strong> If end &lt; start, assume the shift ends the next day:</p>
+            <p><code>durationMinutes = (endMinutes + 24 × 60) − startMinutes</code></p>
+            <p><strong>3.</strong> Subtract unpaid breaks:</p>
+            <p><code>netMinutes = max(0, durationMinutes − breakMinutes)</code></p>
+            <p><strong>4.</strong> Convert to hours:</p>
+            <p><code>hours = netMinutes / 60</code></p>
+          </div>
+
+          <h3>Overtime calculation</h3>
+          <p>When you enter an overtime threshold and multiplier, the calculator splits your hours into regular and overtime:</p>
+          <div class="formula-box text-sm">
+            <p><code>regularHours = min(totalHours, otThreshold)</code></p>
+            <p><code>otHours = max(0, totalHours − otThreshold)</code></p>
+            <p><code>pay = hourlyRate × regularHours + hourlyRate × otMultiplier × otHours</code></p>
+          </div>
+          <p>In the weekly timesheet and rotating schedule modes you can also apply weekly overtime thresholds.</p>
+
+          <h2>Common use cases</h2>
+          <ul>
+            <li><strong>Employees</strong> – check your timesheet, verify pay, and see how much overtime you worked.</li>
+            <li><strong>Managers</strong> – plan staffing levels, compare shift patterns, and estimate labor costs.</li>
+            <li><strong>Freelancers & contractors</strong> – track billable hours across multiple clients or projects.</li>
+          </ul>
+
+          <h2>Tips for accurate results</h2>
+          <ul>
+            <li>Include only <strong>unpaid</strong> breaks in the break field. Paid breaks should be left out.</li>
+            <li>For overnight shifts, simply enter the actual start and end times (e.g. 10:00 PM to 6:00 AM).</li>
+            <li>Use the same overtime rules your employer or contract uses; these vary by country and industry.</li>
+          </ul>
+        </section>
+
+        <!-- FAQ -->
+        <section class="mt-8">
+          <h2 class="text-xl font-semibold mb-3">Shift calculator FAQ</h2>
+          <div class="space-y-3 text-sm" id="faq-container">
+            <div class="border border-gray-200 rounded-md">
+              <button type="button" class="faq-question w-full text-left px-4 py-2 font-medium flex justify-between items-center">
+                <span>Does this shift calculator handle overnight shifts?</span>
+                <span class="text-gray-400">+</span>
+              </button>
+              <div class="faq-answer px-4 pb-3 hidden">
+                Yes. If the end time is earlier than the start time (for example 22:00 to 06:00), the calculator assumes the shift ends the next day and calculates the correct duration automatically.
+              </div>
+            </div>
+            <div class="border border-gray-200 rounded-md">
+              <button type="button" class="faq-question w-full text-left px-4 py-2 font-medium flex justify-between items-center">
+                <span>Can I use this as a weekly timesheet calculator?</span>
+                <span class="text-gray-400">+</span>
+              </button>
+              <div class="faq-answer px-4 pb-3 hidden">
+                Yes. Switch to the “Weekly Timesheet” tab to enter up to three shifts per day for seven days. The tool totals hours and pay for the entire week and can apply both daily and weekly overtime rules.
+              </div>
+            </div>
+            <div class="border border-gray-200 rounded-md">
+              <button type="button" class="faq-question w-full text-left px-4 py-2 font-medium flex justify-between items-center">
+                <span>How do I model a rotating shift schedule?</span>
+                <span class="text-gray-400">+</span>
+              </button>
+              <div class="faq-answer px-4 pb-3 hidden">
+                Use the “Rotating Schedule” tab. Set the pattern length in days (for example 4 for 4-on/4-off), enter the hours worked on each day of the pattern, and choose how many weeks to project. The calculator shows total hours and average weekly hours for the rotation.
+              </div>
+            </div>
+            <div class="border border-gray-200 rounded-md">
+              <button type="button" class="faq-question w-full text-left px-4 py-2 font-medium flex justify-between items-center">
+                <span>Is this shift calculator suitable for payroll?</span>
+                <span class="text-gray-400">+</span>
+              </button>
+              <div class="faq-answer px-4 pb-3 hidden">
+                It is a powerful estimation and planning tool, but it does not replace official payroll systems. Always follow your local labor laws and company policies, especially for rounding rules, overtime, holidays, and paid leave.
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+    <aside class="w-full lg:w-1/3">
+      <div class="bg-white p-4 rounded-lg shadow-md mb-6">
+        <h2 class="text-lg font-semibold mb-3">Related Time & Date tools</h2>
+        <ul class="space-y-2 text-sm">
+          <li><a href="https://calcdomain.com/overtime-calculator" class="text-blue-600 hover:underline">Overtime Calculator</a></li>
+          <li><a href="https://calcdomain.com/working-hours-calculator" class="text-blue-600 hover:underline">Working Hours Calculator</a></li>
+          <li><a href="https://calcdomain.com/hours-calculator" class="text-blue-600 hover:underline">Hours Calculator</a></li>
+          <li><a href="https://calcdomain.com/time-calculator" class="text-blue-600 hover:underline">Time Calculator</a></li>
+          <li><a href="https://calcdomain.com/working-hours-calculator" class="text-blue-600 hover:underline">Working Hours & Breaks</a></li>
+          <li><a href="https://calcdomain.com/business-days-calculator" class="text-blue-600 hover:underline">Business Days Calculator</a></li>
+          <li><a href="https://calcdomain.com/workdays-calculator" class="text-blue-600 hover:underline">Workdays Calculator</a></li>
+          <li><a href="https://calcdomain.com/hours-calculator" class="text-blue-600 hover:underline">Hours Between Times</a></li>
+        </ul>
+      </div>
+
+      <div class="bg-white p-4 rounded-lg shadow-md">
+        <h2 class="text-lg font-semibold mb-3">More Lifestyle & Everyday tools</h2>
+        <ul class="space-y-2 text-sm">
+          <li><a href="https://calcdomain.com/time-calculator" class="text-blue-600 hover:underline">Time Calculator</a></li>
+          <li><a href="https://calcdomain.com/working-hours-calculator" class="text-blue-600 hover:underline">Working Hours</a></li>
+          <li><a href="https://calcdomain.com/age-calculator" class="text-blue-600 hover:underline">Age Calculator</a></li>
+          <li><a href="https://calcdomain.com/date-calculator" class="text-blue-600 hover:underline">Date Calculator</a></li>
+          <li><a href="https://calcdomain.com/days-between-dates" class="text-blue-600 hover:underline">Days Between Dates</a></li>
+          <li><a href="https://calcdomain.com/working-hours-calculator" class="text-blue-600 hover:underline">Working Hours & Pay</a></li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</div>
+<footer class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div>
+        <h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+        <p class="text-gray-400 mb-4">Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.</p>
+      </div>
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Categories</h4>
+        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/finance" class="text-gray-400 hover:text-white">Finance</a></li>
+          <li><a href="https://calcdomain.com/health-fitness" class="text-gray-400 hover:text-white">Health & Fitness</a></li>
+          <li><a href="https://calcdomain.com/math-conversions" class="text-gray-400 hover:text-white">Math & Conversions</a></li>
+          <li><a href="https://calcdomain.com/lifestyle-everyday" class="text-gray-400 hover:text-white">Lifestyle & Everyday</a></li>
+          <li><a href="https://calcdomain.com/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/mortgage-payment" class="text-gray-400 hover:text-white">Mortgage Calculator</a></li>
+          <li><a href="https://calcdomain.com/percentage-calculator" class="text-gray-400 hover:text-white">Percentage Calculator</a></li>
+          <li><a href="https://calcdomain.com/bmi-calculator" class="text-gray-400 hover:text-white">BMI Calculator</a></li>
+          <li><a href="https://calcdomain.com/auto-loan-calculator" class="text-gray-400 hover:text-white">Auto Loan Calculator</a></li>
+          <li><a href="https://calcdomain.com/house-affordability" class="text-gray-400 hover:text-white">House Affordability</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Support</h4>
+        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/about" class="text-gray-400 hover:text-white">About Us</a></li>
+          <li><a href="https://calcdomain.com/contact" class="text-gray-400 hover:text-white">Contact</a></li>
+          <li><a href="https://calcdomain.com/privacy" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
+          <li><a href="https://calcdomain.com/terms" class="text-gray-400 hover:text-white">Terms of Service</a></li>
+          <li><a href="https://calcdomain.com/sitemap" class="text-gray-400 hover:text-white">Site Map</a></li>
+        </ul>
       </div>
     </div>
-  </footer>
+    <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+      <p>&copy; 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer>
 
-  <!-- Calculator Logic (placed before </body>) -->
-  <script>
-  (function(){
-    const $ = (id) => document.getElementById(id);
-    const els = {
-      // Settings
-      payRate: $('payRate'), currency: $('currency'),
-      rounding: $('rounding'),
-      dailyOTchk: $('dailyOTchk'), dailyOTthr: $('dailyOTthr'), dailyOTmult: $('dailyOTmult'),
-      weeklyOTchk: $('weeklyOTchk'), weeklyOTthr: $('weeklyOTthr'), weeklyOTmult: $('weeklyOTmult'),
-      // Shifts
-      shiftBody: $('shiftBody'),
-      addShiftBtn: $('addShiftBtn'), addWeekBtn: $('addWeekBtn'), clearBtn: $('clearBtn'),
-      // Results
-      res_shifts: $('res_shifts'), res_hours: $('res_hours'),
-      res_regular: $('res_regular'), res_ot: $('res_ot'),
-      res_daily_ot: $('res_daily_ot'), res_weekly_ot: $('res_weekly_ot'),
-      res_pay: $('res_pay'),
-      exportBtn: $('exportBtn'), printBtn: $('printBtn')
-    };
+<script src="/assets/js/script_menu.js" defer></script>
+<script src="/assets/js/script_faq.js" defer></script>
+<script src="search.js" defer></script>
 
-    // Accessible tooltip toggles
-    document.querySelectorAll('button[aria-controls]').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        const panel = document.getElementById(btn.getAttribute('aria-controls'));
-        const expanded = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!expanded));
-        panel.hidden = expanded;
-      });
-    });
-
-    // Focus ring minimum target size
-    function ensureMinimumTarget(el){ el.style.minHeight='48px'; el.style.minWidth='48px'; }
-    [els.addShiftBtn, els.addWeekBtn, els.clearBtn, els.exportBtn, els.printBtn].forEach(ensureMinimumTarget);
-
-    // State
-    let shifts = []; // {id, date, start, end, breakMin, workedMin, dailyOTMin}
-    const weekStartsOn = 1; // Monday
-
-    // Helpers
-    const nf2 = (x) => (Math.round(x*100)/100).toFixed(2);
-    function fmtCurrency(val, code){
-      try { return new Intl.NumberFormat(undefined,{style:'currency',currency:code}).format(val); }
-      catch { return code + ' ' + nf2(val); }
+<script>
+  // Utility: parse time string based on format (24h or 12h)
+  function parseTime(str, format) {
+    if (!str) return null;
+    str = str.trim().toLowerCase();
+    let hours, minutes;
+    if (format === '24') {
+      const m = str.match(/^(\d{1,2}):(\d{2})$/);
+      if (!m) return null;
+      hours = parseInt(m[1], 10);
+      minutes = parseInt(m[2], 10);
+      if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+    } else {
+      const m = str.match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/);
+      if (!m) return null;
+      hours = parseInt(m[1], 10);
+      minutes = parseInt(m[2], 10);
+      const ampm = m[3];
+      if (hours < 1 || hours > 12 || minutes < 0 || minutes > 59) return null;
+      if (ampm === 'pm' && hours !== 12) hours += 12;
+      if (ampm === 'am' && hours === 12) hours = 0;
     }
-    function parseTimeToMinutes(t){
-      // "HH:MM"
-      if(!t || !/^\d{2}:\d{2}$/.test(t)) return NaN;
-      const [H,M] = t.split(':').map(Number);
-      return H*60 + M;
-    }
-    function minutesDiffStartEnd(startMin, endMin){
-      // handle overnight if end < start
-      if (isNaN(startMin) || isNaN(endMin)) return NaN;
-      let diff = endMin - startMin;
-      if (diff < 0) diff += 24*60;
-      return diff;
-    }
-    function applyRounding(mins, inc){
-      if(!inc || inc === 0) return mins;
-      return Math.round(mins / inc) * inc;
-    }
-    function dateStr(d){ return d ?? ''; }
+    return hours * 60 + minutes;
+  }
 
-    // Validation
-    function setError(el, msgId, message){
-      const msgEl = $(msgId);
-      if (!msgEl) return;
-      msgEl.textContent = message || '';
-      el.setAttribute('aria-describedby', [el.getAttribute('aria-describedby')||'', msgId].join(' ').trim());
-    }
-    function clearError(el, msgId){ setError(el, msgId, ''); }
+  function minutesToHours(mins) {
+    return Math.round((mins / 60) * 100) / 100;
+  }
 
-    // UI Row
-    function makeRow(s){
-      const tr = document.createElement('tr');
-      tr.dataset.id = s.id;
-      tr.innerHTML = `
-        <td class="px-3 py-2 align-middle">
-          <input type="date" class="w-full px-2 py-2 border rounded" value="${s.date}" aria-label="Date">
-        </td>
-        <td class="px-3 py-2 align-middle">
+  function formatMoney(value) {
+    if (isNaN(value)) return '$0.00';
+    return '$' + value.toFixed(2);
+  }
+
+  // DAILY SHIFTS
+  function buildDailyShiftRows() {
+    const container = document.getElementById('daily-shifts-container');
+    const count = parseInt(document.getElementById('daily-shift-count').value, 10);
+    container.innerHTML = '';
+    for (let i = 1; i <= count; i++) {
+      const div = document.createElement('div');
+      div.className = 'border border-gray-200 rounded-md p-3';
+      div.innerHTML = `
+        <h3 class="text-sm font-semibold mb-2">Shift ${i}</h3>
+        <div class="grid md:grid-cols-3 gap-3">
           <div>
-            <input type="time" class="w-full px-2 py-2 border rounded" value="${s.start}" aria-label="Start time" aria-describedby="start_${s.id}_err">
-            <p id="start_${s.id}_err" class="text-xs text-red-600 mt-1" aria-live="polite"></p>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Start time</label>
+            <input type="text" class="daily-start w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="e.g. 09:00 or 9:00 AM">
           </div>
-        </td>
-        <td class="px-3 py-2 align-middle">
           <div>
-            <input type="time" class="w-full px-2 py-2 border rounded" value="${s.end}" aria-label="End time" aria-describedby="end_${s.id}_err">
-            <p id="end_${s.id}_err" class="text-xs text-red-600 mt-1" aria-live="polite"></p>
+            <label class="block text-xs font-medium text-gray-700 mb-1">End time</label>
+            <input type="text" class="daily-end w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="e.g. 17:30 or 5:30 PM">
           </div>
-        </td>
-        <td class="px-3 py-2 align-middle text-right">
-          <input type="number" class="w-full px-2 py-2 border rounded text-right" value="${s.breakMin}" min="0" step="1" aria-label="Unpaid break minutes">
-        </td>
-        <td class="px-3 py-2 align-middle text-right"><span class="font-semibold" data-field="worked">0.00</span></td>
-        <td class="px-3 py-2 align-middle text-right"><span class="font-semibold text-amber-700" data-field="dailyOT">0.00</span></td>
-        <td class="px-3 py-2 align-middle text-center">
-          <button type="button" class="px-3 py-2 rounded border no-print" title="Remove row" aria-label="Remove row">Remove</button>
-        </td>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Unpaid break (minutes)</label>
+            <input type="number" min="0" step="1" class="daily-break input-small w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="e.g. 30">
+          </div>
+        </div>
       `;
-      return tr;
+      container.appendChild(div);
     }
+  }
 
-    function addShift(dateDefault){
-      const id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()+Math.random());
-      const s = { id, date: dateDefault || new Date().toISOString().slice(0,10), start: '09:00', end: '17:00', breakMin: 30, workedMin: 0, dailyOTMin: 0 };
-      shifts.push(s);
-      const row = makeRow(s);
-      els.shiftBody.appendChild(row);
-      wireRow(row, s);
-      recalc();
+  function calcDaily() {
+    const format = document.getElementById('daily-time-format').value;
+    const startInputs = document.querySelectorAll('.daily-start');
+    const endInputs = document.querySelectorAll('.daily-end');
+    const breakInputs = document.querySelectorAll('.daily-break');
+    let totalMinutes = 0;
+    for (let i = 0; i < startInputs.length; i++) {
+      const startStr = startInputs[i].value;
+      const endStr = endInputs[i].value;
+      const breakMin = parseInt(breakInputs[i].value || '0', 10);
+      if (!startStr && !endStr && !breakInputs[i].value) continue;
+      const start = parseTime(startStr, format);
+      const end = parseTime(endStr, format);
+      if (start === null || end === null || isNaN(breakMin) || breakMin < 0) {
+        alert('Please enter valid times and break minutes for all filled shifts.');
+        return;
+      }
+      let duration = end - start;
+      if (duration < 0) duration += 24 * 60; // overnight
+      let net = duration - breakMin;
+      if (net < 0) net = 0;
+      totalMinutes += net;
     }
-
-    function addWeek(){
-      // Monday to Sunday of current week
-      const now = new Date();
-      const day = (now.getDay()+6)%7; // Monday=0
-      const monday = new Date(now); monday.setDate(now.getDate()-day);
-      for(let i=0;i<7;i++){
-        const d = new Date(monday); d.setDate(monday.getDate()+i);
-        addShift(d.toISOString().slice(0,10));
+    const totalHours = minutesToHours(totalMinutes);
+    const rate = parseFloat(document.getElementById('daily-hourly-rate').value);
+    const otThreshold = parseFloat(document.getElementById('daily-ot-threshold').value);
+    const otMult = parseFloat(document.getElementById('daily-ot-multiplier').value);
+    let regularHours = totalHours;
+    let otHours = 0;
+    if (!isNaN(otThreshold) && otThreshold > 0) {
+      regularHours = Math.min(totalHours, otThreshold);
+      otHours = Math.max(0, totalHours - otThreshold);
+    }
+    let pay = 0;
+    if (!isNaN(rate) && rate > 0) {
+      if (!isNaN(otMult) && otMult > 1 && otHours > 0) {
+        pay = rate * regularHours + rate * otMult * otHours;
+      } else {
+        pay = rate * totalHours;
       }
     }
+    document.getElementById('daily-total-hours').textContent = totalHours.toFixed(2);
+    document.getElementById('daily-regular-hours').textContent = regularHours.toFixed(2);
+    document.getElementById('daily-ot-hours').textContent = otHours.toFixed(2);
+    document.getElementById('daily-pay').textContent = formatMoney(pay);
+    document.getElementById('daily-results').classList.remove('hidden');
+  }
 
-    function wireRow(tr, s){
-      const [dateEl, startEl, endEl, breakEl] = tr.querySelectorAll('input');
-      const removeBtn = tr.querySelector('button');
+  function clearDaily() {
+    document.querySelectorAll('.daily-start, .daily-end, .daily-break').forEach(el => el.value = '');
+    document.getElementById('daily-hourly-rate').value = '';
+    document.getElementById('daily-ot-threshold').value = '';
+    document.getElementById('daily-ot-multiplier').value = '';
+    document.getElementById('daily-results').classList.add('hidden');
+  }
 
-      function onBlurValidateTime(el, msgId){
-        el.addEventListener('blur', ()=>{
-          const ok = /^\d{2}:\d{2}$/.test(el.value);
-          setError(el, msgId, ok ? '' : 'Please enter time as HH:MM');
-        });
+  // WEEKLY
+  const weekDays = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+  function buildWeeklyTable() {
+    const tbody = document.getElementById('weekly-tbody');
+    tbody.innerHTML = '';
+    weekDays.forEach((day, dIndex) => {
+      for (let s = 1; s <= 3; s++) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="px-2 py-1 border-b border-gray-200">${s === 1 ? day : ''}</td>
+          <td class="px-2 py-1 border-b border-gray-200">Shift ${s}</td>
+          <td class="px-2 py-1 border-b border-gray-200">
+            <input type="text" class="weekly-start w-24 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-xs" data-day="${dIndex}" data-shift="${s}" placeholder="09:00">
+          </td>
+          <td class="px-2 py-1 border-b border-gray-200">
+            <input type="text" class="weekly-end w-24 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-xs" data-day="${dIndex}" data-shift="${s}" placeholder="17:00">
+          </td>
+          <td class="px-2 py-1 border-b border-gray-200">
+            <input type="number" min="0" step="1" class="weekly-break input-small w-20 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-xs" data-day="${dIndex}" data-shift="${s}" placeholder="30">
+          </td>
+          <td class="px-2 py-1 border-b border-gray-200 text-right">
+            <span class="weekly-hours" data-day="${dIndex}" data-shift="${s}">0.00</span>
+          </td>
+        `;
+        tbody.appendChild(tr);
       }
-      onBlurValidateTime(startEl, `start_${s.id}_err`);
-      onBlurValidateTime(endEl, `end_${s.id}_err`);
-
-      [dateEl, startEl, endEl, breakEl].forEach(inp=>{
-        inp.addEventListener('input', ()=>{
-          s.date = dateEl.value;
-          s.start = startEl.value;
-          s.end = endEl.value;
-          s.breakMin = Math.max(0, Number(breakEl.value||0));
-          recalc();
-        });
-      });
-
-      removeBtn.addEventListener('click', ()=>{
-        shifts = shifts.filter(x => x.id !== s.id);
-        tr.remove();
-        recalc();
-      });
-    }
-
-    // Group by ISO week (Mon-Sun)
-    function mondayOf(dateStr){
-      const d = new Date(dateStr+"T00:00:00");
-      if (isNaN(d)) return null;
-      const day = (d.getDay()+6)%7; // Monday=0
-      const m = new Date(d); m.setDate(d.getDate()-day);
-      m.setHours(0,0,0,0);
-      return m;
-    }
-    function weekKey(dateStr){
-      const m = mondayOf(dateStr); if(!m) return 'unknown';
-      return m.toISOString().slice(0,10);
-    }
-
-    function compute(){
-      const inc = Number(els.rounding.value||0);
-      const dailyOTOn = els.dailyOTchk.checked;
-      const dailyThr = Number(els.dailyOTthr.value||0)*60;
-      const weeklyOTOn = els.weeklyOTchk.checked;
-      const weeklyThr = Number(els.weeklyOTthr.value||0)*60;
-
-      // per-shift compute
-      shifts.forEach(s=>{
-        const startMin = parseTimeToMinutes(s.start);
-        const endMin   = parseTimeToMinutes(s.end);
-        const raw = minutesDiffStartEnd(startMin, endMin);
-        const afterBreak = Math.max(0, raw - (Number(s.breakMin)||0));
-        const rounded = applyRounding(afterBreak, inc);
-        s.workedMin = rounded;
-
-        // daily OT
-        s.dailyOTMin = dailyOTOn ? Math.max(0, rounded - dailyThr) : 0;
-      });
-
-      // Weekly buckets
-      const byWeek = new Map();
-      for(const s of shifts){
-        const key = weekKey(s.date);
-        if(!byWeek.has(key)) byWeek.set(key, []);
-        byWeek.get(key).push(s);
-      }
-
-      let totalMin=0, dailyOTmin=0, weeklyOTmin=0;
-      byWeek.forEach(list=>{
-        const weekTotal = list.reduce((acc, s)=> acc + s.workedMin, 0);
-        const weekOT = weeklyOTOn ? Math.max(0, weekTotal - weeklyThr) : 0;
-        weeklyOTmin += weekOT;
-        totalMin += weekTotal;
-        dailyOTmin += list.reduce((acc, s)=> acc + s.dailyOTMin, 0);
-      });
-
-      // Regular hours (not double counting in total display):
-      // Show both daily and weekly OT separately; "Overtime hours" = union-approx display = max(dailyOT, weeklyOT) for a conservative, non-additive headline.
-      const totalH = totalMin/60;
-      const dailyOTH = dailyOTmin/60;
-      const weeklyOTH = weeklyOTmin/60;
-      const headlineOTH = Math.max(dailyOTH, weeklyOTH);
-      const regularH = Math.max(0, totalH - headlineOTH);
-
-      // Pay
-      const rate = Number(els.payRate.value||0);
-      const multD = Math.max(1, Number(els.dailyOTmult.value||1));
-      const multW = Math.max(1, Number(els.weeklyOTmult.value||1));
-      // Informational pay split
-      const payReg = regularH * rate;
-      const payDaily = dailyOTH * rate * multD;
-      const payWeekly = weeklyOTH * rate * multW;
-      const gross = payReg + payDaily + payWeekly;
-
-      return {
-        totalH, dailyOTH, weeklyOTH, headlineOTH, regularH, gross,
-        rate, currency: els.currency.value
-      };
-    }
-
-    function recalc(){
-      // Update per-row worked/OT
-      els.shiftBody.querySelectorAll('tr').forEach(tr=>{
-        const id = tr.dataset.id;
-        const s = shifts.find(x=> x.id===id);
-        if (!s) return;
-        const workedEl = tr.querySelector('[data-field="worked"]');
-        const dailyOTEl = tr.querySelector('[data-field="dailyOT"]');
-        if (workedEl) workedEl.textContent = nf2(s.workedMin/60);
-        if (dailyOTEl) dailyOTEl.textContent = nf2(s.dailyOTMin/60);
-      });
-
-      const stats = compute();
-      els.res_shifts.textContent = String(shifts.length);
-      els.res_hours.textContent = nf2(stats.totalH);
-      els.res_regular.textContent = nf2(stats.regularH);
-      els.res_ot.textContent = nf2(stats.headlineOTH);
-      els.res_daily_ot.textContent = nf2(stats.dailyOTH);
-      els.res_weekly_ot.textContent = nf2(stats.weeklyOTH);
-      els.res_pay.textContent = fmtCurrency(stats.gross, stats.currency);
-    }
-
-    // CSV export
-    function toCSV(){
-      const hdr = ['Date','Start','End','Break(min)','Worked(h)','Daily OT(h)'];
-      const rows = shifts.map(s=>[
-        s.date, s.start, s.end, s.breakMin,
-        (s.workedMin/60).toFixed(2),
-        (s.dailyOTMin/60).toFixed(2)
-      ]);
-      const stats = compute();
-      rows.push([]);
-      rows.push(['Totals','','','',
-        stats.totalH.toFixed(2),
-        stats.dailyOTH.toFixed(2)
-      ]);
-      rows.push(['Weekly OT (h)','','','', stats.weeklyOTH.toFixed(2), '']);
-      rows.push(['Gross pay','','','', stats.gross.toFixed(2)+' '+stats.currency,'']);
-
-      const csv = [hdr, ...rows].map(r=> r.map(v=>{
-        const s=String(v??''); return /[",\n]/.test(s) ? `"${s.replace(/"https://calcdomain.com/g,'""')}"` : s;
-      }).join(',')).join('\n');
-
-      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'shift-calculator.csv';
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(()=>URL.revokeObjectURL(url), 1000);
-    }
-
-    // Printing
-    els.printBtn.addEventListener('click', ()=> window.print());
-    els.exportBtn.addEventListener('click', toCSV);
-
-    // Buttons
-    els.addShiftBtn.addEventListener('click', ()=> addShift());
-    els.addWeekBtn.addEventListener('click', addWeek);
-    els.clearBtn.addEventListener('click', ()=>{
-      shifts = []; els.shiftBody.innerHTML = ''; recalc();
     });
+  }
 
-    // Inline validation on blur for payRate
-    els.payRate.addEventListener('blur', ()=>{
-      const v = Number(els.payRate.value||0);
-      if (isNaN(v) || v < 0) setError(els.payRate, 'payRate_err', 'Enter a valid non-negative hourly rate (e.g., 20 or 20.50).');
-      else clearError(els.payRate, 'payRate_err');
+  function calcWeekly() {
+    const format = document.getElementById('weekly-time-format').value;
+    const rate = parseFloat(document.getElementById('weekly-hourly-rate').value);
+    const dailyOT = parseFloat(document.getElementById('weekly-daily-ot-threshold').value);
+    const weeklyOT = parseFloat(document.getElementById('weekly-weekly-ot-threshold').value);
+    const otMult = parseFloat(document.getElementById('weekly-ot-multiplier').value);
+
+    let totalMinutes = 0;
+    let dailyMinutes = new Array(7).fill(0);
+
+    for (let d = 0; d < 7; d++) {
+      for (let s = 1; s <= 3; s++) {
+        const startInput = document.querySelector(`.weekly-start[data-day="${d}"][data-shift="${s}"]`);
+        const endInput = document.querySelector(`.weekly-end[data-day="${d}"][data-shift="${s}"]`);
+        const breakInput = document.querySelector(`.weekly-break[data-day="${d}"][data-shift="${s}"]`);
+        const hoursSpan = document.querySelector(`.weekly-hours[data-day="${d}"][data-shift="${s}"]`);
+        const startStr = startInput.value;
+        const endStr = endInput.value;
+        const breakMin = parseInt(breakInput.value || '0', 10);
+        if (!startStr && !endStr && !breakInput.value) {
+          hoursSpan.textContent = '0.00';
+          continue;
+        }
+        const start = parseTime(startStr, format);
+        const end = parseTime(endStr, format);
+        if (start === null || end === null || isNaN(breakMin) || breakMin < 0) {
+          alert('Please enter valid times and break minutes for all filled weekly shifts.');
+          return;
+        }
+        let duration = end - start;
+        if (duration < 0) duration += 24 * 60;
+        let net = duration - breakMin;
+        if (net < 0) net = 0;
+        dailyMinutes[d] += net;
+        totalMinutes += net;
+        hoursSpan.textContent = minutesToHours(net).toFixed(2);
+      }
+    }
+
+    const totalHours = minutesToHours(totalMinutes);
+
+    // Daily OT
+    let dailyOTMinutes = 0;
+    if (!isNaN(dailyOT) && dailyOT > 0) {
+      const dailyOTMinThreshold = dailyOT * 60;
+      dailyMinutes.forEach(m => {
+        if (m > dailyOTMinThreshold) {
+          dailyOTMinutes += (m - dailyOTMinThreshold);
+        }
+      });
+    }
+
+    // Weekly OT
+    let weeklyOTMinutes = 0;
+    if (!isNaN(weeklyOT) && weeklyOT > 0) {
+      const weeklyOTMinThreshold = weeklyOT * 60;
+      if (totalMinutes > weeklyOTMinThreshold) {
+        weeklyOTMinutes = totalMinutes - weeklyOTMinThreshold;
+      }
+    }
+
+    // Avoid double-counting: treat weekly OT as additional beyond daily OT
+    let otMinutes = Math.max(dailyOTMinutes, weeklyOTMinutes);
+    if (otMinutes > totalMinutes) otMinutes = totalMinutes;
+    const otHours = minutesToHours(otMinutes);
+    const regularHours = totalHours - otHours;
+
+    let pay = 0;
+    if (!isNaN(rate) && rate > 0) {
+      if (!isNaN(otMult) && otMult > 1 && otHours > 0) {
+        pay = rate * regularHours + rate * otMult * otHours;
+      } else {
+        pay = rate * totalHours;
+      }
+    }
+
+    document.getElementById('weekly-total-hours').textContent = totalHours.toFixed(2);
+    document.getElementById('weekly-regular-hours').textContent = regularHours.toFixed(2);
+    document.getElementById('weekly-ot-hours').textContent = otHours.toFixed(2);
+    document.getElementById('weekly-pay').textContent = formatMoney(pay);
+    document.getElementById('weekly-results').classList.remove('hidden');
+  }
+
+  function clearWeekly() {
+    document.querySelectorAll('.weekly-start, .weekly-end, .weekly-break').forEach(el => el.value = '');
+    document.querySelectorAll('.weekly-hours').forEach(el => el.textContent = '0.00');
+    document.getElementById('weekly-hourly-rate').value = '';
+    document.getElementById('weekly-daily-ot-threshold').value = '';
+    document.getElementById('weekly-weekly-ot-threshold').value = '';
+    document.getElementById('weekly-ot-multiplier').value = '';
+    document.getElementById('weekly-results').classList.add('hidden');
+  }
+
+  // ROTATING
+  function buildRotPatternInputs() {
+    const container = document.getElementById('rot-days-container');
+    const days = parseInt(document.getElementById('rot-pattern-days').value, 10);
+    if (isNaN(days) || days < 1 || days > 31) return;
+    container.innerHTML = '';
+    for (let i = 1; i <= days; i++) {
+      const div = document.createElement('div');
+      div.className = 'border border-gray-200 rounded-md p-2';
+      div.innerHTML = `
+        <label class="block text-xs font-medium text-gray-700 mb-1">Day ${i} hours</label>
+        <input type="number" min="0" step="0.25" class="rot-day-hours input-small w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm" data-day="${i}" placeholder="e.g. 12">
+      `;
+      container.appendChild(div);
+    }
+  }
+
+  function calcRot() {
+    const patternDays = parseInt(document.getElementById('rot-pattern-days').value, 10);
+    const weeks = parseInt(document.getElementById('rot-weeks').value, 10);
+    if (isNaN(patternDays) || patternDays < 1 || isNaN(weeks) || weeks < 1) {
+      alert('Please enter a valid pattern length and number of weeks.');
+      return;
+    }
+    const dayInputs = document.querySelectorAll('.rot-day-hours');
+    let patternHours = 0;
+    for (const input of dayInputs) {
+      const h = parseFloat(input.value || '0');
+      if (h < 0) {
+        alert('Hours per day in the pattern cannot be negative.');
+        return;
+      }
+      patternHours += h;
+    }
+    const totalDays = weeks * 7;
+    const fullPatterns = Math.floor(totalDays / patternDays);
+    const remainingDays = totalDays % patternDays;
+
+    let totalHours = fullPatterns * patternHours;
+    // Add remaining days
+    for (let i = 1; i <= remainingDays; i++) {
+      const input = document.querySelector(`.rot-day-hours[data-day="${i}"]`);
+      if (input) {
+        totalHours += parseFloat(input.value || '0');
+      }
+    }
+
+    const rate = parseFloat(document.getElementById('rot-hourly-rate').value);
+    const weeklyOT = parseFloat(document.getElementById('rot-weekly-ot-threshold').value);
+    const otMult = parseFloat(document.getElementById('rot-ot-multiplier').value);
+
+    const avgWeeklyHours = totalHours / weeks;
+    let pay = 0;
+    if (!isNaN(rate) && rate > 0) {
+      if (!isNaN(weeklyOT) && weeklyOT > 0 && !isNaN(otMult) && otMult > 1) {
+        // Approximate OT based on average weekly hours
+        const regularWeekly = Math.min(avgWeeklyHours, weeklyOT);
+        const otWeekly = Math.max(0, avgWeeklyHours - weeklyOT);
+        const weeklyPay = rate * regularWeekly + rate * otMult * otWeekly;
+        pay = weeklyPay * weeks;
+      } else {
+        pay = rate * totalHours;
+      }
+    }
+
+    document.getElementById('rot-period-weeks').textContent = weeks.toString();
+    document.getElementById('rot-period-days').textContent = totalDays.toString();
+    document.getElementById('rot-total-hours').textContent = totalHours.toFixed(2);
+    document.getElementById('rot-avg-weekly-hours').textContent = avgWeeklyHours.toFixed(2);
+    document.getElementById('rot-pay').textContent = formatMoney(pay);
+    document.getElementById('rot-results').classList.remove('hidden');
+  }
+
+  function clearRot() {
+    document.querySelectorAll('.rot-day-hours').forEach(el => el.value = '');
+    document.getElementById('rot-hourly-rate').value = '';
+    document.getElementById('rot-weekly-ot-threshold').value = '';
+    document.getElementById('rot-ot-multiplier').value = '';
+    document.getElementById('rot-results').classList.add('hidden');
+  }
+
+  // Tabs
+  function initTabs() {
+    const buttons = document.querySelectorAll('.tab-btn');
+    const panels = {
+      daily: document.getElementById('tab-daily'),
+      weekly: document.getElementById('tab-weekly'),
+      rotating: document.getElementById('tab-rotating')
+    };
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.getAttribute('data-tab');
+        buttons.forEach(b => b.classList.remove('tab-active'));
+        btn.classList.add('tab-active');
+        Object.keys(panels).forEach(key => {
+          if (key === tab) panels[key].classList.remove('hidden');
+          else panels[key].classList.add('hidden');
+        });
+      });
     });
+  }
 
-    // Seed with one shift
-    addShift();
-  })();
-  </script>
-</body>
-</html>
+  // FAQ toggle (simple, independent of global script_faq)
+  function initLocalFAQ() {
+    document.querySelectorAll('#faq-container .faq-question').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const answer = btn.nextElementSibling;
+        const sign = btn.querySelector('span:last-child');
+        const isHidden = answer.classList.contains('hidden');
+        document.querySelectorAll('#faq-container .faq-answer').forEach(a => a.classList.add('hidden'));
+        document.querySelectorAll('#faq-container .faq-question span:last-child').forEach(s => s.textContent = '+');
+        if (isHidden) {
+          answer.classList.remove('hidden');
+          sign.textContent = '−';
+        }
+      });
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    initTabs();
+    buildDailyShiftRows();
+    buildWeeklyTable();
+    buildRotPatternInputs();
+    initLocalFAQ();
+
+    document.getElementById('daily-shift-count').addEventListener('change', buildDailyShiftRows);
+    document.getElementById('daily-calc-btn').addEventListener('click', calcDaily);
+    document.getElementById('daily-clear-btn').addEventListener('click', clearDaily);
+
+    document.getElementById('weekly-calc-btn').addEventListener('click', calcWeekly);
+    document.getElementById('weekly-clear-btn').addEventListener('click', clearWeekly);
+
+    document.getElementById('rot-pattern-days').addEventListener('change', buildRotPatternInputs);
+    document.getElementById('rot-calc-btn').addEventListener('click', calcRot);
+    document.getElementById('rot-clear-btn').addEventListener('click', clearRot);
+  });
+
+  window.MathJax = {
+    tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</body> </html>
