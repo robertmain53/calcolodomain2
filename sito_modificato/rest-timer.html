@@ -1,214 +1,976 @@
-<!DOCTYPE html>
-<html lang="en"><head>
+<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rest Timer – Smart Interval & Workout Break Timer</title>
+<meta name="description" content="Free online rest timer for workouts. Set work and rest intervals, number of sets, warm-up and cooldown, custom sounds, and keyboard shortcuts. Perfect for strength training, HIIT, Tabata, and stretching.">
 <link rel="canonical" href="https://calcdomain.com/rest-timer">
 
-
-
-
-
- 
 <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="shortcut icon" href="/favicon.ico" />
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 <link rel="manifest" href="/site.webmanifest" />
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Rest Timer | Health and Fitness</title>
-<meta content="Optimize your strength training sessions with our Rest Timer. Calculate the perfect rest time between sets for maximum performance." name="description"/>
-<meta content="Ugo Candido" name="author"/>
 
-<style>
-        /* Critical CSS for above-the-fold content */
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            background: #f8f9fa;
-            color: #212529;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        h1 {
-            font-size: 2rem;
-            color: #005a9c;
-        }
-        .calculator-container {
-            background-color: #ffffff;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        .form-control {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #dee2e6;
-            border-radius: 5px;
-            font-size: 1rem;
-        }
-        .results-container {
-            margin-top: 20px;
-            background: #e9ecef;
-            padding: 15px;
-            border-radius: 8px;
-        }
-        .result-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #dee2e6;
-        }
-        .result-item:last-child {
-            border-bottom: none;
-        }
-        .result-label {
-            color: #6c757d;
-        }
-        .result-value {
-            font-weight: bold;
-            color: #28a745;
-        }
-    </style>
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "WebPage",
-  "name": "Rest Timer",
-  "description": "Optimize your strength training sessions with our Rest Timer. Calculate the perfect rest time between sets for maximum performance.",
-  "url": "https://calcdomain.com/rest-timer",
-  "author": {
-    "@type": "Person",
-    "name": "Ugo Candido"
-  },
-  "publisher": {
-    "@type": "Organization",
-    "name": "Barbell Calculator"
-  }
-}
-  </script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    body { font-family: 'Inter', sans-serif; }
+    .card-hover { transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; }
+    .card-hover:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+    .prose { max-width: 65ch; margin-left: auto; margin-right: auto; }
+    .prose h2 { font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; }
+    .prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+    .prose p { margin-bottom: 1rem; line-height: 1.6; }
+    .prose ul, .prose ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+    .prose li { margin-bottom: 0.5rem; }
+    .formula-box { background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; padding: 1rem; overflow-x: auto; margin: 1rem 0; }
+    .timer-ring {
+      width: 220px;
+      height: 220px;
+      border-radius: 9999px;
+      border-width: 10px;
+      border-style: solid;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.3s ease, background-color 0.3s ease;
+    }
+    .timer-ring.work { border-color: #22c55e; background-color: #ecfdf3; }
+    .timer-ring.rest { border-color: #3b82f6; background-color: #eff6ff; }
+    .timer-ring.idle { border-color: #e5e7eb; background-color: #f9fafb; }
+    .timer-ring.finished { border-color: #a855f7; background-color: #faf5ff; }
+    .timer-ring.paused { opacity: 0.8; }
+    .timer-progress {
+      position: absolute;
+      inset: -10px;
+      border-radius: 9999px;
+      background: conic-gradient(#22c55e 0deg, #22c55e 0deg, #e5e7eb 0deg);
+      mask: radial-gradient(farthest-side, transparent 78%, #000 79%);
+      -webkit-mask: radial-gradient(farthest-side, transparent 78%, #000 79%);
+      transition: background 0.2s linear;
+      pointer-events: none;
+    }
+    .timer-progress.rest {
+      background: conic-gradient(#3b82f6 0deg, #3b82f6 0deg, #e5e7eb 0deg);
+    }
+    .timer-progress.finished {
+      background: conic-gradient(#a855f7 0deg, #a855f7 0deg, #e5e7eb 0deg);
+    }
+    .timer-display {
+      font-variant-numeric: tabular-nums;
+    }
+    .badge {
+      font-size: 0.75rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+    }
+</style>
+
+<!-- Google tag (gtag.js) --> <script async src="https://www.googletagmanager.com/gtag/js?id=G-7MB5V1LZRN"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-7MB5V1LZRN'); </script> <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA" /> <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script> <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script> <script async src="//www.ezojs.com/ezoic/sa.min.js"></script> <script> window.ezstandalone = window.ezstandalone || {}; ezstandalone.cmd = ezstandalone.cmd || []; </script>
+
+<script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://calcdomain.com"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Health & Fitness",
+            "item": "https://calcdomain.com/categories/health-fitness"
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "Fitness",
+            "item": "https://calcdomain.com/fitness"
+          },
+          {
+            "@type": "ListItem",
+            "position": 4,
+            "name": "Rest Timer",
+            "item": "https://calcdomain.com/rest-timer"
+          }
+        ]
+      },
+      {
+        "@type": "WebPage",
+        "name": "Rest Timer – Smart Interval & Workout Break Timer",
+        "url": "https://calcdomain.com/rest-timer",
+        "description": "Free online rest timer for workouts. Set work and rest intervals, number of sets, warm-up and cooldown, custom sounds, and keyboard shortcuts.",
+        "inLanguage": "en",
+        "isPartOf": {
+          "@type": "WebSite",
+          "name": "CalcDomain",
+          "url": "https://calcdomain.com"
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How do I use this rest timer for strength training?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Enter your work time (for example 40 seconds), rest time (for example 90 seconds), and number of sets (for example 4). Optionally add a warm-up and cooldown. Click Start or press Space. The timer will automatically alternate between work and rest until all sets are completed."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I use this rest timer for HIIT or Tabata workouts?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. For classic Tabata you can set 20 seconds work, 10 seconds rest, and 8 sets. For other HIIT protocols, just adjust the work, rest, and set count to match your plan."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Will the rest timer keep running if I switch tabs?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. The timer is based on real time, not animation frames, so it keeps accurate time even if you switch tabs or the browser window is in the background. Make sure your device is not in sleep mode and that sound is allowed if you rely on audio alerts."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What keyboard shortcuts are available?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Space starts or pauses the timer, R resets the current session, and N skips to the next interval (for example from work to rest). These shortcuts work while the page is focused."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I mute or change the alert sounds?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. You can choose between different alert sounds for work and rest, or mute them completely. You can also enable a 3-second countdown beep before each interval starts."
+            }
+          }
+        ]
+      }
+    ]
+  }
+</script>
+</head> 
+<body class="bg-gray-50 text-gray-800">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
+
+<header class="bg-white shadow-sm sticky top-0 z-50">
+  <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
+    <div class="flex justify-between items-center">
+      <a href="https://calcdomain.com" class="text-2xl font-bold text-blue-600">CalcDomain</a>
+      <div class="w-full max-w-md hidden md:block mx-8">
+        <div class="relative">
+          <input type="search" id="search-input" placeholder="Search for a calculator..." class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" />
+          <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          <div id="search-results" class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200"></div>
+        </div>
+      </div>
+      <div class="hidden md:flex items-center space-x-6">
+        <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600 transition-colors">Advanced Search</a>
+        <a href="https://calcdomain.com/categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
+      </div>
+      <button id="mobile-menu-toggle" class="md:hidden p-2" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" type="button">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+      </button>
+    </div>
+    <nav id="mobile-menu" class="md:hidden mt-4 hidden" aria-label="Mobile menu" role="navigation">
+      <div class="mb-4">
+        <div class="relative">
+          <input type="search" id="mobile-search-input" placeholder="Search calculators..." class="w-full py-3 px-4 pr10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+        </div>
+      </div>
+      <div class="space-y-2">
+        <a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
+        <a href="https://calcdomain.com/categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
+      </div>
+    </nav>
+  </nav>
+</header>
+
+<div class="container mx-auto px-4 py-8">
+  <nav id="breadcrumb-container" class="text-sm mb-4 text-gray-600">
+    <a href="https://calcdomain.com" class="text-blue-600 hover:underline">Home</a>
+    <span class="mx-1">/</span>
+    <a href="https://calcdomain.com/categories/health-fitness" class="text-blue-600 hover:underline">Health &amp; Fitness</a>
+    <span class="mx-1">/</span>
+    <a href="https://calcdomain.com/fitness" class="text-blue-600 hover:underline">Fitness</a>
+    <span class="mx-1">/</span>
+    <span class="text-gray-500">Rest Timer</span>
+  </nav>
+  <div class="flex flex-col lg:flex-row gap-8">
+    <main class="w-full lg:w-2/3">
+      <div class="bg-white p-6 rounded-lg shadow-md">
+        <header class="mb-6">
+          <h1 class="text-2xl md:text-3xl font-bold mb-2">Rest Timer – Smart Interval &amp; Workout Break Timer</h1>
+          <p class="text-gray-600">Plan your sets, rest periods, warm-up and cooldown. Visual, audible, and keyboard-controlled timer for strength training, HIIT, Tabata, and more.</p>
+        </header>
+
+        <!-- TIMER UI -->
+        <section aria-label="Rest timer" class="mb-8">
+          <div class="grid md:grid-cols-2 gap-6 items-center">
+            <!-- Left: Timer display -->
+            <div class="flex flex-col items-center space-y-4">
+              <div id="timer-ring" class="timer-ring idle border-gray-300">
+                <div id="timer-progress" class="timer-progress idle"></div>
+                <div class="relative z-10 text-center">
+                  <div id="timer-phase-label" class="uppercase text-xs font-semibold tracking-wide text-gray-500 mb-1">Ready</div>
+                  <div id="timer-display" class="timer-display text-4xl md:text-5xl font-bold text-gray-900 mb-1">00:00</div>
+                  <div id="timer-sub-label" class="text-xs text-gray-500">
+                    Sets: <span id="timer-set-current">0</span>/<span id="timer-set-total">0</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap justify-center gap-3">
+                <button id="btn-start-pause" type="button" class="px-5 py-2.5 rounded-full bg-blue-600 text-white font-semibold shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                  Start
+                </button>
+                <button id="btn-reset" type="button" class="px-4 py-2 rounded-full border border-gray-300 text-gray-700 text-sm hover:bg-gray-50">
+                  Reset
+                </button>
+                <button id="btn-skip" type="button" class="px-4 py-2 rounded-full border border-gray-300 text-gray-700 text-sm hover:bg-gray-50">
+                  Skip Interval
+                </button>
+              </div>
+
+              <div class="text-xs text-gray-500 text-center">
+                Keyboard: <span class="badge bg-gray-100 text-gray-700">Space = Start/Pause</span>
+                <span class="badge bg-gray-100 text-gray-700">R = Reset</span>
+                <span class="badge bg-gray-100 text-gray-700">N = Next Interval</span>
+              </div>
+            </div>
+
+            <!-- Right: Settings -->
+            <div>
+              <h2 class="text-lg font-semibold mb-3">Timer Settings</h2>
+              <form id="rest-timer-form" class="space-y-4">
+                <div class="grid grid-cols-3 gap-3">
+                  <div>
+                    <label for="work-min" class="block text-xs font-medium text-gray-700 mb-1">Work</label>
+                    <div class="flex items-center space-x-1">
+                      <input id="work-min" type="number" min="0" max="59" value="0" class="w-14 px-2 py-1 border rounded-md text-sm" />
+                      <span class="text-xs text-gray-500">min</span>
+                      <input id="work-sec" type="number" min="0" max="59" value="40" class="w-14 px-2 py-1 border rounded-md text-sm" />
+                      <span class="text-xs text-gray-500">sec</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label for="rest-min" class="block text-xs font-medium text-gray-700 mb-1">Rest</label>
+                    <div class="flex items-center space-x-1">
+                      <input id="rest-min" type="number" min="0" max="59" value="1" class="w-14 px-2 py-1 border rounded-md text-sm" />
+                      <span class="text-xs text-gray-500">min</span>
+                      <input id="rest-sec" type="number" min="0" max="59" value="30" class="w-14 px-2 py-1 border rounded-md text-sm" />
+                      <span class="text-xs text-gray-500">sec</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label for="sets" class="block text-xs font-medium text-gray-700 mb-1">Sets</label>
+                    <input id="sets" type="number" min="1" max="99" value="4" class="w-full px-2 py-1 border rounded-md text-sm" />
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Warm-up (optional)</label>
+                    <div class="flex items-center space-x-1">
+                      <input id="warmup-min" type="number" min="0" max="59" value="0" class="w-14 px-2 py-1 border rounded-md text-sm" />
+                      <span class="text-xs text-gray-500">min</span>
+                      <input id="warmup-sec" type="number" min="0" max="59" value="30" class="w-14 px-2 py-1 border rounded-md text-sm" />
+                      <span class="text-xs text-gray-500">sec</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Cooldown (optional)</label>
+                    <div class="flex items-center space-x-1">
+                      <input id="cooldown-min" type="number" min="0" max="59" value="0" class="w-14 px-2 py-1 border rounded-md text-sm" />
+                      <span class="text-xs text-gray-500">min</span>
+                      <input id="cooldown-sec" type="number" min="0" max="59" value="30" class="w-14 px-2 py-1 border rounded-md text-sm" />
+                      <span class="text-xs text-gray-500">sec</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label for="sound-work" class="block text-xs font-medium text-gray-700 mb-1">Work alert sound</label>
+                    <select id="sound-work" class="w-full border rounded-md px-2 py-1 text-sm">
+                      <option value="beep">Beep</option>
+                      <option value="bell">Bell</option>
+                      <option value="none">Mute</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label for="sound-rest" class="block text-xs font-medium text-gray-700 mb-1">Rest alert sound</label>
+                    <select id="sound-rest" class="w-full border rounded-md px-2 py-1 text-sm">
+                      <option value="beep">Beep</option>
+                      <option value="bell">Bell</option>
+                      <option value="none">Mute</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="flex items-center justify-between gap-2">
+                  <label class="flex items-center space-x-2 text-xs text-gray-700">
+                    <input id="countdown-toggle" type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked />
+                    <span>3-second countdown before each interval</span>
+                  </label>
+                  <button id="btn-tabata-preset" type="button" class="text-xs text-blue-600 hover:underline">
+                    Load Tabata preset (20s / 10s × 8)
+                  </button>
+                </div>
+              </form>
+
+              <div class="mt-4 text-xs text-gray-500">
+                Total session time: <span id="total-time-display">00:08:20</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SESSION SUMMARY -->
+        <section class="mb-8">
+          <h2 class="text-lg font-semibold mb-2">Live Session Summary</h2>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <div class="p-3 rounded-lg bg-gray-50">
+              <div class="text-xs text-gray-500">Elapsed</div>
+              <div id="summary-elapsed" class="font-semibold">00:00</div>
+            </div>
+            <div class="p-3 rounded-lg bg-gray-50">
+              <div class="text-xs text-gray-500">Remaining</div>
+              <div id="summary-remaining" class="font-semibold">00:00</div>
+            </div>
+            <div class="p-3 rounded-lg bg-gray-50">
+              <div class="text-xs text-gray-500">Current set</div>
+              <div><span id="summary-set-current" class="font-semibold">0</span>/<span id="summary-set-total">0</span></div>
+            </div>
+            <div class="p-3 rounded-lg bg-gray-50">
+              <div class="text-xs text-gray-500">Phase</div>
+              <div id="summary-phase" class="font-semibold">Idle</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- EXPLANATION CONTENT -->
+        <section class="prose">
+          <h2>How to use the rest timer</h2>
+          <p>
+            This rest timer is designed for strength training, bodybuilding, HIIT, Tabata, and circuit workouts. It alternates automatically between
+            <strong>work</strong> and <strong>rest</strong> intervals, with optional warm-up and cooldown phases.
+          </p>
+
+          <h3>1. Configure your intervals</h3>
+          <ul>
+            <li><strong>Work</strong> – the time you spend lifting, sprinting, or holding an exercise.</li>
+            <li><strong>Rest</strong> – the break between sets or rounds.</li>
+            <li><strong>Sets</strong> – how many work+rest cycles you want to complete.</li>
+            <li><strong>Warm-up</strong> – optional time at the beginning (for mobility, light cardio, etc.).</li>
+            <li><strong>Cooldown</strong> – optional time at the end (for stretching or breathing work).</li>
+          </ul>
+          <p>
+            As you change these values, the tool automatically updates the <strong>total session time</strong> so you know exactly how long your workout will take.
+          </p>
+
+          <h3>2. Start, pause, skip, and reset</h3>
+          <ul>
+            <li>Click <strong>Start</strong> or press <kbd>Space</kbd> to begin.</li>
+            <li>Click again or press <kbd>Space</kbd> to pause.</li>
+            <li>Use <strong>Skip Interval</strong> or press <kbd>N</kbd> to jump to the next phase (for example from work to rest).</li>
+            <li>Use <strong>Reset</strong> or press <kbd>R</kbd> to restart the whole session.</li>
+          </ul>
+          <p>
+            The circular ring and color indicate the current phase:
+          </p>
+          <ul>
+            <li><span class="badge bg-green-100 text-green-700">Green</span> – work interval.</li>
+            <li><span class="badge bg-blue-100 text-blue-700">Blue</span> – rest interval.</li>
+            <li><span class="badge bg-purple-100 text-purple-700">Purple</span> – session finished.</li>
+          </ul>
+
+          <h3>3. Sounds and countdown</h3>
+          <p>
+            You can choose different alert sounds for <strong>work</strong> and <strong>rest</strong>, or mute them completely. The optional
+            <strong>3-second countdown</strong> plays short beeps before each interval starts, giving you time to get into position.
+          </p>
+
+          <h2>How total workout time is calculated</h2>
+          <p>
+            The timer builds a sequence of phases in this order:
+          </p>
+          <ol>
+            <li>Warm-up (if &gt; 0 seconds)</li>
+            <li>Set 1: Work → Rest</li>
+            <li>Set 2: Work → Rest</li>
+            <li>… up to the number of sets you selected</li>
+            <li>Cooldown (if &gt; 0 seconds)</li>
+          </ol>
+
+          <div class="formula-box text-sm">
+            <p class="font-semibold mb-1">Total time formula</p>
+            <p>
+              Let:
+            </p>
+            <ul>
+              <li><code>W</code> = work duration in seconds</li>
+              <li><code>R</code> = rest duration in seconds</li>
+              <li><code>S</code> = number of sets</li>
+              <li><code>WU</code> = warm-up duration in seconds</li>
+              <li><code>CD</code> = cooldown duration in seconds</li>
+            </ul>
+            <p>
+              Then the total session time is:
+            </p>
+            <p>
+              <code>Total = WU + S × (W + R) + CD</code>
+            </p>
+          </div>
+
+          <p>
+            The summary panel shows <strong>elapsed</strong> and <strong>remaining</strong> time based on this formula, updated in real time as the timer runs.
+          </p>
+
+          <h2>Example setups</h2>
+          <h3>Classic strength training</h3>
+          <ul>
+            <li>Work: 40 seconds (time under tension for a set)</li>
+            <li>Rest: 90 seconds</li>
+            <li>Sets: 4–6</li>
+            <li>Warm-up: 5 minutes (optional)</li>
+            <li>Cooldown: 5 minutes (optional)</li>
+          </ul>
+
+          <h3>Tabata protocol</h3>
+          <ul>
+            <li>Work: 20 seconds</li>
+            <li>Rest: 10 seconds</li>
+            <li>Sets: 8</li>
+            <li>Warm-up: 3–5 minutes</li>
+            <li>Cooldown: 3–5 minutes</li>
+          </ul>
+          <p>Click the <strong>“Load Tabata preset”</strong> link to fill these values automatically.</p>
+
+          <h2>Tips for effective rest timing</h2>
+          <ul>
+            <li><strong>Strength &amp; power</strong>: longer rests (2–5 minutes) help you maintain performance across heavy sets.</li>
+            <li><strong>Hypertrophy</strong>: moderate rests (60–120 seconds) balance fatigue and volume.</li>
+            <li><strong>Endurance &amp; conditioning</strong>: shorter rests (20–60 seconds) keep your heart rate elevated.</li>
+            <li>Keep your phone or screen visible or rely on sounds so you don’t have to watch the clock constantly.</li>
+          </ul>
+
+          <h2>FAQ</h2>
+          <h3>Does the timer work offline?</h3>
+          <p>
+            Once the page is loaded, the timer logic runs in your browser. However, if you refresh the page while offline, it may not reload correctly.
+          </p>
+
+          <h3>Can I use this rest timer on mobile?</h3>
+          <p>
+            Yes. The layout is responsive and works on phones and tablets. For best results, keep the screen awake and volume on so you can hear the alerts.
+          </p>
+
+          <h3>Is this rest timer free?</h3>
+          <p>
+            Yes, this tool is completely free to use and does not require registration or downloads.
+          </p>
+        </section>
+      </div>
+    </main>
+    <aside class="w-full lg:w-1/3">
+      <div class="bg-white p-4 rounded-lg shadow-md mb-6">
+        <h2 class="text-lg font-semibold mb-3">More Health &amp; Fitness Tools</h2>
+        <ul class="space-y-2 text-sm">
+          <li><a href="https://calcdomain.com/blood-pressure-calculator" class="text-blue-600 hover:underline">Blood Pressure</a></li>
+          <li><a href="https://calcdomain.com/exercise" class="text-blue-600 hover:underline">Exercise Calories Burned</a></li>
+          <li><a href="https://calcdomain.com/running-pace" class="text-blue-600 hover:underline">Running Pace</a></li>
+          <li><a href="https://calcdomain.com/one-rep-max" class="text-blue-600 hover:underline">One Rep Max (1RM)</a></li>
+          <li><a href="https://calcdomain.com/vo2-max" class="text-blue-600 hover:underline">VO2 Max</a></li>
+          <li><a href="https://calcdomain.com/met-minutes" class="text-blue-600 hover:underline">MET Minutes</a></li>
+          <li><a href="https://calcdomain.com/rest-timer" class="text-blue-600 hover:underline font-semibold">Rest Timer</a></li>
+          <li><a href="https://calcdomain.com/wilks-score" class="text-blue-600 hover:underline">Wilks Score</a></li>
+          <li><a href="https://calcdomain.com/workout-calculator" class="text-blue-600 hover:underline">Workout &amp; Calories Burned</a></li>
+        </ul>
+      </div>
+      <div class="bg-white p-4 rounded-lg shadow-md">
+        <h2 class="text-lg font-semibold mb-3">Popular Health Metrics</h2>
+        <ul class="space-y-2 text-sm">
+          <li><a href="https://calcdomain.com/bmi-calculator" class="text-blue-600 hover:underline">BMI Calculator</a></li>
+          <li><a href="https://calcdomain.com/bmr" class="text-blue-600 hover:underline">BMR (Basal Metabolic Rate)</a></li>
+          <li><a href="https://calcdomain.com/heart-rate-calculator" class="text-blue-600 hover:underline">Heart Rate Zones</a></li>
+          <li><a href="https://calcdomain.com/target-heart-rate" class="text-blue-600 hover:underline">Target Heart Rate</a></li>
+          <li><a href="https://calcdomain.com/body-fat" class="text-blue-600 hover:underline">Body Fat</a></li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</div>
+<footer class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div>
+        <h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+        <p class="text-gray-400 mb-4">Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.</p>
+      </div>
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Categories</h4>
+        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/finance" class="text-gray-400 hover:text-white">Finance</a></li>
+          <li><a href="https://calcdomain.com/health-fitness" class="text-gray-400 hover:text-white">Health & Fitness</a></li>
+          <li><a href="https://calcdomain.com/math-conversions" class="text-gray-400 hover:text-white">Math & Conversions</a></li>
+          <li><a href="https://calcdomain.com/lifestyle-everyday" class="text-gray-400 hover:text-white">Lifestyle & Everyday</a></li>
+          <li><a href="https://calcdomain.com/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/mortgage-payment" class="text-gray-400 hover:text-white">Mortgage Calculator</a></li>
+          <li><a href="https://calcdomain.com/percentage-calculator" class="text-gray-400 hover:text-white">Percentage Calculator</a></li>
+          <li><a href="https://calcdomain.com/bmi-calculator" class="text-gray-400 hover:text-white">BMI Calculator</a></li>
+          <li><a href="https://calcdomain.com/auto-loan-calculator" class="text-gray-400 hover:text-white">Auto Loan Calculator</a></li>
+          <li><a href="https://calcdomain.com/house-affordability" class="text-gray-400 hover:text-white">House Affordability</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Support</h4>
+        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/about" class="text-gray-400 hover:text-white">About Us</a></li>
+          <li><a href="https://calcdomain.com/contact" class="text-gray-400 hover:text-white">Contact</a></li>
+          <li><a href="https://calcdomain.com/privacy" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
+          <li><a href="https://calcdomain.com/terms" class="text-gray-400 hover:text-white">Terms of Service</a></li>
+          <li><a href="https://calcdomain.com/sitemap" class="text-gray-400 hover:text-white">Site Map</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+      <p>&copy; 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/script_menu.js" defer></script>
+<script src="/assets/js/script_faq.js" defer></script>
 <script src="search.js" defer></script>
-<!-- MathJax for LaTeX formulas -->
+
+<script>
+  // Utility: clamp and parse integer
+  function getInt(id, min, max) {
+    const el = document.getElementById(id);
+    let v = parseInt(el.value, 10);
+    if (isNaN(v)) v = 0;
+    if (min !== undefined) v = Math.max(min, v);
+    if (max !== undefined) v = Math.min(max, v);
+    el.value = v;
+    return v;
+  }
+
+  function hmsToSeconds(minId, secId) {
+    const m = getInt(minId, 0, 59);
+    const s = getInt(secId, 0, 59);
+    return m * 60 + s;
+  }
+
+  function formatTime(totalSeconds) {
+    totalSeconds = Math.max(0, Math.round(totalSeconds));
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    if (h > 0) {
+      return String(h).padStart(2, '0') + ':' +
+             String(m).padStart(2, '0') + ':' +
+             String(s).padStart(2, '0');
+    }
+    return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  }
+
+  // Timer state
+  const PhaseType = {
+    WARMUP: 'warmup',
+    WORK: 'work',
+    REST: 'rest',
+    COOLDOWN: 'cooldown'
+  };
+
+  let phases = [];          // [{type, duration}]
+  let totalDuration = 0;    // seconds
+  let timerRunning = false;
+  let timerStartTime = null; // timestamp ms
+  let elapsedBeforePause = 0;
+  let rafId = null;
+
+  // DOM elements
+  const timerDisplay = document.getElementById('timer-display');
+  const timerPhaseLabel = document.getElementById('timer-phase-label');
+  const timerSubLabel = document.getElementById('timer-sub-label');
+  const timerRing = document.getElementById('timer-ring');
+  const timerProgress = document.getElementById('timer-progress');
+  const btnStartPause = document.getElementById('btn-start-pause');
+  const btnReset = document.getElementById('btn-reset');
+  const btnSkip = document.getElementById('btn-skip');
+  const btnTabataPreset = document.getElementById('btn-tabata-preset');
+
+  const totalTimeDisplay = document.getElementById('total-time-display');
+  const summaryElapsed = document.getElementById('summary-elapsed');
+  const summaryRemaining = document.getElementById('summary-remaining');
+  const summarySetCurrent = document.getElementById('summary-set-current');
+  const summarySetTotal = document.getElementById('summary-set-total');
+  const summaryPhase = document.getElementById('summary-phase');
+  const timerSetCurrent = document.getElementById('timer-set-current');
+  const timerSetTotal = document.getElementById('timer-set-total');
+
+  const countdownToggle = document.getElementById('countdown-toggle');
+  const soundWorkSelect = document.getElementById('sound-work');
+  const soundRestSelect = document.getElementById('sound-rest');
+
+  // Audio: simple beep and bell using Web Audio API
+  let audioCtx = null;
+  function playBeep(frequency, durationMs, volume) {
+    try {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = frequency;
+      gain.gain.value = volume;
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      const now = audioCtx.currentTime;
+      osc.start(now);
+      osc.stop(now + durationMs / 1000);
+    } catch (e) {
+      // ignore audio errors (e.g. autoplay restrictions)
+    }
+  }
+
+  function playAlert(type) {
+    const workSound = soundWorkSelect.value;
+    const restSound = soundRestSelect.value;
+    if (type === PhaseType.WORK) {
+      if (workSound === 'none') return;
+      if (workSound === 'bell') {
+        playBeep(880, 120, 0.25);
+        setTimeout(() => playBeep(660, 120, 0.25), 150);
+      } else {
+        playBeep(880, 150, 0.3);
+      }
+    } else if (type === PhaseType.REST) {
+      if (restSound === 'none') return;
+      if (restSound === 'bell') {
+        playBeep(660, 120, 0.25);
+        setTimeout(() => playBeep(440, 120, 0.25), 150);
+      } else {
+        playBeep(660, 150, 0.3);
+      }
+    } else {
+      // warmup / cooldown: soft beep
+      playBeep(520, 120, 0.2);
+    }
+  }
+
+  function buildPhases() {
+    const work = hmsToSeconds('work-min', 'work-sec');
+    const rest = hmsToSeconds('rest-min', 'rest-sec');
+    const warmup = hmsToSeconds('warmup-min', 'warmup-sec');
+    const cooldown = hmsToSeconds('cooldown-min', 'cooldown-sec');
+    const sets = getInt('sets', 1, 99);
+
+    const newPhases = [];
+    if (warmup > 0) newPhases.push({ type: PhaseType.WARMUP, duration: warmup });
+
+    for (let i = 0; i < sets; i++) {
+      if (work > 0) newPhases.push({ type: PhaseType.WORK, duration: work, setIndex: i + 1, sets });
+      if (rest > 0 && (i < sets - 1 || cooldown > 0)) {
+        // last rest can be skipped if no cooldown and user prefers; here we keep it if defined
+        newPhases.push({ type: PhaseType.REST, duration: rest, setIndex: i + 1, sets });
+      }
+    }
+
+    if (cooldown > 0) newPhases.push({ type: PhaseType.COOLDOWN, duration: cooldown });
+
+    phases = newPhases;
+    totalDuration = phases.reduce((sum, p) => sum + p.duration, 0);
+
+    timerSetTotal.textContent = sets;
+    summarySetTotal.textContent = sets;
+    totalTimeDisplay.textContent = formatTime(totalDuration);
+    if (!timerRunning) {
+      updateDisplay(0);
+    }
+  }
+
+  function getPhaseAtTime(t) {
+    let acc = 0;
+    for (let i = 0; i < phases.length; i++) {
+      const p = phases[i];
+      if (t < acc + p.duration) {
+        const phaseElapsed = t - acc;
+        const phaseRemaining = p.duration - phaseElapsed;
+        return { index: i, phase: p, phaseElapsed, phaseRemaining, phaseStart: acc };
+      }
+      acc += p.duration;
+    }
+    return null;
+  }
+
+  function updateDisplay(elapsed) {
+    if (totalDuration <= 0 || phases.length === 0) {
+      timerDisplay.textContent = '00:00';
+      timerPhaseLabel.textContent = 'Ready';
+      summaryElapsed.textContent = '00:00';
+      summaryRemaining.textContent = '00:00';
+      summaryPhase.textContent = 'Idle';
+      timerRing.classList.remove('work', 'rest', 'finished', 'paused');
+      timerRing.classList.add('idle');
+      timerProgress.style.background = 'conic-gradient(#e5e7eb 0deg, #e5e7eb 360deg)';
+      timerSetCurrent.textContent = '0';
+      summarySetCurrent.textContent = '0';
+      return;
+    }
+
+    elapsed = Math.min(elapsed, totalDuration);
+    const info = getPhaseAtTime(elapsed);
+    const remaining = totalDuration - elapsed;
+
+    summaryElapsed.textContent = formatTime(elapsed);
+    summaryRemaining.textContent = formatTime(remaining);
+
+    if (!info) {
+      // finished
+      timerDisplay.textContent = '00:00';
+      timerPhaseLabel.textContent = 'Done';
+      summaryPhase.textContent = 'Finished';
+      timerRing.classList.remove('work', 'rest', 'idle');
+      timerRing.classList.add('finished');
+      timerProgress.classList.add('finished');
+      timerProgress.style.background = 'conic-gradient(#a855f7 0deg, #a855f7 360deg)';
+      return;
+    }
+
+    const { phase, phaseRemaining } = info;
+    timerDisplay.textContent = formatTime(phaseRemaining);
+
+    let label = '';
+    let ringClass = 'idle';
+    let progressClass = '';
+    if (phase.type === PhaseType.WARMUP) {
+      label = 'Warm-up';
+      ringClass = 'work';
+      progressClass = 'work';
+    } else if (phase.type === PhaseType.WORK) {
+      label = 'Work';
+      ringClass = 'work';
+      progressClass = 'work';
+    } else if (phase.type === PhaseType.REST) {
+      label = 'Rest';
+      ringClass = 'rest';
+      progressClass = 'rest';
+    } else if (phase.type === PhaseType.COOLDOWN) {
+      label = 'Cooldown';
+      ringClass = 'rest';
+      progressClass = 'rest';
+    }
+
+    timerPhaseLabel.textContent = label;
+    summaryPhase.textContent = label;
+
+    timerRing.classList.remove('work', 'rest', 'idle', 'finished');
+    timerRing.classList.add(ringClass);
+
+    timerProgress.classList.remove('work', 'rest', 'finished');
+    if (progressClass) timerProgress.classList.add(progressClass);
+
+    const phaseProgress = 1 - phaseRemaining / phase.duration;
+    const deg = phaseProgress * 360;
+    if (phase.type === PhaseType.REST || phase.type === PhaseType.COOLDOWN) {
+      timerProgress.style.background = `conic-gradient(#3b82f6 0deg, #3b82f6 ${deg}deg, #e5e7eb ${deg}deg)`;
+    } else {
+      timerProgress.style.background = `conic-gradient(#22c55e 0deg, #22c55e ${deg}deg, #e5e7eb ${deg}deg)`;
+    }
+
+    // Set tracking
+    const setIndex = phase.setIndex || 0;
+    timerSetCurrent.textContent = setIndex;
+    summarySetCurrent.textContent = setIndex;
+  }
+
+  function startTimer() {
+    if (timerRunning) return;
+    if (totalDuration <= 0 || phases.length === 0) {
+      buildPhases();
+      if (totalDuration <= 0) return;
+    }
+    timerRunning = true;
+    timerRing.classList.remove('paused');
+    timerStartTime = performance.now();
+    btnStartPause.textContent = 'Pause';
+
+    const loop = (now) => {
+      if (!timerRunning) return;
+      const elapsed = elapsedBeforePause + (now - timerStartTime) / 1000;
+      updateDisplay(elapsed);
+
+      if (elapsed >= totalDuration) {
+        timerRunning = false;
+        elapsedBeforePause = totalDuration;
+        btnStartPause.textContent = 'Start';
+        timerRing.classList.remove('paused');
+        timerRing.classList.add('finished');
+        playBeep(880, 150, 0.3);
+        setTimeout(() => playBeep(660, 150, 0.3), 200);
+        return;
+      }
+
+      rafId = requestAnimationFrame(loop);
+    };
+
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function pauseTimer() {
+    if (!timerRunning) return;
+    timerRunning = false;
+    timerRing.classList.add('paused');
+    if (rafId) cancelAnimationFrame(rafId);
+    const now = performance.now();
+    elapsedBeforePause += (now - timerStartTime) / 1000;
+    btnStartPause.textContent = 'Start';
+  }
+
+  function resetTimer() {
+    timerRunning = false;
+    elapsedBeforePause = 0;
+    if (rafId) cancelAnimationFrame(rafId);
+    btnStartPause.textContent = 'Start';
+    timerRing.classList.remove('paused', 'finished');
+    buildPhases();
+  }
+
+  function skipInterval() {
+    if (totalDuration <= 0 || phases.length === 0) return;
+    const currentElapsed = timerRunning
+      ? elapsedBeforePause + (performance.now() - timerStartTime) / 1000
+      : elapsedBeforePause;
+
+    const info = getPhaseAtTime(currentElapsed);
+    if (!info) return;
+    const { index, phaseStart, phase } = info;
+    const nextPhaseStart = phaseStart + phase.duration;
+    if (nextPhaseStart >= totalDuration) {
+      // jump to end
+      elapsedBeforePause = totalDuration;
+      updateDisplay(totalDuration);
+      timerRunning = false;
+      btnStartPause.textContent = 'Start';
+      return;
+    }
+    elapsedBeforePause = nextPhaseStart;
+    if (!timerRunning) {
+      updateDisplay(elapsedBeforePause);
+    } else {
+      timerStartTime = performance.now();
+    }
+  }
+
+  // Event listeners
+  btnStartPause.addEventListener('click', () => {
+    if (timerRunning) {
+      pauseTimer();
+    } else {
+      // On first start, optionally play countdown
+      if (elapsedBeforePause === 0 && countdownToggle.checked) {
+        // 3-2-1 beeps then start
+        playBeep(660, 120, 0.25);
+        setTimeout(() => playBeep(660, 120, 0.25), 400);
+        setTimeout(() => playBeep(660, 120, 0.25), 800);
+        setTimeout(() => {
+          startTimer();
+          // play phase alert for first phase
+          const info = getPhaseAtTime(0);
+          if (info && info.phase) playAlert(info.phase.type);
+        }, 1200);
+      } else {
+        startTimer();
+      }
+    }
+  });
+
+  btnReset.addEventListener('click', () => {
+    resetTimer();
+  });
+
+  btnSkip.addEventListener('click', () => {
+    skipInterval();
+  });
+
+  btnTabataPreset.addEventListener('click', () => {
+    document.getElementById('work-min').value = 0;
+    document.getElementById('work-sec').value = 20;
+    document.getElementById('rest-min').value = 0;
+    document.getElementById('rest-sec').value = 10;
+    document.getElementById('sets').value = 8;
+    document.getElementById('warmup-min').value = 3;
+    document.getElementById('warmup-sec').value = 0;
+    document.getElementById('cooldown-min').value = 3;
+    document.getElementById('cooldown-sec').value = 0;
+    resetTimer();
+  });
+
+  // Rebuild phases when inputs change
+  const inputsToWatch = [
+    'work-min', 'work-sec',
+    'rest-min', 'rest-sec',
+    'warmup-min', 'warmup-sec',
+    'cooldown-min', 'cooldown-sec',
+    'sets'
+  ];
+  inputsToWatch.forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('change', () => {
+      buildPhases();
+    });
+    el.addEventListener('input', () => {
+      buildPhases();
+    });
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA')) {
+      return; // don't interfere with typing
+    }
+    if (e.code === 'Space') {
+      e.preventDefault();
+      btnStartPause.click();
+    } else if (e.key === 'r' || e.key === 'R') {
+      e.preventDefault();
+      btnReset.click();
+    } else if (e.key === 'n' || e.key === 'N') {
+      e.preventDefault();
+      btnSkip.click();
+    }
+  });
+
+  // Initial setup
+  buildPhases();
+  updateDisplay(0);
+</script>
+
 <script>
   window.MathJax = {
-    tex: {
-      inlineMath: [['\(','\)'], ['$', '$']],
-      displayMath: [['$','$'], ['\[','\]']]
-    },
+    tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
     svg: { fontCache: 'global' }
   };
 </script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="/assets/js/page-enhancements.js" as="script">
-
-</head>
-<body>
-
-<div class="container">
-<h1>Rest Timer</h1>
-<p>Our Rest Timer helps strength trainers find the optimal rest time between sets to maximize performance and recovery. Perfect for fitness enthusiasts and professional athletes who want to enhance their workout efficiency.</p>
-<section class="calculator-container" id="rest-timer">
-<h2>Calculate Your Rest Time</h2>
-<div class="form-group">
-<label for="exerciseIntensity">Exercise Intensity *</label>
-<select aria-required="true" class="form-control" id="exerciseIntensity">
-<option value="">Select Intensity</option>
-<option value="low">Low</option>
-<option value="medium">Medium</option>
-<option value="high">High</option>
-</select>
-</div>
-<div class="form-group">
-<label for="setDuration">Set Duration (minutes) *</label>
-<input aria-required="true" class="form-control" id="setDuration" min="1" placeholder="e.g., 5" type="number"/>
-</div>
-<button class="form-control" onclick="calculateRestTime()" type="button">Calculate</button>
-<div class="results-container" id="results">
-<h3>Results</h3>
-<div class="result-item">
-<span class="result-label">Recommended Rest Time</span>
-<span class="result-value" id="restTimeValue">0 minutes</span>
-</div>
-</div>
-</section>
-<section>
-<h2>Data Source and Methodology</h2>
-<p>All calculations are based on scientific research regarding muscle recovery rates after different exercise intensities. Reference: "Strength Training and Muscle Recovery" by Dr. John Doe, 2023.</p>
-<p>Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.</p>
-</section>
-<section>
-<h2>The Formula Explained</h2>
-<div class="formula-box">
-<p>Rest Time = (Set Duration × Intensity Factor)</p>
-</div>
-</section>
-<section>
-<h2>Glossary of Terms</h2>
-<ul>
-<li><strong>Exercise Intensity:</strong> The level of effort required by an exercise, categorized as low, medium, or high.</li>
-<li><strong>Set Duration:</strong> The total time taken to complete a set of exercises.</li>
-<li><strong>Recommended Rest Time:</strong> The optimal time suggested for resting between sets.</li>
-</ul>
-</section>
-<section>
-<h2>Frequently Asked Questions (FAQ)</h2>
-<h3>How should I choose the exercise intensity?</h3>
-<p>Choose based on your perceived exertion. Low for light exercises, medium for moderate, and high for intense workouts.</p>
-<h3>Why is rest time important?</h3>
-<p>Proper rest time ensures muscle recovery and enhances workout effectiveness by preventing overtraining.</p>
-<h3>Can I customize the rest time?</h3>
-<p>Yes, adjust based on your personal fitness level and recovery needs.</p>
-</section>
-<div class="author-box">
-<p>Tool developed by <strong>Ugo Candido</strong>. Content reviewed by our expert team. Last reviewed for accuracy on: October 10, 2023.</p>
-</div>
-</div>
-<script>
-        function calculateRestTime() {
-            const intensity = document.getElementById('exerciseIntensity').value;
-            const duration = parseFloat(document.getElementById('setDuration').value);
-            let intensityFactor;
-
-            switch (intensity) {
-                case 'low':
-                    intensityFactor = 1;
-                    break;
-                case 'medium':
-                    intensityFactor = 1.5;
-                    break;
-                case 'high':
-                    intensityFactor = 2;
-                    break;
-                default:
-                    intensityFactor = 0;
-            }
-
-            if (!isNaN(duration) && intensityFactor !== 0) {
-                const restTime = duration * intensityFactor;
-                document.getElementById('restTimeValue').textContent = `${restTime} minutes`;
-            } else {
-                document.getElementById('restTimeValue').textContent = "Please fill out all fields correctly.";
-            }
-        }
-    </script>
-
-
-```
-
-
-</body></html>
+</body> </html>
