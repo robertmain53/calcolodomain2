@@ -1,766 +1,1441 @@
-<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Affine Cipher Encoder & Decoder (Step-by-Step Solver)</title>
-<meta name="description" content="Free Affine Cipher encoder/decoder. Encrypt or decrypt text with custom keys a and b, auto-reduce keys, show modular inverse steps, and handle spaces, punctuation, and case.">
-<link rel="canonical" href="https://calcdomain.com/affine-cipher">
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Affine Cipher Encoder & Decoder (Step-by-Step Solver)</title>
+    <meta
+      name="description"
+      content="Free Affine Cipher encoder/decoder. Encrypt or decrypt text with custom keys a and b, auto-reduce keys, show modular inverse steps, and handle spaces, punctuation, and case."
+    />
+    <link rel="canonical" href="https://calcdomain.com/affine-cipher" />
 
-<link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
-<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-<link rel="shortcut icon" href="/favicon.ico" />
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-<link rel="manifest" href="/site.webmanifest" />
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
 
-<script src="https://cdn.tailwindcss.com"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-    body { font-family: 'Inter', sans-serif; }
-    .card-hover { transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; }
-    .card-hover:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
-    .prose { max-width: 65ch; margin-left: auto; margin-right: auto; }
-    .prose h2 { font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; }
-    .prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; }
-    .prose p { margin-bottom: 1rem; line-height: 1.6; }
-    .prose ul, .prose ol { margin-left: 1.5rem; margin-bottom: 1rem; }
-    .prose li { margin-bottom: 0.5rem; }
-    .formula-box { background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; padding: 1rem; overflow-x: auto; margin: 1rem 0; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-</style>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+      .card-hover {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+      }
+      .card-hover:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+          0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      }
+      .prose {
+        max-width: 65ch;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .prose h2 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+      }
+      .prose h3 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+      }
+      .prose p {
+        margin-bottom: 1rem;
+        line-height: 1.6;
+      }
+      .prose ul,
+      .prose ol {
+        margin-left: 1.5rem;
+        margin-bottom: 1rem;
+      }
+      .prose li {
+        margin-bottom: 0.5rem;
+      }
+      .formula-box {
+        background: #f3f4f6;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        padding: 1rem;
+        overflow-x: auto;
+        margin: 1rem 0;
+      }
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+      }
+    </style>
 
-<!-- Google tag (gtag.js) --> <script async src="https://www.googletagmanager.com/gtag/js?id=G-7MB5V1LZRN"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-7MB5V1LZRN'); </script> <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA" /> <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script> <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script> <script async src="//www.ezojs.com/ezoic/sa.min.js"></script> <script> window.ezstandalone = window.ezstandalone || {}; ezstandalone.cmd = ezstandalone.cmd || []; </script>
+    <!-- Google tag (gtag.js) -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-7MB5V1LZRN"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "G-7MB5V1LZRN");
+    </script>
+    <meta
+      name="google-site-verification"
+      content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA"
+    />
+    <script
+      src="https://cmp.gatekeeperconsent.com/min.js"
+      data-cfasync="false"
+    ></script>
+    <script
+      src="https://the.gatekeeperconsent.com/cmp.min.js"
+      data-cfasync="false"
+    ></script>
+    <script async src="//www.ezojs.com/ezoic/sa.min.js"></script>
+    <script>
+      window.ezstandalone = window.ezstandalone || {};
+      ezstandalone.cmd = ezstandalone.cmd || [];
+    </script>
 
-<script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "WebPage",
-    "name": "Affine Cipher Encoder & Decoder (Step-by-Step Solver)",
-    "description": "Free Affine Cipher encoder/decoder. Encrypt or decrypt text with custom keys a and b, auto-reduce keys, show modular inverse steps, and handle spaces, punctuation, and case.",
-    "url": "https://calcdomain.com/affine-cipher",
-    "breadcrumb": {
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://calcdomain.com" },
-        { "@type": "ListItem", "position": 2, "name": "Lifestyle & Everyday", "item": "https://calcdomain.com/#categories/lifestyle-everyday" },
-        { "@type": "ListItem", "position": 3, "name": "Generale", "item": "https://calcdomain.com/general-utility" },
-        { "@type": "ListItem", "position": 4, "name": "Affine Cipher Encoder/Decoder", "item": "https://calcdomain.com/affine-cipher" }
-      ]
-    },
-    "mainEntity": [
+    <script type="application/ld+json">
       {
-        "@type": "HowTo",
-        "name": "How to use the Affine Cipher encoder/decoder",
-        "description": "Step-by-step instructions to encrypt or decrypt text with the Affine Cipher using keys a and b.",
-        "step": [
-          {
-            "@type": "HowToStep",
-            "name": "Choose mode",
-            "text": "Select Encrypt to encode plaintext, or Decrypt to decode ciphertext."
-          },
-          {
-            "@type": "HowToStep",
-            "name": "Enter text",
-            "text": "Type or paste your message into the input box. You can include spaces, punctuation, and numbers."
-          },
-          {
-            "@type": "HowToStep",
-            "name": "Set keys a and b",
-            "text": "Enter integer values for a and b. The tool will automatically reduce them modulo 26 and check that a is coprime with 26."
-          },
-          {
-            "@type": "HowToStep",
-            "name": "Adjust alphabet and options",
-            "text": "Choose the alphabet (A–Z or custom), and whether to preserve case and non-letters."
-          },
-          {
-            "@type": "HowToStep",
-            "name": "Run the cipher",
-            "text": "Click Encrypt or Decrypt. The result, per-character mapping, and modular inverse steps will be shown."
-          }
-        ]
-      },
-      {
-        "@type": "FAQPage",
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": "Affine Cipher Encoder & Decoder (Step-by-Step Solver)",
+        "description": "Free Affine Cipher encoder/decoder. Encrypt or decrypt text with custom keys a and b, auto-reduce keys, show modular inverse steps, and handle spaces, punctuation, and case.",
+        "url": "https://calcdomain.com/affine-cipher",
+        "breadcrumb": {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "https://calcdomain.com"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Lifestyle & Everyday",
+              "item": "https://calcdomain.com/categories/lifestyle-everyday"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Generale",
+              "item": "https://calcdomain.com/general-utility"
+            },
+            {
+              "@type": "ListItem",
+              "position": 4,
+              "name": "Affine Cipher Encoder/Decoder",
+              "item": "https://calcdomain.com/affine-cipher"
+            }
+          ]
+        },
         "mainEntity": [
           {
-            "@type": "Question",
-            "name": "What is the Affine Cipher?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "The Affine Cipher is a classical substitution cipher that maps each letter x to E(x) = (a·x + b) mod m, where a and b are integer keys and m is the alphabet size (26 for A–Z). Decryption uses D(y) = a⁻¹·(y − b) mod m, where a⁻¹ is the modular inverse of a modulo m."
-            }
+            "@type": "HowTo",
+            "name": "How to use the Affine Cipher encoder/decoder",
+            "description": "Step-by-step instructions to encrypt or decrypt text with the Affine Cipher using keys a and b.",
+            "step": [
+              {
+                "@type": "HowToStep",
+                "name": "Choose mode",
+                "text": "Select Encrypt to encode plaintext, or Decrypt to decode ciphertext."
+              },
+              {
+                "@type": "HowToStep",
+                "name": "Enter text",
+                "text": "Type or paste your message into the input box. You can include spaces, punctuation, and numbers."
+              },
+              {
+                "@type": "HowToStep",
+                "name": "Set keys a and b",
+                "text": "Enter integer values for a and b. The tool will automatically reduce them modulo 26 and check that a is coprime with 26."
+              },
+              {
+                "@type": "HowToStep",
+                "name": "Adjust alphabet and options",
+                "text": "Choose the alphabet (A–Z or custom), and whether to preserve case and non-letters."
+              },
+              {
+                "@type": "HowToStep",
+                "name": "Run the cipher",
+                "text": "Click Encrypt or Decrypt. The result, per-character mapping, and modular inverse steps will be shown."
+              }
+            ]
           },
           {
-            "@type": "Question",
-            "name": "Which values of a are valid in the Affine Cipher?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "For the standard 26-letter alphabet, a must be coprime with 26. Valid values are 1, 3, 5, 7, 9, 11, 15, 17, 19, 21, 23, and 25. If gcd(a, 26) ≠ 1, the cipher is not invertible and decryption is impossible."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "How do you decrypt an Affine Cipher?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "To decrypt, compute the modular inverse a⁻¹ of a modulo m, then apply D(y) = a⁻¹·(y − b) mod m to each ciphertext letter y. This tool computes a⁻¹ for you and shows the intermediate steps."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "Is the Affine Cipher secure?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "No. The Affine Cipher is a classical cipher and is not secure by modern standards. It can be broken quickly with frequency analysis or by trying all key pairs. Use it only for learning, puzzles, or low-stakes fun, never for real security."
-            }
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "What is the Affine Cipher?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "The Affine Cipher is a classical substitution cipher that maps each letter x to E(x) = (a·x + b) mod m, where a and b are integer keys and m is the alphabet size (26 for A–Z). Decryption uses D(y) = a⁻¹·(y − b) mod m, where a⁻¹ is the modular inverse of a modulo m."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Which values of a are valid in the Affine Cipher?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "For the standard 26-letter alphabet, a must be coprime with 26. Valid values are 1, 3, 5, 7, 9, 11, 15, 17, 19, 21, 23, and 25. If gcd(a, 26) ≠ 1, the cipher is not invertible and decryption is impossible."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How do you decrypt an Affine Cipher?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "To decrypt, compute the modular inverse a⁻¹ of a modulo m, then apply D(y) = a⁻¹·(y − b) mod m to each ciphertext letter y. This tool computes a⁻¹ for you and shows the intermediate steps."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is the Affine Cipher secure?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. The Affine Cipher is a classical cipher and is not secure by modern standards. It can be broken quickly with frequency analysis or by trying all key pairs. Use it only for learning, puzzles, or low-stakes fun, never for real security."
+                }
+              }
+            ]
           }
         ]
       }
-    ]
-  }
-</script>
-</head> 
-<body class="bg-gray-50 text-gray-800">
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
+    </script>
+  </head>
+  <body class="bg-gray-50 text-gray-800">
+    <script
+      async
+      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939"
+      crossorigin="anonymous"
+    ></script>
 
-<header class="bg-white shadow-sm sticky top-0 z-50">
-  <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
-    <div class="flex justify-between items-center">
-      <a href="https://calcdomain.com" class="text-2xl font-bold text-blue-600">CalcDomain</a>
-      <div class="w-full max-w-md hidden md:block mx-8">
-        <div class="relative">
-          <input type="search" id="search-input" placeholder="Search for a calculator..." class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" />
-          <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-          <div id="search-results" class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200"></div>
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+      <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
+        <div class="flex justify-between items-center">
+          <a
+            href="https://calcdomain.com"
+            class="text-2xl font-bold text-blue-600"
+            >CalcDomain</a
+          >
+          <div class="w-full max-w-md hidden md:block mx-8">
+            <div class="relative">
+              <input
+                type="search"
+                id="search-input"
+                placeholder="Search for a calculator..."
+                class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                autocomplete="off"
+              />
+              <svg
+                class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                ></path>
+              </svg>
+              <div
+                id="search-results"
+                class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200"
+              ></div>
+            </div>
+          </div>
+          <div class="hidden md:flex items-center space-x-6">
+            <a
+              href="https://calcdomain.com/search"
+              class="text-gray-700 hover:text-blue-600 transition-colors"
+              >Advanced Search</a
+            >
+            <a
+              href="https://calcdomain.com/#categories"
+              class="text-gray-700 hover:text-blue-600 transition-colors"
+              >Categories</a
+            >
+          </div>
+          <button
+            id="mobile-menu-toggle"
+            class="md:hidden p-2"
+            aria-controls="mobile-menu"
+            aria-expanded="false"
+            aria-label="Open menu"
+            type="button"
+          >
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 6h16M4 12h16M4 18h16"
+              ></path>
+            </svg>
+          </button>
         </div>
-      </div>
-      <div class="hidden md:flex items-center space-x-6">
-        <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600 transition-colors">Advanced Search</a>
-        <a href="https://calcdomain.com/#categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
-      </div>
-      <button id="mobile-menu-toggle" class="md:hidden p-2" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" type="button">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-      </button>
-    </div>
-    <nav id="mobile-menu" class="md:hidden mt-4 hidden" aria-label="Mobile menu" role="navigation">
-      <div class="mb-4">
-        <div class="relative">
-          <input type="search" id="mobile-search-input" placeholder="Search calculators..." class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-        </div>
-      </div>
-      <div class="space-y-2">
-        <a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
-        <a href="https://calcdomain.com/#categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
-      </div>
-    </nav>
-  </nav>
-</header>
+        <nav
+          id="mobile-menu"
+          class="md:hidden mt-4 hidden"
+          aria-label="Mobile menu"
+          role="navigation"
+        >
+          <div class="mb-4">
+            <div class="relative">
+              <input
+                type="search"
+                id="mobile-search-input"
+                placeholder="Search calculators..."
+                class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <svg
+                class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                ></path>
+              </svg>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <a
+              href="https://calcdomain.com/search"
+              class="block py-2 text-gray-700 hover:text-blue-600"
+              >Advanced Search</a
+            >
+            <a
+              href="https://calcdomain.com/#categories"
+              class="block py-2 text-gray-700 hover:text-blue-600"
+              >Categories</a
+            >
+          </div>
+        </nav>
+      </nav>
+    </header>
 
-<div class="container mx-auto px-4 py-8">
-  <nav id="breadcrumb-container" class="text-sm mb-4 text-gray-600">
-    <ol class="flex flex-wrap items-center space-x-1">
-      <li><a href="https://calcdomain.com" class="text-blue-600 hover:underline">Home</a><span class="mx-1">/</span></li>
-      <li><a href="https://calcdomain.com/#categories/lifestyle-everyday" class="text-blue-600 hover:underline">Lifestyle & Everyday</a><span class="mx-1">/</span></li>
-      <li><a href="https://calcdomain.com/general-utility" class="text-blue-600 hover:underline">Generale</a><span class="mx-1">/</span></li>
-      <li class="text-gray-700">Affine Cipher Encoder/Decoder</li>
-    </ol>
-  </nav>
-  <div class="flex flex-col lg:flex-row gap-8">
-    <main class="w-full lg:w-2/3">
-      <div class="bg-white p-6 rounded-lg shadow-md">
-        <header class="mb-6">
-          <h1 class="text-2xl md:text-3xl font-bold mb-2">Affine Cipher Encoder &amp; Decoder</h1>
-          <p class="text-gray-600">Encrypt or decrypt text using the Affine Cipher. Supports custom keys, modular inverse steps, case handling, and non-letter preservation.</p>
-        </header>
+    <div class="container mx-auto px-4 py-8">
+      <nav id="breadcrumb-container" class="text-sm mb-4 text-gray-600">
+        <ol class="flex flex-wrap items-center space-x-1">
+          <li>
+            <a
+              href="https://calcdomain.com"
+              class="text-blue-600 hover:underline"
+              >Home</a
+            ><span class="mx-1">/</span>
+          </li>
+          <li>
+            <a
+              href="https://calcdomain.com/categories/lifestyle-everyday"
+              class="text-blue-600 hover:underline"
+              >Lifestyle & Everyday</a
+            ><span class="mx-1">/</span>
+          </li>
+          <li>
+            <a
+              href="https://calcdomain.com/general-utility"
+              class="text-blue-600 hover:underline"
+              >Generale</a
+            ><span class="mx-1">/</span>
+          </li>
+          <li class="text-gray-700">Affine Cipher Encoder/Decoder</li>
+        </ol>
+      </nav>
+      <div class="flex flex-col lg:flex-row gap-8">
+        <main class="w-full lg:w-2/3">
+          <div class="bg-white p-6 rounded-lg shadow-md">
+            <header class="mb-6">
+              <h1 class="text-2xl md:text-3xl font-bold mb-2">
+                Affine Cipher Encoder &amp; Decoder
+              </h1>
+              <p class="text-gray-600">
+                Encrypt or decrypt text using the Affine Cipher. Supports custom
+                keys, modular inverse steps, case handling, and non-letter
+                preservation.
+              </p>
+            </header>
 
-        <section aria-labelledby="affine-calculator" class="mb-8">
-          <h2 id="affine-calculator" class="text-xl font-semibold mb-4">Affine Cipher Tool</h2>
+            <section aria-labelledby="affine-calculator" class="mb-8">
+              <h2 id="affine-calculator" class="text-xl font-semibold mb-4">
+                Affine Cipher Tool
+              </h2>
 
-          <div class="grid md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1" for="mode">Mode</label>
-              <div class="flex items-center space-x-4">
-                <label class="inline-flex items-center">
-                  <input type="radio" name="mode" value="encrypt" class="mode-radio" checked>
-                  <span class="ml-2 text-sm">Encrypt</span>
-                </label>
-                <label class="inline-flex items-center">
-                  <input type="radio" name="mode" value="decrypt" class="mode-radio">
-                  <span class="ml-2 text-sm">Decrypt</span>
-                </label>
+              <div class="grid md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label
+                    class="block text-sm font-medium text-gray-700 mb-1"
+                    for="mode"
+                    >Mode</label
+                  >
+                  <div class="flex items-center space-x-4">
+                    <label class="inline-flex items-center">
+                      <input
+                        type="radio"
+                        name="mode"
+                        value="encrypt"
+                        class="mode-radio"
+                        checked
+                      />
+                      <span class="ml-2 text-sm">Encrypt</span>
+                    </label>
+                    <label class="inline-flex items-center">
+                      <input
+                        type="radio"
+                        name="mode"
+                        value="decrypt"
+                        class="mode-radio"
+                      />
+                      <span class="ml-2 text-sm">Decrypt</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <label
+                    class="block text-sm font-medium text-gray-700 mb-1"
+                    for="alphabet-select"
+                    >Alphabet</label
+                  >
+                  <select
+                    id="alphabet-select"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  >
+                    <option value="az">A–Z (26 letters)</option>
+                    <option value="custom">Custom alphabet…</option>
+                  </select>
+                </div>
               </div>
-            </div>
 
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1" for="alphabet-select">Alphabet</label>
-              <select id="alphabet-select" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm">
-                <option value="az">A–Z (26 letters)</option>
-                <option value="custom">Custom alphabet…</option>
-              </select>
-            </div>
+              <div id="custom-alphabet-wrapper" class="mb-4 hidden">
+                <label
+                  class="block text-sm font-medium text-gray-700 mb-1"
+                  for="custom-alphabet"
+                  >Custom alphabet</label
+                >
+                <input
+                  id="custom-alphabet"
+                  type="text"
+                  class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm mono"
+                  placeholder="e.g. ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+                />
+                <p class="text-xs text-gray-500 mt-1">
+                  Characters must be unique. Alphabet length defines modulus m.
+                </p>
+              </div>
+
+              <div class="grid md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label
+                    class="block text-sm font-medium text-gray-700 mb-1"
+                    for="key-a"
+                    >Key a (multiplicative)</label
+                  >
+                  <input
+                    id="key-a"
+                    type="number"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                    value="5"
+                  />
+                  <p class="text-xs text-gray-500 mt-1">
+                    Must be coprime with m (e.g. for m = 26, valid a:
+                    1,3,5,7,9,11,15,17,19,21,23,25).
+                  </p>
+                </div>
+                <div>
+                  <label
+                    class="block text-sm font-medium text-gray-700 mb-1"
+                    for="key-b"
+                    >Key b (additive)</label
+                  >
+                  <input
+                    id="key-b"
+                    type="number"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                    value="8"
+                  />
+                  <p class="text-xs text-gray-500 mt-1">
+                    Any integer. We automatically reduce a and b modulo m.
+                  </p>
+                </div>
+              </div>
+
+              <div class="mb-4">
+                <span class="block text-sm font-medium text-gray-700 mb-1"
+                  >Options</span
+                >
+                <div class="grid md:grid-cols-2 gap-2 text-sm">
+                  <label class="inline-flex items-center">
+                    <input
+                      type="checkbox"
+                      id="preserve-case"
+                      class="mr-2"
+                      checked
+                    />
+                    Preserve letter case
+                  </label>
+                  <label class="inline-flex items-center">
+                    <input
+                      type="checkbox"
+                      id="keep-nonletters"
+                      class="mr-2"
+                      checked
+                    />
+                    Keep spaces, punctuation, digits
+                  </label>
+                  <label class="inline-flex items-center">
+                    <input type="checkbox" id="group-output" class="mr-2" />
+                    Group ciphertext in blocks of 5
+                  </label>
+                  <label class="inline-flex items-center">
+                    <input
+                      type="checkbox"
+                      id="show-steps"
+                      class="mr-2"
+                      checked
+                    />
+                    Show per-character steps
+                  </label>
+                </div>
+              </div>
+
+              <div class="mb-4">
+                <label
+                  class="block text-sm font-medium text-gray-700 mb-1"
+                  for="input-text"
+                  >Input text</label
+                >
+                <textarea
+                  id="input-text"
+                  rows="4"
+                  class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm mono"
+                  placeholder="Enter plaintext or ciphertext here..."
+                >
+AFFINE CIPHER</textarea
+                >
+              </div>
+
+              <div class="flex flex-wrap items-center gap-3 mb-4">
+                <button
+                  id="run-btn"
+                  class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md"
+                >
+                  Run Affine Cipher
+                </button>
+                <button
+                  id="swap-btn"
+                  class="inline-flex items-center px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-medium rounded-md"
+                >
+                  Swap input/output
+                </button>
+                <button
+                  id="clear-btn"
+                  class="inline-flex items-center px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-medium rounded-md"
+                >
+                  Clear
+                </button>
+                <span id="modulus-info" class="text-xs text-gray-600 ml-auto"
+                  >m = 26 (A–Z)</span
+                >
+              </div>
+
+              <div id="status-message" class="text-sm mb-4"></div>
+
+              <div class="mb-4">
+                <label
+                  class="block text-sm font-medium text-gray-700 mb-1"
+                  for="output-text"
+                  >Output text</label
+                >
+                <textarea
+                  id="output-text"
+                  rows="4"
+                  class="w-full border border-gray-200 bg-gray-50 rounded-md px-3 py-2 text-sm mono"
+                  readonly
+                ></textarea>
+              </div>
+
+              <details
+                id="inverse-details"
+                class="mb-4 bg-gray-50 border border-gray-200 rounded-md px-4 py-3"
+              >
+                <summary
+                  class="text-sm font-semibold cursor-pointer select-none"
+                >
+                  Modular inverse &amp; key details
+                </summary>
+                <div
+                  id="inverse-content"
+                  class="mt-2 text-xs text-gray-700 mono whitespace-pre-wrap"
+                ></div>
+              </details>
+
+              <details
+                id="steps-details"
+                class="mb-2 bg-gray-50 border border-gray-200 rounded-md px-4 py-3"
+              >
+                <summary
+                  class="text-sm font-semibold cursor-pointer select-none"
+                >
+                  Per-character mapping steps
+                </summary>
+                <div
+                  id="steps-content"
+                  class="mt-2 text-xs text-gray-700 mono whitespace-pre-wrap"
+                ></div>
+              </details>
+            </section>
+
+            <section class="prose">
+              <h2>How the Affine Cipher Works</h2>
+              <p>
+                The Affine Cipher is a classical substitution cipher. Each
+                letter is first mapped to a number, transformed with a linear
+                function modulo the alphabet size, and then mapped back to a
+                letter.
+              </p>
+
+              <h3>Letter-to-number mapping</h3>
+              <p>For the standard English alphabet:</p>
+              <div class="formula-box mono text-sm">
+                A → 0, B → 1, C → 2, …, Z → 25
+              </div>
+
+              <h3>Encryption formula</h3>
+              <p>Let:</p>
+              <ul>
+                <li><strong>m</strong> = size of the alphabet (26 for A–Z)</li>
+                <li><strong>a</strong>, <strong>b</strong> = integer keys</li>
+                <li>
+                  <strong>x</strong> = numeric value of a plaintext letter
+                </li>
+              </ul>
+              <div class="formula-box mono text-sm">E(x) = (a·x + b) mod m</div>
+              <p>The result E(x) is then converted back to a letter.</p>
+
+              <h3>Decryption formula</h3>
+              <p>
+                To decrypt, you must compute the modular inverse of
+                <strong>a</strong> modulo <strong>m</strong>, denoted a⁻¹, such
+                that:
+              </p>
+              <div class="formula-box mono text-sm">a · a⁻¹ ≡ 1 (mod m)</div>
+              <p>
+                Then, for each ciphertext letter with numeric value
+                <strong>y</strong>:
+              </p>
+              <div class="formula-box mono text-sm">
+                D(y) = a⁻¹ · (y − b) mod m
+              </div>
+
+              <h3>Valid values of a</h3>
+              <p>
+                The cipher is only invertible if <strong>a</strong> and
+                <strong>m</strong> are coprime (their greatest common divisor is
+                1). For the 26-letter alphabet, the valid values of a are:
+              </p>
+              <div class="formula-box mono text-sm">
+                {1, 3, 5, 7, 9, 11, 15, 17, 19, 21, 23, 25}
+              </div>
+              <p>
+                If you choose an invalid <strong>a</strong>, this tool will warn
+                you and refuse to decrypt, because no modular inverse exists.
+              </p>
+
+              <h3>Example: Encrypting “AFFINE CIPHER”</h3>
+              <p>Using keys a = 5, b = 8, m = 26:</p>
+              <ol>
+                <li>
+                  Map letters to numbers: A=0, F=5, I=8, N=13, E=4, C=2, P=15,
+                  H=7, R=17.
+                </li>
+                <li>Apply E(x) = (5·x + 8) mod 26 to each letter.</li>
+                <li>Map the results back to letters.</li>
+              </ol>
+              <p>
+                The tool above shows each step, including the numeric mapping
+                and modular arithmetic, so you can follow the process line by
+                line.
+              </p>
+
+              <h2>Common Questions</h2>
+
+              <h3>Can I use a custom alphabet?</h3>
+              <p>
+                Yes. Choose “Custom alphabet” and enter any sequence of unique
+                characters. The length of this string becomes the modulus m.
+                This is useful for:
+              </p>
+              <ul>
+                <li>Including digits (0–9) or punctuation</li>
+                <li>Working with non-English alphabets</li>
+                <li>Designing puzzle-specific symbol sets</li>
+              </ul>
+
+              <h3>How does this tool handle spaces and punctuation?</h3>
+              <p>
+                By default, spaces, punctuation, and digits are preserved
+                unchanged (they are not encrypted). If you want them to be part
+                of the cipher, include them in a custom alphabet and uncheck
+                “Keep spaces, punctuation, digits”.
+              </p>
+
+              <h3>Is the Affine Cipher secure?</h3>
+              <p>
+                No. The Affine Cipher is easily broken with frequency analysis
+                or by trying all possible key pairs. It is useful for learning
+                and puzzles, but not for protecting sensitive information.
+              </p>
+            </section>
+
+            <section class="prose mt-8">
+              <h2>FAQ</h2>
+
+              <h3>How do I choose good keys a and b?</h3>
+              <p>
+                First pick a value of <strong>a</strong> that is coprime with
+                the alphabet size m. For A–Z, use one of the 12 valid values
+                listed above. Then choose any integer for <strong>b</strong>.
+                This tool automatically reduces both a and b modulo m, so you do
+                not need to worry about negative or large values.
+              </p>
+
+              <h3>What happens if I use an invalid a?</h3>
+              <p>
+                If gcd(a, m) ≠ 1, the mapping is not one-to-one: multiple
+                plaintext letters map to the same ciphertext letter. In that
+                case, decryption is impossible. The calculator detects this and
+                shows an error instead of producing misleading output.
+              </p>
+
+              <h3>
+                Can I recover the keys from a known plaintext and ciphertext?
+              </h3>
+              <p>
+                In theory, yes: two distinct plaintext–ciphertext letter pairs
+                are enough to solve for a and b. This is one reason the Affine
+                Cipher is weak. This tool focuses on encoding/decoding, but you
+                can use the formulas to solve for a and b manually:
+              </p>
+              <div class="formula-box mono text-sm">
+                y₁ ≡ a·x₁ + b (mod m) <br />
+                y₂ ≡ a·x₂ + b (mod m)
+              </div>
+              <p>
+                Subtract the equations to solve for a, then back-substitute to
+                find b.
+              </p>
+            </section>
+          </div>
+        </main>
+        <aside class="w-full lg:w-1/3">
+          <div class="bg-white p-4 rounded-lg shadow-md mb-6">
+            <h2 class="text-lg font-semibold mb-3">
+              Related Lifestyle &amp; Utility Tools
+            </h2>
+            <ul class="space-y-2 text-sm">
+              <li>
+                <a
+                  href="https://calcdomain.com/caesar-cipher"
+                  class="text-blue-600 hover:underline"
+                  >Caesar Cipher Encoder/Decoder</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/baconian-cipher"
+                  class="text-blue-600 hover:underline"
+                  >Baconian Cipher Encoder/Decoder</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/atbash-cipher"
+                  class="text-blue-600 hover:underline"
+                  >Atbash Cipher Encoder/Decoder</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/rail-fence-cipher"
+                  class="text-blue-600 hover:underline"
+                  >Rail Fence Cipher Encoder/Decoder</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/rot13"
+                  class="text-blue-600 hover:underline"
+                  >ROT13 Cipher Tool</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/substitution-cipher-solver"
+                  class="text-blue-600 hover:underline"
+                  >Substitution Cipher Solver</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/hill-cipher"
+                  class="text-blue-600 hover:underline"
+                  >Hill Cipher Encoder/Decoder</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/rsa"
+                  class="text-blue-600 hover:underline"
+                  >RSA Encryption/Decryption</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/hex"
+                  class="text-blue-600 hover:underline"
+                  >Hexadecimal Converter</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/hash-generator"
+                  class="text-blue-600 hover:underline"
+                  >Hash Generator</a
+                >
+              </li>
+            </ul>
           </div>
 
-          <div id="custom-alphabet-wrapper" class="mb-4 hidden">
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="custom-alphabet">Custom alphabet</label>
-            <input id="custom-alphabet" type="text" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm mono" placeholder="e.g. ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789">
-            <p class="text-xs text-gray-500 mt-1">Characters must be unique. Alphabet length defines modulus m.</p>
+          <div class="bg-white p-4 rounded-lg shadow-md">
+            <h2 class="text-lg font-semibold mb-3">
+              More General Utility Tools
+            </h2>
+            <ul class="space-y-2 text-sm">
+              <li>
+                <a
+                  href="https://calcdomain.com/random-number-generator"
+                  class="text-blue-600 hover:underline"
+                  >Random Number Generator</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/password-generator"
+                  class="text-blue-600 hover:underline"
+                  >Password Generator</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/url-validator"
+                  class="text-blue-600 hover:underline"
+                  >URL Validator</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/word-counter"
+                  class="text-blue-600 hover:underline"
+                  >Word Counter</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/character-counter"
+                  class="text-blue-600 hover:underline"
+                  >Character Counter</a
+                >
+              </li>
+            </ul>
           </div>
-
-          <div class="grid md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1" for="key-a">Key a (multiplicative)</label>
-              <input id="key-a" type="number" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" value="5">
-              <p class="text-xs text-gray-500 mt-1">Must be coprime with m (e.g. for m = 26, valid a: 1,3,5,7,9,11,15,17,19,21,23,25).</p>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1" for="key-b">Key b (additive)</label>
-              <input id="key-b" type="number" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" value="8">
-              <p class="text-xs text-gray-500 mt-1">Any integer. We automatically reduce a and b modulo m.</p>
-            </div>
-          </div>
-
-          <div class="mb-4">
-            <span class="block text-sm font-medium text-gray-700 mb-1">Options</span>
-            <div class="grid md:grid-cols-2 gap-2 text-sm">
-              <label class="inline-flex items-center">
-                <input type="checkbox" id="preserve-case" class="mr-2" checked>
-                Preserve letter case
-              </label>
-              <label class="inline-flex items-center">
-                <input type="checkbox" id="keep-nonletters" class="mr-2" checked>
-                Keep spaces, punctuation, digits
-              </label>
-              <label class="inline-flex items-center">
-                <input type="checkbox" id="group-output" class="mr-2">
-                Group ciphertext in blocks of 5
-              </label>
-              <label class="inline-flex items-center">
-                <input type="checkbox" id="show-steps" class="mr-2" checked>
-                Show per-character steps
-              </label>
-            </div>
-          </div>
-
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="input-text">Input text</label>
-            <textarea id="input-text" rows="4" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm mono" placeholder="Enter plaintext or ciphertext here...">AFFINE CIPHER</textarea>
-          </div>
-
-          <div class="flex flex-wrap items-center gap-3 mb-4">
-            <button id="run-btn" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md">
-              Run Affine Cipher
-            </button>
-            <button id="swap-btn" class="inline-flex items-center px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-medium rounded-md">
-              Swap input/output
-            </button>
-            <button id="clear-btn" class="inline-flex items-center px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-medium rounded-md">
-              Clear
-            </button>
-            <span id="modulus-info" class="text-xs text-gray-600 ml-auto">m = 26 (A–Z)</span>
-          </div>
-
-          <div id="status-message" class="text-sm mb-4"></div>
-
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="output-text">Output text</label>
-            <textarea id="output-text" rows="4" class="w-full border border-gray-200 bg-gray-50 rounded-md px-3 py-2 text-sm mono" readonly></textarea>
-          </div>
-
-          <details id="inverse-details" class="mb-4 bg-gray-50 border border-gray-200 rounded-md px-4 py-3">
-            <summary class="text-sm font-semibold cursor-pointer select-none">Modular inverse &amp; key details</summary>
-            <div id="inverse-content" class="mt-2 text-xs text-gray-700 mono whitespace-pre-wrap"></div>
-          </details>
-
-          <details id="steps-details" class="mb-2 bg-gray-50 border border-gray-200 rounded-md px-4 py-3">
-            <summary class="text-sm font-semibold cursor-pointer select-none">Per-character mapping steps</summary>
-            <div id="steps-content" class="mt-2 text-xs text-gray-700 mono whitespace-pre-wrap"></div>
-          </details>
-        </section>
-
-        <section class="prose">
-          <h2>How the Affine Cipher Works</h2>
-          <p>
-            The Affine Cipher is a classical substitution cipher. Each letter is first mapped to a number, transformed with a linear function modulo the alphabet size, and then mapped back to a letter.
-          </p>
-
-          <h3>Letter-to-number mapping</h3>
-          <p>For the standard English alphabet:</p>
-          <div class="formula-box mono text-sm">
-            A → 0, B → 1, C → 2, …, Z → 25
-          </div>
-
-          <h3>Encryption formula</h3>
-          <p>Let:</p>
-          <ul>
-            <li><strong>m</strong> = size of the alphabet (26 for A–Z)</li>
-            <li><strong>a</strong>, <strong>b</strong> = integer keys</li>
-            <li><strong>x</strong> = numeric value of a plaintext letter</li>
-          </ul>
-          <div class="formula-box mono text-sm">
-            E(x) = (a·x + b) mod m
-          </div>
-          <p>The result E(x) is then converted back to a letter.</p>
-
-          <h3>Decryption formula</h3>
-          <p>To decrypt, you must compute the modular inverse of <strong>a</strong> modulo <strong>m</strong>, denoted a⁻¹, such that:</p>
-          <div class="formula-box mono text-sm">
-            a · a⁻¹ ≡ 1 (mod m)
-          </div>
-          <p>Then, for each ciphertext letter with numeric value <strong>y</strong>:</p>
-          <div class="formula-box mono text-sm">
-            D(y) = a⁻¹ · (y − b) mod m
-          </div>
-
-          <h3>Valid values of a</h3>
-          <p>
-            The cipher is only invertible if <strong>a</strong> and <strong>m</strong> are coprime (their greatest common divisor is 1). For the 26-letter alphabet, the valid values of a are:
-          </p>
-          <div class="formula-box mono text-sm">
-            {1, 3, 5, 7, 9, 11, 15, 17, 19, 21, 23, 25}
-          </div>
-          <p>
-            If you choose an invalid <strong>a</strong>, this tool will warn you and refuse to decrypt, because no modular inverse exists.
-          </p>
-
-          <h3>Example: Encrypting “AFFINE CIPHER”</h3>
-          <p>Using keys a = 5, b = 8, m = 26:</p>
-          <ol>
-            <li>Map letters to numbers: A=0, F=5, I=8, N=13, E=4, C=2, P=15, H=7, R=17.</li>
-            <li>Apply E(x) = (5·x + 8) mod 26 to each letter.</li>
-            <li>Map the results back to letters.</li>
-          </ol>
-          <p>
-            The tool above shows each step, including the numeric mapping and modular arithmetic, so you can follow the process line by line.
-          </p>
-
-          <h2>Common Questions</h2>
-
-          <h3>Can I use a custom alphabet?</h3>
-          <p>
-            Yes. Choose “Custom alphabet” and enter any sequence of unique characters. The length of this string becomes the modulus m. This is useful for:
-          </p>
-          <ul>
-            <li>Including digits (0–9) or punctuation</li>
-            <li>Working with non-English alphabets</li>
-            <li>Designing puzzle-specific symbol sets</li>
-          </ul>
-
-          <h3>How does this tool handle spaces and punctuation?</h3>
-          <p>
-            By default, spaces, punctuation, and digits are preserved unchanged (they are not encrypted). If you want them to be part of the cipher, include them in a custom alphabet and uncheck “Keep spaces, punctuation, digits”.
-          </p>
-
-          <h3>Is the Affine Cipher secure?</h3>
-          <p>
-            No. The Affine Cipher is easily broken with frequency analysis or by trying all possible key pairs. It is useful for learning and puzzles, but not for protecting sensitive information.
-          </p>
-        </section>
-
-        <section class="prose mt-8">
-          <h2>FAQ</h2>
-
-          <h3>How do I choose good keys a and b?</h3>
-          <p>
-            First pick a value of <strong>a</strong> that is coprime with the alphabet size m. For A–Z, use one of the 12 valid values listed above. Then choose any integer for <strong>b</strong>. This tool automatically reduces both a and b modulo m, so you do not need to worry about negative or large values.
-          </p>
-
-          <h3>What happens if I use an invalid a?</h3>
-          <p>
-            If gcd(a, m) ≠ 1, the mapping is not one-to-one: multiple plaintext letters map to the same ciphertext letter. In that case, decryption is impossible. The calculator detects this and shows an error instead of producing misleading output.
-          </p>
-
-          <h3>Can I recover the keys from a known plaintext and ciphertext?</h3>
-          <p>
-            In theory, yes: two distinct plaintext–ciphertext letter pairs are enough to solve for a and b. This is one reason the Affine Cipher is weak. This tool focuses on encoding/decoding, but you can use the formulas to solve for a and b manually:
-          </p>
-          <div class="formula-box mono text-sm">
-            y₁ ≡ a·x₁ + b (mod m)  <br>
-            y₂ ≡ a·x₂ + b (mod m)
-          </div>
-          <p>Subtract the equations to solve for a, then back-substitute to find b.</p>
-        </section>
-      </div>
-    </main>
-    <aside class="w-full lg:w-1/3">
-      <div class="bg-white p-4 rounded-lg shadow-md mb-6">
-        <h2 class="text-lg font-semibold mb-3">Related Lifestyle &amp; Utility Tools</h2>
-        <ul class="space-y-2 text-sm">
-          <li><a href="https://calcdomain.com/caesar-cipher" class="text-blue-600 hover:underline">Caesar Cipher Encoder/Decoder</a></li>
-          <li><a href="https://calcdomain.com/baconian-cipher" class="text-blue-600 hover:underline">Baconian Cipher Encoder/Decoder</a></li>
-          <li><a href="https://calcdomain.com/atbash-cipher" class="text-blue-600 hover:underline">Atbash Cipher Encoder/Decoder</a></li>
-          <li><a href="https://calcdomain.com/rail-fence-cipher" class="text-blue-600 hover:underline">Rail Fence Cipher Encoder/Decoder</a></li>
-          <li><a href="https://calcdomain.com/rot13" class="text-blue-600 hover:underline">ROT13 Cipher Tool</a></li>
-          <li><a href="https://calcdomain.com/substitution-cipher-solver" class="text-blue-600 hover:underline">Substitution Cipher Solver</a></li>
-          <li><a href="https://calcdomain.com/hill-cipher" class="text-blue-600 hover:underline">Hill Cipher Encoder/Decoder</a></li>
-          <li><a href="https://calcdomain.com/rsa" class="text-blue-600 hover:underline">RSA Encryption/Decryption</a></li>
-          <li><a href="https://calcdomain.com/hex" class="text-blue-600 hover:underline">Hexadecimal Converter</a></li>
-          <li><a href="https://calcdomain.com/hash-generator" class="text-blue-600 hover:underline">Hash Generator</a></li>
-        </ul>
-      </div>
-
-      <div class="bg-white p-4 rounded-lg shadow-md">
-        <h2 class="text-lg font-semibold mb-3">More General Utility Tools</h2>
-        <ul class="space-y-2 text-sm">
-          <li><a href="https://calcdomain.com/random-number-generator" class="text-blue-600 hover:underline">Random Number Generator</a></li>
-          <li><a href="https://calcdomain.com/password-generator" class="text-blue-600 hover:underline">Password Generator</a></li>
-          <li><a href="https://calcdomain.com/url-validator" class="text-blue-600 hover:underline">URL Validator</a></li>
-          <li><a href="https://calcdomain.com/word-counter" class="text-blue-600 hover:underline">Word Counter</a></li>
-          <li><a href="https://calcdomain.com/character-counter" class="text-blue-600 hover:underline">Character Counter</a></li>
-        </ul>
-      </div>
-    </aside>
-  </div>
-</div>
-<footer class="bg-gray-900 text-white py-12">
-  <div class="container mx-auto px-4">
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-      <div>
-        <h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
-        <p class="text-gray-400 mb-4">Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.</p>
-      </div>
-      <div>
-        <h4 class="text-lg font-semibold mb-4">Categories</h4>
-        <ul class="space-y-2">
-          <li><a href="https://calcdomain.com/finance" class="text-gray-400 hover:text-white">Finance</a></li>
-          <li><a href="https://calcdomain.com/health-fitness" class="text-gray-400 hover:text-white">Health & Fitness</a></li>
-          <li><a href="https://calcdomain.com/math-conversions" class="text-gray-400 hover:text-white">Math & Conversions</a></li>
-          <li><a href="https://calcdomain.com/lifestyle-everyday" class="text-gray-400 hover:text-white">Lifestyle & Everyday</a></li>
-          <li><a href="https://calcdomain.com/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
-        </ul>
-      </div>
-      <div>
-        <h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
-        <ul class="space-y-2">
-          <li><a href="https://calcdomain.com/mortgage-payment" class="text-gray-400 hover:text-white">Mortgage Calculator</a></li>
-          <li><a href="https://calcdomain.com/percentage-calculator" class="text-gray-400 hover:text-white">Percentage Calculator</a></li>
-          <li><a href="https://calcdomain.com/bmi-calculator" class="text-gray-400 hover:text-white">BMI Calculator</a></li>
-          <li><a href="https://calcdomain.com/auto-loan-calculator" class="text-gray-400 hover:text-white">Auto Loan Calculator</a></li>
-          <li><a href="https://calcdomain.com/house-affordability" class="text-gray-400 hover:text-white">House Affordability</a></li>
-        </ul>
-      </div>
-      <div>
-        <h4 class="text-lg font-semibold mb-4">Support</h4>
-        <ul class="space-y-2">
-          <li><a href="https://calcdomain.com/about" class="text-gray-400 hover:text-white">About Us</a></li>
-          <li><a href="https://calcdomain.com/contact" class="text-gray-400 hover:text-white">Contact</a></li>
-          <li><a href="https://calcdomain.com/privacy" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
-          <li><a href="https://calcdomain.com/terms" class="text-gray-400 hover:text-white">Terms of Service</a></li>
-          <li><a href="https://calcdomain.com/sitemap.xml" class="text-gray-400 hover:text-white">Site Map</a></li>
-        </ul>
+        </aside>
       </div>
     </div>
-    <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-      <p>&copy; 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
-    </div>
-  </div>
-</footer>
+    <footer class="bg-gray-900 text-white py-12">
+      <div class="container mx-auto px-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div>
+            <h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+            <p class="text-gray-400 mb-4">
+              Your trusted source for free online calculators. Accurate, fast,
+              and reliable calculations for every need.
+            </p>
+          </div>
+          <div>
+            <h4 class="text-lg font-semibold mb-4">Categories</h4>
+            <ul class="space-y-2">
+              <li>
+                <a
+                  href="https://calcdomain.com/finance"
+                  class="text-gray-400 hover:text-white"
+                  >Finance</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/health-fitness"
+                  class="text-gray-400 hover:text-white"
+                  >Health & Fitness</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/math-conversions"
+                  class="text-gray-400 hover:text-white"
+                  >Math & Conversions</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/lifestyle-everyday"
+                  class="text-gray-400 hover:text-white"
+                  >Lifestyle & Everyday</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/construction-diy"
+                  class="text-gray-400 hover:text-white"
+                  >Construction & DIY</a
+                >
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+            <ul class="space-y-2">
+              <li>
+                <a
+                  href="https://calcdomain.com/mortgage-payment"
+                  class="text-gray-400 hover:text-white"
+                  >Mortgage Calculator</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/percentage-calculator"
+                  class="text-gray-400 hover:text-white"
+                  >Percentage Calculator</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/bmi-calculator"
+                  class="text-gray-400 hover:text-white"
+                  >BMI Calculator</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/auto-loan-calculator"
+                  class="text-gray-400 hover:text-white"
+                  >Auto Loan Calculator</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/house-affordability"
+                  class="text-gray-400 hover:text-white"
+                  >House Affordability</a
+                >
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="text-lg font-semibold mb-4">Support</h4>
+            <ul class="space-y-2">
+              <li>
+                <a
+                  href="https://calcdomain.com/about"
+                  class="text-gray-400 hover:text-white"
+                  >About Us</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/contact"
+                  class="text-gray-400 hover:text-white"
+                  >Contact</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/privacy"
+                  class="text-gray-400 hover:text-white"
+                  >Privacy Policy</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/terms"
+                  class="text-gray-400 hover:text-white"
+                  >Terms of Service</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://calcdomain.com/sitemap.xml"
+                  class="text-gray-400 hover:text-white"
+                  >Site Map</a
+                >
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div
+          class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400"
+        >
+          <p>
+            &copy; 2025 CalcDomain. All Rights Reserved. | Free Online
+            Calculators for Everyone
+          </p>
+        </div>
+      </div>
+    </footer>
 
-<script src="/assets/js/mobile-menu.js" defer></script>
-<script src="/search.js" defer></script>
+    <script src="/assets/js/mobile-menu.js" defer></script>
+    <script src="/search.js" defer></script>
 
-<script>
-  // Mobile menu toggle
-  document.getElementById('mobile-menu-toggle').addEventListener('click', function () {
-    const menu = document.getElementById('mobile-menu');
-    const expanded = this.getAttribute('aria-expanded') === 'true';
-    this.setAttribute('aria-expanded', String(!expanded));
-    menu.classList.toggle('hidden');
-  });
+    <script>
+      // Mobile menu toggle
+      document
+        .getElementById("mobile-menu-toggle")
+        .addEventListener("click", function () {
+          const menu = document.getElementById("mobile-menu");
+          const expanded = this.getAttribute("aria-expanded") === "true";
+          this.setAttribute("aria-expanded", String(!expanded));
+          menu.classList.toggle("hidden");
+        });
 
-  // Affine cipher logic
-  (function () {
-    const alphabetSelect = document.getElementById('alphabet-select');
-    const customAlphabetWrapper = document.getElementById('custom-alphabet-wrapper');
-    const customAlphabetInput = document.getElementById('custom-alphabet');
-    const keyAInput = document.getElementById('key-a');
-    const keyBInput = document.getElementById('key-b');
-    const preserveCaseCheckbox = document.getElementById('preserve-case');
-    const keepNonlettersCheckbox = document.getElementById('keep-nonletters');
-    const groupOutputCheckbox = document.getElementById('group-output');
-    const showStepsCheckbox = document.getElementById('show-steps');
-    const inputTextArea = document.getElementById('input-text');
-    const outputTextArea = document.getElementById('output-text');
-    const runBtn = document.getElementById('run-btn');
-    const swapBtn = document.getElementById('swap-btn');
-    const clearBtn = document.getElementById('clear-btn');
-    const statusMessage = document.getElementById('status-message');
-    const modulusInfo = document.getElementById('modulus-info');
-    const inverseContent = document.getElementById('inverse-content');
-    const stepsContent = document.getElementById('steps-content');
+      // Affine cipher logic
+      (function () {
+        const alphabetSelect = document.getElementById("alphabet-select");
+        const customAlphabetWrapper = document.getElementById(
+          "custom-alphabet-wrapper"
+        );
+        const customAlphabetInput = document.getElementById("custom-alphabet");
+        const keyAInput = document.getElementById("key-a");
+        const keyBInput = document.getElementById("key-b");
+        const preserveCaseCheckbox = document.getElementById("preserve-case");
+        const keepNonlettersCheckbox =
+          document.getElementById("keep-nonletters");
+        const groupOutputCheckbox = document.getElementById("group-output");
+        const showStepsCheckbox = document.getElementById("show-steps");
+        const inputTextArea = document.getElementById("input-text");
+        const outputTextArea = document.getElementById("output-text");
+        const runBtn = document.getElementById("run-btn");
+        const swapBtn = document.getElementById("swap-btn");
+        const clearBtn = document.getElementById("clear-btn");
+        const statusMessage = document.getElementById("status-message");
+        const modulusInfo = document.getElementById("modulus-info");
+        const inverseContent = document.getElementById("inverse-content");
+        const stepsContent = document.getElementById("steps-content");
 
-    function getMode() {
-      const radios = document.querySelectorAll('.mode-radio');
-      for (const r of radios) {
-        if (r.checked) return r.value;
-      }
-      return 'encrypt';
-    }
-
-    function getAlphabet() {
-      if (alphabetSelect.value === 'custom') {
-        const raw = customAlphabetInput.value || '';
-        const chars = Array.from(raw);
-        const seen = new Set();
-        const unique = [];
-        for (const ch of chars) {
-          if (!seen.has(ch)) {
-            seen.add(ch);
-            unique.push(ch);
+        function getMode() {
+          const radios = document.querySelectorAll(".mode-radio");
+          for (const r of radios) {
+            if (r.checked) return r.value;
           }
-        }
-        return unique.join('');
-      } else {
-        return 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-      }
-    }
-
-    function gcd(a, b) {
-      a = Math.abs(a); b = Math.abs(b);
-      while (b !== 0) {
-        const t = b;
-        b = a % b;
-        a = t;
-      }
-      return a;
-    }
-
-    function mod(n, m) {
-      return ((n % m) + m) % m;
-    }
-
-    function modInverse(a, m) {
-      a = mod(a, m);
-      let t = 0, newT = 1;
-      let r = m, newR = a;
-      while (newR !== 0) {
-        const q = Math.floor(r / newR);
-        [t, newT] = [newT, t - q * newT];
-        [r, newR] = [newR, r - q * newR];
-      }
-      if (r > 1) return null;
-      if (t < 0) t += m;
-      return t;
-    }
-
-    function updateModulusInfo() {
-      const alphabet = getAlphabet();
-      const m = alphabet.length || 26;
-      modulusInfo.textContent = 'm = ' + m + (alphabetSelect.value === 'custom' ? ' (custom alphabet)' : ' (A–Z)');
-    }
-
-    alphabetSelect.addEventListener('change', () => {
-      customAlphabetWrapper.classList.toggle('hidden', alphabetSelect.value !== 'custom');
-      updateModulusInfo();
-    });
-
-    customAlphabetInput.addEventListener('input', updateModulusInfo);
-
-    function runAffine() {
-      const mode = getMode();
-      const alphabet = getAlphabet();
-      const m = alphabet.length;
-
-      statusMessage.textContent = '';
-      statusMessage.className = 'text-sm mb-4';
-      inverseContent.textContent = '';
-      stepsContent.textContent = '';
-
-      if (!alphabet || m < 2) {
-        statusMessage.textContent = 'Please provide an alphabet with at least 2 unique characters.';
-        statusMessage.classList.add('text-red-600');
-        outputTextArea.value = '';
-        return;
-      }
-
-      let a = parseInt(keyAInput.value, 10);
-      let b = parseInt(keyBInput.value, 10);
-      if (isNaN(a) || isNaN(b)) {
-        statusMessage.textContent = 'Please enter numeric values for keys a and b.';
-        statusMessage.classList.add('text-red-600');
-        outputTextArea.value = '';
-        return;
-      }
-
-      const originalA = a;
-      const originalB = b;
-      a = mod(a, m);
-      b = mod(b, m);
-
-      const g = gcd(a, m);
-      let aInv = null;
-      if (mode === 'decrypt') {
-        aInv = modInverse(a, m);
-        if (aInv === null) {
-          statusMessage.textContent = 'Invalid key a for decryption: gcd(a, m) = ' + g + ' ≠ 1. Choose a value of a that is coprime with m = ' + m + '.';
-          statusMessage.classList.add('text-red-600');
-          outputTextArea.value = '';
-          inverseContent.textContent =
-            'Key details:\n' +
-            '  Alphabet size m = ' + m + '\n' +
-            '  Reduced a = ' + a + ' (from ' + originalA + ')\n' +
-            '  Reduced b = ' + b + ' (from ' + originalB + ')\n' +
-            '  gcd(a, m) = ' + g + ' → no modular inverse exists.\n';
-          return;
-        }
-      } else {
-        // For encryption, we still warn if not invertible
-        if (g !== 1) {
-          statusMessage.textContent = 'Warning: gcd(a, m) = ' + g + ' ≠ 1. Encryption works, but decryption will not be unique.';
-          statusMessage.classList.add('text-yellow-700');
-        }
-      }
-
-      const text = inputTextArea.value || '';
-      const preserveCase = preserveCaseCheckbox.checked;
-      const keepNonletters = keepNonlettersCheckbox.checked;
-      const groupOutput = groupOutputCheckbox.checked;
-      const showSteps = showStepsCheckbox.checked;
-
-      let resultChars = [];
-      let stepsLines = [];
-
-      function mapChar(ch, index) {
-        const isUpper = ch >= 'A' && ch <= 'Z';
-        const isLower = ch >= 'a' && ch <= 'z';
-
-        let baseChar = ch;
-        if (!preserveCase) {
-          baseChar = ch.toUpperCase();
+          return "encrypt";
         }
 
-        const pos = alphabet.indexOf(baseChar);
-        if (pos === -1) {
-          if (keepNonletters) {
-            if (showSteps) {
-              stepsLines.push(
-                '[' + index + '] ' + JSON.stringify(ch) + ' → (not in alphabet, kept as-is)'
-              );
+        function getAlphabet() {
+          if (alphabetSelect.value === "custom") {
+            const raw = customAlphabetInput.value || "";
+            const chars = Array.from(raw);
+            const seen = new Set();
+            const unique = [];
+            for (const ch of chars) {
+              if (!seen.has(ch)) {
+                seen.add(ch);
+                unique.push(ch);
+              }
             }
-            return ch;
+            return unique.join("");
           } else {
-            if (showSteps) {
-              stepsLines.push(
-                '[' + index + '] ' + JSON.stringify(ch) + ' → (not in alphabet, removed)'
-              );
+            return "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+          }
+        }
+
+        function gcd(a, b) {
+          a = Math.abs(a);
+          b = Math.abs(b);
+          while (b !== 0) {
+            const t = b;
+            b = a % b;
+            a = t;
+          }
+          return a;
+        }
+
+        function mod(n, m) {
+          return ((n % m) + m) % m;
+        }
+
+        function modInverse(a, m) {
+          a = mod(a, m);
+          let t = 0,
+            newT = 1;
+          let r = m,
+            newR = a;
+          while (newR !== 0) {
+            const q = Math.floor(r / newR);
+            [t, newT] = [newT, t - q * newT];
+            [r, newR] = [newR, r - q * newR];
+          }
+          if (r > 1) return null;
+          if (t < 0) t += m;
+          return t;
+        }
+
+        function updateModulusInfo() {
+          const alphabet = getAlphabet();
+          const m = alphabet.length || 26;
+          modulusInfo.textContent =
+            "m = " +
+            m +
+            (alphabetSelect.value === "custom"
+              ? " (custom alphabet)"
+              : " (A–Z)");
+        }
+
+        alphabetSelect.addEventListener("change", () => {
+          customAlphabetWrapper.classList.toggle(
+            "hidden",
+            alphabetSelect.value !== "custom"
+          );
+          updateModulusInfo();
+        });
+
+        customAlphabetInput.addEventListener("input", updateModulusInfo);
+
+        function runAffine() {
+          const mode = getMode();
+          const alphabet = getAlphabet();
+          const m = alphabet.length;
+
+          statusMessage.textContent = "";
+          statusMessage.className = "text-sm mb-4";
+          inverseContent.textContent = "";
+          stepsContent.textContent = "";
+
+          if (!alphabet || m < 2) {
+            statusMessage.textContent =
+              "Please provide an alphabet with at least 2 unique characters.";
+            statusMessage.classList.add("text-red-600");
+            outputTextArea.value = "";
+            return;
+          }
+
+          let a = parseInt(keyAInput.value, 10);
+          let b = parseInt(keyBInput.value, 10);
+          if (isNaN(a) || isNaN(b)) {
+            statusMessage.textContent =
+              "Please enter numeric values for keys a and b.";
+            statusMessage.classList.add("text-red-600");
+            outputTextArea.value = "";
+            return;
+          }
+
+          const originalA = a;
+          const originalB = b;
+          a = mod(a, m);
+          b = mod(b, m);
+
+          const g = gcd(a, m);
+          let aInv = null;
+          if (mode === "decrypt") {
+            aInv = modInverse(a, m);
+            if (aInv === null) {
+              statusMessage.textContent =
+                "Invalid key a for decryption: gcd(a, m) = " +
+                g +
+                " ≠ 1. Choose a value of a that is coprime with m = " +
+                m +
+                ".";
+              statusMessage.classList.add("text-red-600");
+              outputTextArea.value = "";
+              inverseContent.textContent =
+                "Key details:\n" +
+                "  Alphabet size m = " +
+                m +
+                "\n" +
+                "  Reduced a = " +
+                a +
+                " (from " +
+                originalA +
+                ")\n" +
+                "  Reduced b = " +
+                b +
+                " (from " +
+                originalB +
+                ")\n" +
+                "  gcd(a, m) = " +
+                g +
+                " → no modular inverse exists.\n";
+              return;
             }
-            return '';
-          }
-        }
-
-        let x = pos;
-        let y;
-        if (mode === 'encrypt') {
-          y = mod(a * x + b, m);
-        } else {
-          y = mod(aInv * (x - b), m);
-        }
-        let outChar = alphabet[y];
-
-        if (preserveCase) {
-          if (isLower) outChar = outChar.toLowerCase();
-          else outChar = outChar.toUpperCase();
-        }
-
-        if (showSteps) {
-          if (mode === 'encrypt') {
-            stepsLines.push(
-              '[' + index + '] ' + ch + ' → x=' + x +
-              ' → y = (a·x + b) mod m = (' + a + '·' + x + ' + ' + b + ') mod ' + m +
-              ' = ' + y + ' → ' + outChar
-            );
           } else {
-            stepsLines.push(
-              '[' + index + '] ' + ch + ' → y=' + x +
-              ' → x = a⁻¹·(y − b) mod m = ' + aInv + '·(' + x + ' − ' + b + ') mod ' + m +
-              ' = ' + y + ' → ' + outChar
-            );
+            // For encryption, we still warn if not invertible
+            if (g !== 1) {
+              statusMessage.textContent =
+                "Warning: gcd(a, m) = " +
+                g +
+                " ≠ 1. Encryption works, but decryption will not be unique.";
+              statusMessage.classList.add("text-yellow-700");
+            }
+          }
+
+          const text = inputTextArea.value || "";
+          const preserveCase = preserveCaseCheckbox.checked;
+          const keepNonletters = keepNonlettersCheckbox.checked;
+          const groupOutput = groupOutputCheckbox.checked;
+          const showSteps = showStepsCheckbox.checked;
+
+          let resultChars = [];
+          let stepsLines = [];
+
+          function mapChar(ch, index) {
+            const isUpper = ch >= "A" && ch <= "Z";
+            const isLower = ch >= "a" && ch <= "z";
+
+            let baseChar = ch;
+            if (!preserveCase) {
+              baseChar = ch.toUpperCase();
+            }
+
+            const pos = alphabet.indexOf(baseChar);
+            if (pos === -1) {
+              if (keepNonletters) {
+                if (showSteps) {
+                  stepsLines.push(
+                    "[" +
+                      index +
+                      "] " +
+                      JSON.stringify(ch) +
+                      " → (not in alphabet, kept as-is)"
+                  );
+                }
+                return ch;
+              } else {
+                if (showSteps) {
+                  stepsLines.push(
+                    "[" +
+                      index +
+                      "] " +
+                      JSON.stringify(ch) +
+                      " → (not in alphabet, removed)"
+                  );
+                }
+                return "";
+              }
+            }
+
+            let x = pos;
+            let y;
+            if (mode === "encrypt") {
+              y = mod(a * x + b, m);
+            } else {
+              y = mod(aInv * (x - b), m);
+            }
+            let outChar = alphabet[y];
+
+            if (preserveCase) {
+              if (isLower) outChar = outChar.toLowerCase();
+              else outChar = outChar.toUpperCase();
+            }
+
+            if (showSteps) {
+              if (mode === "encrypt") {
+                stepsLines.push(
+                  "[" +
+                    index +
+                    "] " +
+                    ch +
+                    " → x=" +
+                    x +
+                    " → y = (a·x + b) mod m = (" +
+                    a +
+                    "·" +
+                    x +
+                    " + " +
+                    b +
+                    ") mod " +
+                    m +
+                    " = " +
+                    y +
+                    " → " +
+                    outChar
+                );
+              } else {
+                stepsLines.push(
+                  "[" +
+                    index +
+                    "] " +
+                    ch +
+                    " → y=" +
+                    x +
+                    " → x = a⁻¹·(y − b) mod m = " +
+                    aInv +
+                    "·(" +
+                    x +
+                    " − " +
+                    b +
+                    ") mod " +
+                    m +
+                    " = " +
+                    y +
+                    " → " +
+                    outChar
+                );
+              }
+            }
+
+            return outChar;
+          }
+
+          for (let i = 0; i < text.length; i++) {
+            const ch = text[i];
+            const mapped = mapChar(ch, i);
+            if (mapped === "" && !keepNonletters) {
+              continue;
+            }
+            resultChars.push(mapped);
+          }
+
+          let output = resultChars.join("");
+
+          if (groupOutput) {
+            const lettersOnly = output.replace(/\s+/g, "");
+            const groups = [];
+            for (let i = 0; i < lettersOnly.length; i += 5) {
+              groups.push(lettersOnly.slice(i, i + 5));
+            }
+            output = groups.join(" ");
+          }
+
+          outputTextArea.value = output;
+
+          let invText = "";
+          invText += "Alphabet size m = " + m + "\n";
+          invText +=
+            "Original keys: a = " + originalA + ", b = " + originalB + "\n";
+          invText +=
+            "Reduced modulo m: a ≡ " +
+            a +
+            " (mod " +
+            m +
+            "), b ≡ " +
+            b +
+            " (mod " +
+            m +
+            ")\n";
+          invText += "gcd(a, m) = " + g + "\n";
+          if (mode === "decrypt" && aInv !== null) {
+            invText +=
+              "Modular inverse a⁻¹ such that a·a⁻¹ ≡ 1 (mod m): a⁻¹ = " +
+              aInv +
+              "\n";
+            invText += "Decryption formula: x = a⁻¹·(y − b) mod m\n";
+          } else if (mode === "encrypt") {
+            invText += "Encryption formula: y = (a·x + b) mod m\n";
+          }
+          inverseContent.textContent = invText;
+
+          if (showSteps) {
+            stepsContent.textContent =
+              stepsLines.join("\n") || "No steps to show.";
+          } else {
+            stepsContent.textContent =
+              'Per-character steps are disabled. Check "Show per-character steps" to enable.';
+          }
+
+          if (!statusMessage.textContent) {
+            statusMessage.textContent =
+              (mode === "encrypt" ? "Encryption" : "Decryption") +
+              " completed.";
+            statusMessage.classList.add("text-green-700");
           }
         }
 
-        return outChar;
-      }
+        runBtn.addEventListener("click", runAffine);
 
-      for (let i = 0; i < text.length; i++) {
-        const ch = text[i];
-        const mapped = mapChar(ch, i);
-        if (mapped === '' && !keepNonletters) {
-          continue;
-        }
-        resultChars.push(mapped);
-      }
+        swapBtn.addEventListener("click", () => {
+          const tmp = inputTextArea.value;
+          inputTextArea.value = outputTextArea.value;
+          outputTextArea.value = tmp;
+          const mode = getMode();
+          const radios = document.querySelectorAll(".mode-radio");
+          radios.forEach((r) => {
+            if (r.value === (mode === "encrypt" ? "decrypt" : "encrypt")) {
+              r.checked = true;
+            }
+          });
+          statusMessage.textContent = "Input and output swapped, mode toggled.";
+          statusMessage.className = "text-sm mb-4 text-gray-700";
+        });
 
-      let output = resultChars.join('');
+        clearBtn.addEventListener("click", () => {
+          inputTextArea.value = "";
+          outputTextArea.value = "";
+          statusMessage.textContent = "";
+          statusMessage.className = "text-sm mb-4";
+          inverseContent.textContent = "";
+          stepsContent.textContent = "";
+        });
 
-      if (groupOutput) {
-        const lettersOnly = output.replace(/\s+/g, '');
-        const groups = [];
-        for (let i = 0; i < lettersOnly.length; i += 5) {
-          groups.push(lettersOnly.slice(i, i + 5));
-        }
-        output = groups.join(' ');
-      }
+        // Initial UI setup
+        updateModulusInfo();
+        // Run once with default example
+        runAffine();
+      })();
 
-      outputTextArea.value = output;
-
-      let invText = '';
-      invText += 'Alphabet size m = ' + m + '\n';
-      invText += 'Original keys: a = ' + originalA + ', b = ' + originalB + '\n';
-      invText += 'Reduced modulo m: a ≡ ' + a + ' (mod ' + m + '), b ≡ ' + b + ' (mod ' + m + ')\n';
-      invText += 'gcd(a, m) = ' + g + '\n';
-      if (mode === 'decrypt' && aInv !== null) {
-        invText += 'Modular inverse a⁻¹ such that a·a⁻¹ ≡ 1 (mod m): a⁻¹ = ' + aInv + '\n';
-        invText += 'Decryption formula: x = a⁻¹·(y − b) mod m\n';
-      } else if (mode === 'encrypt') {
-        invText += 'Encryption formula: y = (a·x + b) mod m\n';
-      }
-      inverseContent.textContent = invText;
-
-      if (showSteps) {
-        stepsContent.textContent = stepsLines.join('\n') || 'No steps to show.';
-      } else {
-        stepsContent.textContent = 'Per-character steps are disabled. Check "Show per-character steps" to enable.';
-      }
-
-      if (!statusMessage.textContent) {
-        statusMessage.textContent = (mode === 'encrypt' ? 'Encryption' : 'Decryption') + ' completed.';
-        statusMessage.classList.add('text-green-700');
-      }
-    }
-
-    runBtn.addEventListener('click', runAffine);
-
-    swapBtn.addEventListener('click', () => {
-      const tmp = inputTextArea.value;
-      inputTextArea.value = outputTextArea.value;
-      outputTextArea.value = tmp;
-      const mode = getMode();
-      const radios = document.querySelectorAll('.mode-radio');
-      radios.forEach(r => {
-        if (r.value === (mode === 'encrypt' ? 'decrypt' : 'encrypt')) {
-          r.checked = true;
-        }
-      });
-      statusMessage.textContent = 'Input and output swapped, mode toggled.';
-      statusMessage.className = 'text-sm mb-4 text-gray-700';
-    });
-
-    clearBtn.addEventListener('click', () => {
-      inputTextArea.value = '';
-      outputTextArea.value = '';
-      statusMessage.textContent = '';
-      statusMessage.className = 'text-sm mb-4';
-      inverseContent.textContent = '';
-      stepsContent.textContent = '';
-    });
-
-    // Initial UI setup
-    updateModulusInfo();
-    // Run once with default example
-    runAffine();
-  })();
-
-  window.MathJax = {
-    tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-</body> </html>
+      window.MathJax = {
+        tex: {
+          inlineMath: [
+            ["\\(", "\\)"],
+            ["$", "$"],
+          ],
+          displayMath: [
+            ["$", "$"],
+            ["\\[", "\\]"],
+          ],
+        },
+        svg: { fontCache: "global" },
+      };
+    </script>
+    <script
+      id="MathJax-script"
+      async
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"
+    ></script>
+  </body>
+</html>
