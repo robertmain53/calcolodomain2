@@ -124,6 +124,10 @@ const gravityOptions = [
 
 {config ? (
   <div class="calc" data-config={JSON.stringify(config)} data-key={config.key}>
+    <div class="mode-toggle">
+      <button type="button" class="chip active" data-mode="quick">Quick</button>
+      <button type="button" class="chip" data-mode="pro">Pro (advanced outputs)</button>
+    </div>
     {config.type === "linear" && (
       <form class="stack linear">
         <div class="row">
@@ -394,6 +398,11 @@ const gravityOptions = [
   </div>
 )}
 
+<div class="pro-panel" data-pro-panel>
+  <div class="pro-head">Pro outputs</div>
+  <ul data-pro-list></ul>
+</div>
+
 <style>
   .calc {
     width: 100%;
@@ -491,12 +500,54 @@ const gravityOptions = [
     padding-left: 1.1rem;
     color: #cbd5e1;
   }
+  .mode-toggle {
+    display: inline-flex;
+    gap: 0.4rem;
+    margin-bottom: 0.6rem;
+  }
+  .chip {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.4rem 0.75rem;
+    background: rgba(255,255,255,0.03);
+    color: #e2e8f0;
+    cursor: pointer;
+  }
+  .chip.active {
+    background: rgba(56, 189, 248, 0.16);
+    border-color: rgba(56, 189, 248, 0.45);
+    color: #e0f2fe;
+  }
+  .pro-panel {
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    padding: 0.75rem 0.9rem;
+    background: rgba(255, 255, 255, 0.02);
+    margin-top: 0.6rem;
+    display: none;
+  }
+  .pro-head {
+    font-weight: 700;
+    color: #e2e8f0;
+    margin-bottom: 0.35rem;
+  }
+  [data-pro-list] {
+    margin: 0;
+    padding-left: 1rem;
+    display: grid;
+    gap: 0.3rem;
+    color: #cbd5e1;
+  }
 </style>
 
 <script is:inline>
   const root = document.currentScript?.parentElement;
   if (!root) return;
   const cfg = JSON.parse(root.dataset.config || "{}");
+  const modeButtons = root.querySelectorAll("[data-mode]");
+  const proPanel = root.parentElement?.querySelector("[data-pro-panel]");
+  const proList = root.parentElement?.querySelector("[data-pro-list]");
+  let mode = "quick";
   const roundSig = (num, sig) => {
     if (!sig || !isFinite(num)) return num;
     return Number.parseFloat(Number(num).toPrecision(sig));
@@ -511,6 +562,60 @@ const gravityOptions = [
     const gcd = (a, b) => (b ? gcd(b, a % b) : a);
     const g = gcd(num, denom);
     return `${whole} ${num / g}/${denom / g}`;
+  };
+  const setPro = (items = []) => {
+    if (!proPanel || !proList) return;
+    proList.innerHTML = "";
+    items.forEach((item) => {
+      const li = document.createElement("li");
+      li.textContent = `${item.label}: ${item.value}`;
+      proList.appendChild(li);
+    });
+    proPanel.dataset.has = items.length ? "1" : "0";
+    proPanel.style.display = mode === "pro" && items.length ? "" : "none";
+  };
+  modeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      mode = btn.dataset.mode || "quick";
+      modeButtons.forEach((b) => b.classList.toggle("active", b === btn));
+      if (proPanel) {
+        const has = proPanel.dataset.has === "1";
+        proPanel.style.display = mode === "pro" && has ? "" : "none";
+      }
+    });
+  });
+  const linearPro = (key, dir, inputVal, outputVal) => {
+    const items = [];
+    if (key === "mm-to-inches" || key === "cm-to-inches") {
+      const inches = dir === "ab" ? outputVal : inputVal;
+      const metric = dir === "ab" ? inputVal : outputVal;
+      const meters = key === "mm-to-inches" ? metric / 1000 : metric / 100;
+      const feet = Math.floor(inches / 12);
+      const inchRem = inches - feet * 12;
+      items.push({ label: "Feet + inches", value: `${feet} ft ${inchRem.toFixed(3)} in` });
+      items.push({ label: "Meters", value: meters.toFixed(4) });
+      items.push({ label: "Yards", value: (inches / 36).toFixed(4) });
+    } else if (key === "angstrom-to-nm") {
+      const nm = dir === "ab" ? outputVal : inputVal;
+      const ang = dir === "ab" ? inputVal : outputVal;
+      items.push({ label: "Nanometers", value: nm.toFixed(4) });
+      items.push({ label: "Meters", value: (nm * 1e-9).toExponential(3) });
+      items.push({ label: "Angstrom", value: ang.toFixed(4) });
+    } else if (key === "btu-to-kwh") {
+      const kwh = dir === "ab" ? outputVal : inputVal;
+      const btu = dir === "ab" ? inputVal : outputVal;
+      items.push({ label: "Joules", value: (kwh * 3.6e6).toLocaleString(undefined, { maximumFractionDigits: 2 }) });
+      items.push({ label: "Watt-hours", value: (kwh * 1000).toFixed(2) });
+      items.push({ label: "BTU", value: btu.toFixed(4) });
+    } else if (key === "kelvin-to-fahrenheit") {
+      const k = dir === "kf" ? inputVal : outputVal;
+      const c = k - 273.15;
+      const r = k * 9/5;
+      items.push({ label: "Celsius", value: c.toFixed(2) });
+      items.push({ label: "Rankine", value: r.toFixed(2) });
+      items.push({ label: "Delta from 0 K", value: `${k.toFixed(2)} K above absolute zero` });
+    }
+    return items;
   };
 
   if (cfg.type === "linear") {
@@ -543,6 +648,7 @@ const gravityOptions = [
       if (outSci) {
         outSci.textContent = `Scientific: ${res.toExponential(4)}`;
       }
+      setPro(linearPro(cfg.key, dir, val, res));
     };
     [from, to, sigSel, ...dirRadios].forEach((el) => el?.addEventListener("input", recalc));
     recalc();
@@ -563,6 +669,11 @@ const gravityOptions = [
         f.value = fv;
         main.textContent = `${kv.toFixed(2)} K → ${fv.toFixed(2)} °F`;
         extra.textContent = `Celsius: ${c.toFixed(2)} °C`;
+        setPro([
+          { label: "Celsius", value: `${c.toFixed(2)} °C` },
+          { label: "Rankine", value: `${(kv * 9/5).toFixed(2)} °R` },
+          { label: "Delta from 0 K", value: `${kv.toFixed(2)} K above absolute zero` },
+        ]);
       } else {
         const fv = Number(f.value) || 0;
         const c = (fv - 32) * 5/9;
@@ -570,6 +681,11 @@ const gravityOptions = [
         k.value = kv;
         main.textContent = `${fv.toFixed(2)} °F → ${kv.toFixed(2)} K`;
         extra.textContent = `Celsius: ${c.toFixed(2)} °C`;
+        setPro([
+          { label: "Celsius", value: `${c.toFixed(2)} °C` },
+          { label: "Rankine", value: `${(kv * 9/5).toFixed(2)} °R` },
+          { label: "Delta from 0 K", value: `${kv.toFixed(2)} K above absolute zero` },
+        ]);
       }
     };
     [k, f, ...dir].forEach((el) => el?.addEventListener("input", recalc));
@@ -590,12 +706,22 @@ const gravityOptions = [
         rad.value = rv;
         main.textContent = `${dv.toFixed(2)}° → ${rv.toFixed(4)} rad`;
         trig.textContent = `sin: ${Math.sin(rv).toFixed(4)}, cos: ${Math.cos(rv).toFixed(4)}, tan: ${Math.tan(rv).toFixed(4)}`;
+        setPro([
+          { label: "Radians as pi multiple", value: (rv / Math.PI).toFixed(4) + " π" },
+          { label: "Gradians", value: (dv * (200/180)).toFixed(4) + " gon" },
+          { label: "Unit circle (x,y)", value: `${Math.cos(rv).toFixed(4)}, ${Math.sin(rv).toFixed(4)}` },
+        ]);
       } else {
         const rv = Number(rad.value) || 0;
         const dv = rv * 180 / Math.PI;
         deg.value = dv;
         main.textContent = `${rv.toFixed(4)} rad → ${dv.toFixed(2)}°`;
         trig.textContent = `sin: ${Math.sin(rv).toFixed(4)}, cos: ${Math.cos(rv).toFixed(4)}, tan: ${Math.tan(rv).toFixed(4)}`;
+        setPro([
+          { label: "Radians as pi multiple", value: (rv / Math.PI).toFixed(4) + " π" },
+          { label: "Gradians", value: (dv * (200/180)).toFixed(4) + " gon" },
+          { label: "Unit circle (x,y)", value: `${Math.cos(rv).toFixed(4)}, ${Math.sin(rv).toFixed(4)}` },
+        ]);
       }
     };
     [deg, rad, ...dir].forEach((el) => el?.addEventListener("input", recalc));
@@ -619,12 +745,24 @@ const gravityOptions = [
         lb.value = lv;
         main.textContent = `${kv.toFixed(3)} kg → ${lv.toFixed(3)} lb`;
         weight.textContent = `Weight @ gravity: ${(kv * g).toFixed(2)} N`;
+        setPro([
+          { label: "Earth weight", value: `${(kv * 9.80665).toFixed(2)} N` },
+          { label: "Moon weight", value: `${(kv * 1.62).toFixed(2)} N` },
+          { label: "Mars weight", value: `${(kv * 3.71).toFixed(2)} N` },
+          { label: "Jupiter weight", value: `${(kv * 24.79).toFixed(2)} N` },
+        ]);
       } else {
         const lv = Number(lb.value) || 0;
         const kv = lv / factor;
         kg.value = kv;
         main.textContent = `${lv.toFixed(3)} lb → ${kv.toFixed(3)} kg`;
         weight.textContent = `Weight @ gravity: ${(kv * g).toFixed(2)} N`;
+        setPro([
+          { label: "Earth weight", value: `${(kv * 9.80665).toFixed(2)} N` },
+          { label: "Moon weight", value: `${(kv * 1.62).toFixed(2)} N` },
+          { label: "Mars weight", value: `${(kv * 3.71).toFixed(2)} N` },
+          { label: "Jupiter weight", value: `${(kv * 24.79).toFixed(2)} N` },
+        ]);
       }
     };
     [kg, lb, gSel, ...dir].forEach((el) => el?.addEventListener("input", recalc));
@@ -647,12 +785,22 @@ const gravityOptions = [
         tbsp.value = t;
         main.textContent = `${c} cups → ${t.toFixed(3)} tbsp`;
         ml.textContent = `Milliliters: ${(c * cupMl).toFixed(2)} mL`;
+        setPro([
+          { label: "Teaspoons", value: (t * 3).toFixed(2) + " tsp" },
+          { label: "Fluid ounces", value: ((c * cupMl) / 29.5735).toFixed(2) + " fl oz" },
+          { label: "Liters", value: ((c * cupMl) / 1000).toFixed(3) + " L" },
+        ]);
       } else {
         const t = Number(tbsp.value) || 0;
         const c = t / (cupMl / tbspMl);
         cups.value = c;
         main.textContent = `${t} tbsp → ${c.toFixed(3)} cups`;
         ml.textContent = `Milliliters: ${(c * cupMl).toFixed(2)} mL`;
+        setPro([
+          { label: "Teaspoons", value: (t * 3).toFixed(2) + " tsp" },
+          { label: "Fluid ounces", value: ((c * cupMl) / 29.5735).toFixed(2) + " fl oz" },
+          { label: "Liters", value: ((c * cupMl) / 1000).toFixed(3) + " L" },
+        ]);
       }
     };
     [system, cups, tbsp, ...dir].forEach((el) => el?.addEventListener("input", recalc));
@@ -680,6 +828,11 @@ const gravityOptions = [
         preview.style.fontSize = `${pv}px`;
         preview.textContent = `Preview at ${pv.toFixed(2)} px (${rem.value.toFixed(3)} rem) with base ${b}px. Using relative units (em/rem) improves accessibility.`;
       }
+      setPro([
+        { label: "Percent of base", value: `${percent.value}%` },
+        { label: "em/rem (same here)", value: `${rem.value.toFixed(3)} em | rem` },
+        { label: "pt equivalent", value: `${(pv*0.75).toFixed(2)} pt` },
+      ]);
     };
     const recalcFromRem = () => {
       const b = Number(base.value) || 16;
