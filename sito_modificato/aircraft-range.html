@@ -1,257 +1,826 @@
-<!DOCTYPE html>
-<html lang="en"><head>
+<!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aircraft Range & Endurance Calculator (Breguet & Simple)</title>
+<meta name="description" content="Compute aircraft range and endurance using the Breguet range equation or simple fuel-burn models. Supports jets and prop aircraft, multiple unit systems, and reverse solving.">
 <link rel="canonical" href="https://calcdomain.com/aircraft-range">
 
-
-
-
-
- 
 <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="shortcut icon" href="/favicon.ico" />
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 <link rel="manifest" href="/site.webmanifest" />
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Aircraft Range and Endurance Calculator</title>
-<meta content="Calculate the range and endurance of aircraft efficiently with our professional-grade tool designed for aerospace engineers." name="description"/>
-<meta content="Ugo Candido" name="author"/>
 
-<style>
-        :root {
-            --primary-color: #005A9C;
-            --secondary-color: #003F6E;
-            --background-color: #F8F9FA;
-            --text-color: #212529;
-            --border-color: #DEE2E6;
-            --success-color: #198754;
-            --error-color: #DC3545;
-            --font-family: 'Inter', sans-serif;
-            --font-monospace: 'Source Code Pro', monospace;
-            --touch-target-min: 48px;
-        }
-
-        body {
-            font-family: var(--font-family);
-            background: var(--background-color);
-            color: var(--text-color);
-            margin: 0;
-            line-height: 1.6;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 1rem;
-        }
-
-        h1, h2, h3 {
-            color: var(--secondary-color);
-        }
-
-        .calculator-container, .results-container, .content-container {
-            background: white;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-top: 1rem;
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-group label {
-            display: block;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            font-size: 1rem;
-        }
-
-        .form-control:focus {
-            border-color: var(--primary-color);
-            outline: 3px solid rgba(0, 90, 156, 0.25);
-        }
-
-        .results-container {
-            min-height: 220px;
-            padding: 1.5rem;
-            background: var(--background-color);
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-        }
-
-        .result-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 0.75rem 0;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .result-item:last-child {
-            border-bottom: none;
-        }
-
-        .result-value {
-            font-weight: bold;
-            font-size: 1.25rem;
-            color: var(--success-color);
-        }
-
-        .author-box {
-            font-size: 0.9rem;
-            color: var(--text-color);
-            margin-top: 2rem;
-            border-top: 1px solid var(--border-color);
-            padding-top: 1rem;
-        }
-
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border: 0;
-        }
-    </style>
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "WebPage",
-  "name": "Aircraft Range and Endurance Calculator",
-  "description": "Calculate the range and endurance of aircraft efficiently with our professional-grade tool designed for aerospace engineers.",
-  "url": "https://calcdomain.com/aircraft-range",
-  "author": {
-    "@type": "Person",
-    "name": "Ugo Candido"
-  },
-  "publisher": {
-    "@type": "Organization",
-    "name": "CalcDomain"
-  }
-}
-  </script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="search.js" defer></script>
-<!-- MathJax for LaTeX formulas -->
-<script>
-  window.MathJax = {
-    tex: {
-      inlineMath: [['\(','\)'], ['$', '$']],
-      displayMath: [['$','$'], ['\[','\]']]
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    body { font-family: 'Inter', sans-serif; }
+    .card-hover { transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; }
+    .card-hover:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+    .prose { max-width: 65ch; margin-left: auto; margin-right: auto; }
+    .prose h2 { font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; }
+    .prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+    .prose p { margin-bottom: 1rem; line-height: 1.6; }
+    .prose ul, .prose ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+    .prose li { margin-bottom: 0.5rem; }
+    .formula-box { background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; padding: 1rem; overflow-x: auto; margin: 1rem 0; }
+    .tab-active { border-color: #2563eb; color: #1d4ed8; background-color: #eff6ff; }
+    .input-grid { display: grid; grid-template-columns: repeat(1,minmax(0,1fr)); gap: 1rem; }
+    @media (min-width: 768px) {
+      .input-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    }
+</style>
+
+<!-- Google tag (gtag.js) --> <script async src="https://www.googletagmanager.com/gtag/js?id=G-7MB5V1LZRN"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-7MB5V1LZRN'); </script> <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA" /> <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script> <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script> <script async src="//www.ezojs.com/ezoic/sa.min.js"></script> <script> window.ezstandalone = window.ezstandalone || {}; ezstandalone.cmd = ezstandalone.cmd || []; </script>
+
+<script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Aircraft Range & Endurance Calculator (Breguet & Simple)",
+    "description": "Compute aircraft range and endurance using the Breguet range equation or simple fuel-burn models. Supports jets and prop aircraft, multiple unit systems, and reverse solving.",
+    "url": "https://calcdomain.com/aircraft-range",
+    "breadcrumb": {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://calcdomain.com" },
+        { "@type": "ListItem", "position": 2, "name": "Engineering", "item": "https://calcdomain.com/categories/engineering" },
+        { "@type": "ListItem", "position": 3, "name": "Mechanical Engineering", "item": "https://calcdomain.com/mechanical-engineering" },
+        { "@type": "ListItem", "position": 4, "name": "Aircraft Range Calculator", "item": "https://calcdomain.com/aircraft-range" }
+      ]
     },
+    "mainEntity": [
+      {
+        "@type": "HowTo",
+        "name": "How to calculate aircraft range with the Breguet equation",
+        "step": [
+          { "@type": "HowToStep", "name": "Choose aircraft type", "text": "Select Jet (thrust-based SFC) or Prop (power-based SFC) so the calculator uses the correct form of the Breguet range equation." },
+          { "@type": "HowToStep", "name": "Enter aerodynamic and performance data", "text": "Provide lift-to-drag ratio (L/D), specific fuel consumption, and cruise speed in your preferred units." },
+          { "@type": "HowToStep", "name": "Enter weight or fuel data", "text": "Either enter initial and final weight directly, or enter operating empty weight, payload, and fuel to let the tool compute W_i and W_f." },
+          { "@type": "HowToStep", "name": "Compute range and endurance", "text": "Click Calculate to obtain range and endurance in nautical miles, kilometers, and hours, along with fuel fraction and weight ratio." }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is aircraft range?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Aircraft range is the maximum distance an airplane can fly on a given amount of fuel under specified conditions. It depends on fuel on board, specific fuel consumption, lift-to-drag ratio, cruise speed, and the weight change as fuel is burned."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What is the Breguet range equation?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "The Breguet range equation relates range to aircraft efficiency and fuel fraction. For jets it is R = (V / c_T) * (L/D) * ln(W_i / W_f). For propeller aircraft it is R = (η_p * V / c_P) * (L/D) * ln(W_i / W_f), where V is speed, c is specific fuel consumption, L/D is lift-to-drag ratio, and W_i and W_f are initial and final weight."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What is the difference between range and endurance?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Range is the distance flown, while endurance is the time aloft. Maximum range is achieved at conditions that maximize distance per unit fuel, whereas maximum endurance is achieved at conditions that maximize time per unit fuel, typically at a lower speed and different lift coefficient."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How accurate is this aircraft range calculator?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "The calculator implements standard textbook Breguet equations and simple fuel-burn models. It assumes steady, level cruise at constant speed and lift-to-drag ratio, no wind, and no reserves. Real-world range will differ due to climb, descent, reserves, winds aloft, temperature, and operational constraints."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can this tool replace certified performance data?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. This tool is for educational and preliminary estimation only. Always use the aircraft flight manual, performance charts, and regulatory requirements for flight planning and operational decisions."
+            }
+          }
+        ]
+      }
+    ]
+  }
+</script>
+</head> 
+<body class="bg-gray-50 text-gray-800">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
+
+<header class="bg-white shadow-sm sticky top-0 z-50">
+  <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
+    <div class="flex justify-between items-center">
+      <a href="https://calcdomain.com" class="text-2xl font-bold text-blue-600">CalcDomain</a>
+      <div class="w-full max-w-md hidden md:block mx-8">
+        <div class="relative">
+          <input type="search" id="search-input" placeholder="Search for a calculator..." class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off" />
+          <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          <div id="search-results" class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200"></div>
+        </div>
+      </div>
+      <div class="hidden md:flex items-center space-x-6">
+        <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600 transition-colors">Advanced Search</a>
+        <a href="https://calcdomain.com/categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
+      </div>
+      <button id="mobile-menu-toggle" class="md:hidden p-2" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" type="button">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+      </button>
+    </div>
+    <nav id="mobile-menu" class="md:hidden mt-4 hidden" aria-label="Mobile menu" role="navigation">
+      <div class="mb-4">
+        <div class="relative">
+          <input type="search" id="mobile-search-input" placeholder="Search calculators..." class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+        </div>
+      </div>
+      <div class="space-y-2">
+        <a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
+        <a href="https://calcdomain.com/categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
+      </div>
+    </nav>
+  </nav>
+</header>
+
+<div class="container mx-auto px-4 py-8">
+  <nav id="breadcrumb-container" class="text-sm mb-4 text-gray-600">
+    <ol class="flex flex-wrap items-center gap-1">
+      <li><a href="https://calcdomain.com" class="text-blue-600 hover:underline">Home</a><span class="mx-1">/</span></li>
+      <li><a href="https://calcdomain.com/categories/engineering" class="text-blue-600 hover:underline">Engineering</a><span class="mx-1">/</span></li>
+      <li><a href="https://calcdomain.com/mechanical-engineering" class="text-blue-600 hover:underline">Mechanical Engineering</a><span class="mx-1">/</span></li>
+      <li class="text-gray-700">Aircraft Range</li>
+    </ol>
+  </nav>
+  <div class="flex flex-col lg:flex-row gap-8">
+    <main class="w-full lg:w-2/3">
+      <div class="bg-white p-6 rounded-lg shadow-md">
+        <header class="mb-6">
+          <h1 class="text-2xl md:text-3xl font-bold mb-2">Aircraft Range & Endurance Calculator</h1>
+          <p class="text-gray-600">Estimate aircraft range and endurance using the Breguet range equation or a simple fuel-burn model. Supports jets and props, multiple units, and reverse solving for fuel or weight.</p>
+        </header>
+
+        <!-- Tabs -->
+        <div class="mb-4 flex flex-wrap gap-2">
+          <button id="tab-breguet" class="px-3 py-2 text-sm font-medium border rounded-md tab-active" type="button">Breguet (Theory)</button>
+          <button id="tab-simple" class="px-3 py-2 text-sm font-medium border rounded-md" type="button">Simple Fuel-Burn</button>
+        </div>
+
+        <!-- Breguet Panel -->
+        <section id="panel-breguet">
+          <h2 class="text-xl font-semibold mb-3">Breguet Range Equation (Jets & Props)</h2>
+
+          <div class="mb-4 flex flex-wrap gap-3 items-center">
+            <label class="flex items-center gap-2 text-sm font-medium">
+              Aircraft type:
+              <select id="breguet-type" class="border rounded px-2 py-1 text-sm">
+                <option value="jet">Jet (thrust-based SFC)</option>
+                <option value="prop">Propeller (power-based SFC)</option>
+              </select>
+            </label>
+            <label class="flex items-center gap-2 text-sm font-medium">
+              Speed units:
+              <select id="breguet-speed-unit" class="border rounded px-2 py-1 text-sm">
+                <option value="mps">m/s</option>
+                <option value="kt" selected>knots</option>
+                <option value="kmh">km/h</option>
+                <option value="mph">mph</option>
+              </select>
+            </label>
+            <label class="flex items-center gap-2 text-sm font-medium">
+              Weight units:
+              <select id="breguet-weight-unit" class="border rounded px-2 py-1 text-sm">
+                <option value="kg" selected>kg</option>
+                <option value="lb">lb</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="mb-4">
+            <p class="text-sm font-medium mb-1">Weight input mode</p>
+            <div class="flex flex-wrap gap-3 text-sm">
+              <label class="inline-flex items-center gap-1">
+                <input type="radio" name="breguet-weight-mode" value="direct" class="breguet-weight-mode" checked>
+                <span>Direct W<sub>i</sub> &amp; W<sub>f</sub></span>
+              </label>
+              <label class="inline-flex items-center gap-1">
+                <input type="radio" name="breguet-weight-mode" value="fuel" class="breguet-weight-mode">
+                <span>OEW + payload + fuel</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="input-grid mb-4">
+            <div>
+              <label class="block text-sm font-medium mb-1">Lift-to-drag ratio (L/D)</label>
+              <input id="breguet-ld" type="number" step="0.1" class="w-full border rounded px-3 py-2" value="15">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">
+                Specific fuel consumption
+                <span id="breguet-sfc-label" class="text-xs text-gray-500">(c<sub>T</sub>, 1/hr)</span>
+              </label>
+              <input id="breguet-sfc" type="number" step="0.0001" class="w-full border rounded px-3 py-2" value="0.6">
+              <p class="text-xs text-gray-500 mt-1" id="breguet-sfc-help">
+                Jet: c<sub>T</sub> in 1/hr (e.g. 0.6 1/hr). Prop: c<sub>P</sub> in 1/hr divided by prop efficiency.
+              </p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Cruise speed</label>
+              <input id="breguet-speed" type="number" step="0.1" class="w-full border rounded px-3 py-2" value="450">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Propeller efficiency η<sub>p</sub> (props only)</label>
+              <input id="breguet-eta" type="number" step="0.01" class="w-full border rounded px-3 py-2" value="0.85">
+            </div>
+          </div>
+
+          <!-- Direct weights -->
+          <div id="breguet-direct-weights" class="input-grid mb-4">
+            <div>
+              <label class="block text-sm font-medium mb-1">Initial weight W<sub>i</sub></label>
+              <input id="breguet-wi" type="number" step="1" class="w-full border rounded px-3 py-2" value="70000">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Final weight W<sub>f</sub> (after cruise)</label>
+              <input id="breguet-wf" type="number" step="1" class="w-full border rounded px-3 py-2" value="55000">
+            </div>
+          </div>
+
+          <!-- Fuel breakdown -->
+          <div id="breguet-fuel-weights" class="input-grid mb-4 hidden">
+            <div>
+              <label class="block text-sm font-medium mb-1">Operating empty weight (OEW)</label>
+              <input id="breguet-oew" type="number" step="1" class="w-full border rounded px-3 py-2" value="40000">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Payload weight</label>
+              <input id="breguet-payload" type="number" step="1" class="w-full border rounded px-3 py-2" value="10000">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Fuel for cruise</label>
+              <input id="breguet-fuel" type="number" step="1" class="w-full border rounded px-3 py-2" value="20000">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Reserve fuel (not burned in cruise)</label>
+              <input id="breguet-reserve" type="number" step="1" class="w-full border rounded px-3 py-2" value="3000">
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-3 items-center mb-4">
+            <button id="breguet-calc" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded" type="button">Calculate range &amp; endurance</button>
+            <button id="breguet-reset" class="border border-gray-300 text-gray-700 px-3 py-2 rounded text-sm" type="button">Reset</button>
+          </div>
+
+          <div id="breguet-output" class="bg-gray-50 border border-gray-200 rounded p-4 text-sm space-y-2 hidden">
+            <p class="font-semibold">Results (Breguet model)</p>
+            <p id="breguet-range-line"></p>
+            <p id="breguet-endurance-line"></p>
+            <p id="breguet-weight-line"></p>
+          </div>
+        </section>
+
+        <!-- Simple Panel -->
+        <section id="panel-simple" class="hidden mt-6">
+          <h2 class="text-xl font-semibold mb-3">Simple Fuel-Burn Range &amp; Endurance</h2>
+          <p class="text-sm text-gray-600 mb-3">Use this mode when you know cruise fuel flow and fuel on board. It assumes constant speed and fuel flow.</p>
+
+          <div class="mb-4 flex flex-wrap gap-3 items-center">
+            <label class="flex items-center gap-2 text-sm font-medium">
+              Speed units:
+              <select id="simple-speed-unit" class="border rounded px-2 py-1 text-sm">
+                <option value="kt" selected>knots</option>
+                <option value="kmh">km/h</option>
+                <option value="mph">mph</option>
+              </select>
+            </label>
+            <label class="flex items-center gap-2 text-sm font-medium">
+              Fuel units:
+              <select id="simple-fuel-unit" class="border rounded px-2 py-1 text-sm">
+                <option value="kg" selected>kg</option>
+                <option value="lb">lb</option>
+                <option value="l">L</option>
+                <option value="gal">US gal</option>
+              </select>
+            </label>
+            <label class="flex items-center gap-2 text-sm font-medium">
+              Fuel flow units:
+              <select id="simple-flow-unit" class="border rounded px-2 py-1 text-sm">
+                <option value="kgph" selected>per hour</option>
+                <option value="kgpm">per minute</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="input-grid mb-4">
+            <div>
+              <label class="block text-sm font-medium mb-1">Cruise speed</label>
+              <input id="simple-speed" type="number" step="0.1" class="w-full border rounded px-3 py-2" value="450">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Fuel on board (usable for cruise)</label>
+              <input id="simple-fuel" type="number" step="0.1" class="w-full border rounded px-3 py-2" value="8000">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Cruise fuel flow (total)</label>
+              <input id="simple-flow" type="number" step="0.1" class="w-full border rounded px-3 py-2" value="2000">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Reserve fuel (not used for range)</label>
+              <input id="simple-reserve" type="number" step="0.1" class="w-full border rounded px-3 py-2" value="1000">
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-3 items-center mb-4">
+            <button id="simple-calc" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded" type="button">Calculate range &amp; endurance</button>
+            <button id="simple-reset" class="border border-gray-300 text-gray-700 px-3 py-2 rounded text-sm" type="button">Reset</button>
+          </div>
+
+          <div id="simple-output" class="bg-gray-50 border border-gray-200 rounded p-4 text-sm space-y-2 hidden">
+            <p class="font-semibold">Results (simple model)</p>
+            <p id="simple-range-line"></p>
+            <p id="simple-endurance-line"></p>
+            <p id="simple-fuel-line"></p>
+          </div>
+        </section>
+
+        <section class="prose mt-8">
+          <h2>How this aircraft range calculator works</h2>
+          <p>
+            This tool implements both the classical Breguet range equation and a simple fuel-burn model. It is designed for education, conceptual design, and quick “what‑if” studies, not for operational flight planning.
+          </p>
+
+          <h3>Breguet range equation for jets</h3>
+          <div class="formula-box">
+            For turbojets and turbofans in steady, level cruise:
+            <br><br>
+            \( R = \dfrac{V}{c_T} \dfrac{L}{D} \ln\left(\dfrac{W_i}{W_f}\right) \)
+            <ul>
+              <li>\(R\): range (m or ft)</li>
+              <li>\(V\): true airspeed (m/s)</li>
+              <li>\(c_T\): thrust-specific fuel consumption (1/s or 1/hr)</li>
+              <li>\(L/D\): lift-to-drag ratio in cruise</li>
+              <li>\(W_i, W_f\): initial and final weight (N or lb<sub>f</sub>)</li>
+            </ul>
+          </div>
+          <p>
+            In this calculator we use a time-based SFC (1/hr). Internally, the equation is applied in consistent SI units and the result is converted to nautical miles and kilometers.
+          </p>
+
+          <h3>Breguet range equation for propeller aircraft</h3>
+          <div class="formula-box">
+            For propeller-driven aircraft:
+            <br><br>
+            \( R = \dfrac{\eta_p V}{c_P} \dfrac{L}{D} \ln\left(\dfrac{W_i}{W_f}\right) \)
+            <ul>
+              <li>\(\eta_p\): propeller efficiency (typically 0.75–0.9)</li>
+              <li>\(c_P\): power-specific fuel consumption (1/hr)</li>
+            </ul>
+          </div>
+          <p>
+            The propeller case effectively replaces thrust with shaft power and accounts for propeller efficiency. The calculator lets you specify \(\eta_p\) explicitly.
+          </p>
+
+          <h3>Weight and fuel modelling</h3>
+          <p>
+            You can either:
+          </p>
+          <ul>
+            <li>Enter initial and final weight directly (e.g. from a performance manual), or</li>
+            <li>Enter operating empty weight, payload, fuel, and reserve. The tool then computes:
+              <ul>
+                <li>\(W_i = \text{OEW} + \text{payload} + \text{fuel}\)</li>
+                <li>\(W_f = W_i - \text{fuel used in cruise}\)</li>
+              </ul>
+            </li>
+          </ul>
+
+          <h3>Simple fuel-burn model</h3>
+          <p>
+            When you know cruise fuel flow and fuel on board, the simple model uses:
+          </p>
+          <div class="formula-box">
+            <p>Endurance (hours): \( E = \dfrac{F_\text{usable}}{\dot{F}} \)</p>
+            <p>Range (distance): \( R = V \cdot E \)</p>
+          </div>
+          <p>
+            where \(F_\text{usable}\) is fuel available for cruise (total minus reserve), \(\dot{F}\) is fuel flow, and \(V\) is cruise speed.
+          </p>
+
+          <h2>Interpreting the results</h2>
+          <ul>
+            <li><strong>Range:</strong> reported in nautical miles, kilometers, and statute miles.</li>
+            <li><strong>Endurance:</strong> reported in hours and minutes.</li>
+            <li><strong>Fuel fraction:</strong> the fraction of initial weight that is burned as fuel during cruise.</li>
+            <li><strong>Weight ratio \(W_i/W_f\):</strong> appears inside the logarithm in the Breguet equation; higher values generally mean more range (up to structural and payload limits).</li>
+          </ul>
+
+          <h2>Assumptions and limitations</h2>
+          <ul>
+            <li>Steady, level, unaccelerated cruise at constant speed and altitude.</li>
+            <li>Constant lift-to-drag ratio and specific fuel consumption.</li>
+            <li>No wind, no climb/descent, no step climbs.</li>
+            <li>No regulatory reserves or alternate fuel beyond what you explicitly enter.</li>
+          </ul>
+          <p>
+            Real-world range will usually be lower than the ideal Breguet prediction because of climb, descent, holding, routing, winds aloft, temperature deviations, and operational constraints.
+          </p>
+
+          <h2>Practical tips</h2>
+          <ul>
+            <li>Use manufacturer data for realistic L/D and SFC values.</li>
+            <li>Include climb and reserve fuel in the weight breakdown if you want a more conservative range estimate.</li>
+            <li>For maximum range, aircraft are typically flown at a specific “max range” speed, not necessarily the normal cruise speed.</li>
+            <li>For maximum endurance, a lower speed (near minimum power required) is usually used.</li>
+          </ul>
+
+          <p class="text-xs text-gray-500 mt-4">
+            Disclaimer: This calculator is for educational and preliminary estimation only. It does not replace certified performance data, flight manuals, or regulatory requirements. Do not use it as the sole basis for flight planning or operational decisions.
+          </p>
+        </section>
+
+        <section class="mt-8" id="faq">
+          <h2 class="text-xl font-semibold mb-3">Aircraft range FAQ</h2>
+          <div class="space-y-3 text-sm">
+            <details class="border rounded-md px-3 py-2">
+              <summary class="font-medium cursor-pointer">What is aircraft range?</summary>
+              <p class="mt-2 text-gray-700">
+                Aircraft range is the maximum distance an airplane can fly on a given amount of fuel under specified conditions. It depends on fuel on board, specific fuel consumption, lift-to-drag ratio, cruise speed, and the change in weight as fuel is burned.
+              </p>
+            </details>
+            <details class="border rounded-md px-3 py-2">
+              <summary class="font-medium cursor-pointer">What is the Breguet range equation?</summary>
+              <p class="mt-2 text-gray-700">
+                The Breguet range equation relates range to aircraft efficiency and fuel fraction. For jets:
+                \( R = (V / c_T) (L/D) \ln(W_i / W_f) \).
+                For propeller aircraft:
+                \( R = (\eta_p V / c_P) (L/D) \ln(W_i / W_f) \).
+              </p>
+            </details>
+            <details class="border rounded-md px-3 py-2">
+              <summary class="font-medium cursor-pointer">What is the difference between range and endurance?</summary>
+              <p class="mt-2 text-gray-700">
+                Range is the distance flown; endurance is the time aloft. Maximum range is achieved at conditions that maximize distance per unit fuel, while maximum endurance is achieved at conditions that maximize time per unit fuel, usually at a lower speed.
+              </p>
+            </details>
+            <details class="border rounded-md px-3 py-2">
+              <summary class="font-medium cursor-pointer">How accurate is this aircraft range calculator?</summary>
+              <p class="mt-2 text-gray-700">
+                It uses standard textbook equations and assumes idealized cruise. Real-world range will differ due to climb, descent, winds, temperature, and operational constraints. Treat the results as approximate and educational.
+              </p>
+            </details>
+            <details class="border rounded-md px-3 py-2">
+              <summary class="font-medium cursor-pointer">Can I use this for real flight planning?</summary>
+              <p class="mt-2 text-gray-700">
+                No. Always use the aircraft flight manual, certified performance charts, and applicable regulations for flight planning. This tool is not a certified performance calculator.
+              </p>
+            </details>
+          </div>
+        </section>
+      </div>
+    </main>
+    <aside class="w-full lg:w-1/3">
+      <div class="bg-white p-4 rounded-lg shadow-md mb-6">
+        <h2 class="text-lg font-semibold mb-3">More Mechanical Engineering tools</h2>
+        <ul class="space-y-2 text-sm">
+          <li><a href="https://calcdomain.com/aircraft-performance" class="text-blue-600 hover:underline">Aircraft Performance</a></li>
+          <li><a href="https://calcdomain.com/aircraft-weight-and-balance" class="text-blue-600 hover:underline">Aircraft Weight &amp; Balance</a></li>
+          <li><a href="https://calcdomain.com/rocket-equation" class="text-blue-600 hover:underline">Rocket Equation (Tsiolkovsky)</a></li>
+          <li><a href="https://calcdomain.com/rocket-engine-performance" class="text-blue-600 hover:underline">Rocket Engine Performance</a></li>
+          <li><a href="https://calcdomain.com/hypersonic-flow" class="text-blue-600 hover:underline">Hypersonic Flow</a></li>
+          <li><a href="https://calcdomain.com/pipe-sizing" class="text-blue-600 hover:underline">Pipe Sizing (Water)</a></li>
+          <li><a href="https://calcdomain.com/heat-transfer" class="text-blue-600 hover:underline">Heat Transfer</a></li>
+          <li><a href="https://calcdomain.com/hvac-tonnage" class="text-blue-600 hover:underline">HVAC Tonnage</a></li>
+        </ul>
+      </div>
+      <div class="bg-white p-4 rounded-lg shadow-md">
+        <h2 class="text-lg font-semibold mb-3">Popular Engineering calculators</h2>
+        <ul class="space-y-2 text-sm">
+          <li><a href="https://calcdomain.com/moment-of-inertia" class="text-blue-600 hover:underline">Moment of Inertia</a></li>
+          <li><a href="https://calcdomain.com/bernoulli-equation" class="text-blue-600 hover:underline">Bernoulli's Equation</a></li>
+          <li><a href="https://calcdomain.com/reynolds-number" class="text-blue-600 hover:underline">Reynolds Number</a></li>
+          <li><a href="https://calcdomain.com/hazen-williams" class="text-blue-600 hover:underline">Pipe Flow (Hazen–Williams)</a></li>
+          <li><a href="https://calcdomain.com/darcy-weisbach" class="text-blue-600 hover:underline">Pipe Flow (Darcy–Weisbach)</a></li>
+          <li><a href="https://calcdomain.com/factor-of-safety" class="text-blue-600 hover:underline">Factor of Safety</a></li>
+          <li><a href="https://calcdomain.com/stress-and-strain" class="text-blue-600 hover:underline">Stress &amp; Strain</a></li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</div>
+<footer class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div>
+        <h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+        <p class="text-gray-400 mb-4">Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.</p>
+      </div>
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Categories</h4>
+        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/finance" class="text-gray-400 hover:text-white">Finance</a></li>
+          <li><a href="https://calcdomain.com/health-fitness" class="text-gray-400 hover:text-white">Health & Fitness</a></li>
+          <li><a href="https://calcdomain.com/math-conversions" class="text-gray-400 hover:text-white">Math & Conversions</a></li>
+          <li><a href="https://calcdomain.com/lifestyle-everyday" class="text-gray-400 hover:text-white">Lifestyle & Everyday</a></li>
+          <li><a href="https://calcdomain.com/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/mortgage-payment" class="text-gray-400 hover:text-white">Mortgage Calculator</a></li>
+          <li><a href="https://calcdomain.com/percentage-calculator" class="text-gray-400 hover:text-white">Percentage Calculator</a></li>
+          <li><a href="https://calcdomain.com/bmi-calculator" class="text-gray-400 hover:text-white">BMI Calculator</a></li>
+          <li><a href="https://calcdomain.com/auto-loan-calculator" class="text-gray-400 hover:text-white">Auto Loan Calculator</a></li>
+          <li><a href="https://calcdomain.com/house-affordability" class="text-gray-400 hover:text-white">House Affordability</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Support</h4>
+        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/about" class="text-gray-400 hover:text-white">About Us</a></li>
+          <li><a href="https://calcdomain.com/contact" class="text-gray-400 hover:text-white">Contact</a></li>
+          <li><a href="https://calcdomain.com/privacy" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
+          <li><a href="https://calcdomain.com/terms" class="text-gray-400 hover:text-white">Terms of Service</a></li>
+          <li><a href="https://calcdomain.com/sitemap" class="text-gray-400 hover:text-white">Site Map</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+      <p>&copy; 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/script_menu.js" defer></script>
+<script src="/assets/js/script_faq.js" defer></script>
+<script src="search.js" defer></script>
+
+<script>
+  // Utility conversions
+  const NM_PER_M = 1 / 1852;
+  const KM_PER_M = 0.001;
+  const MI_PER_M = 1 / 1609.344;
+
+  function speedToMps(value, unit) {
+    const v = Number(value);
+    if (!isFinite(v)) return NaN;
+    switch (unit) {
+      case 'mps': return v;
+      case 'kt': return v * 0.514444;
+      case 'kmh': return v * (1000/3600);
+      case 'mph': return v * 0.44704;
+      default: return NaN;
+    }
+  }
+
+  function weightToKg(value, unit) {
+    const v = Number(value);
+    if (!isFinite(v)) return NaN;
+    return unit === 'lb' ? v * 0.45359237 : v;
+  }
+
+  function kgToWeight(vKg, unit) {
+    return unit === 'lb' ? vKg / 0.45359237 : vKg;
+  }
+
+  function fuelToKg(value, unit) {
+    const v = Number(value);
+    if (!isFinite(v)) return NaN;
+    // Assume Jet A density ~0.8 kg/L, 6.7 lb/US gal
+    switch (unit) {
+      case 'kg': return v;
+      case 'lb': return v * 0.45359237;
+      case 'l': return v * 0.8;
+      case 'gal': return v * 6.7 * 0.45359237;
+      default: return NaN;
+    }
+  }
+
+  function kgToFuel(vKg, unit) {
+    switch (unit) {
+      case 'kg': return vKg;
+      case 'lb': return vKg / 0.45359237;
+      case 'l': return vKg / 0.8;
+      case 'gal': return vKg / (6.7 * 0.45359237);
+      default: return vKg;
+    }
+  }
+
+  // Tabs
+  const tabBreguet = document.getElementById('tab-breguet');
+  const tabSimple = document.getElementById('tab-simple');
+  const panelBreguet = document.getElementById('panel-breguet');
+  const panelSimple = document.getElementById('panel-simple');
+
+  tabBreguet.addEventListener('click', () => {
+    tabBreguet.classList.add('tab-active');
+    tabSimple.classList.remove('tab-active');
+    panelBreguet.classList.remove('hidden');
+    panelSimple.classList.add('hidden');
+  });
+
+  tabSimple.addEventListener('click', () => {
+    tabSimple.classList.add('tab-active');
+    tabBreguet.classList.remove('tab-active');
+    panelSimple.classList.remove('hidden');
+    panelBreguet.classList.add('hidden');
+  });
+
+  // Breguet mode toggles
+  const breguetType = document.getElementById('breguet-type');
+  const breguetSfcLabel = document.getElementById('breguet-sfc-label');
+  const breguetSfcHelp = document.getElementById('breguet-sfc-help');
+  const breguetDirectWeights = document.getElementById('breguet-direct-weights');
+  const breguetFuelWeights = document.getElementById('breguet-fuel-weights');
+  const weightModeRadios = document.querySelectorAll('.breguet-weight-mode');
+
+  function updateBreguetSfcLabels() {
+    if (breguetType.value === 'jet') {
+      breguetSfcLabel.innerHTML = 'Specific fuel consumption (c<sub>T</sub>, 1/hr)';
+      breguetSfcHelp.textContent = 'Jet: thrust-specific fuel consumption in 1/hr (e.g. 0.6 1/hr).';
+    } else {
+      breguetSfcLabel.innerHTML = 'Specific fuel consumption (c<sub>P</sub>, 1/hr)';
+      breguetSfcHelp.textContent = 'Prop: power-specific fuel consumption in 1/hr. Propeller efficiency ηp is applied separately.';
+    }
+  }
+
+  breguetType.addEventListener('change', updateBreguetSfcLabels);
+  updateBreguetSfcLabels();
+
+  weightModeRadios.forEach(r => {
+    r.addEventListener('change', () => {
+      const mode = document.querySelector('input[name="breguet-weight-mode"]:checked').value;
+      if (mode === 'direct') {
+        breguetDirectWeights.classList.remove('hidden');
+        breguetFuelWeights.classList.add('hidden');
+      } else {
+        breguetDirectWeights.classList.add('hidden');
+        breguetFuelWeights.classList.remove('hidden');
+      }
+    });
+  });
+
+  // Breguet calculation
+  document.getElementById('breguet-calc').addEventListener('click', () => {
+    const ld = Number(document.getElementById('breguet-ld').value);
+    const sfc = Number(document.getElementById('breguet-sfc').value);
+    const speedUnit = document.getElementById('breguet-speed-unit').value;
+    const weightUnit = document.getElementById('breguet-weight-unit').value;
+    const V = speedToMps(document.getElementById('breguet-speed').value, speedUnit);
+    const eta = Number(document.getElementById('breguet-eta').value);
+    const mode = document.querySelector('input[name="breguet-weight-mode"]:checked').value;
+
+    let WiKg, WfKg;
+
+    if (mode === 'direct') {
+      const Wi = weightToKg(document.getElementById('breguet-wi').value, weightUnit);
+      const Wf = weightToKg(document.getElementById('breguet-wf').value, weightUnit);
+      WiKg = Wi;
+      WfKg = Wf;
+    } else {
+      const oew = weightToKg(document.getElementById('breguet-oew').value, weightUnit);
+      const payload = weightToKg(document.getElementById('breguet-payload').value, weightUnit);
+      const fuel = weightToKg(document.getElementById('breguet-fuel').value, weightUnit);
+      const reserve = weightToKg(document.getElementById('breguet-reserve').value, weightUnit);
+      WiKg = oew + payload + fuel;
+      const fuelUsed = Math.max(fuel - reserve, 0);
+      WfKg = WiKg - fuelUsed;
+    }
+
+    const outputBox = document.getElementById('breguet-output');
+    const rangeLine = document.getElementById('breguet-range-line');
+    const enduranceLine = document.getElementById('breguet-endurance-line');
+    const weightLine = document.getElementById('breguet-weight-line');
+
+    if (!isFinite(ld) || ld <= 0 || !isFinite(sfc) || sfc <= 0 || !isFinite(V) || V <= 0 || !isFinite(WiKg) || !isFinite(WfKg) || WiKg <= WfKg || WfKg <= 0) {
+      outputBox.classList.remove('hidden');
+      rangeLine.textContent = 'Please check your inputs. L/D, SFC, speed must be positive, and initial weight must exceed final weight.';
+      enduranceLine.textContent = '';
+      weightLine.textContent = '';
+      return;
+    }
+
+    // Convert SFC from 1/hr to 1/s
+    const cPerSec = sfc / 3600;
+
+    let factor;
+    if (breguetType.value === 'jet') {
+      factor = V / cPerSec;
+    } else {
+      factor = (eta * V) / cPerSec;
+    }
+
+    const WiWf = WiKg / WfKg;
+    const lnWiWf = Math.log(WiWf);
+    const R_m = factor * ld * lnWiWf; // meters
+
+    const R_nm = R_m * NM_PER_M;
+    const R_km = R_m * KM_PER_M;
+    const R_mi = R_m * MI_PER_M;
+
+    // Approximate endurance from Breguet: E = (L/D / c) * ln(Wi/Wf)
+    const E_sec = (ld / cPerSec) * lnWiWf;
+    const E_hr = E_sec / 3600;
+    const E_min = E_hr * 60;
+
+    const fuelFrac = (WiKg - WfKg) / WiKg;
+
+    outputBox.classList.remove('hidden');
+    rangeLine.textContent = `Estimated range: ${R_nm.toFixed(0)} NM  |  ${R_km.toFixed(0)} km  |  ${R_mi.toFixed(0)} mi`;
+    enduranceLine.textContent = `Approximate endurance: ${E_hr.toFixed(2)} hours (${E_min.toFixed(0)} minutes)`;
+    weightLine.textContent = `Weight ratio W_i/W_f = ${WiWf.toFixed(3)}, fuel fraction ≈ ${(fuelFrac * 100).toFixed(1)}% of initial weight.`;
+  });
+
+  document.getElementById('breguet-reset').addEventListener('click', () => {
+    document.getElementById('breguet-ld').value = 15;
+    document.getElementById('breguet-sfc').value = 0.6;
+    document.getElementById('breguet-speed').value = 450;
+    document.getElementById('breguet-eta').value = 0.85;
+    document.getElementById('breguet-wi').value = 70000;
+    document.getElementById('breguet-wf').value = 55000;
+    document.getElementById('breguet-oew').value = 40000;
+    document.getElementById('breguet-payload').value = 10000;
+    document.getElementById('breguet-fuel').value = 20000;
+    document.getElementById('breguet-reserve').value = 3000;
+    document.getElementById('breguet-output').classList.add('hidden');
+  });
+
+  // Simple model calculation
+  document.getElementById('simple-calc').addEventListener('click', () => {
+    const speed = Number(document.getElementById('simple-speed').value);
+    const speedUnit = document.getElementById('simple-speed-unit').value;
+    const fuel = Number(document.getElementById('simple-fuel').value);
+    const reserve = Number(document.getElementById('simple-reserve').value);
+    const flow = Number(document.getElementById('simple-flow').value);
+    const fuelUnit = document.getElementById('simple-fuel-unit').value;
+    const flowUnit = document.getElementById('simple-flow-unit').value;
+
+    const outputBox = document.getElementById('simple-output');
+    const rangeLine = document.getElementById('simple-range-line');
+    const enduranceLine = document.getElementById('simple-endurance-line');
+    const fuelLine = document.getElementById('simple-fuel-line');
+
+    if (!isFinite(speed) || speed <= 0 || !isFinite(fuel) || fuel <= 0 || !isFinite(flow) || flow <= 0) {
+      outputBox.classList.remove('hidden');
+      rangeLine.textContent = 'Please enter positive values for speed, fuel, and fuel flow.';
+      enduranceLine.textContent = '';
+      fuelLine.textContent = '';
+      return;
+    }
+
+    const fuelKg = fuelToKg(fuel, fuelUnit);
+    const reserveKg = fuelToKg(Math.max(reserve, 0), fuelUnit);
+    const usableKg = Math.max(fuelKg - reserveKg, 0);
+
+    let flowKgPerHr = fuelToKg(flow, fuelUnit);
+    if (flowUnit === 'kgpm') {
+      flowKgPerHr *= 60;
+    }
+
+    if (usableKg <= 0 || flowKgPerHr <= 0) {
+      outputBox.classList.remove('hidden');
+      rangeLine.textContent = 'Usable fuel or fuel flow is zero or negative after conversion. Check reserve and units.';
+      enduranceLine.textContent = '';
+      fuelLine.textContent = '';
+      return;
+    }
+
+    const enduranceHr = usableKg / flowKgPerHr;
+    const enduranceMin = enduranceHr * 60;
+
+    // Convert speed to knots for range in NM
+    let speedKt;
+    switch (speedUnit) {
+      case 'kt': speedKt = speed; break;
+      case 'kmh': speedKt = speed * 0.539957; break;
+      case 'mph': speedKt = speed * 0.868976; break;
+      default: speedKt = speed;
+    }
+
+    const rangeNm = speedKt * enduranceHr;
+    const rangeKm = rangeNm * 1.852;
+    const rangeMi = rangeNm * 1.15078;
+
+    outputBox.classList.remove('hidden');
+    rangeLine.textContent = `Estimated range: ${rangeNm.toFixed(0)} NM  |  ${rangeKm.toFixed(0)} km  |  ${rangeMi.toFixed(0)} mi`;
+    enduranceLine.textContent = `Endurance: ${enduranceHr.toFixed(2)} hours (${enduranceMin.toFixed(0)} minutes)`;
+    fuelLine.textContent = `Usable fuel: ${usableKg.toFixed(0)} kg (${kgToFuel(usableKg, fuelUnit).toFixed(0)} ${fuelUnit}), reserve: ${reserveKg.toFixed(0)} kg.`;
+  });
+
+  document.getElementById('simple-reset').addEventListener('click', () => {
+    document.getElementById('simple-speed').value = 450;
+    document.getElementById('simple-fuel').value = 8000;
+    document.getElementById('simple-flow').value = 2000;
+    document.getElementById('simple-reserve').value = 1000;
+    document.getElementById('simple-output').classList.add('hidden');
+  });
+
+  window.MathJax = {
+    tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
     svg: { fontCache: 'global' }
   };
 </script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="/assets/js/page-enhancements.js" as="script">
-
-</head>
-<body>
-
-<a class="sr-only" href="#main-content">Skip to main content</a>
-<main class="container" id="main-content">
-<h1>Aircraft Range and Endurance Calculator</h1>
-<p>This calculator helps aerospace engineers determine the maximum range and endurance of aircraft based on various input parameters. It is designed to assist in optimizing fuel efficiency and flight planning.</p>
-<section aria-labelledby="calculator-heading" class="calculator-container">
-<h2 id="calculator-heading">Calculator</h2>
-<div class="form-group">
-<label for="fuelCapacity">Fuel Capacity (liters) *</label>
-<input aria-required="true" class="form-control" id="fuelCapacity" type="number"/>
-</div>
-<div class="form-group">
-<label for="fuelConsumption">Fuel Consumption (liters/hour) *</label>
-<input aria-required="true" class="form-control" id="fuelConsumption" type="number"/>
-</div>
-<div class="form-group">
-<label for="speed">Speed (km/h) *</label>
-<input aria-required="true" class="form-control" id="speed" type="number"/>
-</div>
-<button class="btn-primary" onclick="calculate()" type="button">Calculate</button>
-</section>
-<section aria-labelledby="results-heading" class="results-container">
-<h2 id="results-heading">Results</h2>
-<div class="result-item">
-<span class="result-label">Maximum Range</span>
-<span class="result-value" id="rangeValue">0 km</span>
-</div>
-<div class="result-item">
-<span class="result-label">Maximum Endurance</span>
-<span class="result-value" id="enduranceValue">0 hours</span>
-</div>
-</section>
-<section class="content-container">
-<h2>Data Source and Methodology</h2>
-<p>The calculations are based on standard aerospace engineering formulas and data. <a href="https://aviapages.com/range_map/">Learn more</a>.</p>
-<h2>The Formula Explained</h2>
-<div class="formula-box">
-<p><strong>Range:</strong> <code>Range = (Fuel Capacity / Fuel Consumption) × Speed</code></p>
-<p><strong>Endurance:</strong> <code>Endurance = Fuel Capacity / Fuel Consumption</code></p>
-</div>
-<h2>Glossary of Variables</h2>
-<ul>
-<li><strong>Fuel Capacity:</strong> Total fuel available for the flight.</li>
-<li><strong>Fuel Consumption:</strong> Rate of fuel usage per hour.</li>
-<li><strong>Speed:</strong> Average speed of the aircraft.</li>
-<li><strong>Range:</strong> Maximum distance the aircraft can travel.</li>
-<li><strong>Endurance:</strong> Maximum time the aircraft can remain airborne.</li>
-</ul>
-<h2>How It Works: A Step-by-Step Example</h2>
-<p>For an aircraft with a fuel capacity of 5000 liters, consuming 250 liters/hour at a speed of 600 km/h, the range is calculated as 12,000 km and the endurance is 20 hours.</p>
-<h2>Frequently Asked Questions (FAQ)</h2>
-<div>
-<h3>What is the significance of range in aviation?</h3>
-<p>The range is crucial for determining the maximum distance an aircraft can fly without refueling.</p>
-<h3>How is endurance different from range?</h3>
-<p>Endurance measures how long an aircraft can stay airborne, while range measures the distance it can cover.</p>
-<h3>Can this calculator be used for all types of aircraft?</h3>
-<p>Yes, as long as the input parameters are correctly specified for the aircraft type.</p>
-<h3>What factors can affect fuel consumption?</h3>
-<p>Fuel consumption can be affected by aircraft weight, weather conditions, and engine efficiency.</p>
-<h3>Is this calculator compliant with current aviation standards?</h3>
-<p>Yes, it is designed to adhere to standard aerospace engineering practices.</p>
-</div>
-</section>
-<div class="author-box">
-<p>
-                Tool developed by <strong>Ugo Candido</strong>. Content reviewed by the CalcDomain Expert Team.
-                <br/>
-                Last reviewed for accuracy on: October 1, 2023.
-            </p>
-</div>
-</main>
-<script>
-        function calculate() {
-            const fuelCapacity = parseFloat(document.getElementById('fuelCapacity').value);
-            const fuelConsumption = parseFloat(document.getElementById('fuelConsumption').value);
-            const speed = parseFloat(document.getElementById('speed').value);
-
-            if (!fuelCapacity || !fuelConsumption || !speed) {
-                alert("Please fill in all fields with valid numbers.");
-                return;
-            }
-
-            const endurance = fuelCapacity / fuelConsumption;
-            const range = endurance * speed;
-
-            document.getElementById('rangeValue').innerText = `${range.toFixed(2)} km`;
-            document.getElementById('enduranceValue').innerText = `${endurance.toFixed(2)} hours`;
-        }
-    </script>
-
-
-</body></html>
+</body> </html>
