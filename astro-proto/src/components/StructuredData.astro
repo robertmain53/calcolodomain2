@@ -1,0 +1,85 @@
+---
+import type { PageEntry } from "../data/pages";
+import { siteUrl } from "../config/site";
+
+interface Breadcrumb {
+  label: string;
+  href: string;
+}
+
+const { page, breadcrumbs }: { page: PageEntry; breadcrumbs: Breadcrumb[] } =
+  Astro.props;
+
+const canonical = `${siteUrl}/en/${page.slug.join("/")}`;
+
+const appCategory = [
+  `${page.primary.hub} > ${page.primary.cluster}`,
+  ...(page.secondary?.map((s) => `${s.hub} > ${s.cluster}`) ?? []),
+];
+
+const howToSteps =
+  page.content.variables.map((v, idx) => ({
+    "@type": "HowToStep",
+    position: idx + 1,
+    name: v,
+    itemListElement: v,
+  })) ?? [];
+
+const faqItems =
+  page.content.faqs.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })) ?? [];
+
+const breadcrumbList = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: breadcrumbs.map((crumb, idx) => ({
+    "@type": "ListItem",
+    position: idx + 1,
+    name: crumb.label,
+    item: `${siteUrl}${crumb.href}`,
+  })),
+};
+
+const softwareApp = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: page.title,
+  description: page.description,
+  applicationCategory: appCategory,
+  operatingSystem: "Web",
+  offers: {
+    "@type": "Offer",
+    price: 0,
+    priceCurrency: "USD",
+  },
+  url: canonical,
+};
+
+const howTo =
+  howToSteps.length > 0
+    ? {
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        name: `${page.title} - how to use`,
+        description: page.description,
+        step: howToSteps,
+      }
+    : null;
+
+const faq =
+  faqItems.length > 0
+    ? {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: faqItems,
+      }
+    : null;
+
+const payload = [softwareApp, breadcrumbList, howTo, faq].filter(Boolean);
+---
+<script type="application/ld+json">
+  {JSON.stringify(payload, null, 2)}
+</script>

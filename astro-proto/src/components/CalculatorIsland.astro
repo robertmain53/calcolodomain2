@@ -1,0 +1,699 @@
+---
+import type { PageEntry } from "../data/pages";
+
+const { page }: { page: PageEntry } = Astro.props;
+const slug = page.slug[page.slug.length - 1];
+
+type ConverterConfig =
+  | {
+      key: string;
+      type: "linear";
+      fromLabel: string;
+      toLabel: string;
+      factor: number;
+      offset?: number;
+      fraction?: boolean;
+      sigfig?: boolean;
+      sci?: boolean;
+    }
+  | {
+      key: string;
+      type: "temp-kf";
+      fromLabel: string;
+      toLabel: string;
+    }
+  | {
+      key: string;
+      type: "deg-rad";
+    }
+  | {
+      key: string;
+      type: "mass";
+      factor: number;
+    }
+  | {
+      key: string;
+      type: "cups";
+      systems: { name: string; cupMl: number; tbspMl: number }[];
+    }
+  | {
+      key: string;
+      type: "typography";
+    };
+
+const converters: Record<string, ConverterConfig> = {
+  "mm-to-inches": {
+    key: "mm-to-inches",
+    type: "linear",
+    fromLabel: "Millimeters",
+    toLabel: "Inches",
+    factor: 1 / 25.4,
+    fraction: true,
+    sigfig: true,
+  },
+  "cm-to-inches": {
+    key: "cm-to-inches",
+    type: "linear",
+    fromLabel: "Centimeters",
+    toLabel: "Inches",
+    factor: 1 / 2.54,
+    fraction: true,
+    sigfig: true,
+  },
+  "kg-to-lbs": {
+    key: "kg-to-lbs",
+    type: "mass",
+    factor: 2.20462262185,
+  },
+  "lbs-to-kg": {
+    key: "lbs-to-kg",
+    type: "mass",
+    factor: 2.20462262185,
+  },
+  "btu-to-kwh": {
+    key: "btu-to-kwh",
+    type: "linear",
+    fromLabel: "BTU",
+    toLabel: "kWh",
+    factor: 0.00029307107,
+    sigfig: true,
+  },
+  "angstrom-to-nm": {
+    key: "angstrom-to-nm",
+    type: "linear",
+    fromLabel: "Ångström",
+    toLabel: "Nanometer",
+    factor: 0.1,
+    sci: true,
+    sigfig: true,
+  },
+  "kelvin-to-fahrenheit": {
+    key: "kelvin-to-fahrenheit",
+    type: "temp-kf",
+    fromLabel: "Kelvin",
+    toLabel: "Fahrenheit",
+  },
+  "degrees-to-radians": {
+    key: "degrees-to-radians",
+    type: "deg-rad",
+  },
+  "cups-to-tablespoons": {
+    key: "cups-to-tablespoons",
+    type: "cups",
+    systems: [
+      { name: "US customary", cupMl: 236.588, tbspMl: 14.7868 },
+      { name: "US legal", cupMl: 240, tbspMl: 14.7868 },
+      { name: "Metric", cupMl: 250, tbspMl: 15 },
+      { name: "Imperial", cupMl: 284.131, tbspMl: 17.7582 },
+    ],
+  },
+  "typography-converter": {
+    key: "typography-converter",
+    type: "typography",
+  },
+};
+
+const config = converters[slug];
+const gravityOptions = [
+  { name: "Earth", g: 9.80665 },
+  { name: "Moon", g: 1.62 },
+  { name: "Mars", g: 3.71 },
+  { name: "Jupiter", g: 24.79 },
+];
+---
+
+{config ? (
+  <div class="calc" data-config={JSON.stringify(config)} data-key={config.key}>
+    {config.type === "linear" && (
+      <form class="stack linear">
+        <div class="row">
+          <label>
+            <span class="lbl">{config.fromLabel}</span>
+            <input type="text" inputmode="decimal" name="from" value="1" />
+          </label>
+          <label>
+            <span class="lbl">{config.toLabel}</span>
+            <input type="text" inputmode="decimal" name="to" value="0" />
+          </label>
+        </div>
+        <div class="row">
+          <label class="inline">
+            <input type="radio" name="dir" value="ab" checked /> {config.fromLabel} → {config.toLabel}
+          </label>
+          <label class="inline">
+            <input type="radio" name="dir" value="ba" /> {config.toLabel} → {config.fromLabel}
+          </label>
+          {config.sigfig && (
+            <label class="inline">
+              Sig. figs
+              <select name="sigfig">
+                <option value="3">3</option>
+                <option value="4" selected>4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+              </select>
+            </label>
+          )}
+        </div>
+        <div class="result" id="linear-out">
+          <div class="big" data-field="main">0</div>
+          {config.fraction && <div class="sub" data-field="fraction">Fractional: –</div>}
+          {config.sci && <div class="sub" data-field="sci">Scientific: –</div>}
+        </div>
+      </form>
+    )}
+    {config.type === "linear" && (slug === "mm-to-inches" || slug === "cm-to-inches") && (
+      <div class="visual">
+        <div class="vis-head">Visual ruler</div>
+        <svg viewBox="0 0 320 60" role="img" aria-label="Ruler showing metric and imperial ticks">
+          <rect x="10" y="10" width="300" height="40" rx="6" fill="url(#grad)" stroke="#334155" />
+          <g stroke="#0f172a">
+            {[...Array(13).keys()].map((i) => (
+              <line x1={10 + i * 25} y1="10" x2={10 + i * 25} y2={i % 2 === 0 ? 25 : 18} strokeWidth="2" />
+            ))}
+          </g>
+          <g fill="#0f172a" font-size="10" font-weight="700">
+            {[0, 1, 2, 3].map((i) => (
+              <text x={10 + i * 100} y="52">{i} in</text>
+            ))}
+          </g>
+          <defs>
+            <linearGradient id="grad" x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0%" stop-color="rgba(56,189,248,0.18)" />
+              <stop offset="100%" stop-color="rgba(167,139,250,0.18)" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <p class="muted">Fractions map to common 1/16 inch marks; metric ticks show exact spacing.</p>
+      </div>
+    )}
+
+    {config.type === "temp-kf" && (
+      <form class="stack temp">
+        <label>
+          <span class="lbl">{config.fromLabel}</span>
+          <input type="text" inputmode="decimal" name="k" value="300" />
+        </label>
+        <label>
+          <span class="lbl">{config.toLabel}</span>
+          <input type="text" inputmode="decimal" name="f" value="80" />
+        </label>
+        <div class="row">
+          <label class="inline">
+            <input type="radio" name="dir" value="kf" checked /> {config.fromLabel} → {config.toLabel}
+          </label>
+          <label class="inline">
+            <input type="radio" name="dir" value="fk" /> {config.toLabel} → {config.fromLabel}
+          </label>
+        </div>
+        <div class="result" id="temp-out">
+          <div class="big" data-field="main">0</div>
+          <div class="sub" data-field="extra">–</div>
+        </div>
+      </form>
+    )}
+
+    {config.type === "deg-rad" && (
+      <form class="stack angle">
+        <label>
+          <span class="lbl">Degrees</span>
+          <input type="text" inputmode="decimal" name="deg" value="180" />
+        </label>
+        <label>
+          <span class="lbl">Radians</span>
+          <input type="text" inputmode="decimal" name="rad" value="3.14159" />
+        </label>
+        <div class="row">
+          <label class="inline"><input type="radio" name="dir" value="dr" checked /> Degrees → Radians</label>
+          <label class="inline"><input type="radio" name="dir" value="rd" /> Radians → Degrees</label>
+        </div>
+        <div class="result" id="angle-out">
+          <div class="big" data-field="main">0</div>
+          <div class="sub" data-field="trig">sin/cos/tan: –</div>
+        </div>
+      </form>
+    )}
+    {config.type === "deg-rad" && (
+      <div class="visual">
+        <div class="vis-head">Unit circle</div>
+        <svg viewBox="0 0 200 200" role="img" aria-label="Unit circle showing radians and degrees">
+          <circle cx="100" cy="100" r="80" fill="rgba(255,255,255,0.03)" stroke="#475569" />
+          {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => {
+            const rad = (deg * Math.PI) / 180;
+            const x = 100 + 80 * Math.cos(rad);
+            const y = 100 + 80 * Math.sin(rad);
+            return (
+              <g>
+                <line x1="100" y1="100" x2={x} y2={y} stroke="#38bdf8" />
+                <text x={100 + 90 * Math.cos(rad)} y={100 + 90 * Math.sin(rad)} fill="#e2e8f0" font-size="10" text-anchor="middle" dominant-baseline="middle">
+                  {deg}°
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+        <p class="muted">Radians relate arc length to radius; common angles labeled for quick recall.</p>
+      </div>
+    )}
+
+    {config.type === "mass" && (
+      <form class="stack mass">
+        <div class="row">
+          <label>
+            <span class="lbl">Kilograms</span>
+            <input type="text" inputmode="decimal" name="kg" value={slug === "kg-to-lbs" ? "70" : "0"} />
+          </label>
+          <label>
+            <span class="lbl">Pounds</span>
+            <input type="text" inputmode="decimal" name="lb" value={slug === "lbs-to-kg" ? "150" : "0"} />
+          </label>
+        </div>
+        <div class="row">
+          <label class="inline"><input type="radio" name="dir" value="kg-lb" checked /> kg → lb</label>
+          <label class="inline"><input type="radio" name="dir" value="lb-kg" /> lb → kg</label>
+          <label class="inline">
+            Gravity
+            <select name="g">
+              {gravityOptions.map((g) => (
+                <option value={g.g}>{g.name}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div class="result" id="mass-out">
+          <div class="big" data-field="main">0</div>
+          <div class="sub" data-field="weight">Weight @ gravity: –</div>
+        </div>
+      </form>
+    )}
+
+    {config.type === "cups" && (
+      <form class="stack cups">
+        <label>
+          <span class="lbl">System</span>
+          <select name="system">
+            {config.systems.map((s) => (
+              <option value={`${s.cupMl}|${s.tbspMl}`}>{s.name}</option>
+            ))}
+          </select>
+        </label>
+        <div class="row">
+          <label>
+            <span class="lbl">Cups</span>
+            <input type="text" inputmode="decimal" name="cups" value="1" />
+          </label>
+          <label>
+            <span class="lbl">Tablespoons</span>
+            <input type="text" inputmode="decimal" name="tbsp" value="16" />
+          </label>
+        </div>
+        <div class="row">
+          <label class="inline"><input type="radio" name="dir" value="c-t" checked /> Cups → Tbsp</label>
+          <label class="inline"><input type="radio" name="dir" value="t-c" /> Tbsp → Cups</label>
+        </div>
+        <div class="result" id="cups-out">
+          <div class="big" data-field="main">0</div>
+          <div class="sub" data-field="ml">Milliliters: –</div>
+          <div class="sub">Note: for dry ingredients, weight in grams is more reliable.</div>
+        </div>
+      </form>
+    )}
+    {config.type === "cups" && (
+      <div class="visual">
+        <div class="vis-head">Standards at a glance</div>
+        <table class="mini-table">
+          <thead>
+            <tr><th>System</th><th>1 cup (mL)</th><th>1 tbsp (mL)</th></tr>
+          </thead>
+          <tbody>
+            {config.systems.map((s) => (
+              <tr>
+                <td>{s.name}</td>
+                <td>{s.cupMl}</td>
+                <td>{s.tbspMl}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p class="muted">Use weight in grams for dry goods; volume is best for liquids.</p>
+      </div>
+    )}
+
+    {config.type === "typography" && (
+      <form class="stack typo">
+        <div class="row">
+          <label>
+            <span class="lbl">Base font size (px)</span>
+            <input type="text" inputmode="decimal" name="base" value="16" />
+          </label>
+          <label>
+            <span class="lbl">Size (px)</span>
+            <input type="text" inputmode="decimal" name="px" value="16" />
+          </label>
+        </div>
+        <div class="row">
+          <label>
+            <span class="lbl">Size (pt)</span>
+            <input type="text" inputmode="decimal" name="pt" value="12" />
+          </label>
+          <label>
+            <span class="lbl">Size (rem)</span>
+            <input type="text" inputmode="decimal" name="rem" value="1" />
+          </label>
+        </div>
+        <div class="row">
+          <label>
+            <span class="lbl">Size (em)</span>
+            <input type="text" inputmode="decimal" name="em" value="1" />
+          </label>
+          <label>
+            <span class="lbl">Size (%)</span>
+            <input type="text" inputmode="decimal" name="percent" value="100" />
+          </label>
+        </div>
+        <div class="result" id="typo-out">
+          <div class="big" data-field="main">16 px = 12 pt = 1 rem</div>
+          <div class="preview" id="typo-preview">Preview text adjusts with your values for accessibility.</div>
+        </div>
+      </form>
+    )}
+    {config.type === "typography" && (
+      <div class="visual">
+        <div class="vis-head">Relative vs absolute</div>
+        <ul class="bullets">
+          <li>px/pt are absolute; em/rem/% scale with user preferences (WCAG-friendly).</li>
+          <li>Use rem for consistent global sizing; em for contextual scaling inside components.</li>
+          <li>Preview text above reflects your values for quick QA.</li>
+        </ul>
+      </div>
+    )}
+  </div>
+) : (
+  <div class="calc placeholder">
+    <p>No converter config found for this tool.</p>
+  </div>
+)}
+
+<style>
+  .calc {
+    width: 100%;
+  }
+  .stack {
+    display: grid;
+    gap: 0.75rem;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+    align-items: center;
+  }
+  label {
+    display: grid;
+    gap: 0.25rem;
+    color: #e2e8f0;
+    font-weight: 600;
+  }
+  .lbl {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  input, select {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.6rem 0.7rem;
+    color: #fff;
+    font-size: 1rem;
+  }
+  .inline {
+    display: inline-flex;
+    gap: 0.35rem;
+    align-items: center;
+    font-weight: 600;
+    color: #cbd5e1;
+  }
+  .result {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.8rem 0.9rem;
+    background: rgba(255, 255, 255, 0.03);
+    display: grid;
+    gap: 0.35rem;
+  }
+  .big {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #fff;
+  }
+  .sub {
+    color: #94a3b8;
+  }
+  .preview {
+    padding: 0.8rem;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #e2e8f0;
+  }
+  .visual {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.75rem 0.85rem;
+    background: rgba(255, 255, 255, 0.02);
+    display: grid;
+    gap: 0.35rem;
+  }
+  .vis-head {
+    font-weight: 700;
+    color: #e2e8f0;
+  }
+  .muted {
+    color: #94a3b8;
+  }
+  .mini-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+  }
+  .mini-table th,
+  .mini-table td {
+    border: 1px solid var(--border);
+    padding: 0.35rem 0.45rem;
+    text-align: left;
+  }
+  .mini-table th {
+    background: rgba(255, 255, 255, 0.04);
+    color: #e2e8f0;
+  }
+  .bullets {
+    margin: 0;
+    padding-left: 1.1rem;
+    color: #cbd5e1;
+  }
+</style>
+
+<script is:inline>
+  const root = document.currentScript?.parentElement;
+  if (!root) return;
+  const cfg = JSON.parse(root.dataset.config || "{}");
+  const roundSig = (num, sig) => {
+    if (!sig || !isFinite(num)) return num;
+    return Number.parseFloat(Number(num).toPrecision(sig));
+  };
+  const toFraction = (val) => {
+    const denom = 16;
+    const whole = Math.trunc(val);
+    const frac = val - whole;
+    const num = Math.round(frac * denom);
+    if (num === 0) return `${whole}`;
+    if (num === denom) return `${whole + 1}`;
+    const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+    const g = gcd(num, denom);
+    return `${whole} ${num / g}/${denom / g}`;
+  };
+
+  if (cfg.type === "linear") {
+    const from = root.querySelector('input[name="from"]');
+    const to = root.querySelector('input[name="to"]');
+    const dirRadios = root.querySelectorAll('input[name="dir"]');
+    const sigSel = root.querySelector('select[name="sigfig"]');
+    const outMain = root.querySelector('[data-field="main"]');
+    const outFrac = root.querySelector('[data-field="fraction"]');
+    const outSci = root.querySelector('[data-field="sci"]');
+    const recalc = () => {
+      const dir = Array.from(dirRadios).find((r) => r.checked)?.value || "ab";
+      const sig = sigSel ? Number(sigSel.value) : undefined;
+      const val =
+        dir === "ab" ? Number(from.value) || 0 : Number(to.value) || 0;
+      let res =
+        dir === "ab"
+          ? (val * cfg.factor) + (cfg.offset || 0)
+          : (val - (cfg.offset || 0)) / cfg.factor;
+      const rounded = sig ? roundSig(res, sig) : res;
+      outMain.textContent = rounded.toLocaleString();
+      if (dir === "ab") {
+        to.value = rounded;
+      } else {
+        from.value = rounded;
+      }
+      if (outFrac) {
+        outFrac.textContent = `Fractional: ${toFraction(res)}`;
+      }
+      if (outSci) {
+        outSci.textContent = `Scientific: ${res.toExponential(4)}`;
+      }
+    };
+    [from, to, sigSel, ...dirRadios].forEach((el) => el?.addEventListener("input", recalc));
+    recalc();
+  }
+
+  if (cfg.type === "temp-kf") {
+    const k = root.querySelector('input[name="k"]');
+    const f = root.querySelector('input[name="f"]');
+    const dir = root.querySelectorAll('input[name="dir"]');
+    const main = root.querySelector('[data-field="main"]');
+    const extra = root.querySelector('[data-field="extra"]');
+    const recalc = () => {
+      const sel = Array.from(dir).find((r) => r.checked)?.value || "kf";
+      if (sel === "kf") {
+        const kv = Number(k.value) || 0;
+        const c = kv - 273.15;
+        const fv = c * 9/5 + 32;
+        f.value = fv;
+        main.textContent = `${kv.toFixed(2)} K → ${fv.toFixed(2)} °F`;
+        extra.textContent = `Celsius: ${c.toFixed(2)} °C`;
+      } else {
+        const fv = Number(f.value) || 0;
+        const c = (fv - 32) * 5/9;
+        const kv = c + 273.15;
+        k.value = kv;
+        main.textContent = `${fv.toFixed(2)} °F → ${kv.toFixed(2)} K`;
+        extra.textContent = `Celsius: ${c.toFixed(2)} °C`;
+      }
+    };
+    [k, f, ...dir].forEach((el) => el?.addEventListener("input", recalc));
+    recalc();
+  }
+
+  if (cfg.type === "deg-rad") {
+    const deg = root.querySelector('input[name="deg"]');
+    const rad = root.querySelector('input[name="rad"]');
+    const dir = root.querySelectorAll('input[name="dir"]');
+    const main = root.querySelector('[data-field="main"]');
+    const trig = root.querySelector('[data-field="trig"]');
+    const recalc = () => {
+      const sel = Array.from(dir).find((r) => r.checked)?.value || "dr";
+      if (sel === "dr") {
+        const dv = Number(deg.value) || 0;
+        const rv = dv * Math.PI / 180;
+        rad.value = rv;
+        main.textContent = `${dv.toFixed(2)}° → ${rv.toFixed(4)} rad`;
+        trig.textContent = `sin: ${Math.sin(rv).toFixed(4)}, cos: ${Math.cos(rv).toFixed(4)}, tan: ${Math.tan(rv).toFixed(4)}`;
+      } else {
+        const rv = Number(rad.value) || 0;
+        const dv = rv * 180 / Math.PI;
+        deg.value = dv;
+        main.textContent = `${rv.toFixed(4)} rad → ${dv.toFixed(2)}°`;
+        trig.textContent = `sin: ${Math.sin(rv).toFixed(4)}, cos: ${Math.cos(rv).toFixed(4)}, tan: ${Math.tan(rv).toFixed(4)}`;
+      }
+    };
+    [deg, rad, ...dir].forEach((el) => el?.addEventListener("input", recalc));
+    recalc();
+  }
+
+  if (cfg.type === "mass") {
+    const kg = root.querySelector('input[name="kg"]');
+    const lb = root.querySelector('input[name="lb"]');
+    const dir = root.querySelectorAll('input[name="dir"]');
+    const gSel = root.querySelector('select[name="g"]');
+    const main = root.querySelector('[data-field="main"]');
+    const weight = root.querySelector('[data-field="weight"]');
+    const factor = cfg.factor;
+    const recalc = () => {
+      const sel = Array.from(dir).find((r) => r.checked)?.value || "kg-lb";
+      const g = Number(gSel.value) || 9.80665;
+      if (sel === "kg-lb") {
+        const kv = Number(kg.value) || 0;
+        const lv = kv * factor;
+        lb.value = lv;
+        main.textContent = `${kv.toFixed(3)} kg → ${lv.toFixed(3)} lb`;
+        weight.textContent = `Weight @ gravity: ${(kv * g).toFixed(2)} N`;
+      } else {
+        const lv = Number(lb.value) || 0;
+        const kv = lv / factor;
+        kg.value = kv;
+        main.textContent = `${lv.toFixed(3)} lb → ${kv.toFixed(3)} kg`;
+        weight.textContent = `Weight @ gravity: ${(kv * g).toFixed(2)} N`;
+      }
+    };
+    [kg, lb, gSel, ...dir].forEach((el) => el?.addEventListener("input", recalc));
+    recalc();
+  }
+
+  if (cfg.type === "cups") {
+    const system = root.querySelector('select[name="system"]');
+    const cups = root.querySelector('input[name="cups"]');
+    const tbsp = root.querySelector('input[name="tbsp"]');
+    const dir = root.querySelectorAll('input[name="dir"]');
+    const main = root.querySelector('[data-field="main"]');
+    const ml = root.querySelector('[data-field="ml"]');
+    const recalc = () => {
+      const [cupMl, tbspMl] = (system.value || "236.588|14.7868").split("|").map(Number);
+      const sel = Array.from(dir).find((r) => r.checked)?.value || "c-t";
+      if (sel === "c-t") {
+        const c = Number(cups.value) || 0;
+        const t = c * (cupMl / tbspMl);
+        tbsp.value = t;
+        main.textContent = `${c} cups → ${t.toFixed(3)} tbsp`;
+        ml.textContent = `Milliliters: ${(c * cupMl).toFixed(2)} mL`;
+      } else {
+        const t = Number(tbsp.value) || 0;
+        const c = t / (cupMl / tbspMl);
+        cups.value = c;
+        main.textContent = `${t} tbsp → ${c.toFixed(3)} cups`;
+        ml.textContent = `Milliliters: ${(c * cupMl).toFixed(2)} mL`;
+      }
+    };
+    [system, cups, tbsp, ...dir].forEach((el) => el?.addEventListener("input", recalc));
+    recalc();
+  }
+
+  if (cfg.type === "typography") {
+    const base = root.querySelector('input[name="base"]');
+    const px = root.querySelector('input[name="px"]');
+    const pt = root.querySelector('input[name="pt"]');
+    const rem = root.querySelector('input[name="rem"]');
+    const em = root.querySelector('input[name="em"]');
+    const percent = root.querySelector('input[name="percent"]');
+    const main = root.querySelector('[data-field="main"]');
+    const preview = root.querySelector('#typo-preview');
+    const recalcFromPx = () => {
+      const b = Number(base.value) || 16;
+      const pv = Number(px.value) || 0;
+      pt.value = pv * 0.75;
+      rem.value = pv / b;
+      em.value = rem.value;
+      percent.value = (rem.value * 100).toFixed(1);
+      main.textContent = `${pv.toFixed(2)} px = ${(pv*0.75).toFixed(2)} pt = ${(pv/b).toFixed(3)} rem`;
+      if (preview) {
+        preview.style.fontSize = `${pv}px`;
+        preview.textContent = `Preview at ${pv.toFixed(2)} px (${rem.value.toFixed(3)} rem) with base ${b}px. Using relative units (em/rem) improves accessibility.`;
+      }
+    };
+    const recalcFromRem = () => {
+      const b = Number(base.value) || 16;
+      const rv = Number(rem.value) || 0;
+      px.value = rv * b;
+      pt.value = rv * b * 0.75;
+      em.value = rv;
+      percent.value = (rv * 100).toFixed(1);
+      recalcFromPx();
+    };
+    [base, px].forEach((el) => el?.addEventListener("input", recalcFromPx));
+    [rem, em, percent, pt].forEach((el) =>
+      el?.addEventListener("input", recalcFromRem),
+    );
+    recalcFromPx();
+  }
+</script>
