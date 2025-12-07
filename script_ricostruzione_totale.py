@@ -204,7 +204,7 @@ def inject_scripts_and_cleanup(soup, head_scripts_html, body_scripts_html):
     body_tag.insert(0, BeautifulSoup(body_scripts_html, 'lxml'))
     
     # Inietta script JS (alla fine)
-    script_da_aggiungere = ["/assets/js/script_menu.js", "/assets/js/script_faq.js", "search.js"]
+    script_da_aggiungere = ["/assets/js/mobile-menu.js", "search.js"]
     for src in script_da_aggiungere:
         for old in body_tag.find_all('script', src=src):
             old.decompose()

@@ -307,9 +307,8 @@ In allegato trovi il `template_master_INTERNA.html`. Useremo questo per OGNI pag
 
     
 
-    <script src="/assets/js/script_menu.js" defer></script>
+    <script src="/assets/js/mobile-menu.js" defer></script>
 
-    <script src="/assets/js/script_faq.js" defer></script>
 
     <script src="search.js" defer></script>
 
@@ -571,9 +570,8 @@ Questo è il template_master_HOMEPAGE.html. Lo useremo SOLO per la pagina index.
 
     
 
-    <script src="/assets/js/script_menu.js" defer></script>
+    <script src="/assets/js/mobile-menu.js" defer></script>
 
-    <script src="/assets/js/script_faq.js" defer></script>
 
     <script src="search.js" defer></script>
 

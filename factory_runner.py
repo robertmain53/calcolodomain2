@@ -189,8 +189,7 @@ In allegato trovi il `template_master_INTERNA.html`. Useremo questo per OGNI pag
   </div>
 </footer>
 
-<script src="/assets/js/script_menu.js" defer></script>
-<script src="/assets/js/script_faq.js" defer></script>
+<script src="/assets/js/mobile-menu.js" defer></script>
 <script src="search.js" defer></script>
 
 <script>
@@ -318,8 +317,7 @@ HTML
   </div>
 </footer>
 
-<script src="/assets/js/script_menu.js" defer></script>
-<script src="/assets/js/script_faq.js" defer></script>
+<script src="/assets/js/mobile-menu.js" defer></script>
 <script src="search.js" defer></script>
 
 <script>

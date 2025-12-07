@@ -371,8 +371,7 @@ cat > "$OUTPUT_DIR/kw-to-hp-converter.html" << 'EOF'
       </div>
     </footer>
 
-    <script src="/assets/js/script_menu.js" defer></script>
-    <script src="/assets/js/script_faq.js" defer></script>
+    <script src="/assets/js/mobile-menu.js" defer></script>
     <script src="search.js" defer></script>
 
     <script>
@@ -802,8 +801,7 @@ cat > "$OUTPUT_DIR/joules-to-kwh.html" << 'EOF'
       </div>
     </footer>
 
-    <script src="/assets/js/script_menu.js" defer></script>
-    <script src="/assets/js/script_faq.js" defer></script>
+    <script src="/assets/js/mobile-menu.js" defer></script>
     <script src="search.js" defer></script>
 
     <script>
@@ -1221,8 +1219,7 @@ cat > "$OUTPUT_DIR/psi-to-kpa.html" << 'EOF'
       </div>
     </footer>
 
-    <script src="/assets/js/script_menu.js" defer></script>
-    <script src="/assets/js/script_faq.js" defer></script>
+    <script src="/assets/js/mobile-menu.js" defer></script>
     <script src="search.js" defer></script>
 
     <script>

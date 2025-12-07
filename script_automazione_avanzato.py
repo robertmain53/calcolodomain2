@@ -238,8 +238,7 @@ for file_path in file_list:
             body_tag.insert(0, BeautifulSoup(SCRIPT_ADSENSE_BODY, 'lxml'))
             
             script_da_aggiungere = [
-                "/assets/js/script_menu.js",
-                "/assets/js/script_faq.js",
+                "/assets/js/mobile-menu.js",
                 "search.js" # Assicurati che questo file esista in una posizione accessibile
             ]
             for script_src in script_da_aggiungere:

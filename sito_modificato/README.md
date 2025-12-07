@@ -311,9 +311,8 @@ html
 
     
 
-    <script src="/assets/js/script_menu.js" defer></script>
+    <script src="/assets/js/mobile-menu.js" defer></script>
 
-    <script src="/assets/js/script_faq.js" defer></script>
 
     <script src="search.js" defer></script>
 
@@ -571,9 +570,8 @@ HTML
 
     
 
-    <script src="/assets/js/script_menu.js" defer></script>
+    <script src="/assets/js/mobile-menu.js" defer></script>
 
-    <script src="/assets/js/script_faq.js" defer></script>
 
     <script src="search.js" defer></script>
 

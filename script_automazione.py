@@ -92,8 +92,7 @@ for file_path in file_list:
         if body_tag:
             # Assicurati che gli script non siano già presenti (per sicurezza)
             script_da_aggiungere = [
-                "/assets/js/script_menu.js",
-                "/assets/js/script_faq.js",  # Aggiungiamo già quello per le FAQ
+                "/assets/js/mobile-menu.js",
                 "search.js"  # Necessario per la barra di ricerca nell'header
             ]
             
