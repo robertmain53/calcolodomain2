@@ -294,7 +294,7 @@
                 }
 
                 // Header search input
-                const headerInput = document.getElementById('header-search-input');
+                const headerInput = document.getElementById('header-search-input') || document.getElementById('search-input');
                 if (headerInput) {
                     headerInput.addEventListener('input', (e) => {
                         mainInput.value = e.target.value;
@@ -307,7 +307,7 @@
                     btn.addEventListener('click', (e) => {
                         const query = e.target.dataset.query;
                         mainInput.value = query;
-                        headerInput.value = query;
+                        if (headerInput) headerInput.value = query;
                         this.handleSearch(query);
                     });
                 });
@@ -411,9 +411,10 @@
             createResultCard(calc) {
                 const highlightedTitle = this.highlightMatches(calc.title, this.currentQuery);
                 const highlightedDesc = this.highlightMatches(calc.description, this.currentQuery);
+                const href = this.resolveCalculatorUrl(calc);
                 
                 return `
-                    
+                    <a href="${href}" class="block p-5 border border-gray-200 rounded-lg hover:shadow-md hover:-translate-y-0.5 transition transform bg-white">
                         <div class="flex items-start justify-between">
                             <div class="flex-1">
                                 <h3 class="text-lg font-semibold text-gray-900 mb-2">${highlightedTitle}</h3>
@@ -428,7 +429,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                             </svg>
                         </div>
-                    
+                    </a>
                 `;
             }
 
@@ -437,6 +438,15 @@
                 
                 const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
                 return text.replace(regex, '<span class="search-highlight">$1</span>');
+            }
+
+            resolveCalculatorUrl(calc) {
+                if (calc.url) return calc.url;
+                if (!calc.slug) return '#';
+
+                const normalized = calc.slug.replace(/^\//, '');
+                if (normalized.endsWith('.html')) return `/${normalized}`;
+                return `/${normalized}.html`;
             }
 
             loadPopularCalculators() {
@@ -515,7 +525,8 @@
 
             clearSearch() {
                 document.getElementById('main-search-input').value = '';
-                document.getElementById('header-search-input').value = '';
+                const headerInput = document.getElementById('header-search-input') || document.getElementById('search-input');
+                if (headerInput) headerInput.value = '';
                 this.currentQuery = '';
                 this.showDefaultContent();
                 this.updateSearchStatus('Ready to search through 1,700+ calculators');
