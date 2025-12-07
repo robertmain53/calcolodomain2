@@ -4,30 +4,26 @@ import SeoHead from "../../components/SeoHead.astro";
 import type { PageEntry } from "../../data/pages";
 import { pages } from "../../data/pages";
 import SearchBox from "../../components/SearchBox.astro";
+import { taxonomy } from "../../data/taxonomy";
 
 const enPages = pages.filter((p) => p.locale === "en");
 
 type Cluster = { name: string; slug: string; items: PageEntry[] };
 type Hub = { name: string; slug: string; clusters: Cluster[] };
 
-const hubMap = new Map<string, Hub>();
+const hubs: Hub[] = taxonomy.map((hub) => {
+  const clusters = hub.clusters.map((cluster) => ({
+    name: cluster.name,
+    slug: cluster.slug,
+    items: enPages.filter(
+      (p) => p.slug[0] === hub.slug && p.slug[1] === cluster.slug,
+    ),
+  }));
+  return { name: hub.name, slug: hub.slug, clusters };
+});
 
-for (const page of enPages) {
-  const hubSlug = page.slug[0];
-  if (!hubMap.has(hubSlug)) {
-    hubMap.set(hubSlug, { name: page.primary.hub, slug: hubSlug, clusters: [] });
-  }
-  const clusterSlug = page.slug[1];
-  const hub = hubMap.get(hubSlug)!;
-  let cluster = hub.clusters.find((c) => c.slug === clusterSlug);
-  if (!cluster) {
-    cluster = { name: page.primary.cluster, slug: clusterSlug, items: [] };
-    hub.clusters.push(cluster);
-  }
-  cluster.items.push(page);
-}
-
-const hubs = Array.from(hubMap.values());
+const totalTools = enPages.length;
+const totalClusters = taxonomy.reduce((acc, hub) => acc + hub.clusters.length, 0);
 ---
 <Layout
   title="CalcDomain prototype"
@@ -45,7 +41,7 @@ const hubs = Array.from(hubMap.values());
     <h1>Semantic calculator library</h1>
     <p class="lede">
       Data-driven hubs, clusters, breadcrumb-ready URLs, and structured data. This
-      prototype ships 18 calculators across Finance, Engineering, and Health &amp; Fitness.
+      prototype currently ships {totalTools} calculators mapped into {totalClusters} clusters across four hubs.
     </p>
     <SearchBox />
     <div class="chips">

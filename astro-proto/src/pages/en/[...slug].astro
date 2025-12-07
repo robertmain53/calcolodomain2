@@ -7,6 +7,7 @@ import RelatedList from "../../components/RelatedList.astro";
 import CalculatorIsland from "../../components/CalculatorIsland.astro";
 import { findPage, relatedPages, pages } from "../../data/pages";
 import { metricForPath } from "../../data/metrics";
+import { taxonomy, findHub, findCluster } from "../../data/taxonomy";
 
 export const getStaticPaths = () => {
   // Generate paths for pages, hubs, and clusters so the build is fully static.
@@ -26,7 +27,17 @@ export const getStaticPaths = () => {
     ),
   ).map((pair) => ({ params: { slug: pair } }));
 
-  return [...pagePaths, ...hubSlugs, ...clusterSlugs];
+  const taxHubPaths = taxonomy.map((hub) => ({ params: { slug: hub.slug } }));
+  const taxClusterPaths = taxonomy.flatMap((hub) =>
+    hub.clusters.map((cluster) => ({ params: { slug: `${hub.slug}/${cluster.slug}` } })),
+  );
+
+  const combined = [...pagePaths, ...hubSlugs, ...clusterSlugs, ...taxHubPaths, ...taxClusterPaths];
+  const unique = new Map<string, { params: { slug: string } }>();
+  for (const entry of combined) {
+    unique.set(entry.params.slug, entry);
+  }
+  return Array.from(unique.values());
 };
 
 const slugParam = Astro.params.slug;
@@ -49,43 +60,73 @@ const clusterPages =
       )
     : [];
 
+const taxHub = findHub(segments[0]);
+const taxCluster = segments.length > 1 ? findCluster(segments[0], segments[1]) : undefined;
+
 let mode: "page" | "hub" | "cluster" | "notfound" = "notfound";
 if (page) mode = "page";
-else if (hubPages.length > 0) mode = "hub";
-else if (clusterPages.length > 0) mode = "cluster";
+else if (segments.length === 2 && (clusterPages.length > 0 || taxCluster)) mode = "cluster";
+else if (segments.length === 1 && (hubPages.length > 0 || taxHub)) mode = "hub";
 
 if (mode === "notfound") {
   Astro.response.status = 404;
 }
 
+const hubName = page?.primary.hub ?? hubPages[0]?.primary.hub ?? taxHub?.name;
+const clusterName =
+  page?.primary.cluster ?? clusterPages[0]?.primary.cluster ?? taxCluster?.name;
+const hubLabel = hubName ?? segments[0] ?? "Hub";
+const clusterLabel = clusterName ?? segments[1] ?? "Cluster";
+
 const crumbs =
-  mode === "page"
+  mode === "page" && hubName && clusterName
     ? [
         { href: "/en", label: "Home" },
-        { href: `/en/${page.slug[0]}`, label: page.primary.hub },
+        { href: `/en/${page.slug[0]}`, label: hubName },
         {
           href: `/en/${page.slug.slice(0, 2).join("/")}`,
-          label: page.primary.cluster,
+          label: clusterName,
         },
         { href: `/en/${page.slug.join("/")}`, label: page.title },
       ]
-    : mode === "hub"
+    : mode === "hub" && hubName
       ? [
           { href: "/en", label: "Home" },
-          { href: `/en/${segments[0]}`, label: hubPages[0].primary.hub },
+          { href: `/en/${segments[0]}`, label: hubName },
         ]
-      : mode === "cluster"
+      : mode === "cluster" && hubName && clusterName
         ? [
             { href: "/en", label: "Home" },
-            { href: `/en/${segments[0]}`, label: clusterPages[0].primary.hub },
+            { href: `/en/${segments[0]}`, label: hubName },
             {
               href: `/en/${segments.slice(0, 2).join("/")}`,
-              label: clusterPages[0].primary.cluster,
+              label: clusterName,
             },
           ]
         : [];
 
 const related = page ? relatedPages(page).slice(0, 4) : [];
+const hubClusterList = (() => {
+  const pageClusters = new Map<string, string>();
+  hubPages.forEach((p) => pageClusters.set(p.slug[1], p.primary.cluster));
+  if (taxHub?.clusters?.length) {
+    return taxHub.clusters.map((cluster) => {
+      const name = pageClusters.get(cluster.slug) ?? cluster.name;
+      const items = pages.filter(
+        (p) =>
+          p.locale === "en" && p.slug[0] === segments[0] && p.slug[1] === cluster.slug,
+      );
+      return { slug: cluster.slug, name, items };
+    });
+  }
+  return Array.from(pageClusters.entries()).map(([slug, name]) => ({
+    slug,
+    name,
+    items: pages.filter(
+      (p) => p.locale === "en" && p.slug[0] === segments[0] && p.slug[1] === slug,
+    ),
+  }));
+})();
 ---
 
 {mode === "page" ? (
@@ -116,7 +157,7 @@ const related = page ? relatedPages(page).slice(0, 4) : [];
         </div>
       </div>
       <div class="calc-box">
-        <CalculatorIsland page={page} />
+        <CalculatorIsland slug={page.slug[page.slug.length - 1]} />
       </div>
     </section>
 
@@ -173,13 +214,13 @@ const related = page ? relatedPages(page).slice(0, 4) : [];
   </Layout>
 ) : mode === "hub" ? (
   <Layout
-    title={`${hubPages[0].primary.hub} calculators`}
-    description={`Explore ${hubPages[0].primary.hub} calculators organized by clusters.`}
+    title={`${hubLabel} calculators`}
+    description={`Explore ${hubLabel} calculators organized by clusters.`}
   >
     <Fragment slot="head">
       <SeoHead
-        title={`${hubPages[0].primary.hub} calculators`}
-        description={`Explore ${hubPages[0].primary.hub} calculators organized by clusters.`}
+        title={`${hubLabel} calculators`}
+        description={`Explore ${hubLabel} calculators organized by clusters.`}
         slug={[segments[0]]}
       />
     </Fragment>
@@ -187,7 +228,7 @@ const related = page ? relatedPages(page).slice(0, 4) : [];
     <section class="panel">
       <div class="panel-head">
         <div>
-          <h1>{hubPages[0].primary.hub}</h1>
+          <h1>{hubLabel}</h1>
           <p class="lede">
             Hub-level view with clusters, quick filters, and educational context to build topical authority.
           </p>
@@ -202,39 +243,38 @@ const related = page ? relatedPages(page).slice(0, 4) : [];
         <strong>Why this matters:</strong> Hubs act as semantic pillars. Add short educational blurbs and curated deep links to increase crawl depth and user understanding.
       </div>
       <div class="grid cards" id="cluster-grid">
-        {Array.from(
-          new Map(
-            hubPages.map((p) => [p.slug[1], p.primary.cluster]),
-          ).entries(),
-        ).map(([clusterSlug, clusterName]) => {
-          const count = hubPages.filter((p) => p.slug[1] === clusterSlug).length;
-          const met = metricForPath(`/en/${segments[0]}/${clusterSlug}`);
-          return (
-            <a
-              class="card"
-              href={`/en/${segments[0]}/${clusterSlug}`}
-              data-name={`${clusterName.toLowerCase()}`}
-              data-popular={met.isPopular}
-              data-impact={met.isHighImpact}
-            >
-              <div class="title">{clusterName}</div>
-              <div class="meta">{count} tools · {met.views} views</div>
-              <p class="muted">Faceted nav ready — add filters (personal/business, timeframe, complexity) per hub.</p>
-            </a>
-          );
-        })}
+        {hubClusterList.length > 0 ? (
+          hubClusterList.map(({ slug: clusterSlug, name: clusterLabel, items }) => {
+            const met = metricForPath(`/en/${segments[0]}/${clusterSlug}`);
+            return (
+              <a
+                class="card"
+                href={`/en/${segments[0]}/${clusterSlug}`}
+                data-name={`${clusterLabel.toLowerCase()}`}
+                data-popular={met.isPopular}
+                data-impact={met.isHighImpact}
+              >
+                <div class="title">{clusterLabel}</div>
+                <div class="meta">{items.length} tools · {met.views} views</div>
+                <p class="muted">Faceted nav ready — add filters (personal/business, timeframe, complexity) per hub.</p>
+              </a>
+            );
+          })
+        ) : (
+          <p class="muted">No clusters published for this hub yet.</p>
+        )}
       </div>
     </section>
   </Layout>
 ) : mode === "cluster" ? (
   <Layout
-    title={`${clusterPages[0].primary.cluster} calculators`}
-    description={`All calculators in ${clusterPages[0].primary.cluster} within ${clusterPages[0].primary.hub}.`}
+    title={`${clusterLabel} calculators`}
+    description={`All calculators in ${clusterLabel} within ${hubLabel}.`}
   >
     <Fragment slot="head">
       <SeoHead
-        title={`${clusterPages[0].primary.cluster} calculators`}
-        description={`All calculators in ${clusterPages[0].primary.cluster} within ${clusterPages[0].primary.hub}.`}
+        title={`${clusterLabel} calculators`}
+        description={`All calculators in ${clusterLabel} within ${hubLabel}.`}
         slug={segments}
       />
     </Fragment>
@@ -242,7 +282,7 @@ const related = page ? relatedPages(page).slice(0, 4) : [];
     <section class="panel">
       <div class="panel-head">
         <div>
-          <h1>{clusterPages[0].primary.cluster}</h1>
+          <h1>{clusterLabel}</h1>
           <p class="lede">
             Cluster-level view to surface related tools, add mini-guides, and drive crawl depth.
           </p>
@@ -260,26 +300,30 @@ const related = page ? relatedPages(page).slice(0, 4) : [];
         <strong>Guidance:</strong> add concise educational text and related links (FAQ/HowTo) to boost topical authority.
       </div>
       <div class="grid cards" id="tool-grid">
-        {clusterPages.map((p) => (
-          (() => {
-            const met = metricForPath(`/en/${p.slug.join("/")}`);
-            return (
-              <a
-                class="card"
-                href={`/en/${p.slug.join("/")}`}
-                data-name={`${p.title.toLowerCase()} ${p.description.toLowerCase()}`}
-                data-popular={met.isPopular}
-                data-impact={met.isHighImpact}
-              >
-                <div class="title">{p.title}</div>
-                <div class="meta">
-                  {p.primary.hub} · {p.primary.cluster} · {met.views} views
-                </div>
-                <p>{p.description}</p>
-              </a>
-            );
-          })()
-        ))}
+        {clusterPages.length > 0 ? (
+          clusterPages.map((p) => (
+            (() => {
+              const met = metricForPath(`/en/${p.slug.join("/")}`);
+              return (
+                <a
+                  class="card"
+                  href={`/en/${p.slug.join("/")}`}
+                  data-name={`${p.title.toLowerCase()} ${p.description.toLowerCase()}`}
+                  data-popular={met.isPopular}
+                  data-impact={met.isHighImpact}
+                >
+                  <div class="title">{p.title}</div>
+                  <div class="meta">
+                    {p.primary.hub} · {p.primary.cluster} · {met.views} views
+                  </div>
+                  <p>{p.description}</p>
+                </a>
+              );
+            })()
+          ))
+        ) : (
+          <p class="muted">No calculators published in this cluster yet.</p>
+        )}
       </div>
     </section>
   </Layout>
