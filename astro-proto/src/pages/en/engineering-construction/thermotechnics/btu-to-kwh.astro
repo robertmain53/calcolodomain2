@@ -2,6 +2,19 @@
 import Layout from "../../../../components/Layout.astro";
 import SeoHead from "../../../../components/SeoHead.astro";
 import CalculatorIsland from "../../../../components/CalculatorIsland.astro";
+import Breadcrumbs from "../../../../components/Breadcrumbs.astro";
+import StructuredData from "../../../../components/StructuredData.astro";
+import RelatedList from "../../../../components/RelatedList.astro";
+import { findPage, relatedPages } from "../../../../data/pages";
+
+const page = findPage("en", ["engineering-construction", "thermotechnics", "btu-to-kwh"]);
+const related = page ? relatedPages(page).slice(0, 4) : [];
+const crumbs = [
+  { href: "/en", label: "Home" },
+  { href: "/en/engineering-construction", label: "Engineering & Construction" },
+  { href: "/en/engineering-construction/thermotechnics", label: "Thermotechnics" },
+  { href: "/en/engineering-construction/thermotechnics/btu-to-kwh", label: "BTU to kWh Converter" },
+];
 ---
 <Layout
   title="BTU to kWh Converter"
@@ -13,11 +26,41 @@ import CalculatorIsland from "../../../../components/CalculatorIsland.astro";
       description="Convert BTU ↔ kWh with clear energy vs power context, HVAC/electrical examples, and pro outputs."
       slug={["engineering-construction", "thermotechnics", "btu-to-kwh"]}
     />
+    {page && <StructuredData page={page} breadcrumbs={crumbs} />}
+    <script type="application/ld+json" is:inline>
+      {JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        name: "BTU to kWh Converter",
+        applicationCategory: "EngineeringApplication",
+        operatingSystem: "Web",
+        offers: { "@type": "Offer", price: 0, priceCurrency: "USD" },
+        creator: { "@type": "Organization", name: "CalcDomain" },
+        dateCreated: "2025-01-01",
+        dateModified: "2025-01-01",
+      })}
+    </script>
+    <script type="application/ld+json" is:inline>
+      {JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: [
+          { "@type": "Question", name: "BTU or BTU/h?", acceptedAnswer: { "@type": "Answer", text: "BTU is energy; BTU/h is power. Use BTU/h or kW when sizing equipment." } },
+          { "@type": "Question", name: "Where does 3412 come from?", acceptedAnswer: { "@type": "Answer", text: "It links joules to watt-hours and BTU via the mechanical equivalent of heat." } },
+          { "@type": "Question", name: "How to compare efficiencies?", acceptedAnswer: { "@type": "Answer", text: "Normalize to the same energy unit (kWh or BTU) and apply SEER (BTU/Wh) or COP (kW out / kW in)." } },
+        ],
+      })}
+    </script>
   </Fragment>
+
+  <Breadcrumbs items={crumbs} />
 
   <section class="hero">
     <div>
-      <p class="kicker">Engineering & Construction · Termotecnica & HVAC</p>
+      <p class="kicker">
+        <a href="/en/engineering-construction">Engineering & Construction</a> ·
+        <a href="/en/engineering-construction/thermotechnics">Thermotechnics</a>
+      </p>
       <h1>BTU to kWh Converter</h1>
       <p class="lede">
         Convert BTU ↔ kWh with sig figs, Joules/Wh outputs, and an explicit reminder about energy vs power
@@ -30,8 +73,41 @@ import CalculatorIsland from "../../../../components/CalculatorIsland.astro";
       </div>
     </div>
     <div class="calc-box">
-      <CalculatorIsland slug="btu-to-kwh" />
-      <p class="muted">Quick mode for fast conversions; switch to Pro to see Joules, Wh, and BTU context.</p>
+      <div class="mode-toggle">
+        <button type="button" class="chip active" data-mode="quick">Quick</button>
+        <button type="button" class="chip" data-mode="pro">Pro</button>
+      </div>
+      <form class="stack linear" id="btu-form">
+        <label>
+          <span class="lbl">Value <span class="tip" title="Energy value to convert">?</span></span>
+          <input type="number" inputmode="decimal" name="value" value="12000" />
+        </label>
+        <label>
+          <span class="lbl">Direction <span class="tip" title="Switch BTU → kWh or kWh → BTU">?</span></span>
+          <select name="dir">
+            <option value="btu-kwh">BTU → kWh</option>
+            <option value="kwh-btu">kWh → BTU</option>
+          </select>
+        </label>
+        <label>
+          <span class="lbl">Significant figures</span>
+          <select name="sig">
+            <option>3</option>
+            <option selected>4</option>
+            <option>5</option>
+            <option>6</option>
+          </select>
+        </label>
+        <div class="result">
+          <div class="big" data-field="main">0</div>
+          <div class="sub" data-field="secondary">–</div>
+        </div>
+        <div class="pro-panel" data-pro-panel>
+          <div class="pro-head">Pro outputs</div>
+          <ul data-pro-list></ul>
+        </div>
+      </form>
+      <p class="muted">Quick mode for fast conversions; Pro surfaces Joules, Wh, BTU echo, and reminders on power vs energy.</p>
     </div>
   </section>
 
@@ -100,6 +176,8 @@ import CalculatorIsland from "../../../../components/CalculatorIsland.astro";
       </details>
     </div>
   </section>
+
+  {related.length > 0 && <RelatedList items={related} />}
 </Layout>
 
 <style>
@@ -152,9 +230,78 @@ import CalculatorIsland from "../../../../components/CalculatorIsland.astro";
     padding: 0.75rem;
     background: rgba(255,255,255,0.03);
   }
+  .mode-toggle {
+    display: inline-flex;
+    gap: 0.4rem;
+    margin-bottom: 0.6rem;
+  }
+  .chip {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.4rem 0.75rem;
+    background: rgba(255,255,255,0.03);
+    color: #e2e8f0;
+    cursor: pointer;
+  }
+  .chip.active {
+    background: rgba(56,189,248,0.16);
+    border-color: rgba(56,189,248,0.45);
+    color: #e0f2fe;
+  }
   .calc-box .muted {
     color: #94a3b8;
     margin-top: 0.4rem;
+  }
+  .stack {
+    display: grid;
+    gap: 0.7rem;
+  }
+  label {
+    display: grid;
+    gap: 0.25rem;
+    color: #e2e8f0;
+    font-weight: 600;
+  }
+  input, select {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.65rem 0.7rem;
+    color: #fff;
+    font-size: 1rem;
+  }
+  .result {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.8rem 0.9rem;
+    background: rgba(255,255,255,0.03);
+    display: grid;
+    gap: 0.35rem;
+  }
+  .big { font-size: 1.4rem; font-weight: 700; color: #fff; }
+  .sub { color: #94a3b8; }
+  .pro-panel {
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    padding: 0.6rem 0.7rem;
+    background: rgba(255,255,255,0.02);
+    display: none;
+  }
+  .pro-panel.active { display: block; }
+  .pro-head { font-weight: 700; color: #e2e8f0; margin-bottom: 0.35rem; }
+  [data-pro-list] { margin: 0; padding-left: 1.1rem; color: #cbd5e1; display: grid; gap: 0.25rem; }
+  .tip {
+    display: inline-flex;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: #e2e8f0;
+    background: rgba(255,255,255,0.04);
+    cursor: help;
   }
   .grid.two {
     display: grid;
@@ -196,3 +343,70 @@ import CalculatorIsland from "../../../../components/CalculatorIsland.astro";
     font-weight: 600;
   }
 </style>
+
+<script is:inline>
+  const form = document.querySelector("#btu-form");
+  const modeButtons = document.querySelectorAll("[data-mode]");
+  const main = form?.querySelector("[data-field='main']");
+  const secondary = form?.querySelector("[data-field='secondary']");
+  const proPanel = form?.querySelector("[data-pro-panel]");
+  const proList = form?.querySelector("[data-pro-list]");
+  let mode = "quick";
+  modeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      mode = btn.dataset.mode || "quick";
+      modeButtons.forEach((b) => b.classList.toggle("active", b === btn));
+      if (proPanel) proPanel.classList.toggle("active", mode === "pro");
+    });
+  });
+  const factor = 0.00029307107;
+  const recalc = () => {
+    if (!form) return;
+    const val = Number(form.value.value) || 0;
+    const dir = form.dir.value;
+    const sig = Number(form.sig.value) || 4;
+    let out = 0;
+    if (dir === "btu-kwh") {
+      out = val * factor;
+      main.textContent = `${val.toLocaleString()} BTU → ${Number(out.toPrecision(sig)).toLocaleString()} kWh`;
+      secondary.textContent = `BTU/h hint: divide BTU/h by 3412 to get kW (power, not energy).`;
+      if (mode === "pro" && proList) {
+        proList.innerHTML = "";
+        const items = [
+          { label: "Joules", value: (out * 3.6e6).toLocaleString(undefined, { maximumFractionDigits: 2 }) },
+          { label: "Watt-hours", value: (out * 1000).toLocaleString(undefined, { maximumFractionDigits: 2 }) },
+          { label: "BTU (echo)", value: val.toLocaleString() },
+        ];
+        items.forEach((i) => {
+          const li = document.createElement("li");
+          li.textContent = `${i.label}: ${i.value}`;
+          proList.appendChild(li);
+        });
+      }
+    } else {
+      out = val / factor;
+      main.textContent = `${val.toLocaleString()} kWh → ${Number(out.toPrecision(sig)).toLocaleString()} BTU`;
+      secondary.textContent = `Power context: ${val.toLocaleString()} kWh over 1h = ${(val).toFixed(3)} kW (if steady).`;
+      if (mode === "pro" && proList) {
+        proList.innerHTML = "";
+        const items = [
+          { label: "Joules", value: (val * 3.6e6).toLocaleString(undefined, { maximumFractionDigits: 2 }) },
+          { label: "Watt-hours", value: (val * 1000).toLocaleString(undefined, { maximumFractionDigits: 2 }) },
+          { label: "BTU (result)", value: Number(out.toPrecision(sig)).toLocaleString() },
+        ];
+        items.forEach((i) => {
+          const li = document.createElement("li");
+          li.textContent = `${i.label}: ${i.value}`;
+          proList.appendChild(li);
+        });
+      }
+    }
+  };
+  form?.value.addEventListener("input", recalc);
+  form?.dir.addEventListener("change", () => {
+    const label = form.querySelector('label span.lbl');
+    recalc();
+  });
+  form?.sig.addEventListener("change", recalc);
+  recalc();
+</script>
