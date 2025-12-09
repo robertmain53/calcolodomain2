@@ -233,15 +233,15 @@ export const pages: PageEntry[] = [
   },
   {
     locale: "en",
-    slug: ["engineering-construction", "thermotechnics", "btu-to-kwh"],
+    slug: ["engineering", "mechanics", "btu-to-kwh"],
     title: "BTU to kWh Converter",
     description:
       "Convert BTU <-> kWh with clear separation of energy vs power and HVAC-ready examples.",
     primary: {
-      hub: "Engineering & Construction",
-      cluster: "Termotecnica & HVAC",
+      hub: "Engineering",
+      cluster: "Mechanics",
     },
-    secondary: [{ hub: "Math & Science", cluster: "Conversione Unita" }],
+    secondary: [{ hub: "Science and mathematics", cluster: "Unit Conversion" }],
     template: "scientific",
     content: {
       intro:
@@ -384,11 +384,11 @@ export const pages: PageEntry[] = [
   },
   {
     locale: "en",
-    slug: ["health-sport", "everyday-cooking", "cups-to-tablespoons"],
+    slug: ["health-and-lifestyle", "everyday", "cups-to-tablespoons"],
     title: "Cups to Tablespoons Converter",
     description:
       "Convert cups <-> tablespoons with regional standards, mL output, and a dry vs liquid warning.",
-    primary: { hub: "Health & Sport", cluster: "Everyday & Cucina" },
+    primary: { hub: "Health and Lifestyle", cluster: "Everyday" },
     template: "visual",
     content: {
       intro:

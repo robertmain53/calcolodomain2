@@ -29,7 +29,7 @@ Legacy HTML: src/legacy/calculators/ (Use logic from here, but discard outdated 
 Project Requirements: Ottimizzazione Struttura Sito Calcolatori Online_pro.pdf , Ottimizzazione UX_UI per Siti di Calcolatori.pdf
 Briefs: scripts/generate-zip/output/<slug>/*.txt (Contains specific math logic and requirements).
 
-Sample calculator (can be used to 'copy' common parts and keep style and layout uniform):  /home/uc/Projects/calcdomain2/astro-proto/src/pages/en/engineering-construction/thermotechnics/btu-to-kwh.astro
+Sample calculator (can be used to 'copy' common parts and keep style and layout uniform):  /home/uc/Projects/calcdomain2/astro-proto/src/pages/en/engineering/mechanics/btu-to-kwh.astro
 
 Research Standards:
 
