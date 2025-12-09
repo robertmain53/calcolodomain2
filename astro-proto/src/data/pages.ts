@@ -424,6 +424,20 @@ export const pages: PageEntry[] = [
       ],
     },
   },
+{
+  slug: "lbs-to-kg",
+  url: "/en/science-and-mathematics/unit-conversion/lbs-to-kg",
+  title: "Pounds to Kilograms Converter",
+  hub: "Science and mathematics",
+  cluster: "Unit Conversion",
+  tier: "A",
+  keywords: ["lbs to kg", "pounds to kilograms converter", "lb to kg", "weight conversion"],
+  relatedTools: [
+    "/en/science-and-mathematics/unit-conversion/kg-to-lbs",
+    "/en/science-and-mathematics/unit-conversion/grams-to-ounces",
+    "/en/science-and-mathematics/unit-conversion/ounces-to-grams"
+  ]
+},
 ];
 
 export function findPage(

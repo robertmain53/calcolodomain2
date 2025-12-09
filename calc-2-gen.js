@@ -2,7 +2,6 @@
 // Run with: node index.js 4   -> start from data row #4 (1-based, excluding header)
 
 import "dotenv/config";
-import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
 import { parse } from "csv-parse/sync";
@@ -14,7 +13,6 @@ const client = new OpenAI({
 
 // ------------ CONFIG ------------
 const CSV_PATH = path.join(process.cwd(), "calc-2.csv");
-const OUTPUT_DIR = path.join(process.cwd(), "ai-output");
 const MODEL_NAME = "gpt-5.1";
 const DELAY_MS = 10 * 60 * 1000; // 10 minutes between rows
 // --------------------------------
@@ -151,13 +149,6 @@ async function loadCsvRecords() {
   return records;
 }
 
-// Ensure output directory exists
-async function ensureOutputDir() {
-  if (!fs.existsSync(OUTPUT_DIR)) {
-    await fsp.mkdir(OUTPUT_DIR, { recursive: true });
-  }
-}
-
 // Build the full prompt for this specific row
 function buildPromptForRow(row, rowIndex) {
   const rowJson = JSON.stringify(row, null, 2);
@@ -196,28 +187,41 @@ async function callModelForRow(row, rowIndex) {
   return content.trim();
 }
 
-// Save the result to a file
-async function saveResult(row, rowIndex, content) {
-  await ensureOutputDir();
+async function writeGeneratedFiles(output) {
+  const fileMatch = output.match(/2\) File Content: `([^`]+)`\s*```[^\n]*\n([\s\S]*?)```/m);
+  if (fileMatch) {
+    const relativePath = fileMatch[1];
+    const fileContent = fileMatch[2].trimEnd();
+    const targetPath = path.join(process.cwd(), "astro-proto", relativePath);
+    await fsp.mkdir(path.dirname(targetPath), { recursive: true });
+    await fsp.writeFile(targetPath, fileContent.trim() + "\n", "utf8");
+    console.log(`✏️ Wrote generated file: ${targetPath}`);
+  } else {
+    console.warn("⚠️ No file content section found in the model output.");
+  }
 
-  // Optional: use slug column if it exists, otherwise fallback to row index
-  const slugSafe = (
-    row.slug ||
-    row.Slug ||
-    row.slug_en ||
-    `row-${rowIndex + 1}`
-  )
-    .toString()
-    .replace(/[^a-zA-Z0-9-_]+/g, "-")
-    .toLowerCase();
-
-  const filename = `row-${rowIndex + 1}-${slugSafe}.txt`;
-  const filePath = path.join(OUTPUT_DIR, filename);
-
-  const header = `=== calc-2.csv row ${rowIndex + 1} (${slugSafe}) ===\n\n`;
-  await fsp.writeFile(filePath, header + content, "utf8");
-
-  console.log(`✅ Saved output for row ${rowIndex + 1} to ${filePath}`);
+  const configMatch = output.match(/3\) Config Update:[\s\S]*?```[a-zA-Z]*\n([\s\S]*?)```/m);
+  if (configMatch) {
+    const snippet = configMatch[1].trim();
+    if (snippet) {
+      const pagesPath = path.join(process.cwd(), "astro-proto", "src", "data", "pages.ts");
+      let pagesCode = await fsp.readFile(pagesPath, "utf8");
+      if (!pagesCode.includes(snippet)) {
+        const insertPos = pagesCode.lastIndexOf("];");
+        if (insertPos === -1) {
+          console.warn("⚠️ Unable to find closing ]; in pages.ts to append config snippet.");
+        } else {
+          const before = pagesCode.slice(0, insertPos).trimEnd();
+          const after = pagesCode.slice(insertPos);
+          const updated = `${before}\n${snippet}\n${after}`;
+          await fsp.writeFile(pagesPath, updated, "utf8");
+          console.log("✏️ Appended config snippet to src/data/pages.ts");
+        }
+      } else {
+        console.log("ℹ️ Config snippet already exists in pages.ts; skipping.");
+      }
+    }
+  }
 }
 
 // Main runner: process rows sequentially with 10-minute gaps
@@ -266,7 +270,7 @@ async function main() {
 
     try {
       const content = await callModelForRow(row, i);
-      await saveResult(row, i, content);
+      await writeGeneratedFiles(content);
     } catch (err) {
       console.error(`❌ Error processing row ${i + 1}:`, err);
     }
