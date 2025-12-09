@@ -84,6 +84,10 @@ Imports: always reference components via the existing \`src/components\` directo
 
 Layout: Use Layout.astro. Ensure the "Right Rail" (Sidebar) is preserved for high-CPM ad slots () on Desktop.
 
+Frontmatter: The page frontmatter is critical for dynamic taxonomy. It MUST include:
+- \`hub\`: The hub slug from the CSV row.
+- \`cluster\`: The cluster slug from the CSV row.
+
 Hero Section: High-contrast H1, 1-sentence value prop ("Calculate X in seconds..."), and specific Trust Signals (e.g., "Updated for 2025 Tax Rules").
 
 The Tool (CalculatorIsland):
@@ -188,7 +192,9 @@ async function callModelForRow(row, rowIndex) {
 }
 
 async function writeGeneratedFiles(output) {
-  const fileMatch = output.match(/2\) File Content: `([^`]+)`\s*```[^\n]*\n([\s\S]*?)```/m);
+  const fileMatch = output.match(
+    /2\) File Content: `([^`]+)`\s*```[^\n]*\n([\s\S]*?)```/m
+  );
   if (fileMatch) {
     const relativePath = fileMatch[1];
     const fileContent = fileMatch[2].trimEnd();
@@ -200,16 +206,26 @@ async function writeGeneratedFiles(output) {
     console.warn("⚠️ No file content section found in the model output.");
   }
 
-  const configMatch = output.match(/3\) Config Update:[\s\S]*?```[a-zA-Z]*\n([\s\S]*?)```/m);
+  const configMatch = output.match(
+    /3\) Config Update:[\s\S]*?```[a-zA-Z]*\n([\s\S]*?)```/m
+  );
   if (configMatch) {
     const snippet = configMatch[1].trim();
     if (snippet) {
-      const pagesPath = path.join(process.cwd(), "astro-proto", "src", "data", "pages.ts");
+      const pagesPath = path.join(
+        process.cwd(),
+        "astro-proto",
+        "src",
+        "data",
+        "pages.ts"
+      );
       let pagesCode = await fsp.readFile(pagesPath, "utf8");
       if (!pagesCode.includes(snippet)) {
         const insertPos = pagesCode.lastIndexOf("];");
         if (insertPos === -1) {
-          console.warn("⚠️ Unable to find closing ]; in pages.ts to append config snippet.");
+          console.warn(
+            "⚠️ Unable to find closing ]; in pages.ts to append config snippet."
+          );
         } else {
           const before = pagesCode.slice(0, insertPos).trimEnd();
           const after = pagesCode.slice(insertPos);

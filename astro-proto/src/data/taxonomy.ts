@@ -2,6 +2,11 @@ export interface Cluster {
   slug: string;
   name: string;
   description?: string;
+  // We'll add a 'tools' property to hold the calculators for this cluster
+  tools?: {
+    url: string;
+    title: string;
+  }[];
 }
 
 export interface Hub {
@@ -11,60 +16,97 @@ export interface Hub {
   clusters: Cluster[];
 }
 
-export const taxonomy: Hub[] = [
+const hubDefinitions: Omit<Hub, "clusters">[] = [
   {
     slug: "science-and-mathematics",
     name: "Science and mathematics",
     description:
       "Mathematics, physics, and unit conversion tools built for accuracy, proofs, and quick reference.",
-    clusters: [
-      { slug: "mathematics", name: "Mathematics" },
-      { slug: "physics", name: "Physics" },
-      { slug: "unit-conversion", name: "Unit Conversion" },
-    ],
   },
   {
     slug: "health-and-lifestyle",
     name: "Health and Lifestyle",
     description:
       "Everyday wellness, nutrition, and sports calculators tuned for daily routines and aspirational living.",
-    clusters: [
-      { slug: "everyday", name: "Everyday" },
-      { slug: "health", name: "Health" },
-      { slug: "sports", name: "Sports" },
-    ],
   },
   {
     slug: "financial",
     name: "Financial",
     description:
       "Business, investments, mortgages, planning, and tax tools that respect compliance and modern finance workflows.",
-    clusters: [
-      { slug: "business", name: "Business" },
-      { slug: "investments", name: "Investments" },
-      { slug: "mortgages-and-loans", name: "Mortgages and Loans" },
-      { slug: "planning", name: "Planning" },
-      { slug: "taxes-and-duties", name: "Taxes and Duties" },
-    ],
   },
   {
     slug: "engineering",
     name: "Engineering",
     description:
       "Chemistry, civil & structural, electric, and mechanics calculators shaped for field pros and design teams.",
-    clusters: [
-      { slug: "chemistry", name: "Chemistry" },
-      { slug: "civil-structural", name: "Civil & Structural" },
-      { slug: "electric", name: "Electric" },
-      { slug: "mechanics", name: "Mechanics" },
-    ],
   },
 ];
 
-export function findHub(slug: string): Hub | undefined {
+let _taxonomy: Hub[];
+
+export async function getTaxonomy(): Promise<Hub[]> {
+  if (_taxonomy) {
+    return _taxonomy;
+  }
+
+  const calculatorPages = await import.meta.glob<{
+    frontmatter: { hub: string; cluster: string; title: string };
+    url: string;
+  }>("/src/pages/calculators/**/*.astro");
+
+  const hubs: Record<string, Hub> = {};
+
+  for (const hubDef of hubDefinitions) {
+    hubs[hubDef.slug] = { ...hubDef, clusters: [] };
+  }
+
+  for (const path in calculatorPages) {
+    const page = await calculatorPages[path]();
+    const { hub: hubSlug, cluster: clusterSlug, title } = page.frontmatter;
+
+    if (!hubSlug || !clusterSlug || !hubs[hubSlug]) continue;
+
+    const hub = hubs[hubSlug];
+    let cluster = hub.clusters.find((c) => c.slug === clusterSlug);
+
+    if (!cluster) {
+      // Create a capitalized name from the slug for the cluster name
+      const name = clusterSlug
+        .replace(/-/g, " ")
+        .replace(/\b\w/g, (l) => l.toUpperCase());
+      cluster = { slug: clusterSlug, name, tools: [] };
+      hub.clusters.push(cluster);
+    }
+
+    cluster.tools = cluster.tools || [];
+    cluster.tools.push({ url: page.url, title });
+  }
+
+  _taxonomy = Object.values(hubs).filter((hub) => hub.clusters.length > 0);
+  _taxonomy.forEach((hub) =>
+    hub.clusters.sort((a, b) => a.name.localeCompare(b.name))
+  );
+
+  return _taxonomy;
+}
+
+export async function findHub(slug: string): Promise<Hub | undefined> {
+  const taxonomy = await getTaxonomy();
   return taxonomy.find((h) => h.slug === slug);
 }
 
-export function findCluster(hubSlug: string, clusterSlug: string): Cluster | undefined {
+export async function findCluster(
+  hubSlug: string,
+  clusterSlug: string
+): Promise<Cluster | undefined> {
+  const hub = await findHub(hubSlug);
+  return hub?.clusters.find((c) => c.slug === clusterSlug);
+}
+
+export function findCluster(
+  hubSlug: string,
+  clusterSlug: string
+): Cluster | undefined {
   return findHub(hubSlug)?.clusters.find((c) => c.slug === clusterSlug);
 }

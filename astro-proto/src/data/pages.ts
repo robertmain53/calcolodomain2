@@ -438,6 +438,18 @@ export const pages: PageEntry[] = [
     "/en/science-and-mathematics/unit-conversion/ounces-to-grams"
   ]
 },
+{
+  path: "/en/science-and-mathematics/unit-conversion/mm-to-inches",
+  hub: "science-and-mathematics",
+  cluster: "unit-conversion",
+  slug: "mm-to-inches",
+  title: "Millimeters to Inches Converter",
+  tier: "A",
+  relatedTools: [
+    // same-cluster unit conversion tools can be added here, e.g.:
+    // "/en/science-and-mathematics/unit-conversion/inches-to-mm"
+  ]
+},
 ];
 
 export function findPage(
