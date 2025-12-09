@@ -19,6 +19,7 @@ const DELAY_MS = 10 * 60 * 1000; // 10 minutes between rows
 
 // FIXED: I have added backslashes (\) before every backtick (`) inside this string
 // so the code doesn't think the string has ended early.
+
 const BASE_PROMPT = `Role You are a Senior Principal Frontend Engineer and UX Architect specializing in high-performance "Tier A" web tools. Your goal is to migrate legacy calculators into a modern Astro architecture, ensuring the result is better than competitors like Omni Calculator or Calculator.net in terms of UX, SEO, and Performance.
 
 Context & Inputs Project Root: astro-proto/
@@ -35,7 +36,7 @@ IA/SEO: Use Silo URL structure (/hub/cluster/tool).
 
 UX Pattern: Use "Cockpit" layout for complex tools (dense data) and "Wizard" for simple sequential ones.
 
-Mobile: "Inputmode=decimal" is mandatory. Sticky result bars are mandatory for long forms.
+Mobile: "inputmode=\\"decimal\\"" is mandatory. Sticky result bars are mandatory for long forms.
 
 Components: src/components/CalculatorIsland.astro (The interactive React/Preact island).
 
@@ -72,7 +73,7 @@ Add a "Reset" button to clear all inputs.
 
 add a "Share" button to copy URL with current inputs as query params.
 
-json-LD: usE FAqPage, webApplication schema and breadcrumbList.
+json-LD: use FAQPage, WebApplication schema and BreadcrumbList.
 
 Create rich SEO content around the calculator topic (theory, FAQs, use cases). You have all competitors content in the Project Requirements PDF and you already start from a good content from the legacy file.
 
@@ -80,9 +81,9 @@ Implementation: The Astro Page (code-ready details)
 
 Create src/pages/en/[hub]/[cluster]/[slug].astro. Strict Requirements:
 
-Imports: always reference components via the existing \`src/components\` directory (e.g., \`import Layout from "../../../components/Layout.astro";\`). Never try to go up to \`layouts/\` or other directories that do not exist in this repo.
+Imports: always reference components via the existing \`src/components\` directory (e.g., \`import Layout from "../../../../components/Layout.astro";\`, \`import CalculatorIsland from "../../../../components/CalculatorIsland.astro";\`). Never try to go up to \`layouts/\` or other directories that do not exist in this repo.
 
-Layout: Use Layout.astro. Ensure the "Right Rail" (Sidebar) is preserved for high-CPM ad slots () on Desktop.
+Layout: Use Layout.astro. Ensure the "Right Rail" (Sidebar) is preserved for high-CPM ad slots on Desktop.
 
 Frontmatter: The page frontmatter is critical for dynamic taxonomy. It MUST include:
 - \`hub\`: The hub slug from the CSV row.
@@ -94,30 +95,116 @@ The Tool (CalculatorIsland):
 
 Pass strict props.
 
-Inputs: Use floating labels or top-aligned labels for scanning speed.
+ASTRO SAFETY RULES (MUST FOLLOW ALL):
 
-Units: Use native for unit switching next to inputs. Visuals: If the tool involves geometry or finance (amortization), generate a responsive SVG or Chart component. Do not output a static image. 
-Hydration: CalculatorIsland is an Astro component—do NOT add hydration directives (\`client:load\`, etc.) to it. If you need client-side behavior, wrap it in a proper framework component instead of misusing Astro hydration markers.
+- NEVER inline object or array literals directly inside JSX/HTML attributes. This is forbidden:
+  - ❌ \`<CalculatorIsland inputConfig={{ ... }} />\`
+  - ❌ \`<Component items={[{ label: "A", value: 1 }]} />\`
+
+- ALWAYS define any configuration, arrays, or complex data as top-level \`const\` in the Astro frontmatter, and then pass them by reference:
+  - ✅ frontmatter: \`const inputConfig = { /* flat object, no functions */ };\`
+  - ✅ JSX: \`<CalculatorIsland inputConfig={inputConfig} />\`
+
+- Keep config objects **flat and small**:
+  - Use at most ONE level of nesting (e.g., properties whose values are primitives or simple objects).
+  - Do NOT embed functions, arrow functions, or deeply nested objects/arrays inside the .astro file.
+  - Prefer multiple simple consts instead of one huge deeply-nested object.
+
+- Do NOT output template literals or backticks inside the Astro page (avoid \`\\\`...\` syntax inside the .astro code).
+- Do NOT use string interpolation patterns like \`\${...}\` inside the .astro file content.
+
+- Escape literal \`{\`/\`}\` characters inside any inline math, CSS, or code snippets using HTML entities (&#123;, &#125;) or by wrapping them in string literals so the generated Astro file never introduces stray braces outside JSX expressions.
+
+- When you mention math or CSS code (including LaTeX) always treat it as text content rather than executable code fragments. For example:
+  - Use \`<pre class="math-block">$$ x = ... $$</pre>\`
+  - Do NOT try to put LaTeX inside JSX expressions or template literals.
+
+- Inside the Astro markup, only use JSX expressions where strictly needed:
+  - Simple \`{title}\`, \`{description}\`, \`{faqs.map(...)}\` etc.
+  - Avoid complex inline logic; if you need logic, define helper data (arrays/objects) as top-level consts and then use simple maps.
+
+- The only interactive component must be \`CalculatorIsland\`. Do NOT add any extra framework components or Astro hydration directives (\`client:*\`).
+
+- Per inserire JSON-LD o altri script nel <head>, NON usare un tag <head> nella pagina.
+- Invece, usa sempre lo slot del Layout:
+
+  ✅ Esempio corretto:
+  <Layout ...>
+    <Fragment slot="head">
+      <script type="application/ld+json">
+        {JSON.stringify(webAppSchema)}
+      </script>
+      <script type="application/ld+json">
+        {JSON.stringify(faqSchema)}
+      </script>
+      <script type="application/ld+json">
+        {JSON.stringify(breadcrumbSchema)}
+      </script>
+    </Fragment>
+
+    <main>...</main>
+  </Layout>
+
+  ❌ NON usare:
+  <Layout ...>
+    <head> ... </head>
+    ...
+  </Layout>
+
+CalculatorIsland props:
+
+- Pass only:
+  - Primitive props (strings, numbers, booleans).
+  - References to top-level const objects/arrays defined in frontmatter (e.g., \`fields={fieldsConfig}\`).
+- Never construct nested object literals inside the JSX.
+
+CalculatorIsland props (MUST copy the sample exactly):
+
+- Usa SEMPRE la stessa firma del sample btu-to-kwh.astro.
+- I props ammessi sono solo questi (adatta i valori, NON i nomi):
+
+  <CalculatorIsland
+    id={slug}
+    title={pageTitle}
+    hub={hub}
+    cluster={cluster}
+    slug={slug}
+    mode="unit-conversion"        // o altro mode se indicato dal CSV/brief
+    primaryUnitFrom="millimeter"  // o quelli corretti per il tool corrente
+    primaryUnitTo="inch"
+    inputConfig={inputConfig}     // oggetto definito nel frontmatter
+    behavior={behavior}           // oggetto definito nel frontmatter
+    formula={formula}             // oggetto definito nel frontmatter
+  />
+
+- NON inventare altri nomi di props come "inputFields", "resultFields" o "config" se non sono presenti nel sample.
+- "inputConfig", "behavior" e "formula" DEVONO essere const definiti nel frontmatter, e passati per riferimento nei props, mai oggetti inline.
+
 
 Content Richness (SEO):
-Theory: Write a section explaining the formula using LaTeX formatting (e.g., $$x =...$$). 
+
+Theory: Write a section explaining the formula using LaTeX formatting inside a \`<pre>\` or \`<code>\` block (e.g., \`<pre>$$ x = ... $$</pre>\`).
+
 FAQ: Generate 3 specific FAQs based on "People Also Ask" intent for this topic. 
 Use Cases: Add a "Real World Example" section.
 
 Implementation: Structured Data & Config
+
 Schema.org: Inject WebApplication JSON-LD. applicationCategory: Map correctly (e.g., FinanceApplication, HealthApplication). featureList: List key capabilities (e.g., "Amortization Schedule", "PDF Export").
 
 Generator constraints (apply to every response):
-- Always import \`Layout\`/\`CalculatorIsland\` relative to \`src/components\` (do not rely on /layouts/ or any other custom path). The island should be the only interactive block on the page.
+
+- Always import \`Layout\`/\`CalculatorIsland\` relative to \`src/components\`. The island should be the only interactive block on the page.
 - Do not include any Astro hydration directives (\`client:*\`) or inline component frameworks—keep every calculator statically rendered except the \`CalculatorIsland\` behavior.
-- Keep the actual calculator logic inside \`CalculatorIsland\` props; avoid defining huge config objects or inline data in the page that could trigger AST parsing issues.
+- Keep calculator configuration small, flat, and defined as top-level consts in frontmatter. Do NOT inline object or array literals inside JSX props.
 - Escape literal \`{\`/\`}\` characters inside any inline math, CSS, or code snippets using HTML entities (&#123;, &#125;) or by wrapping them in string literals so the generated Astro file never introduces stray braces outside JSX expressions.
-- When you mention math or CSS code (including LaTeX) always treat it as text content rather than executable code fragments. This keeps \`astro\` parseable and prevents build errors.
+- When you mention math or CSS code (including LaTeX) always treat it as plain text content wrapped in HTML; never as executable JS/TS.
 - Keep the assistant output focused: provide the \`.astro\` file contents and the required SEO/redirect/config snippets from these instructions without inventing extra unrelated commands or steps.
 
 Routing: Update src/data/pages.ts. Add specific tier: 'A'. defining relatedTools (cross-link to other tools in the same Cluster).
 
 Code Quality & Refinement
+
 Mobile First: Ensure the CalculatorIsland uses a Sticky Footer for results on mobile if the form height > 100vh.
 Error Handling: instead of "Error", show contextual help (e.g., "Interest rate cannot be negative").
 Clean Up: Remove all legacy JS dependencies. Use native TypeScript.
@@ -127,7 +214,7 @@ For this calculator (this single row only), output:
 
 1) Thinking Process: A brief summary of your UX choices (Cockpit vs Wizard, etc.).
 2) File Content: The full .astro file code in the src/pages/en/[hub]/[cluster]/[slug].astro
-  3) Config Update: The exact snippet to append to src/data/pages.ts.
+3) Config Update: The exact snippet to append to src/data/pages.ts.
 4) Redirect Rule: The JSON line for vercel.json.
 5) execute "git add ." and "git commit -m 'Migrate [slug] calculator'" commands.
 6) execute "git push origin main" command.

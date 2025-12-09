@@ -450,6 +450,22 @@ export const pages: PageEntry[] = [
     // "/en/science-and-mathematics/unit-conversion/inches-to-mm"
   ]
 },
+{
+  path: "/en/science-and-mathematics/unit-conversion/mm-to-inches",
+  hub: "science-and-mathematics",
+  cluster: "unit-conversion",
+  slug: "mm-to-inches",
+  title: "Millimeters to Inches Converter",
+  description:
+    "Convert millimeters to inches and inches to millimeters instantly with adjustable precision and fractional inch output.",
+  tier: "A",
+  keywords: ["mm to inches", "millimeters to inches", "inch converter"],
+  relatedTools: [
+    "/en/science-and-mathematics/unit-conversion/inches-to-mm",
+    "/en/science-and-mathematics/unit-conversion/cm-to-inches",
+    "/en/science-and-mathematics/unit-conversion/meters-to-feet"
+  ]
+}
 ];
 
 export function findPage(
