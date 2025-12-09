@@ -1,9 +1,6 @@
 // index.js
 // Run with: node index.js 4   -> start from data row #4 (1-based, excluding header)
 
-// Requirements:
-//   npm install openai csv-parse
-//   export OPENAI_API_KEY="your-key"
 import "dotenv/config";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
@@ -18,12 +15,13 @@ const client = new OpenAI({
 // ------------ CONFIG ------------
 const CSV_PATH = path.join(process.cwd(), "calc-2.csv");
 const OUTPUT_DIR = path.join(process.cwd(), "ai-output");
-const MODEL_NAME = "gpt-5.1"; // adjust if you want a different model
+const MODEL_NAME = "gpt-5.1";
 const DELAY_MS = 10 * 60 * 1000; // 10 minutes between rows
 // --------------------------------
 
-// Original + adapted prompt (per row). This is the "template" part.
-const BASE_PROMPT = String.raw`Role You are a Senior Principal Frontend Engineer and UX Architect specializing in high-performance "Tier A" web tools. Your goal is to migrate legacy calculators into a modern Astro architecture, ensuring the result is better than competitors like Omni Calculator or Calculator.net in terms of UX, SEO, and Performance.
+// FIXED: I have added backslashes (\) before every backtick (`) inside this string
+// so the code doesn't think the string has ended early.
+const BASE_PROMPT = `Role You are a Senior Principal Frontend Engineer and UX Architect specializing in high-performance "Tier A" web tools. Your goal is to migrate legacy calculators into a modern Astro architecture, ensuring the result is better than competitors like Omni Calculator or Calculator.net in terms of UX, SEO, and Performance.
 
 Context & Inputs Project Root: astro-proto/
 Domain name: calcdomain.com
@@ -52,7 +50,7 @@ Process the row using the following Atomic Workflow:
 Analysis & Strategy (Mental Sandbox)
 Before writing code, analyze the legacy tool, the Brief, the Project Requirements, the Sample Calculator:
 
-Determine Related calculators from same category (cluser)
+Determine Related calculators from same category (cluster)
 
 Determine Related calculators from other category (cross-cluster)
 
@@ -80,9 +78,11 @@ json-LD: usE FAqPage, webApplication schema and breadcrumbList.
 
 Create rich SEO content around the calculator topic (theory, FAQs, use cases). You have all competitors content in the Project Requirements PDF and you already start from a good content from the legacy file.
 
-Implementation: The Astro Page
+Implementation: The Astro Page (code-ready details)
 
 Create src/pages/en/[hub]/[cluster]/[slug].astro. Strict Requirements:
+
+Imports: always reference components via the existing \`src/components\` directory (e.g., \`import Layout from "../../../components/Layout.astro";\`). Never try to go up to \`layouts/\` or other directories that do not exist in this repo.
 
 Layout: Use Layout.astro. Ensure the "Right Rail" (Sidebar) is preserved for high-CPM ad slots () on Desktop.
 
@@ -95,6 +95,7 @@ Pass strict props.
 Inputs: Use floating labels or top-aligned labels for scanning speed.
 
 Units: Use native for unit switching next to inputs. Visuals: If the tool involves geometry or finance (amortization), generate a responsive SVG or Chart component. Do not output a static image. 
+Hydration: CalculatorIsland is an Astro component—do NOT add hydration directives (\`client:load\`, etc.) to it. If you need client-side behavior, wrap it in a proper framework component instead of misusing Astro hydration markers.
 
 Content Richness (SEO):
 Theory: Write a section explaining the formula using LaTeX formatting (e.g., $$x =...$$). 
@@ -103,6 +104,14 @@ Use Cases: Add a "Real World Example" section.
 
 Implementation: Structured Data & Config
 Schema.org: Inject WebApplication JSON-LD. applicationCategory: Map correctly (e.g., FinanceApplication, HealthApplication). featureList: List key capabilities (e.g., "Amortization Schedule", "PDF Export").
+
+Generator constraints (apply to every response):
+- Always import \`Layout\`/\`CalculatorIsland\` relative to \`src/components\` (do not rely on /layouts/ or any other custom path). The island should be the only interactive block on the page.
+- Do not include any Astro hydration directives (\`client:*\`) or inline component frameworks—keep every calculator statically rendered except the \`CalculatorIsland\` behavior.
+- Keep the actual calculator logic inside \`CalculatorIsland\` props; avoid defining huge config objects or inline data in the page that could trigger AST parsing issues.
+- Escape literal \`{\`/\`}\` characters inside any inline math, CSS, or code snippets using HTML entities (&#123;, &#125;) or by wrapping them in string literals so the generated Astro file never introduces stray braces outside JSX expressions.
+- When you mention math or CSS code (including LaTeX) always treat it as text content rather than executable code fragments. This keeps \`astro\` parseable and prevents build errors.
+- Keep the assistant output focused: provide the \`.astro\` file contents and the required SEO/redirect/config snippets from these instructions without inventing extra unrelated commands or steps.
 
 Routing: Update src/data/pages.ts. Add specific tier: 'A'. defining relatedTools (cross-link to other tools in the same Cluster).
 
@@ -116,7 +125,7 @@ For this calculator (this single row only), output:
 
 1) Thinking Process: A brief summary of your UX choices (Cockpit vs Wizard, etc.).
 2) File Content: The full .astro file code in the src/pages/en/[hub]/[cluster]/[slug].astro
-3) Config Update: The exact snippet to append to src/data/pages.ts.
+  3) Config Update: The exact snippet to append to src/data/pages.ts.
 4) Redirect Rule: The JSON line for vercel.json.
 5) execute "git add ." and "git commit -m 'Migrate [slug] calculator'" commands.
 6) execute "git push origin main" command.
