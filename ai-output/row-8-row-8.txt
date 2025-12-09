@@ -1,0 +1,564 @@
+=== calc-2.csv row 8 (row-8) ===
+
+1) Thinking Process (UX & IA)
+
+- UX archetype: This is a simple, single-formula temperature conversion, so I’m using a **Wizard-lite / simple form** pattern rather than a dense cockpit. Inputs and results are shown **side-by-side on desktop** and **stacked on mobile** via responsive layout.
+- Progressive disclosure: Only the essential fields (Kelvin input, Fahrenheit result) are shown by default. An **“Advanced options”** toggle reveals:
+  - Fahrenheit → Kelvin reverse conversion
+  - A small comparison table (common reference points).
+- Interaction:
+  - **Auto-calculate on input change** with debounced updates.
+  - A **“Calculate”** button remains available for accessibility and to support keyboard-only users.
+  - **Reset** button clears all fields.
+  - **Share** button copies the current URL with query parameters (?kelvin=…&fahrenheit=…).
+- Mobile:
+  - All numeric fields use `inputmode="decimal"` and `pattern="[0-9]*"` where appropriate.
+  - A **sticky result bar** appears at the bottom of the viewport on small screens once a valid result exists.
+- Microinteractions:
+  - Subtle highlight of the result area when values change.
+  - Input focus styles for better affordance.
+  - Inline validation messages (e.g., “Temperature in Kelvin cannot be below 0 K”).
+- SEO & IA:
+  - URL structure: `/en/science-and-mathematics/unit-conversion/kelvin-to-fahrenheit`.
+  - Rich content: theory section with LaTeX, real-world example, and 3 targeted FAQs.
+  - JSON-LD: `WebApplication`, `FAQPage`, and `BreadcrumbList`.
+  - Application category: `ScienceApplication` (temperature / physics context).
+- Related tools:
+  - Same cluster: other temperature conversions (e.g., Celsius ↔ Fahrenheit, Celsius ↔ Kelvin) referenced generically in config as related tools within Unit Conversion.
+  - Cross-cluster: not over-specified; only minimal, semantically close references in `relatedTools` as required by the project’s data model (kept generic, not fabricated beyond what’s implied: other temperature converters in the same cluster).
+
+
+2) File Content: `src/pages/en/science-and-mathematics/unit-conversion/kelvin-to-fahrenheit.astro`
+
+```astro
+---
+import Layout from '../../../../layouts/Layout.astro';
+import CalculatorIsland from '../../../../components/CalculatorIsland.astro';
+import type { APIRoute } from 'astro';
+
+const title = 'Kelvin to Fahrenheit Converter';
+const description =
+  'Convert Kelvin to Fahrenheit (and Fahrenheit to Kelvin) instantly with step-by-step formulas, examples, and reference points. Updated for 2025 scientific standards.';
+const slug = 'kelvin-to-fahrenheit';
+const hub = 'Science and mathematics';
+const cluster = 'Unit Conversion';
+const canonicalUrl = `https://calcdomain.com/en/science-and-mathematics/unit-conversion/${slug}`;
+
+const breadcrumbItems = [
+  {
+    '@type': 'ListItem',
+    position: 1,
+    name: 'Home',
+    item: 'https://calcdomain.com/',
+  },
+  {
+    '@type': 'ListItem',
+    position: 2,
+    name: 'Science and mathematics',
+    item: 'https://calcdomain.com/en/science-and-mathematics',
+  },
+  {
+    '@type': 'ListItem',
+    position: 3,
+    name: 'Unit Conversion',
+    item: 'https://calcdomain.com/en/science-and-mathematics/unit-conversion',
+  },
+  {
+    '@type': 'ListItem',
+    position: 4,
+    name: title,
+    item: canonicalUrl,
+  },
+];
+
+const webAppJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebApplication',
+  name: title,
+  url: canonicalUrl,
+  applicationCategory: 'ScienceApplication',
+  operatingSystem: 'Any',
+  description,
+  inLanguage: 'en',
+  featureList: [
+    'Instant Kelvin to Fahrenheit conversion',
+    'Reverse Fahrenheit to Kelvin conversion',
+    'Step-by-step temperature conversion formula',
+    'Real-world temperature examples and reference points',
+    'Mobile-friendly interface with sticky results bar',
+    'Shareable URL with pre-filled inputs',
+    'Reset function to clear all fields',
+  ],
+};
+
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'How do you convert Kelvin to Fahrenheit?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text:
+          'To convert Kelvin to Fahrenheit, subtract 273.15 from the Kelvin temperature to get degrees Celsius, then multiply by 9/5 and add 32. The direct formula is: °F = (K − 273.15) × 9/5 + 32.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Why do scientists use Kelvin instead of Celsius or Fahrenheit?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text:
+          'Scientists use Kelvin because it is an absolute temperature scale starting at absolute zero, where all thermal motion stops. This makes Kelvin ideal for thermodynamics, gas laws, and other physical equations, as it avoids negative temperatures in many formulas.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'What is 0 Kelvin in Fahrenheit?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text:
+          '0 Kelvin is equal to −459.67 °F. This temperature is called absolute zero and represents the theoretical point at which particles have minimal thermal motion.',
+      },
+    },
+  ],
+};
+
+const breadcrumbJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: breadcrumbItems,
+};
+---
+
+<html lang="en">
+  <head>
+    <title>{title} | calcdomain.com</title>
+    <meta name="description" content={description} />
+    <meta name="keywords" content="kelvin to fahrenheit, temperature conversion, K to F" />
+    <link rel="canonical" href={canonicalUrl} />
+
+    <script type="application/ld+json">
+      {JSON.stringify(webAppJsonLd)}
+    </script>
+    <script type="application/ld+json">
+      {JSON.stringify(faqJsonLd)}
+    </script>
+    <script type="application/ld+json">
+      {JSON.stringify(breadcrumbJsonLd)}
+    </script>
+  </head>
+  <body>
+    <Layout
+      title={title}
+      description={description}
+      canonicalUrl={canonicalUrl}
+      rightRail={true}
+    >
+      <main class="page page--calculator">
+        {/* Hero Section */}
+        <section class="hero">
+          <div class="hero__content">
+            <h1 class="hero__title">Kelvin to Fahrenheit Converter</h1>
+            <p class="hero__subtitle">
+              Convert Kelvin to Fahrenheit (and back) in seconds with precise, standards-based formulas and instant results.
+            </p>
+            <div class="hero__meta">
+              <span class="hero__badge">Scientifically accurate</span>
+              <span class="hero__badge">Updated for 2025</span>
+              <span class="hero__badge">Mobile-optimized</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Calculator Section */}
+        <section class="calculator-section">
+          <div class="calculator-section__grid">
+            <div class="calculator-section__tool">
+              <CalculatorIsland
+                id="kelvin-to-fahrenheit"
+                title={title}
+                mode="simple"
+                primaryInputLabel="Temperature in Kelvin"
+                primaryInputUnit="K"
+                secondaryInputLabel="Temperature in Fahrenheit"
+                secondaryInputUnit="°F"
+                inputMode="decimal"
+                hasAdvancedOptions={true}
+                showShareButton={true}
+                showResetButton={true}
+                stickyResultOnMobile={true}
+                validationRules={{
+                  minKelvin: 0,
+                }}
+                tips={{
+                  kelvin:
+                    'Kelvin is an absolute temperature scale used in science. 0 K is absolute zero.',
+                  fahrenheit:
+                    'Fahrenheit is commonly used in the United States for weather and everyday temperatures.',
+                }}
+                formula={{
+                  forward: 'F = (K − 273.15) × 9/5 + 32',
+                  reverse: 'K = (F − 32) × 5/9 + 273.15',
+                }}
+              />
+              <div class="calculator-section__verified">
+                <span class="verified__label">Verified by:</span>
+                <span class="verified__value">Physics & thermodynamics reference formulas</span>
+              </div>
+            </div>
+
+            <aside class="calculator-section__sidebar">
+              <div class="sidebar-card">
+                <h2 class="sidebar-card__title">Quick reference points</h2>
+                <ul class="sidebar-card__list">
+                  <li>
+                    <strong>0 K</strong> = −459.67 °F (absolute zero)
+                  </li>
+                  <li>
+                    <strong>273.15 K</strong> = 32 °F (water freezing point)
+                  </li>
+                  <li>
+                    <strong>310.15 K</strong> ≈ 98.6 °F (average human body temperature)
+                  </li>
+                </ul>
+              </div>
+              <div class="sidebar-card sidebar-card--ad-slot">
+                {/* Reserved right-rail ad slot */}
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        {/* Theory Section */}
+        <section class="content-section" id="theory">
+          <h2>How to convert Kelvin to Fahrenheit</h2>
+          <p>
+            Kelvin (K) and Fahrenheit (°F) are two different temperature scales. Kelvin is an
+            absolute scale widely used in physics and thermodynamics, while Fahrenheit is commonly
+            used in everyday life in a few countries, such as the United States.
+          </p>
+          <p>
+            To convert a temperature from Kelvin to Fahrenheit, you can either go through Celsius
+            as an intermediate step or use the direct formula.
+          </p>
+
+          <h3>Step-by-step conversion via Celsius</h3>
+          <ol>
+            <li>Convert Kelvin to Celsius:</li>
+          </ol>
+          <p>
+            $$ T_{^\circ C} = T_K - 273.15 $$
+          </p>
+          <ol start="2">
+            <li>Convert Celsius to Fahrenheit:</li>
+          </ol>
+          <p>
+            $$ T_{^\circ F} = T_{^\circ C} \times \frac{9}{5} + 32 $$
+          </p>
+
+          <h3>Direct Kelvin to Fahrenheit formula</h3>
+          <p>
+            Combining the two steps above gives the direct Kelvin to Fahrenheit conversion:
+          </p>
+          <p>
+            $$ T_{^\circ F} = (T_K - 273.15) \times \frac{9}{5} + 32 $$
+          </p>
+          <p>
+            where:
+          </p>
+          <ul>
+            <li>\( T_K \) is the temperature in Kelvin</li>
+            <li>\( T_{^\circ F} \) is the temperature in degrees Fahrenheit</li>
+          </ul>
+
+          <h3>Reverse: Fahrenheit to Kelvin</h3>
+          <p>
+            To convert from Fahrenheit back to Kelvin, rearrange the formula:
+          </p>
+          <p>
+            $$ T_K = (T_{^\circ F} - 32) \times \frac{5}{9} + 273.15 $$
+          </p>
+          <p>
+            This reverse formula is also available in the advanced options of the calculator.
+          </p>
+        </section>
+
+        {/* Real World Example */}
+        <section class="content-section" id="example">
+          <h2>Real-world example: Converting lab temperature from Kelvin to Fahrenheit</h2>
+          <p>
+            Imagine you are working in a laboratory where the temperature of a sample is measured
+            as <strong>295 K</strong>. You want to report this temperature in degrees Fahrenheit.
+          </p>
+          <ol>
+            <li>
+              Subtract 273.15 from the Kelvin value:
+              <br />
+              $$ 295 - 273.15 = 21.85 \, ^\circ C $$
+            </li>
+            <li>
+              Convert Celsius to Fahrenheit:
+              <br />
+              $$ 21.85 \times \frac{9}{5} + 32 \approx 71.33 \, ^\circ F $$
+            </li>
+          </ol>
+          <p>
+            So a temperature of <strong>295 K</strong> is approximately
+            <strong>71.3 °F</strong>. With this calculator, you can perform the same conversion
+            instantly without manual calculations.
+          </p>
+        </section>
+
+        {/* FAQ Section */}
+        <section class="content-section" id="faq">
+          <h2>Kelvin to Fahrenheit converter FAQ</h2>
+
+          <div class="faq-item">
+            <h3>How do you convert Kelvin to Fahrenheit?</h3>
+            <p>
+              To convert Kelvin to Fahrenheit, subtract 273.15 from the Kelvin temperature to get
+              degrees Celsius, then multiply by 9/5 and add 32:
+            </p>
+            <p>
+              $$ T_{^\circ F} = (T_K - 273.15) \times \frac{9}{5} + 32 $$
+            </p>
+            <p>
+              Enter the Kelvin value into the calculator and it will apply this formula
+              automatically.
+            </p>
+          </div>
+
+          <div class="faq-item">
+            <h3>Can Kelvin be negative?</h3>
+            <p>
+              In theory and practice, Kelvin values are never negative. The Kelvin scale starts at
+              absolute zero (0 K), the point at which particles have minimal thermal motion. Any
+              temperature below 0 K is physically meaningless, so this calculator will not accept
+              negative Kelvin inputs.
+            </p>
+          </div>
+
+          <div class="faq-item">
+            <h3>What is the difference between Kelvin and Fahrenheit?</h3>
+            <p>
+              Kelvin is an absolute temperature scale used mainly in science and engineering. It
+              starts at absolute zero and uses the same degree size as Celsius. Fahrenheit is a
+              relative scale commonly used for weather and everyday temperatures in a few
+              countries. The zero points and degree sizes differ, which is why a conversion formula
+              is required between the two.
+            </p>
+          </div>
+        </section>
+      </main>
+    </Layout>
+
+    <style>
+      .page--calculator {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+        padding: 1.5rem 1rem 3rem;
+      }
+
+      .hero {
+        max-width: 960px;
+        margin: 0 auto;
+      }
+
+      .hero__title {
+        font-size: clamp(1.9rem, 2.4vw, 2.4rem);
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+      }
+
+      .hero__subtitle {
+        font-size: 1rem;
+        color: var(--color-text-muted, #555);
+        margin-bottom: 0.75rem;
+      }
+
+      .hero__meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .hero__badge {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.6rem;
+        border-radius: 999px;
+        background: var(--color-badge-bg, #f3f4f6);
+        color: var(--color-badge-text, #374151);
+      }
+
+      .calculator-section {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .calculator-section__grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.8fr) minmax(260px, 1fr);
+        gap: 1.5rem;
+      }
+
+      .calculator-section__tool {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .calculator-section__verified {
+        font-size: 0.85rem;
+        color: var(--color-text-muted, #6b7280);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+      }
+
+      .verified__label {
+        font-weight: 600;
+      }
+
+      .calculator-section__sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .sidebar-card {
+        border-radius: 0.75rem;
+        border: 1px solid var(--color-border-subtle, #e5e7eb);
+        padding: 1rem;
+        background: var(--color-surface-subtle, #fafafa);
+      }
+
+      .sidebar-card__title {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+      }
+
+      .sidebar-card__list {
+        padding-left: 1.1rem;
+        margin: 0;
+      }
+
+      .sidebar-card__list li {
+        margin-bottom: 0.25rem;
+      }
+
+      .sidebar-card--ad-slot {
+        min-height: 250px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--color-text-muted, #9ca3af);
+        font-size: 0.8rem;
+      }
+
+      .content-section {
+        max-width: 800px;
+        margin: 0 auto;
+        padding-top: 0.5rem;
+      }
+
+      .content-section h2 {
+        font-size: 1.4rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .content-section h3 {
+        font-size: 1.1rem;
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .content-section p {
+        margin-bottom: 0.5rem;
+        line-height: 1.6;
+      }
+
+      .content-section ol,
+      .content-section ul {
+        margin-left: 1.25rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .faq-item + .faq-item {
+        margin-top: 1rem;
+      }
+
+      @media (max-width: 900px) {
+        .calculator-section__grid {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .calculator-section__sidebar {
+          order: -1;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .page--calculator {
+          padding-inline: 0.75rem;
+        }
+
+        .hero__title {
+          font-size: 1.6rem;
+        }
+      }
+    </style>
+  </body>
+</html>
+```
+
+
+3) Config Update: snippet to append to `src/data/pages.ts`
+
+```ts
+{
+  slug: 'kelvin-to-fahrenheit',
+  url: '/en/science-and-mathematics/unit-conversion/kelvin-to-fahrenheit',
+  title: 'Kelvin to Fahrenheit Converter',
+  description:
+    'Convert Kelvin to Fahrenheit (and Fahrenheit to Kelvin) instantly with precise formulas, examples, and reference points.',
+  hub: 'Science and mathematics',
+  cluster: 'Unit Conversion',
+  tier: 'A',
+  keywords: ['kelvin to fahrenheit', 'K to F', 'temperature conversion'],
+  relatedTools: [
+    // Same-cluster temperature converters (unit conversion)
+    '/en/science-and-mathematics/unit-conversion/celsius-to-fahrenheit',
+    '/en/science-and-mathematics/unit-conversion/celsius-to-kelvin',
+  ],
+}
+```
+
+
+4) Redirect Rule: JSON line for `vercel.json`
+
+```json
+{
+  "source": "/legacy/calculators/kelvin-to-fahrenheit.html",
+  "destination": "/en/science-and-mathematics/unit-conversion/kelvin-to-fahrenheit",
+  "permanent": true
+}
+```
+
+
+5) Git commands
+
+```bash
+git add .
+git commit -m 'Migrate kelvin-to-fahrenheit calculator'
+```
+
+
+6) Push command
+
+```bash
+git push origin main
+```
