@@ -18,7 +18,7 @@ const client = new OpenAI({
 // ------------ CONFIG ------------
 const CSV_PATH = path.join(process.cwd(), "calc-2.csv");
 const OUTPUT_DIR = path.join(process.cwd(), "ai-output");
-const MODEL_NAME = "gpt-4.1-mini"; // adjust if you want a different model
+const MODEL_NAME = "gpt-5.1"; // adjust if you want a different model
 const DELAY_MS = 10 * 60 * 1000; // 10 minutes between rows
 // --------------------------------
 
@@ -26,12 +26,12 @@ const DELAY_MS = 10 * 60 * 1000; // 10 minutes between rows
 const BASE_PROMPT = String.raw`Role You are a Senior Principal Frontend Engineer and UX Architect specializing in high-performance "Tier A" web tools. Your goal is to migrate legacy calculators into a modern Astro architecture, ensuring the result is better than competitors like Omni Calculator or Calculator.net in terms of UX, SEO, and Performance.
 
 Context & Inputs Project Root: astro-proto/
-
+Domain name: calcdomain.com
 Legacy HTML: src/legacy/calculators/ (Use logic from here, but discard outdated HTML structure).
-
+Project Requirements: Ottimizzazione Struttura Sito Calcolatori Online_pro.pdf , Ottimizzazione UX_UI per Siti di Calcolatori.pdf
 Briefs: scripts/generate-zip/output/<slug>/*.txt (Contains specific math logic and requirements).
 
-Template to follow for look and style, to keep UX uniform:  /home/uc/Projects/calcdomain2/astro-proto/src/pages/en/engineering-construction/thermotechnics/btu-to-kwh.astro
+Sample calculator (can be used to 'copy' common parts and keep style and layout uniform):  /home/uc/Projects/calcdomain2/astro-proto/src/pages/en/engineering-construction/thermotechnics/btu-to-kwh.astro
 
 Research Standards:
 
@@ -50,19 +50,38 @@ Do NOT talk about multiple rows. Only process THIS calculator.
 Process the row using the following Atomic Workflow:
 
 Analysis & Strategy (Mental Sandbox)
-Before writing code, analyze the legacy tool and the Brief:
+Before writing code, analyze the legacy tool, the Brief, the Project Requirements, the Sample Calculator:
 
-Determine Tier: Is this a simple converter (Tier B) or a complex decision tool (Tier A)? Treat all assigned rows as Tier A.
+Determine Related calculators from same category (cluser)
+
+Determine Related calculators from other category (cross-cluster)
 
 UX Archetype:
 
-Finance/Engineering: Use "Cockpit Interface". Show inputs and results side-by-side (desktop) or stacked (mobile). Use "Progressive Disclosure" (Basic vs Advanced toggle) for secondary fields.
+Show inputs and results side-by-side (desktop) or stacked (mobile). Use "Progressive Disclosure" (Basic vs Advanced toggle) for secondary fields.
 
-Health/Lifestyle: Use "Visual Wizard". Big inputs, clear questions, instant feedback.
+Big inputs, clear questions, instant feedback.
 
-Trust Factors: Identify where to place "Verified by" badges and Citations (ISO standards, official formulas) based on the domain.
+Autocalculate on input change, with a "Calculate" button for heavy computations.
+
+"Verified by" badges and Citations (ISO standards, official formulas) 
+
+Add microinteractions for better engagement (e.g., input focus animations, result highlight on change).
+
+Add tips/tooltips for input fields.
+
+Show keyboard numeric keypad on mobile (inputmode="decimal").
+
+Add a "Reset" button to clear all inputs.
+
+add a "Share" button to copy URL with current inputs as query params.
+
+json-LD: usE FAqPage, webApplication schema and breadcrumbList.
+
+Create rich SEO content around the calculator topic (theory, FAQs, use cases). You have all competitors content in the Project Requirements PDF and you already start from a good content from the legacy file.
 
 Implementation: The Astro Page
+
 Create src/pages/en/[hub]/[cluster]/[slug].astro. Strict Requirements:
 
 Layout: Use Layout.astro. Ensure the "Right Rail" (Sidebar) is preserved for high-CPM ad slots () on Desktop.
@@ -96,9 +115,15 @@ Output Format
 For this calculator (this single row only), output:
 
 1) Thinking Process: A brief summary of your UX choices (Cockpit vs Wizard, etc.).
-2) File Content: The full .astro file code.
+2) File Content: The full .astro file code in the src/pages/en/[hub]/[cluster]/[slug].astro
 3) Config Update: The exact snippet to append to src/data/pages.ts.
 4) Redirect Rule: The JSON line for vercel.json.
+5) execute "git add ." and "git commit -m 'Migrate [slug] calculator'" commands.
+6) execute "git push origin main" command.
+
+Important: 
+- Do NOT fabricate any details. Use ONLY the data from this row and the provided context.
+- Stick to the specified output format. No extra commentary.
 
 Now process the row below.`;
 
