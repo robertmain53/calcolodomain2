@@ -38,7 +38,7 @@ UX Pattern: Use "Cockpit" layout for complex tools (dense data) and "Wizard" for
 
 Mobile: "inputmode=\\"decimal\\"" is mandatory. Sticky result bars are mandatory for long forms.
 
-Components: src/components/CalculatorIsland.astro (The interactive React/Preact island).
+Components: src/components/CalculatorIsland.astro (pre-built interactive converter island driven ONLY by a "slug" prop).
 
 Task
 You are given ONE row from calc-2.csv (shown below as JSON). Treat this row as a single calculator to migrate. 
@@ -93,43 +93,29 @@ Hero Section: High-contrast H1, 1-sentence value prop ("Calculate X in seconds..
 
 The Tool (CalculatorIsland):
 
-Pass strict props.
+- Use ONLY the existing CalculatorIsland.astro component located in src/components/CalculatorIsland.astro.
+- DO NOT re-implement converter logic, JS, or config inside the page. All that logic already lives in CalculatorIsland.astro.
+- Each calculator page must define in the frontmatter:
 
-ASTRO SAFETY RULES (MUST FOLLOW ALL):
+  - const hub = "<hub-from-CSV>";
+  - const cluster = "<cluster-from-CSV>";
+  - const slug = "<slug-from-CSV>";
+  - const pageTitle = "…";
+  - const pageDescription = "…";
+  - const faqs = [ … ];               // simple array of { question, answer }
+  - const webAppSchema = { … };       // JSON-LD object
+  - const faqSchema = { … };          // JSON-LD object
+  - const breadcrumbSchema = { … };   // JSON-LD object
 
-- NEVER inline object or array literals directly inside JSX/HTML attributes. This is forbidden:
-  - ❌ \`<CalculatorIsland inputConfig={{ ... }} />\`
-  - ❌ \`<Component items={[{ label: "A", value: 1 }]} />\`
+- Then, inside the Layout, use CalculatorIsland EXACTLY like this:
 
-- ALWAYS define any configuration, arrays, or complex data as top-level \`const\` in the Astro frontmatter, and then pass them by reference:
-  - ✅ frontmatter: \`const inputConfig = { /* flat object, no functions */ };\`
-  - ✅ JSX: \`<CalculatorIsland inputConfig={inputConfig} />\`
-
-- Keep config objects **flat and small**:
-  - Use at most ONE level of nesting (e.g., properties whose values are primitives or simple objects).
-  - Do NOT embed functions, arrow functions, or deeply nested objects/arrays inside the .astro file.
-  - Prefer multiple simple consts instead of one huge deeply-nested object.
-
-- Do NOT output template literals or backticks inside the Astro page (avoid \`\\\`...\` syntax inside the .astro code).
-- Do NOT use string interpolation patterns like \`\${...}\` inside the .astro file content.
-
-- Escape literal \`{\`/\`}\` characters inside any inline math, CSS, or code snippets using HTML entities (&#123;, &#125;) or by wrapping them in string literals so the generated Astro file never introduces stray braces outside JSX expressions.
-
-- When you mention math or CSS code (including LaTeX) always treat it as text content rather than executable code fragments. For example:
-  - Use \`<pre class="math-block">$$ x = ... $$</pre>\`
-  - Do NOT try to put LaTeX inside JSX expressions or template literals.
-
-- Inside the Astro markup, only use JSX expressions where strictly needed:
-  - Simple \`{title}\`, \`{description}\`, \`{faqs.map(...)}\` etc.
-  - Avoid complex inline logic; if you need logic, define helper data (arrays/objects) as top-level consts and then use simple maps.
-
-- The only interactive component must be \`CalculatorIsland\`. Do NOT add any extra framework components or Astro hydration directives (\`client:*\`).
-
-- Per inserire JSON-LD o altri script nel <head>, NON usare un tag <head> nella pagina.
-- Invece, usa sempre lo slot del Layout:
-
-  ✅ Esempio corretto:
-  <Layout ...>
+  <Layout
+    title={pageTitle}
+    description={pageDescription}
+    hub={hub}
+    cluster={cluster}
+    slug={slug}
+  >
     <Fragment slot="head">
       <script type="application/ld+json">
         {JSON.stringify(webAppSchema)}
@@ -142,44 +128,51 @@ ASTRO SAFETY RULES (MUST FOLLOW ALL):
       </script>
     </Fragment>
 
-    <main>...</main>
+    <main class="calc-page">
+      <!-- Hero, copy, FAQ sections, etc. -->
+
+      <section class="calculator-section">
+        <CalculatorIsland slug={slug} />
+      </section>
+
+      <!-- more content sections... -->
+    </main>
   </Layout>
 
-  ❌ NON usare:
-  <Layout ...>
-    <head> ... </head>
-    ...
-  </Layout>
+- CalculatorIsland props (MUST follow this signature strictly):
+  - ONLY one prop: \`slug\`
+  - DO NOT add or invent other props like "inputFields", "resultFields", "config", "inputConfig", etc.
+  - The \`slug\` value MUST come from the CSV row (e.g., "mm-to-inches", "kg-to-lbs", etc.).
 
-CalculatorIsland props:
+ASTRO SAFETY RULES (MUST FOLLOW ALL):
 
-- Pass only:
-  - Primitive props (strings, numbers, booleans).
-  - References to top-level const objects/arrays defined in frontmatter (e.g., \`fields={fieldsConfig}\`).
-- Never construct nested object literals inside the JSX.
+- NEVER inline object or array literals directly inside JSX/HTML attributes.
+  - ✅ Use top-level consts in frontmatter: \`const faqs = [ … ];\`
+  - ✅ Pass them only in simple expressions like \`{faqs.map(...)}\`.
+  - ❌ Do NOT do \`<Component config={{ ... }}>\`.
 
-CalculatorIsland props (MUST copy the sample exactly):
+- All calculator logic and heavy converter configuration is inside CalculatorIsland.astro.
+  - The page MUST NOT define converter config, factors, offsets, or complex JS logic for the calculator.
+  - The page ONLY embeds \`<CalculatorIsland slug={slug} />\` and defines SEO/content (title, description, faqs, JSON-LD).
 
-- Usa SEMPRE la stessa firma del sample btu-to-kwh.astro.
-- I props ammessi sono solo questi (adatta i valori, NON i nomi):
+- For JSON-LD and scripts in the head:
+  - Use only the Layout slot pattern:
 
-  <CalculatorIsland
-    id={slug}
-    title={pageTitle}
-    hub={hub}
-    cluster={cluster}
-    slug={slug}
-    mode="unit-conversion"        // o altro mode se indicato dal CSV/brief
-    primaryUnitFrom="millimeter"  // o quelli corretti per il tool corrente
-    primaryUnitTo="inch"
-    inputConfig={inputConfig}     // oggetto definito nel frontmatter
-    behavior={behavior}           // oggetto definito nel frontmatter
-    formula={formula}             // oggetto definito nel frontmatter
-  />
+    <Layout ...>
+      <Fragment slot="head">
+        <script type="application/ld+json">
+          {JSON.stringify(webAppSchema)}
+        </script>
+        ...
+      </Fragment>
+      <main>...</main>
+    </Layout>
 
-- NON inventare altri nomi di props come "inputFields", "resultFields" o "config" se non sono presenti nel sample.
-- "inputConfig", "behavior" e "formula" DEVONO essere const definiti nel frontmatter, e passati per riferimento nei props, mai oggetti inline.
+  - NEVER output a \`<head>\` tag inside the page content.
 
+- Avoid backticks and template literals inside the Astro file (do not use patterns like "\${...}" inside the .astro code).
+- Escape literal \`{\` / \`}\` inside text/math with HTML entities (&#123;, &#125;) if needed.
+- Treat LaTeX as plain text inside \`<pre>\`/\`<code>\` blocks, never as JS code.
 
 Content Richness (SEO):
 
@@ -196,7 +189,7 @@ Generator constraints (apply to every response):
 
 - Always import \`Layout\`/\`CalculatorIsland\` relative to \`src/components\`. The island should be the only interactive block on the page.
 - Do not include any Astro hydration directives (\`client:*\`) or inline component frameworks—keep every calculator statically rendered except the \`CalculatorIsland\` behavior.
-- Keep calculator configuration small, flat, and defined as top-level consts in frontmatter. Do NOT inline object or array literals inside JSX props.
+- Keep frontmatter configuration (faqs, schemas, titles) small and flat. Do NOT inline object or array literals inside JSX props.
 - Escape literal \`{\`/\`}\` characters inside any inline math, CSS, or code snippets using HTML entities (&#123;, &#125;) or by wrapping them in string literals so the generated Astro file never introduces stray braces outside JSX expressions.
 - When you mention math or CSS code (including LaTeX) always treat it as plain text content wrapped in HTML; never as executable JS/TS.
 - Keep the assistant output focused: provide the \`.astro\` file contents and the required SEO/redirect/config snippets from these instructions without inventing extra unrelated commands or steps.
@@ -205,8 +198,8 @@ Routing: Update src/data/pages.ts. Add specific tier: 'A'. defining relatedTools
 
 Code Quality & Refinement
 
-Mobile First: Ensure the CalculatorIsland uses a Sticky Footer for results on mobile if the form height > 100vh.
-Error Handling: instead of "Error", show contextual help (e.g., "Interest rate cannot be negative").
+Mobile First: Ensure the overall page layout is mobile-first and that the calculator section leaves space for a sticky result area on mobile if the form height > 100vh.
+Error Handling: instead of generic "Error" messages in copy, provide contextual help in the page text (e.g., "Interest rate cannot be negative").
 Clean Up: Remove all legacy JS dependencies. Use native TypeScript.
 
 Output Format

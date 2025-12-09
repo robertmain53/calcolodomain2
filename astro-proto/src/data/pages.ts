@@ -466,6 +466,18 @@ export const pages: PageEntry[] = [
     "/en/science-and-mathematics/unit-conversion/meters-to-feet"
   ]
 }
+{
+  hub: "science-and-mathematics",
+  cluster: "unit-conversion",
+  slug: "mm-to-inches",
+  title: "Millimeters to Inches Converter",
+  tier: "A",
+  relatedTools: [
+    "inches-to-mm",
+    "cm-to-inches",
+    "meters-to-feet"
+  ]
+}
 ];
 
 export function findPage(
