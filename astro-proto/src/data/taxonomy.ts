@@ -53,7 +53,7 @@ export async function getTaxonomy(): Promise<Hub[]> {
   const calculatorPages = await import.meta.glob<{
     frontmatter: { hub: string; cluster: string; title: string };
     url: string;
-  }>("/src/pages/calculators/**/*.astro");
+  }>("/src/pages/en/*/*/*.astro");
 
   const hubs: Record<string, Hub> = {};
 
