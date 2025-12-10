@@ -103,10 +103,3 @@ export async function findCluster(
   const hub = await findHub(hubSlug);
   return hub?.clusters.find((c) => c.slug === clusterSlug);
 }
-
-export function findCluster(
-  hubSlug: string,
-  clusterSlug: string
-): Cluster | undefined {
-  return findHub(hubSlug)?.clusters.find((c) => c.slug === clusterSlug);
-}
