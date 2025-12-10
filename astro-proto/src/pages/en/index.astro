@@ -1,29 +1,42 @@
 ---
-import Layout from "../../layouts/Layout.astro";
-import { getTaxonomy } from "../../data/taxonomy";
+import Layout from "../../../components/Layout.astro";
+import { getTaxonomy, findHub } from "../../../data/taxonomy";
 
-const taxonomy = await getTaxonomy();
+export async function getStaticPaths() {
+  const taxonomy = await getTaxonomy();
+  return taxonomy.map((hub) => ({
+    params: { hub: hub.slug },
+  }));
+}
+
+const { hub: hubSlug } = Astro.params;
+const hub = await findHub(hubSlug);
+
+if (!hub) {
+  return new Response(null, {
+    status: 404,
+    statusText: "Not Found",
+  });
+}
 ---
 
-<Layout
-  title="All Calculators | Your Site Name"
-  description="Browse our complete collection of free online calculators, organized by category."
->
+<Layout title={`${hub.name} Calculators`} description={hub.description}>
   <main class="container">
-    <h1>Our Calculators</h1>
-    <p class="lead">
-      Explore our full suite of tools, organized into hubs for easy navigation.
-    </p>
+    <nav aria-label="breadcrumb">
+      <ol>
+        <li><a href="/en/">Home</a></li>
+        <li>{hub.name}</li>
+      </ol>
+    </nav>
+    <h1>{hub.name}</h1>
+    <p class="lead">{hub.description}</p>
 
-    <div class="hub-grid">
-      {
-        taxonomy.map((hub) => (
-          <a href={`/en/${hub.slug}`} class="hub-card">
-            <h2>{hub.name}</h2>
-            <p>{hub.description}</p>
-          </a>
-        ))
-      }
+    <div class="cluster-list">
+      {hub.clusters.map((cluster) => (
+        <a href={`/en/${hub.slug}/${cluster.slug}`} class="cluster-link">
+          <h3>{cluster.name}</h3>
+        </a>
+      ))}
     </div>
   </main>
 </Layout>
