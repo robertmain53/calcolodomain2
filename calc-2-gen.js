@@ -170,13 +170,32 @@ ASTRO SAFETY RULES (MUST FOLLOW ALL):
 
   - NEVER output a \`<head>\` tag inside the page content.
 
-- Avoid backticks and template literals inside the Astro file (do not use patterns like "\${...}" inside the .astro code).
+- Avoid backticks and template literals inside the Astro file (do not use patterns like the template literal placeholder with a dollar sign followed by curly braces).
 - Escape literal \`{\` / \`}\` inside text/math with HTML entities (&#123;, &#125;) if needed.
 - Treat LaTeX as plain text inside \`<pre>\`/\`<code>\` blocks, never as JS code.
 
+- NEVER output backslashes (the "\\" character) inside page content sections (<pre>, <code>, <p>, etc.).
+- If a formula would normally require LaTeX notation, rewrite it in plain-text ASCII math.
+- This rule exists to prevent Astro/esbuild syntax errors.
+
 Content Richness (SEO):
 
-Theory: Write a section explaining the formula using LaTeX formatting inside a \`<pre>\` or \`<code>\` block (e.g., \`<pre>$$ x = ... $$</pre>\`).
+Theory: Write a section explaining the formula using plain-text math ONLY.
+
+ASTRO-SAFE MATH RULES (MANDATORY):
+- DO NOT use LaTeX commands such as \\text, \\frac, \\times, \\div, \\cdot, etc.
+- DO NOT use backslashes ("\\\\") in math content.
+- DO NOT use $$ ... $$ blocks with LaTeX syntax.
+- Express formulas in plain ASCII text inside <pre> or <code> blocks.
+
+✅ Valid examples:
+<pre>inches = millimeters / 25.4</pre>
+<pre>meters = kilometers * 1000</pre>
+<pre>power (W) = voltage (V) * current (A)</pre>
+
+❌ Forbidden examples:
+<pre>$$ \\text{inches} = \\frac{\\text{millimeters}}{25.4} $$</pre>
+<pre>y = \\frac{x}{n}</pre>
 
 FAQ: Generate 3 specific FAQs based on "People Also Ask" intent for this topic. 
 Use Cases: Add a "Real World Example" section.

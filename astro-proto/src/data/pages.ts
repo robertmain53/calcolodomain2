@@ -478,6 +478,16 @@ export const pages: PageEntry[] = [
     "meters-to-feet"
   ]
 }
+{
+  hub: "science-and-mathematics",
+  cluster: "unit-conversion",
+  slug: "mm-to-inches",
+  title: "Millimeters to Inches Converter",
+  tier: "A",
+  relatedTools: [
+    "inches-to-mm"
+  ]
+}
 ];
 
 export function findPage(
