@@ -213,8 +213,6 @@ Generator constraints (apply to every response):
 - When you mention math or CSS code (including LaTeX) always treat it as plain text content wrapped in HTML; never as executable JS/TS.
 - Keep the assistant output focused: provide the \`.astro\` file contents and the required SEO/redirect/config snippets from these instructions without inventing extra unrelated commands or steps.
 
-Routing: Update src/data/pages.ts. Add specific tier: 'A'. defining relatedTools (cross-link to other tools in the same Cluster).
-
 Code Quality & Refinement
 
 Mobile First: Ensure the overall page layout is mobile-first and that the calculator section leaves space for a sticky result area on mobile if the form height > 100vh.
@@ -226,10 +224,9 @@ For this calculator (this single row only), output:
 
 1) Thinking Process: A brief summary of your UX choices (Cockpit vs Wizard, etc.).
 2) File Content: The full .astro file code in the src/pages/en/[hub]/[cluster]/[slug].astro
-3) Config Update: The exact snippet to append to src/data/pages.ts.
-4) Redirect Rule: The JSON line for vercel.json.
-5) execute "git add ." and "git commit -m 'Migrate [slug] calculator'" commands.
-6) execute "git push origin main" command.
+3) Redirect Rule: The JSON line for vercel.json.
+4) execute "git add ." and "git commit -m 'Migrate [slug] calculator'" commands.
+5) execute "git push origin main" command.
 
 Important: 
 - Do NOT fabricate any details. Use ONLY the data from this row and the provided context.
@@ -305,38 +302,7 @@ async function writeGeneratedFiles(output) {
     console.warn("⚠️ No file content section found in the model output.");
   }
 
-  const configMatch = output.match(
-    /3\) Config Update:[\s\S]*?```[a-zA-Z]*\n([\s\S]*?)```/m
-  );
-  if (configMatch) {
-    const snippet = configMatch[1].trim();
-    if (snippet) {
-      const pagesPath = path.join(
-        process.cwd(),
-        "astro-proto",
-        "src",
-        "data",
-        "pages.ts"
-      );
-      let pagesCode = await fsp.readFile(pagesPath, "utf8");
-      if (!pagesCode.includes(snippet)) {
-        const insertPos = pagesCode.lastIndexOf("];");
-        if (insertPos === -1) {
-          console.warn(
-            "⚠️ Unable to find closing ]; in pages.ts to append config snippet."
-          );
-        } else {
-          const before = pagesCode.slice(0, insertPos).trimEnd();
-          const after = pagesCode.slice(insertPos);
-          const updated = `${before}\n${snippet}\n${after}`;
-          await fsp.writeFile(pagesPath, updated, "utf8");
-          console.log("✏️ Appended config snippet to src/data/pages.ts");
-        }
-      } else {
-        console.log("ℹ️ Config snippet already exists in pages.ts; skipping.");
-      }
-    }
-  }
+  // The logic to update pages.ts has been removed as it is now obsolete.
 }
 
 // Main runner: process rows sequentially with 10-minute gaps
