@@ -14,7 +14,7 @@ const client = new OpenAI({
 // ------------ CONFIG ------------
 const CSV_PATH = path.join(process.cwd(), "calc-2.csv");
 const MODEL_NAME = "gpt-5.1";
-const DELAY_MS = 10 * 60 * 1000; // 10 minutes between rows
+const DELAY_MS = 5 * 60 * 1000; // 5 minute between rows
 // --------------------------------
 
 // FIXED: I have added backslashes (\) before every backtick (`) inside this string
@@ -38,7 +38,9 @@ UX Pattern: Use "Cockpit" layout for complex tools (dense data) and "Wizard" for
 
 Mobile: "inputmode=\\"decimal\\"" is mandatory. Sticky result bars are mandatory for long forms.
 
-Components: src/components/CalculatorIsland.astro (pre-built interactive converter island driven ONLY by a "slug" prop).
+
+Components: src/components/CalculatorIsland.astro (pre-built interactive calculator island that receives configuration props from each page).
+
 
 Task
 You are given ONE row from calc-2.csv (shown below as JSON). Treat this row as a single calculator to migrate. 
@@ -91,58 +93,45 @@ Frontmatter: The page frontmatter is critical for dynamic taxonomy. It MUST incl
 
 Hero Section: High-contrast H1, 1-sentence value prop ("Calculate X in seconds..."), and specific Trust Signals (e.g., "Updated for 2025 Tax Rules").
 
-The Tool (CalculatorIsland):
 
-- Use ONLY the existing CalculatorIsland.astro component located in src/components/CalculatorIsland.astro.
-- DO NOT re-implement converter logic, JS, or config inside the page. All that logic already lives in CalculatorIsland.astro.
-- Each calculator page must define in the frontmatter:
+ The Tool (CalculatorIsland):
 
-  - const hub = "<hub-from-CSV>";
-  - const cluster = "<cluster-from-CSV>";
-  - const slug = "<slug-from-CSV>";
-  - const pageTitle = "…";
-  - const pageDescription = "…";
-  - const faqs = [ … ];               // simple array of { question, answer }
-  - const webAppSchema = { … };       // JSON-LD object
-  - const faqSchema = { … };          // JSON-LD object
-  - const breadcrumbSchema = { … };   // JSON-LD object
+- CalculatorIsland.astro is a generic interactive island.
+- The PAGE is responsible for defining the calculator configuration and formulas in the frontmatter.
 
-- Then, inside the Layout, use CalculatorIsland EXACTLY like this:
+In the frontmatter of each .astro page you MUST define:
 
-  <Layout
-    title={pageTitle}
-    description={pageDescription}
-    hub={hub}
-    cluster={cluster}
+  const hub = "<hub-from-CSV>";
+  const cluster = "<cluster-from-CSV>";
+  const slug = "<slug-from-CSV>";
+  const pageTitle = "...";
+  const pageDescription = "...";
+
+  // Calculator config (example)
+  const calculatorConfig = {
+    mode: "unit-conversion",
+    primaryUnitFrom: "millimeter",
+    primaryUnitTo: "inch",
+    formula: {
+      type: "linear",
+      expression: "inches = millimeters / 25.4",
+      factor: 1 / 25.4
+    },
+    // ...other fields needed by CalculatorIsland
+  };
+
+Then use CalculatorIsland like this:
+
+  <CalculatorIsland
     slug={slug}
-  >
-    <Fragment slot="head">
-      <script type="application/ld+json">
-        {JSON.stringify(webAppSchema)}
-      </script>
-      <script type="application/ld+json">
-        {JSON.stringify(faqSchema)}
-      </script>
-      <script type="application/ld+json">
-        {JSON.stringify(breadcrumbSchema)}
-      </script>
-    </Fragment>
+    config={calculatorConfig}
+  />
 
-    <main class="calc-page">
-      <!-- Hero, copy, FAQ sections, etc. -->
+ASTRO SAFETY RULES:
+- Define config objects as top-level consts in frontmatter.
+- DO NOT inline object literals inside JSX props (no \`<Component config={{ ... }}>\`).
+- In math text, DO NOT use backslashes or LaTeX; use only plain ASCII math like \`inches = millimeters / 25.4\`.
 
-      <section class="calculator-section">
-        <CalculatorIsland slug={slug} />
-      </section>
-
-      <!-- more content sections... -->
-    </main>
-  </Layout>
-
-- CalculatorIsland props (MUST follow this signature strictly):
-  - ONLY one prop: \`slug\`
-  - DO NOT add or invent other props like "inputFields", "resultFields", "config", "inputConfig", etc.
-  - The \`slug\` value MUST come from the CSV row (e.g., "mm-to-inches", "kg-to-lbs", etc.).
 
 ASTRO SAFETY RULES (MUST FOLLOW ALL):
 
@@ -150,11 +139,7 @@ ASTRO SAFETY RULES (MUST FOLLOW ALL):
   - ✅ Use top-level consts in frontmatter: \`const faqs = [ … ];\`
   - ✅ Pass them only in simple expressions like \`{faqs.map(...)}\`.
   - ❌ Do NOT do \`<Component config={{ ... }}>\`.
-
-- All calculator logic and heavy converter configuration is inside CalculatorIsland.astro.
-  - The page MUST NOT define converter config, factors, offsets, or complex JS logic for the calculator.
-  - The page ONLY embeds \`<CalculatorIsland slug={slug} />\` and defines SEO/content (title, description, faqs, JSON-LD).
-
+ 
 - For JSON-LD and scripts in the head:
   - Use only the Layout slot pattern:
 
