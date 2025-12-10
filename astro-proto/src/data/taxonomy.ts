@@ -62,6 +62,9 @@ export async function getTaxonomy(): Promise<Hub[]> {
   }
 
   for (const path in calculatorPages) {
+    // Ignore index pages, which don't have the required frontmatter.
+    if (path.endsWith("index.astro")) continue;
+
     const page = await calculatorPages[path]();
     const { hub: hubSlug, cluster: clusterSlug, title } = page.frontmatter;
 
