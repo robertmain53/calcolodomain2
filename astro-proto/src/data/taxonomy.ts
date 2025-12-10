@@ -1,8 +1,10 @@
+import fsp from "node:fs/promises";
+import nodePath from "node:path";
+
 export interface Cluster {
   slug: string;
   name: string;
   description?: string;
-  // We'll add a 'tools' property to hold the calculators for this cluster
   tools?: {
     url: string;
     title: string;
@@ -15,6 +17,15 @@ export interface Hub {
   description?: string;
   clusters: Cluster[];
 }
+
+type CsvRow = {
+  slug: string;
+  title: string;
+  hub: string;
+  cluster: string;
+};
+
+const CSV_PATH = nodePath.join(process.cwd(), "..", "calc-2.csv");
 
 const hubDefinitions: Omit<Hub, "clusters">[] = [
   {
@@ -44,6 +55,68 @@ const hubDefinitions: Omit<Hub, "clusters">[] = [
 ];
 
 let _taxonomy: Hub[];
+let _csvRecords: CsvRow[] | null = null;
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function humanizeSlug(slug: string): string {
+  return slug
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
+    .join(" ");
+}
+
+async function loadCsvRecords(): Promise<CsvRow[]> {
+  if (_csvRecords) {
+    return _csvRecords;
+  }
+
+  try {
+    const raw = await fsp.readFile(CSV_PATH, "utf8");
+    const lines = raw
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+    if (lines.length < 2) {
+      _csvRecords = [];
+      return _csvRecords;
+    }
+
+    const headers = lines[0]
+      .split(",")
+      .map((header) => header.trim().toLowerCase());
+    const titleIdx = headers.indexOf("title");
+    const slugIdx = headers.indexOf("slug");
+    const hubIdx = headers.indexOf("hub");
+    const clusterIdx = headers.indexOf("cluster");
+    if (titleIdx === -1 || slugIdx === -1 || hubIdx === -1 || clusterIdx === -1) {
+      _csvRecords = [];
+      return _csvRecords;
+    }
+
+    _csvRecords = lines.slice(1).map((line) => {
+      const cols = line.split(",");
+      return {
+        title: cols[titleIdx]?.trim() ?? "",
+        slug: cols[slugIdx]?.trim() ?? "",
+        hub: cols[hubIdx]?.trim() ?? "",
+        cluster: cols[clusterIdx]?.trim() ?? "",
+      };
+    });
+    _csvRecords = _csvRecords.filter((row) => row.slug);
+    return _csvRecords;
+  } catch {
+    _csvRecords = [];
+    return _csvRecords;
+  }
+}
 
 export async function getTaxonomy(): Promise<Hub[]> {
   if (_taxonomy) {
@@ -51,9 +124,12 @@ export async function getTaxonomy(): Promise<Hub[]> {
   }
 
   const calculatorPages = await import.meta.glob<{
-    frontmatter: { hub: string; cluster: string; title: string };
+    frontmatter: { hub?: string; cluster?: string; title?: string };
     url: string;
   }>("/src/pages/en/*/*/*.astro");
+
+  const csvRecords = await loadCsvRecords();
+  const csvMap = new Map(csvRecords.map((row) => [row.slug, row]));
 
   const hubs: Record<string, Hub> = {};
 
@@ -61,27 +137,48 @@ export async function getTaxonomy(): Promise<Hub[]> {
     hubs[hubDef.slug] = { ...hubDef, clusters: [] };
   }
 
-  for (const path in calculatorPages) {
-    // Ignore index pages, which don't have the required frontmatter.
-    if (path.endsWith("index.astro")) continue;
-    if (path.includes("/__")) continue;
+  for (const row of csvRecords) {
+    const hubSlug = slugify(row.hub);
+    if (!hubSlug) continue;
+    if (!hubs[hubSlug]) {
+      hubs[hubSlug] = {
+        slug: hubSlug,
+        name: row.hub,
+        clusters: [],
+      };
+    }
+  }
 
-    const page = await calculatorPages[path]();
+  for (const filePath in calculatorPages) {
+    if (filePath.endsWith("index.astro")) continue;
+    if (filePath.includes("/__")) continue;
+
+    const slug = nodePath.basename(filePath, ".astro");
+    const page = await calculatorPages[filePath]();
     const fm = page.frontmatter;
-    if (!fm) continue;
-    const { hub: hubSlug, cluster: clusterSlug, title } = fm;
+    const csvMeta = slug ? csvMap.get(slug) : undefined;
+    const hubSlug =
+      fm?.hub ?? (csvMeta?.hub ? slugify(csvMeta.hub) : undefined);
+    const clusterSlug =
+      fm?.cluster ?? (csvMeta?.cluster ? slugify(csvMeta.cluster) : undefined);
+    const title = fm?.title ?? csvMeta?.title ?? slug;
 
-    if (!hubSlug || !clusterSlug || !hubs[hubSlug]) continue;
+    if (!hubSlug || !clusterSlug) continue;
+
+    if (!hubs[hubSlug]) {
+      hubs[hubSlug] = {
+        slug: hubSlug,
+        name: csvMeta?.hub ?? humanizeSlug(hubSlug),
+        clusters: [],
+      };
+    }
 
     const hub = hubs[hubSlug];
     let cluster = hub.clusters.find((c) => c.slug === clusterSlug);
 
     if (!cluster) {
-      // Create a capitalized name from the slug for the cluster name
-      const name = clusterSlug
-        .replace(/-/g, " ")
-        .replace(/\b\w/g, (l) => l.toUpperCase());
-      cluster = { slug: clusterSlug, name, tools: [] };
+      const clusterName = csvMeta?.cluster ?? humanizeSlug(clusterSlug);
+      cluster = { slug: clusterSlug, name: clusterName, tools: [] };
       hub.clusters.push(cluster);
     }
 
