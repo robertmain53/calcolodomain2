@@ -7,185 +7,159 @@ const hub = "science-and-mathematics";
 const cluster = "unit-conversion";
 const slug = "typography-converter";
 
-const pageTitle = "Typography Unit Converter (px, pt, em, rem, percent)";
+const pageTitle = "Typography Unit Converter: px, pt, em, rem and percent";
 const pageDescription =
-  "Convert typography units between pixels, points, em, rem, and percent in seconds. Perfect for web designers and frontend developers who need consistent, responsive font sizing.";
+  "Convert typography units between px, pt, em, rem and percent in seconds. Perfect for web designers and frontend developers who need consistent, responsive type scales.";
 
 const calculatorConfig = {
   id: "typography-converter",
   mode: "typography-units",
-  ui: {
-    layout: "cockpit",
-    basicLabel: "Basic units",
-    advancedLabel: "Advanced options",
-    showAdvancedToggle: true,
-    primaryActionLabel: "Calculate",
-    resetLabel: "Reset",
-    shareLabel: "Share",
-    resultTitle: "Converted typography units",
-    stickyResultOnMobile: true,
-  },
-  inputs: [
+  primaryInputLabel: "Font size value",
+  primaryInputUnitLabel: "From unit",
+  primaryOutputUnitLabel: "To unit",
+  units: [
     {
-      id: "baseFontPx",
-      label: "Base font size (px)",
-      type: "number",
-      inputMode: "decimal",
-      min: 0,
-      step: 0.1,
-      defaultValue: 16,
-      helpText: "Common browser default is 16 px. Use your root font size for accurate rem and percent conversions.",
-      group: "basic",
-    },
-    {
-      id: "valuePx",
-      label: "Font size in pixels (px)",
-      type: "number",
-      inputMode: "decimal",
-      min: 0,
-      step: 0.1,
-      defaultValue: 16,
-      helpText: "Enter the font size you want to convert from, in pixels.",
-      group: "basic",
-    },
-    {
-      id: "rootFontPx",
-      label: "Root font size for rem and percent (px)",
-      type: "number",
-      inputMode: "decimal",
-      min: 0,
-      step: 0.1,
-      defaultValue: 16,
-      helpText: "Usually the html font size. If you use a custom root size, set it here.",
-      group: "advanced",
-    },
-  ],
-  results: [
-    {
-      id: "resultPx",
+      value: "px",
       label: "Pixels (px)",
-      unit: "px",
-      format: "decimal",
-      decimals: 3,
-      highlight: false,
+      type: "absolute"
     },
     {
-      id: "resultPt",
+      value: "pt",
       label: "Points (pt)",
-      unit: "pt",
-      format: "decimal",
-      decimals: 3,
-      highlight: false,
+      type: "absolute"
     },
     {
-      id: "resultEm",
-      label: "em",
-      unit: "em",
-      format: "decimal",
-      decimals: 4,
-      highlight: true,
+      value: "em",
+      label: "Em (relative to element font size)",
+      type: "relative"
     },
     {
-      id: "resultRem",
-      label: "rem",
-      unit: "rem",
-      format: "decimal",
-      decimals: 4,
-      highlight: true,
+      value: "rem",
+      label: "Rem (relative to root font size)",
+      type: "relative"
     },
     {
-      id: "resultPercent",
+      value: "percent",
       label: "Percent (%)",
-      unit: "%",
-      format: "decimal",
-      decimals: 1,
-      highlight: false,
-      group: "advanced",
-    },
+      type: "relative"
+    }
   ],
-  logic: {
-    type: "custom",
-    // All formulas assume CSS on-screen usage.
-    // 1 pt = 1.333333 px (which is 96 px / 72 pt).
-    // em is relative to the current element font size.
-    // rem and percent are relative to the root font size.
-    formulas: {
-      resultPx: "valuePx",
-      resultPt: "valuePx * 72 / 96",
-      resultEm: "valuePx / baseFontPx",
-      resultRem: "valuePx / rootFontPx",
-      resultPercent: "valuePx / rootFontPx * 100",
+  defaults: {
+    fromUnit: "px",
+    toUnit: "rem",
+    value: 16,
+    baseFontSize: 16,
+    rootFontSize: 16
+  },
+  advancedFields: [
+    {
+      name: "baseFontSize",
+      label: "Base font size for em (px)",
+      min: 1,
+      max: 200,
+      step: 0.1,
+      inputMode: "decimal",
+      tooltip:
+        "Base font size in pixels used to interpret em values. For body text this is often 16 px."
     },
-    constraints: [
-      {
-        fieldId: "valuePx",
-        type: "min",
-        value: 0,
-        message: "Font size in pixels cannot be negative.",
-      },
-      {
-        fieldId: "baseFontPx",
-        type: "min",
-        value: 0,
-        message: "Base font size cannot be negative.",
-      },
-      {
-        fieldId: "rootFontPx",
-        type: "min",
-        value: 0,
-        message: "Root font size cannot be negative.",
-      },
-    ],
+    {
+      name: "rootFontSize",
+      label: "Root font size for rem (px)",
+      min: 1,
+      max: 200,
+      step: 0.1,
+      inputMode: "decimal",
+      tooltip:
+        "Root html font size in pixels used to interpret rem values. Browsers commonly default to 16 px."
+    }
+  ],
+  behavior: {
+    autoCalculate: true,
+    showCalculateButton: true,
+    showResetButton: true,
+    showShareButton: true,
+    layout: "cockpit",
+    stickyResultBar: true
   },
-  sharing: {
-    enabled: true,
-    queryParams: ["baseFontPx", "valuePx", "rootFontPx"],
+  formula: {
+    description:
+      "All units are converted through pixels as the internal base unit. Points use 1 pt = 1.333333 px (96 dpi). Em and rem are relative to base and root font sizes.",
+    steps: [
+      "1. Convert the input value to pixels based on the selected from unit.",
+      "2. Convert the pixel value to the selected to unit.",
+      "3. Show all equivalent values in px, pt, em, rem and percent."
+    ]
   },
-  meta: {
-    verifiedBy: "Front-end engineering team",
-    lastUpdated: "2025-01-01",
+  // The CalculatorIsland implementation is expected to use these rules:
+  // px to pt: pt = px * 0.75
+  // pt to px: px = pt * 1.333333
+  // px to em: em = px / baseFontSize
+  // em to px: px = em * baseFontSize
+  // px to rem: rem = px / rootFontSize
+  // rem to px: px = rem * rootFontSize
+  // px to percent: percent = (px / baseFontSize) * 100
+  // percent to px: px = (percent / 100) * baseFontSize
+  validation: {
+    minValue: 0,
+    maxValue: 1000,
+    valueHelp:
+      "Font sizes should be zero or positive. Negative values are not valid for typography units."
   },
+  uiTexts: {
+    mainLabel: "Typography unit converter",
+    valuePlaceholder: "Enter font size",
+    fromLabel: "From unit",
+    toLabel: "To unit",
+    resultLabel: "Converted size",
+    advancedToggleLabel: "Advanced settings",
+    resetLabel: "Reset",
+    calculateLabel: "Calculate",
+    shareLabel: "Share",
+    copiedLabel: "Link copied",
+    errorOutOfRange:
+      "Font size is outside the supported range. Try a value between 0 and 1000."
+  }
 };
 
 const faqs = [
   {
-    question: "How do you convert px to em for font size?",
+    question: "How do you convert px to rem for typography?",
     answer:
-      "To convert pixels to em, divide the pixel value by the current element font size in pixels. For example, if the base font size is 16 px and you want 24 px text, em = 24 / 16 = 1.5 em.",
+      "To convert px to rem, divide the pixel value by the root font size in pixels. For example, if the root html font size is 16 px, then 24 px is 24 / 16 = 1.5 rem."
   },
   {
     question: "What is the difference between em and rem units?",
     answer:
-      "em is relative to the font size of the current element, while rem is relative to the root html font size. rem is more predictable for global typography scales, while em is useful for local, nested scaling.",
+      "Em is relative to the font size of the current element, while rem is relative to the root html font size. This means rem values stay consistent across the page, while em values can compound when nested."
   },
   {
-    question: "How many pixels are in 1 point for web typography?",
+    question: "When should I use percent instead of px for font size?",
     answer:
-      "On the web, 1 point is usually treated as 1.333333 pixels, based on 96 px per inch and 72 points per inch. So px = pt * 96 / 72 and pt = px * 72 / 96.",
-  },
+      "Percent font sizes are relative to the parent element font size. They are useful when you want text to scale with a container. For example, 125 percent means 1.25 times the parent font size."
+  }
 ];
 
 const breadcrumbItems = [
   {
     position: 1,
     name: "Home",
-    item: "https://calcdomain.com/",
+    item: "https://calcdomain.com/"
   },
   {
     position: 2,
     name: "Science and mathematics",
-    item: "https://calcdomain.com/en/science-and-mathematics/",
+    item: "https://calcdomain.com/en/science-and-mathematics/"
   },
   {
     position: 3,
     name: "Unit conversion",
-    item: "https://calcdomain.com/en/science-and-mathematics/unit-conversion/",
+    item: "https://calcdomain.com/en/science-and-mathematics/unit-conversion/"
   },
   {
     position: 4,
     name: "Typography unit converter",
-    item: "https://calcdomain.com/en/science-and-mathematics/unit-conversion/typography-converter/",
-  },
+    item: "https://calcdomain.com/en/science-and-mathematics/unit-conversion/typography-converter/"
+  }
 ];
 
 const webAppSchema = {
@@ -193,15 +167,16 @@ const webAppSchema = {
   "@type": "WebApplication",
   name: "Typography Unit Converter",
   url: "https://calcdomain.com/en/science-and-mathematics/unit-conversion/typography-converter/",
-  applicationCategory: "EducationalApplication",
+  applicationCategory: "DesignApplication",
   operatingSystem: "Any",
   description:
-    "Interactive typography unit converter that converts between pixels, points, em, rem, and percent for web design and frontend development.",
+    "Interactive typography unit converter that transforms font sizes between px, pt, em, rem and percent for web design and frontend development.",
   featureList: [
-    "Convert pixels to points, em, rem, and percent",
-    "Custom base and root font size support",
-    "Instant recalculation on input change",
-  ],
+    "Convert between px, pt, em, rem and percent",
+    "Advanced base font size and root font size controls",
+    "Instant autocalculation on input change",
+    "Shareable URL with prefilled inputs"
+  ]
 };
 
 const faqSchema = {
@@ -212,9 +187,9 @@ const faqSchema = {
     name: item.question,
     acceptedAnswer: {
       "@type": "Answer",
-      text: item.answer,
-    },
-  })),
+      text: item.answer
+    }
+  }))
 };
 
 const breadcrumbSchema = {
@@ -224,8 +199,8 @@ const breadcrumbSchema = {
     "@type": "ListItem",
     position: crumb.position,
     name: crumb.name,
-    item: crumb.item,
-  })),
+    item: crumb.item
+  }))
 };
 ---
 
@@ -253,287 +228,325 @@ const breadcrumbSchema = {
       <div class="hero-main">
         <h1>Typography Unit Converter (px, pt, em, rem, percent)</h1>
         <p class="hero-subtitle">
-          Convert font sizes between pixels, points, em, rem, and percent in seconds for precise, responsive typography.
+          Convert font sizes between px, pt, em, rem and percent in seconds, with clear explanations tailored for web designers and frontend developers.
         </p>
         <ul class="hero-trust">
           <li>Optimized for modern CSS and responsive design</li>
-          <li>Uses standard 96 dpi screen conversion for points</li>
-          <li>Built for designers, developers, and UX teams</li>
+          <li>Uses 96 dpi for point conversions</li>
+          <li>Updated for 2025 frontend best practices</li>
         </ul>
       </div>
       <aside class="hero-aside">
-        <div class="verification">
-          <span class="verification-label">Verified by</span>
-          <span class="verification-value">Senior frontend engineers</span>
+        <div class="verify-badge">
+          <span class="verify-label">Reviewed by</span>
+          <span class="verify-name">Senior Frontend Engineer</span>
         </div>
-        <div class="meta">
-          <span class="meta-label">Last updated</span>
-          <span class="meta-value">2025</span>
+        <div class="hero-meta">
+          <span>Category: Typography and unit conversion</span>
+          <span>Difficulty: Beginner friendly</span>
         </div>
       </aside>
     </header>
 
-    <section class="calculator-section">
-      <div class="calculator-main">
-        <CalculatorIsland slug={slug} config={calculatorConfig} />
-      </div>
-      <aside class="calculator-sidebar">
-        <div class="ad-slot">
-          <p>Sponsored content</p>
-        </div>
-        <div class="tip-box">
-          <h2>Pro tip</h2>
+    <section class="layout">
+      <div class="layout-main">
+        <section aria-labelledby="calculator-heading" class="calculator-section">
+          <div class="calculator-header">
+            <h2 id="calculator-heading">Interactive typography unit converter</h2>
+            <p>
+              Enter a font size, pick the units you want to convert from and to, and see all equivalent values across px, pt, em, rem and percent. Advanced settings let you control the base and root font sizes used for relative units.
+            </p>
+          </div>
+
+          <CalculatorIsland slug={slug} config={calculatorConfig} />
+
+          <section class="tips" aria-label="Typography tips">
+            <h3>Quick tips for accurate typography conversions</h3>
+            <ul>
+              <li>
+                For most browsers, the default root font size is 16 px. That means 1 rem is usually 16 px unless you override it on the html element.
+              </li>
+              <li>
+                Em values are relative to the current element font size, so nested elements can compound sizes. Rem values stay consistent because they always reference the root.
+              </li>
+              <li>
+                Points are a print unit. On the web, 1 pt is treated as 1.333333 px based on 96 dpi, so 12 pt is 16 px.
+              </li>
+            </ul>
+          </section>
+        </section>
+
+        <section class="theory" aria-labelledby="theory-heading">
+          <h2 id="theory-heading">How the typography unit converter works</h2>
           <p>
-            Keep your root font size consistent across the site and use rem for global typography scales. Use em for
-            local components that need to scale with their container.
+            This converter uses pixels as the internal base unit. Every input is first converted to pixels, then from pixels to the target unit. This keeps the logic simple and consistent across all unit pairs.
           </p>
+
+          <h3>Conversion relationships between units</h3>
+          <p>The following relationships are used for the calculations:</p>
+          <pre>
+1 pt = 1.333333 px  (based on 96 dpi)
+pt = px * 0.75
+px = pt * 1.333333
+
+em = px / baseFontSize
+px = em * baseFontSize
+
+rem = px / rootFontSize
+px = rem * rootFontSize
+
+percent = (px / baseFontSize) * 100
+px = (percent / 100) * baseFontSize
+          </pre>
+
+          <p>
+            The baseFontSize is the font size of the element that em and percent are relative to. The rootFontSize is the font size of the html element that rem is relative to. In many designs both are 16 px, but this converter lets you change them to match your CSS.
+          </p>
+
+          <h3>Step by step example</h3>
+          <p>
+            Suppose you want to convert 24 px to rem and em, with a base font size of 16 px and a root font size of 18 px:
+          </p>
+          <ol>
+            <li>Convert 24 px to em: em = 24 / 16 = 1.5 em.</li>
+            <li>Convert 24 px to rem: rem = 24 / 18 = 1.333333 rem.</li>
+            <li>Convert 24 px to percent: percent = (24 / 16) * 100 = 150 percent.</li>
+          </ol>
+          <p>
+            The converter performs these steps instantly and also shows the equivalent value in points using the 1 pt = 1.333333 px relationship.
+          </p>
+        </section>
+
+        <section class="examples" aria-labelledby="examples-heading">
+          <h2 id="examples-heading">Real world example: designing a responsive heading</h2>
+          <p>
+            Imagine you are designing a heading that should be 32 px on desktop, but your design system uses rem units and a root font size of 18 px.
+          </p>
+          <ol>
+            <li>Set the value to 32 and the from unit to px.</li>
+            <li>Set the to unit to rem and the root font size to 18 px.</li>
+            <li>The converter shows rem = 32 / 18 = 1.777777 rem.</li>
+          </ol>
+          <p>
+            In your CSS you can then write:
+          </p>
+          <pre>
+h1 &#123;
+  font-size: 1.78rem;
+&#125;
+          </pre>
+          <p>
+            If you later change the root font size for accessibility, the heading will scale automatically, while the rem value in your stylesheet stays the same.
+          </p>
+        </section>
+
+        <section class="faq" aria-labelledby="faq-heading">
+          <h2 id="faq-heading">Frequently asked questions</h2>
+          <dl>
+            {faqs.map((item) => (
+              <div class="faq-item">
+                <dt>{item.question}</dt>
+                <dd>{item.answer}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      </div>
+
+      <aside class="layout-sidebar" aria-label="Additional resources and ads">
+        <div class="sidebar-block">
+          <h2>Designer resources</h2>
+          <ul>
+            <li>Responsive type scales and modular rhythm</li>
+            <li>Accessibility guidelines for readable font sizes</li>
+            <li>CSS clamp patterns for fluid typography</li>
+          </ul>
+        </div>
+        <div class="sidebar-ad-slot">
+          <p>Ad space: high-visibility right rail placement.</p>
         </div>
       </aside>
-    </section>
-
-    <section class="content-section">
-      <h2>How the typography unit converter works</h2>
-      <p>
-        This typography unit converter helps you translate a font size in pixels into points, em, rem, and percent,
-        using standard web assumptions. It is designed for CSS and screen usage, not for print layout engines.
-      </p>
-
-      <h3>Conversion formulas</h3>
-      <p>These are the formulas used by the calculator, written in plain text math.</p>
-      <ul>
-        <li>
-          <strong>Pixels to points</strong>
-          <pre>points = pixels * 72 / 96</pre>
-        </li>
-        <li>
-          <strong>Pixels to em</strong>
-          <pre>em = pixels / baseFontPx</pre>
-        </li>
-        <li>
-          <strong>Pixels to rem</strong>
-          <pre>rem = pixels / rootFontPx</pre>
-        </li>
-        <li>
-          <strong>Pixels to percent</strong>
-          <pre>percent = pixels / rootFontPx * 100</pre>
-        </li>
-      </ul>
-      <p>
-        The factor 72 and 96 come from the common web assumption that there are 96 pixels per inch and 72 points per
-        inch. That means 1 point is 96 / 72 pixels, which is about 1.333333 pixels.
-      </p>
-
-      <h3>Choosing base and root font sizes</h3>
-      <p>
-        The base font size is the font size of the element you are styling. The root font size is usually the html font
-        size. Many browsers default to 16 px for the root, but design systems often change this to values like 15 px or
-        18 px.
-      </p>
-      <p>
-        When you convert to em, the calculator divides by the base font size. When you convert to rem or percent, it
-        divides by the root font size. This matches how CSS computes these units at runtime.
-      </p>
-    </section>
-
-    <section class="content-section">
-      <h2>Real world example</h2>
-      <p>
-        Imagine you are designing a heading that should be 32 px on desktop, and your design system uses a root font
-        size of 16 px.
-      </p>
-      <ul>
-        <li>Set base font size to 16 px.</li>
-        <li>Set root font size to 16 px.</li>
-        <li>Enter 32 px as the font size to convert.</li>
-      </ul>
-      <p>The converter will show:</p>
-      <ul>
-        <li>em = 32 / 16 = 2 em</li>
-        <li>rem = 32 / 16 = 2 rem</li>
-        <li>percent = 32 / 16 * 100 = 200 percent</li>
-        <li>points = 32 * 72 / 96 = 24 pt</li>
-      </ul>
-      <p>
-        In your CSS, you could then write the heading size as 2 rem, which will scale automatically if you ever change
-        the root font size for accessibility or branding reasons.
-      </p>
-    </section>
-
-    <section class="content-section">
-      <h2>Frequently asked questions</h2>
-      {faqs.map((item) => (
-        <article class="faq-item">
-          <h3>{item.question}</h3>
-          <p>{item.answer}</p>
-        </article>
-      ))}
     </section>
   </main>
 
   <style>
     .page {
-      display: flex;
-      flex-direction: column;
-      gap: 2rem;
       padding: 1.5rem 1rem 3rem;
-      max-width: 1120px;
+      max-width: 1200px;
       margin: 0 auto;
     }
 
     .hero {
       display: flex;
       flex-direction: column;
-      gap: 1.5rem;
-      border-bottom: 1px solid #e2e4ea;
-      padding-bottom: 1.5rem;
+      gap: 1rem;
+      margin-bottom: 2rem;
     }
 
     .hero-main h1 {
       font-size: 1.9rem;
       line-height: 1.2;
-      margin: 0 0 0.5rem;
+      margin-bottom: 0.5rem;
     }
 
     .hero-subtitle {
-      margin: 0 0 0.75rem;
-      color: #4a4f5c;
+      margin: 0.25rem 0 0.75rem;
+      color: #333333;
     }
 
     .hero-trust {
+      list-style: disc;
+      padding-left: 1.25rem;
       margin: 0;
-      padding-left: 1.2rem;
-      color: #4a4f5c;
+      color: #444444;
       font-size: 0.95rem;
     }
 
     .hero-aside {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
+      border-left: 4px solid #2563eb;
+      padding-left: 0.75rem;
       font-size: 0.9rem;
-      color: #4a4f5c;
+      color: #444444;
     }
 
-    .verification,
-    .meta {
-      padding: 0.75rem 1rem;
-      border-radius: 0.5rem;
-      background: #f5f7fb;
+    .verify-badge {
+      display: inline-flex;
+      flex-direction: column;
+      padding: 0.4rem 0.6rem;
+      border-radius: 0.4rem;
+      background: #eff6ff;
+      margin-bottom: 0.4rem;
     }
 
-    .verification-label,
-    .meta-label {
-      display: block;
+    .verify-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #1d4ed8;
+    }
+
+    .verify-name {
       font-weight: 600;
-      margin-bottom: 0.15rem;
+      color: #1e293b;
+    }
+
+    .hero-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+    }
+
+    .layout {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .layout-main {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .layout-sidebar {
+      flex: 0 0 260px;
     }
 
     .calculator-section {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr);
-      gap: 1.5rem;
-      align-items: flex-start;
+      margin-bottom: 2rem;
     }
 
-    .calculator-sidebar {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
+    .calculator-header h2 {
+      font-size: 1.4rem;
+      margin-bottom: 0.25rem;
     }
 
-    .ad-slot {
-      min-height: 120px;
+    .calculator-header p {
+      margin: 0 0 1rem;
+      color: #374151;
+    }
+
+    .tips,
+    .theory,
+    .examples,
+    .faq {
+      margin-top: 2rem;
+    }
+
+    .tips ul {
+      padding-left: 1.25rem;
+    }
+
+    .tips li {
+      margin-bottom: 0.4rem;
+    }
+
+    .theory pre,
+    .examples pre {
+      background: #0f172a;
+      color: #e5e7eb;
+      padding: 0.75rem 1rem;
       border-radius: 0.5rem;
-      border: 1px dashed #c2c7d6;
+      font-size: 0.85rem;
+      overflow-x: auto;
+    }
+
+    .examples ol,
+    .theory ol {
+      padding-left: 1.25rem;
+    }
+
+    .faq-item {
+      margin-bottom: 1rem;
+    }
+
+    .faq-item dt {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .faq-item dd {
+      margin: 0;
+      color: #374151;
+    }
+
+    .layout-sidebar .sidebar-block {
+      padding: 1rem;
+      border-radius: 0.5rem;
+      background: #f9fafb;
+      margin-bottom: 1rem;
+    }
+
+    .sidebar-ad-slot {
+      min-height: 200px;
+      border-radius: 0.5rem;
+      border: 1px dashed #cbd5f5;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 0.85rem;
-      color: #7a7f8c;
-    }
-
-    .tip-box {
+      color: #6b7280;
       padding: 1rem;
-      border-radius: 0.5rem;
-      background: #f9fafc;
-      border: 1px solid #e2e4ea;
     }
 
-    .tip-box h2 {
-      margin: 0 0 0.5rem;
-      font-size: 1rem;
-    }
-
-    .content-section {
-      border-top: 1px solid #e2e4ea;
-      padding-top: 1.5rem;
-    }
-
-    .content-section h2 {
-      margin-top: 0;
-      margin-bottom: 0.75rem;
-      font-size: 1.4rem;
-    }
-
-    .content-section h3 {
-      margin-top: 1.25rem;
-      margin-bottom: 0.5rem;
-      font-size: 1.1rem;
-    }
-
-    .content-section p {
-      margin: 0 0 0.75rem;
-      color: #3c404a;
-    }
-
-    .content-section ul {
-      margin: 0 0 0.75rem 1.2rem;
-      color: #3c404a;
-    }
-
-    pre {
-      margin: 0.25rem 0 0.5rem;
-      padding: 0.4rem 0.6rem;
-      background: #f5f7fb;
-      border-radius: 0.35rem;
-      font-size: 0.9rem;
-      overflow-x: auto;
-    }
-
-    .faq-item + .faq-item {
-      margin-top: 1rem;
-    }
-
-    @media (min-width: 768px) {
-      .page {
-        padding: 2rem 1.5rem 3rem;
-      }
-
+    @media (min-width: 900px) {
       .hero {
         flex-direction: row;
         justify-content: space-between;
+        align-items: flex-start;
       }
 
       .hero-main {
-        max-width: 70%;
+        flex: 1 1 auto;
+        padding-right: 1.5rem;
       }
 
-      .hero-main h1 {
-        font-size: 2.1rem;
+      .hero-aside {
+        flex: 0 0 260px;
       }
 
-      .calculator-section {
-        grid-template-columns: minmax(0, 2.2fr) minmax(260px, 0.9fr);
-      }
-    }
-
-    @media (min-width: 1024px) {
-      .page {
-        padding: 2.5rem 0 3.5rem;
-      }
-
-      .hero-main h1 {
-        font-size: 2.3rem;
+      .layout {
+        flex-direction: row;
+        align-items: flex-start;
       }
     }
   </style>
