@@ -12,36 +12,37 @@
             this.searchInput = null;
             this.searchResults = null;
             this.isInitialized = false;
+            this.calculatorsReady = false;
+            this.loading = false;
+            this.loadPromise = null;
+            this.calculators = this.getEmbeddedCalculators();
             
             console.log('CalcDomainSearch: Inizializzazione...');
             this.init();
         }
 
         async init() {
-            try {
-                await this.loadCalculators();
-                this.setupSearchElements();
-                this.bindEvents();
-                this.isInitialized = true;
-                console.log('CalcDomainSearch: Inizializzato con successo', this.calculators.length, 'calcolatori');
-            } catch (error) {
-                console.error('CalcDomainSearch: Errore inizializzazione:', error);
-            }
+            this.setupSearchElements();
+            this.bindEvents();
+            this.scheduleDataLoad();
+            this.isInitialized = true;
+            console.log('CalcDomainSearch: Inizializzato con successo', this.calculators.length, 'calcolatori (embedded)');
         }
 
         async loadCalculators() {
+            if (this.loading || this.calculatorsReady) return this.loadPromise || Promise.resolve();
+            this.loading = true;
             try {
                 const response = await fetch('/calculators-data.json');
                 if (response.ok) {
                     this.calculators = await response.json();
                     console.log('Caricati', this.calculators.length, 'calcolatori da JSON');
-                } else {
-                    this.calculators = this.getEmbeddedCalculators();
-                    console.log('Usando dati embedded:', this.calculators.length, 'calcolatori');
                 }
             } catch (error) {
-                this.calculators = this.getEmbeddedCalculators();
                 console.log('Fallback a dati embedded:', this.calculators.length, 'calcolatori');
+            } finally {
+                this.calculatorsReady = true;
+                this.loading = false;
             }
         }
 
@@ -53,6 +54,26 @@
                 { slug: "auto-loan", url: "https://calcdomain.com/auto-loan.html", title: "Auto Loan Calculator", category: "Finance", subcategory: "Loans & Debt", description: "Calculate car loan payments" },
                 { slug: "loan-payoff", url: "https://calcdomain.com/loan-payoff.html", title: "Loan Payoff Calculator", category: "Finance", subcategory: "Loans & Debt", description: "Calculate loan payoff strategies" }
             ];
+        }
+
+        scheduleDataLoad() {
+            const load = () => {
+                this.loadPromise = this.loadCalculators();
+            };
+
+            const enqueue = () => {
+                if ('requestIdleCallback' in window) {
+                    requestIdleCallback(load, { timeout: 2000 });
+                } else {
+                    setTimeout(load, 1000);
+                }
+            };
+
+            if (document.readyState === 'complete') {
+                enqueue();
+            } else {
+                window.addEventListener('load', enqueue, { once: true });
+            }
         }
 
         setupSearchElements() {
@@ -145,6 +166,10 @@
             if (query.length < 2) {
                 this.hideResults();
                 return;
+            }
+
+            if (!this.calculatorsReady && !this.loading) {
+                this.loadPromise = this.loadCalculators();
             }
 
             const results = this.searchCalculators(query);
