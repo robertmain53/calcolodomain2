@@ -175,9 +175,7 @@ SHARED_SCRIPTS = """    <script>
 EXCLUDE_FILES = {
     # Templates should be edited manually.
     "template-calc.html",
-    "template-cat.html",
-    "template-home.html",
-    "template-subcat.html",
+    "template-cat.html",    "template-subcat.html",
 }
 
 def extract_tag(pattern: str, text: str, flags: int = re.I | re.S) -> Tuple[str, str]:

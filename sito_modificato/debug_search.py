@@ -432,7 +432,6 @@ def main():
     print("\n\n==========================================")
     print("ISTRUZIONI POST-FIX")
     print("==========================================\n")
-    print("1. Ricarica test-search.html nel browser")
     print("2. Apri la console (F12)")
     print("3. Dovresti vedere:")
     print("   - 'CalcDomainSearch: Inizializzazione...'")
