@@ -12,7 +12,7 @@ TEMPLATE_DIR = os.path.join(BASE_DIR, "template_perfetti")
 SITO_ORIGINALE_DIR = os.path.join(BASE_DIR, "sito_originale")
 SITO_MODIFICATO_DIR = os.path.join(BASE_DIR, "sito_modificato")
 
-# Assicurati che la cartella di destinazione esista
+# Assicurati  che la cartella di destinazione esista
 os.makedirs(SITO_MODIFICATO_DIR, exist_ok=True)
 
 
