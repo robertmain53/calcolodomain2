@@ -115,6 +115,22 @@ def extract_title(html: str) -> str:
     return "Untitled"
 
 
+def extract_meta_description(html: str) -> str:
+    match = re.search(
+        r'(?is)<meta[^>]+name=["\']description["\'][^>]*>',
+        html,
+    )
+    if match:
+        tag = match.group(0)
+        content = re.search(r'content=["\'](.*?)["\']', tag, re.I | re.S)
+        if content:
+            return re.sub(r"\s+", " ", content.group(1)).strip()
+    match = re.search(r"(?is)<p[^>]*>(.*?)</p>", html)
+    if match:
+        return re.sub(r"(?is)<[^>]+>", " ", match.group(1)).strip()
+    return ""
+
+
 def extract_breadcrumb_slug(html: str) -> Tuple[Optional[str], Optional[str]]:
     scripts = re.findall(
         r'(?is)<script[^>]*type=["\']application/ld\\+json["\'][^>]*>(.*?)</script>',
@@ -237,25 +253,106 @@ def category_label(slug: str) -> str:
     return overrides.get(slug, slug.replace("-", " ").title())
 
 
+def build_breadcrumbs(
+    label: str,
+    section_slug: str,
+) -> Tuple[str, List[Dict[str, str]]]:
+    crumbs = [
+        {"name": "Home", "url": "https://calcdomain.com"},
+        {"name": section_slug.replace("-", " ").title(), "url": f"https://calcdomain.com/{section_slug}"},
+        {"name": label, "url": f"https://calcdomain.com/{section_slug}/{slugify(label)}"},
+    ]
+    html = (
+        '<nav class="text-sm text-gray-600 mb-6" aria-label="Breadcrumbs">'
+        f'<a href="{crumbs[0]["url"]}" class="hover:text-blue-600">Home</a> &raquo; '
+        f'<a href="{crumbs[1]["url"]}" class="hover:text-blue-600">{crumbs[1]["name"]}</a> &raquo; '
+        f'<span class="text-gray-800">{crumbs[2]["name"]}</span>'
+        "</nav>"
+    )
+    return html, crumbs
+
+
+def build_json_ld(
+    title: str,
+    canonical_path: str,
+    breadcrumb_items: List[Dict[str, str]],
+    items: List[Tuple[str, str, str]],
+) -> str:
+    breadcrumbs = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": idx + 1,
+                "name": crumb["name"],
+                "item": crumb["url"],
+            }
+            for idx, crumb in enumerate(breadcrumb_items)
+        ],
+    }
+
+    item_list = {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "name": title,
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": idx + 1,
+                "url": f"https://calcdomain.com{url}",
+                "name": label,
+            }
+            for idx, (label, url, _desc) in enumerate(items)
+        ],
+    }
+
+    website = {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "CalcDomain",
+        "url": "https://calcdomain.com",
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://calcdomain.com/search?q={search_term_string}",
+            "query-input": "required name=search_term_string",
+        },
+    }
+
+    organization = {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "CalcDomain",
+        "url": "https://calcdomain.com",
+        "logo": "https://calcdomain.com/apple-touch-icon.png",
+    }
+
+    return json.dumps([breadcrumbs, item_list, website, organization], ensure_ascii=False, indent=2)
+
+
 def build_page_html(
     title: str,
     heading: str,
-    items: List[Tuple[str, str]],
+    items: List[Tuple[str, str, str]],
     canonical_path: str,
     include_categories: bool = False,
+    section_slug: str = "categories",
 ) -> str:
     header, footer = load_header_footer()
     list_items = []
-    for label, url in items:
+    for label, url, desc in items:
+        description = desc or "No description available."
         list_items.append(
             f'<a href="{url}" class="block p-4 bg-white rounded-lg shadow-sm border hover:border-blue-500 hover:shadow-md transition">'
             f'<div class="text-base font-semibold text-gray-800">{label}</div>'
-            f'<div class="text-sm text-gray-500 mt-1">{url}</div>'
+            f'<div class="text-sm text-gray-500 mt-1">{description}</div>'
             f"</a>"
         )
     cards_html = "\n".join(list_items) or "<p class=\"text-gray-600\">No pages found.</p>"
 
     categories_section = build_categories_section() if include_categories else ""
+    breadcrumbs_html, breadcrumb_items = build_breadcrumbs(heading, section_slug)
+    json_ld = build_json_ld(title, canonical_path, breadcrumb_items, items)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -275,10 +372,14 @@ def build_page_html(
   <style>
     body {{ font-family: 'Inter', sans-serif; }}
   </style>
+  <script type="application/ld+json">
+{json_ld}
+  </script>
 </head>
 <body class="bg-gray-50 text-gray-800">
 {header}
   <main class="container mx-auto px-4 py-10 max-w-5xl">
+    {breadcrumbs_html}
     <div class="mb-8">
       <h1 class="text-3xl font-bold text-gray-900">{heading}</h1>
       <p class="text-gray-600 mt-2">Browse calculators and resources in this section.</p>
@@ -300,23 +401,24 @@ def main() -> None:
     category_set = set(CATEGORY_SLUGS)
     subcategory_set = set(SUBCATEGORY_SLUGS)
 
-    category_pages: Dict[str, List[Tuple[str, str]]] = {c: [] for c in CATEGORY_SLUGS}
-    subcategory_pages: Dict[str, List[Tuple[str, str]]] = {s: [] for s in SUBCATEGORY_SLUGS}
-    general_pages: List[Tuple[str, str]] = []
+    category_pages: Dict[str, List[Tuple[str, str, str]]] = {c: [] for c in CATEGORY_SLUGS}
+    subcategory_pages: Dict[str, List[Tuple[str, str, str]]] = {s: [] for s in SUBCATEGORY_SLUGS}
+    general_pages: List[Tuple[str, str, str]] = []
 
     for page in iter_html_pages():
         html = page.read_text(encoding="utf-8", errors="ignore")
         title = extract_title(html)
+        description = extract_meta_description(html)
         cat_slug, sub_slug = extract_breadcrumb_slug(html)
 
         rel_url = f"/{page.relative_to(SITE_ROOT).as_posix()}"
 
         if cat_slug in category_set:
-            category_pages[cat_slug].append((title, rel_url))
+            category_pages[cat_slug].append((title, rel_url, description))
             if sub_slug in subcategory_set:
-                subcategory_pages[sub_slug].append((title, rel_url))
+                subcategory_pages[sub_slug].append((title, rel_url, description))
         else:
-            general_pages.append((title, rel_url))
+            general_pages.append((title, rel_url, description))
 
     categories_dir = SITE_ROOT / "categories"
     subcategories_dir = SITE_ROOT / "subcategories"
@@ -324,34 +426,37 @@ def main() -> None:
     subcategories_dir.mkdir(parents=True, exist_ok=True)
 
     for cat_slug in CATEGORY_SLUGS:
-        heading = f"Category: {category_label(cat_slug)}"
+        heading = category_label(cat_slug)
         html = build_page_html(
             f"{heading} | CalcDomain",
             heading,
             category_pages[cat_slug],
             f"/categories/{cat_slug}",
             include_categories=True,
+            section_slug="categories",
         )
         (categories_dir / f"{cat_slug}.html").write_text(html, encoding="utf-8")
 
     for sub_slug in SUBCATEGORY_SLUGS:
-        heading = f"Subcategory: {sub_slug.replace('-', ' ').title()}"
+        heading = sub_slug.replace("-", " ").title()
         html = build_page_html(
             f"{heading} | CalcDomain",
             heading,
             subcategory_pages[sub_slug],
             f"/subcategories/{sub_slug}",
             include_categories=True,
+            section_slug="subcategories",
         )
         (subcategories_dir / f"{sub_slug}.html").write_text(html, encoding="utf-8")
 
-    general_heading = "Category: General"
+    general_heading = "General"
     general_html = build_page_html(
-        "Category: General | CalcDomain",
+        "General | CalcDomain",
         general_heading,
         general_pages,
         "/categories/general",
         include_categories=True,
+        section_slug="categories",
     )
     (categories_dir / "general.html").write_text(general_html, encoding="utf-8")
 
