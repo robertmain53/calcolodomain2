@@ -17,6 +17,13 @@ python3 run.py
 - Regenerates subcategory pages in `sito_modificato/subcategories/`.
 - Creates `sito_modificato/categories/general.html` for pages with no recognized category.
 - Generates `sito_modificato/search.json`, `sito_modificato/calculators-data.json`, and `sito_modificato/sitemap.xml`.
+- Runs `git add .`, `git commit -m "YYYY-MM-DD"`, and `git push -u origin main`.
+
+To skip git operations:
+
+```bash
+python3 run.py --no-git
+```
 
 ## How This Site Was Built
 

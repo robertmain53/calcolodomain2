@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
+import argparse
 import json
 import re
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -132,8 +134,37 @@ def extract_breadcrumb_slug(html: str) -> Tuple[Optional[str], Optional[str]]:
                     continue
                 cat_slug = breadcrumb_item_to_slug(items[1])
                 sub_slug = breadcrumb_item_to_slug(items[2]) if len(items) > 2 else None
-                return cat_slug, sub_slug
-    return None, None
+                if cat_slug or sub_slug:
+                    return cat_slug, sub_slug
+    return extract_breadcrumb_slug_html(html)
+
+
+def extract_breadcrumb_slug_html(html: str) -> Tuple[Optional[str], Optional[str]]:
+    nav_blocks = re.findall(r"(?is)<nav[^>]*>.*?</nav>", html)
+    breadcrumb_candidates = []
+    for nav in nav_blocks:
+        if re.search(r"breadcrumb", nav, re.I) or re.search(r">\\s*Home\\s*<", nav, re.I):
+            breadcrumb_candidates.append(nav)
+    if not breadcrumb_candidates:
+        return None, None
+
+    best_nav = max(breadcrumb_candidates, key=lambda n: len(re.findall(r"(?is)<a\\b", n)))
+    anchors = re.findall(r'(?is)<a[^>]+href=["\'](.*?)["\'][^>]*>(.*?)</a>', best_nav)
+    slugs = []
+    for href, label in anchors:
+        slug = slug_from_breadcrumb_url(href) or slugify(re.sub(r"(?is)<[^>]+>", " ", label))
+        if slug:
+            slugs.append(slug)
+
+    cat_slug = next((s for s in slugs if s in CATEGORY_SLUGS), None)
+    sub_slug = None
+    if cat_slug and cat_slug in slugs:
+        idx = slugs.index(cat_slug)
+        sub_slug = next((s for s in slugs[idx + 1 :] if s in SUBCATEGORY_SLUGS), None)
+    else:
+        sub_slug = next((s for s in slugs if s in SUBCATEGORY_SLUGS), None)
+
+    return cat_slug, sub_slug
 
 
 def breadcrumb_item_to_slug(item: dict) -> Optional[str]:
@@ -210,6 +241,7 @@ def build_page_html(
     title: str,
     heading: str,
     items: List[Tuple[str, str]],
+    canonical_path: str,
     include_categories: bool = False,
 ) -> str:
     header, footer = load_header_footer()
@@ -232,7 +264,7 @@ def build_page_html(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{title}</title>
   <meta name="description" content="{heading} on CalcDomain.">
-  <link rel="canonical" href="https://calcdomain.com/{slugify(heading)}">
+  <link rel="canonical" href="https://calcdomain.com{canonical_path}">
   <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="shortcut icon" href="/favicon.ico" />
@@ -292,11 +324,12 @@ def main() -> None:
     subcategories_dir.mkdir(parents=True, exist_ok=True)
 
     for cat_slug in CATEGORY_SLUGS:
-        heading = f"Category: {cat_slug.replace('-', ' ').title()}"
+        heading = f"Category: {category_label(cat_slug)}"
         html = build_page_html(
             f"{heading} | CalcDomain",
             heading,
             category_pages[cat_slug],
+            f"/categories/{cat_slug}",
             include_categories=True,
         )
         (categories_dir / f"{cat_slug}.html").write_text(html, encoding="utf-8")
@@ -307,6 +340,7 @@ def main() -> None:
             f"{heading} | CalcDomain",
             heading,
             subcategory_pages[sub_slug],
+            f"/subcategories/{sub_slug}",
             include_categories=True,
         )
         (subcategories_dir / f"{sub_slug}.html").write_text(html, encoding="utf-8")
@@ -316,6 +350,7 @@ def main() -> None:
         "Category: General | CalcDomain",
         general_heading,
         general_pages,
+        "/categories/general",
         include_categories=True,
     )
     (categories_dir / "general.html").write_text(general_html, encoding="utf-8")
@@ -340,5 +375,25 @@ def run_search_and_sitemap() -> None:
         raise RuntimeError("Search/sitemap generator failed.")
 
 
+def run_git_commands() -> None:
+    stamp = date.today().isoformat()
+    subprocess.run(["git", "add", "."], check=True)
+    commit = subprocess.run(["git", "commit", "-m", stamp], check=False)
+    if commit.returncode != 0:
+        print("Git commit skipped (nothing to commit).")
+        return
+    subprocess.run(["git", "push", "-u", "origin", "main"], check=True)
+
+
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Regenerate category pages, search, and sitemap.")
+    parser.add_argument(
+        "--no-git",
+        action="store_true",
+        help="Skip git add/commit/push.",
+    )
+    args = parser.parse_args()
+
     main()
+    if not args.no_git:
+        run_git_commands()
