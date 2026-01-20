@@ -253,22 +253,71 @@ def category_label(slug: str) -> str:
     return overrides.get(slug, slug.replace("-", " ").title())
 
 
+def parent_category_for_subcategory(sub_slug: str) -> Optional[str]:
+    prefixes = [
+        ("finance-", "finance"),
+        ("construction-diy-", "construction-diy"),
+        ("construction-", "construction"),
+        ("health-fitness-", "health-fitness"),
+        ("math-conversions-", "math-conversions"),
+        ("engineering-", "engineering"),
+    ]
+    for prefix, cat in prefixes:
+        if sub_slug.startswith(prefix):
+            return cat
+    direct_map = {
+        "automotive": "lifestyle-everyday",
+        "biology": "science",
+        "calorie": "health-fitness",
+        "chemistry": "science",
+        "core-math-algebra": "math",
+        "diet-nutrition": "health-fitness",
+        "electrical": "engineering",
+        "fitness": "health-fitness",
+        "geometry": "math",
+        "geometry-area-and-perimeter-formulas": "math",
+        "health-metrics": "health-fitness",
+        "hobbies": "lifestyle-everyday",
+        "loans-debt": "finance",
+        "mechanical-engineering": "engineering",
+        "miscellaneous": "lifestyle-everyday",
+        "mortgage-real-estate": "finance",
+        "physics": "science",
+        "project-layout-design": "construction-diy",
+        "structural-engineering": "engineering",
+        "taxes": "finance",
+        "time-date": "lifestyle-everyday",
+    }
+    return direct_map.get(sub_slug)
+
+
 def build_breadcrumbs(
     label: str,
     section_slug: str,
+    parent_label: Optional[str] = None,
+    parent_slug: Optional[str] = None,
 ) -> Tuple[str, List[Dict[str, str]]]:
-    crumbs = [
-        {"name": "Home", "url": "https://calcdomain.com"},
-        {"name": section_slug.replace("-", " ").title(), "url": f"https://calcdomain.com/{section_slug}"},
-        {"name": label, "url": f"https://calcdomain.com/{section_slug}/{slugify(label)}"},
-    ]
+    crumbs = [{"name": "Home", "url": "https://calcdomain.com"}]
+    if parent_label and parent_slug:
+        crumbs.append(
+            {
+                "name": parent_label,
+                "url": f"https://calcdomain.com/categories/{parent_slug}",
+            }
+        )
+    crumbs.append(
+        {
+            "name": label,
+            "url": f"https://calcdomain.com/{section_slug}/{slugify(label)}",
+        }
+    )
     html = (
         '<nav class="text-sm text-gray-600 mb-6" aria-label="Breadcrumbs">'
-        f'<a href="{crumbs[0]["url"]}" class="hover:text-blue-600">Home</a> &raquo; '
-        f'<a href="{crumbs[1]["url"]}" class="hover:text-blue-600">{crumbs[1]["name"]}</a> &raquo; '
-        f'<span class="text-gray-800">{crumbs[2]["name"]}</span>'
-        "</nav>"
+        f'<a href="{crumbs[0]["url"]}" class="hover:text-blue-600">Home</a>'
     )
+    for crumb in crumbs[1:-1]:
+        html += f' &raquo; <a href="{crumb["url"]}" class="hover:text-blue-600">{crumb["name"]}</a>'
+    html += f' &raquo; <span class="text-gray-800">{crumbs[-1]["name"]}</span></nav>'
     return html, crumbs
 
 
@@ -337,6 +386,8 @@ def build_page_html(
     canonical_path: str,
     include_categories: bool = False,
     section_slug: str = "categories",
+    parent_label: Optional[str] = None,
+    parent_slug: Optional[str] = None,
 ) -> str:
     header, footer = load_header_footer()
     list_items = []
@@ -351,7 +402,12 @@ def build_page_html(
     cards_html = "\n".join(list_items) or "<p class=\"text-gray-600\">No pages found.</p>"
 
     categories_section = build_categories_section() if include_categories else ""
-    breadcrumbs_html, breadcrumb_items = build_breadcrumbs(heading, section_slug)
+    breadcrumbs_html, breadcrumb_items = build_breadcrumbs(
+        heading,
+        section_slug,
+        parent_label=parent_label,
+        parent_slug=parent_slug,
+    )
     json_ld = build_json_ld(title, canonical_path, breadcrumb_items, items)
 
     return f"""<!DOCTYPE html>
@@ -439,6 +495,8 @@ def main() -> None:
 
     for sub_slug in SUBCATEGORY_SLUGS:
         heading = sub_slug.replace("-", " ").title()
+        parent_slug = parent_category_for_subcategory(sub_slug)
+        parent_label = category_label(parent_slug) if parent_slug else None
         html = build_page_html(
             f"{heading} | CalcDomain",
             heading,
@@ -446,6 +504,8 @@ def main() -> None:
             f"/subcategories/{sub_slug}",
             include_categories=True,
             section_slug="subcategories",
+            parent_label=parent_label,
+            parent_slug=parent_slug,
         )
         (subcategories_dir / f"{sub_slug}.html").write_text(html, encoding="utf-8")
 
