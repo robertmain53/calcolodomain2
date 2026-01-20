@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import csv
 import json
 import re
 import subprocess
@@ -239,6 +240,129 @@ def category_label(slug: str) -> str:
     return overrides.get(slug, slug.replace("-", " ").title())
 
 
+def read_categories_from_csv() -> List[str]:
+    path = ROOT / "cat.csv"
+    if not path.exists():
+        return []
+    with path.open(encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        return [row["category"].strip() for row in reader if row.get("category")]
+
+
+def update_footer_template(categories: List[str]) -> None:
+    if not categories:
+        return
+    footer_path = ROOT / "template_perfetti" / "footer_perfetto.html"
+    text = footer_path.read_text(encoding="utf-8")
+    list_items = ["        <ul class=\"space-y-2\">"]
+    for slug in categories:
+        label = category_label(slug)
+        list_items.append(
+            f'          <li><a href="https://calcdomain.com/categories/{slug}" class="text-gray-400 hover:text-white">{label}</a></li>'
+        )
+    list_items.append("        </ul>")
+    new_list = "\n".join(list_items)
+    pattern = re.compile(r'(?is)(<h4[^>]*>\s*Categories\s*</h4>\s*)<ul[^>]*>.*?</ul>')
+    new_text = pattern.sub(r"\1" + new_list, text, count=1)
+    footer_path.write_text(new_text, encoding="utf-8")
+
+
+def update_site_footers() -> None:
+    footer = (ROOT / "template_perfetti" / "footer_perfetto.html").read_text(encoding="utf-8")
+    for p in SITE_ROOT.rglob("*.html"):
+        if not p.is_file():
+            continue
+        text = p.read_text(encoding="utf-8", errors="ignore")
+        match = re.search(r"<footer\b[^>]*>", text, flags=re.I)
+        if not match:
+            continue
+        start = match.start()
+        end = text.find("</footer>", match.end())
+        if end == -1:
+            continue
+        end += len("</footer>")
+        new_text = text[:start] + footer + text[end:]
+        if new_text != text:
+            p.write_text(new_text, encoding="utf-8")
+
+
+def build_homepage_cards(categories: List[str]) -> str:
+    cards = []
+    for slug in categories:
+        label = category_label(slug)
+        cards.append(
+            f'''                <a href="https://calcdomain.com/categories/{slug}" class="card-hover bg-white rounded-lg shadow-md overflow-hidden">
+                    <div class="bg-gradient-to-r from-slate-700 to-slate-800 p-6 text-white">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-xl font-bold mb-2">{label}</h3>
+                            </div>
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <p class="text-gray-600 mb-4">Browse calculators in {label}.</p>
+                    </div>
+                </a>'''
+        )
+    return "\n\n".join(cards)
+
+
+def update_homepage(categories: List[str], today: str) -> None:
+    if not categories:
+        return
+    index_path = SITE_ROOT / "index.html"
+    if not index_path.exists():
+        return
+    text = index_path.read_text(encoding="utf-8", errors="ignore")
+    start = text.find("<!-- Categories Section -->")
+    end = text.find("<!-- Features Section -->", start)
+    if start == -1 or end == -1:
+        return
+    section = f'''<!-- Categories Section -->
+    <section id="categories" class="py-16 bg-gray-50">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-12 mt-5">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">Calculator Categories</h2>
+                <p class="text-lg text-gray-600">Updated from `cat.csv` to match live category pages.</p>
+                <p class="text-sm text-gray-500 mt-2">Latest update: {today}</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+{build_homepage_cards(categories)}
+            </div>
+        </div>
+    </section>
+'''
+    updated = text[:start] + section + "\n    <!-- Features Section -->" + text[end:]
+    # Update or insert WebPage JSON-LD with dateModified
+    web_page_pattern = re.compile(
+        r'(?is)<script[^>]*type=["\']application/ld\+json["\'][^>]*>\s*\{\s*"@context"\s*:\s*"https://schema\.org"\s*,\s*"@type"\s*:\s*"WebPage".*?\}\s*</script>'
+    )
+    if web_page_pattern.search(updated):
+        updated = re.sub(
+            r'(?is)("dateModified"\s*:\s*")[^"]+(")',
+            r"\1" + today + r"\2",
+            updated,
+        )
+    else:
+        insert_after = re.search(
+            r'(?is)<script[^>]*type=["\']application/ld\+json["\'][^>]*>.*?"@type"\s*:\s*"WebSite".*?</script>',
+            updated,
+        )
+        if insert_after:
+            web_page = (
+                f'\n<script type="application/ld+json">\n{{\n'
+                f'  "@context": "https://schema.org",\n'
+                f'  "@type": "WebPage",\n'
+                f'  "name": "CalcDomain",\n'
+                f'  "url": "https://calcdomain.com",\n'
+                f'  "dateModified": "{today}"\n'
+                f'}}\n</script>'
+            )
+            updated = updated[: insert_after.end()] + web_page + updated[insert_after.end() :]
+    index_path.write_text(updated, encoding="utf-8")
+
+
 def parent_category_for_subcategory(sub_slug: str) -> Optional[str]:
     prefixes = [
         ("finance-", "finance"),
@@ -312,6 +436,7 @@ def build_json_ld(
     canonical_path: str,
     breadcrumb_items: List[Dict[str, str]],
     items: List[Tuple[str, str, str]],
+    last_updated: str,
 ) -> str:
     breadcrumbs = {
         "@context": "https://schema.org",
@@ -362,7 +487,19 @@ def build_json_ld(
         "logo": "https://calcdomain.com/apple-touch-icon.png",
     }
 
-    return json.dumps([breadcrumbs, item_list, website, organization], ensure_ascii=False, indent=2)
+    webpage = {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": title,
+        "url": f"https://calcdomain.com{canonical_path}",
+        "dateModified": last_updated,
+    }
+
+    return json.dumps(
+        [breadcrumbs, item_list, website, organization, webpage],
+        ensure_ascii=False,
+        indent=2,
+    )
 
 
 def build_page_html(
@@ -375,6 +512,7 @@ def build_page_html(
     parent_slug: Optional[str] = None,
     description: Optional[str] = None,
     subcategory_items: Optional[List[Tuple[str, str, str]]] = None,
+    last_updated: Optional[str] = None,
 ) -> str:
     header, footer = load_header_footer()
     list_items = []
@@ -411,7 +549,13 @@ def build_page_html(
         parent_label=parent_label,
         parent_slug=parent_slug,
     )
-    json_ld = build_json_ld(title, canonical_path, breadcrumb_items, items)
+    json_ld = build_json_ld(
+        title,
+        canonical_path,
+        breadcrumb_items,
+        items,
+        last_updated or date.today().isoformat(),
+    )
     meta_description = description or f"{heading} calculators and guides on CalcDomain."
 
     return f"""<!DOCTYPE html>
@@ -443,6 +587,7 @@ def build_page_html(
     <div class="mb-8">
       <h1 class="text-3xl font-bold text-gray-900">{heading}</h1>
       <p class="text-gray-600 mt-2">Browse calculators and resources in this section.</p>
+      <p class="text-sm text-gray-500 mt-2">Latest update: {last_updated or date.today().isoformat()}</p>
     </div>
     {subcat_html}
     <section>
@@ -461,9 +606,9 @@ def build_page_html(
 
 
 def main() -> None:
+    today = date.today().isoformat()
     category_set = set(CATEGORY_SLUGS)
     subcategory_set = set(SUBCATEGORY_SLUGS)
-
     category_pages: Dict[str, List[Tuple[str, str, str]]] = {c: [] for c in CATEGORY_SLUGS}
     subcategory_pages: Dict[str, List[Tuple[str, str, str]]] = {s: [] for s in SUBCATEGORY_SLUGS}
     general_pages: List[Tuple[str, str, str]] = []
@@ -528,6 +673,7 @@ def main() -> None:
             section_slug="categories",
             description=description,
             subcategory_items=sub_items,
+            last_updated=today,
         )
         (categories_dir / f"{cat_slug}.html").write_text(html, encoding="utf-8")
 
@@ -554,6 +700,7 @@ def main() -> None:
             parent_label=parent_label,
             parent_slug=parent_slug,
             description=description,
+            last_updated=today,
         )
         (subcategories_dir / f"{sub_slug}.html").write_text(html, encoding="utf-8")
 
@@ -570,6 +717,7 @@ def main() -> None:
             "/categories/general",
             section_slug="categories",
             description=description,
+            last_updated=today,
         )
         (categories_dir / "general.html").write_text(general_html, encoding="utf-8")
     else:
@@ -581,6 +729,12 @@ def main() -> None:
         f"Wrote {len(CATEGORY_SLUGS)} category pages, "
         f"{len(SUBCATEGORY_SLUGS)} subcategory pages, and general category."
     )
+    categories_from_csv = read_categories_from_csv()
+    if not categories_from_csv:
+        categories_from_csv = CATEGORY_SLUGS + (["general"] if general_pages else [])
+    update_footer_template(categories_from_csv)
+    update_site_footers()
+    update_homepage(categories_from_csv, today)
     run_search_and_sitemap()
 
 
