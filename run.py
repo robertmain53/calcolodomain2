@@ -315,9 +315,9 @@ def build_breadcrumbs(
         '<nav class="text-sm text-gray-600 mb-6" aria-label="Breadcrumbs">'
         f'<a href="{crumbs[0]["url"]}" class="hover:text-blue-600">Home</a>'
     )
-    for crumb in crumbs[1:-1]:
+    for crumb in crumbs[1:]:
         html += f' &raquo; <a href="{crumb["url"]}" class="hover:text-blue-600">{crumb["name"]}</a>'
-    html += f' &raquo; <span class="text-gray-800">{crumbs[-1]["name"]}</span></nav>'
+    html += "</nav>"
     return html, crumbs
 
 
