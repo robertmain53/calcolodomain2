@@ -229,20 +229,6 @@ def load_header_footer() -> Tuple[str, str]:
     return header, footer
 
 
-def build_categories_section() -> str:
-    links = []
-    for slug in CATEGORY_SLUGS + ["general"]:
-        label = category_label(slug)
-        links.append(
-            f'<a href="https://calcdomain.com/categories/{slug}" class="text-sm text-blue-700 hover:text-blue-900">{label}</a>'
-        )
-    return (
-        '<div class="mb-8 rounded-lg border border-gray-200 bg-white p-5">'
-        '<h2 class="text-lg font-semibold text-gray-900 mb-2">All Categories</h2>'
-        '<div class="flex flex-wrap gap-3">' + "".join(links) + "</div></div>"
-    )
-
-
 def category_label(slug: str) -> str:
     overrides = {
         "construction-diy": "Construction & DIY",
@@ -384,10 +370,11 @@ def build_page_html(
     heading: str,
     items: List[Tuple[str, str, str]],
     canonical_path: str,
-    include_categories: bool = False,
     section_slug: str = "categories",
     parent_label: Optional[str] = None,
     parent_slug: Optional[str] = None,
+    description: Optional[str] = None,
+    subcategory_items: Optional[List[Tuple[str, str, str]]] = None,
 ) -> str:
     header, footer = load_header_footer()
     list_items = []
@@ -401,7 +388,23 @@ def build_page_html(
         )
     cards_html = "\n".join(list_items) or "<p class=\"text-gray-600\">No pages found.</p>"
 
-    categories_section = build_categories_section() if include_categories else ""
+    subcat_html = ""
+    if subcategory_items:
+        sub_items = []
+        for label, url, desc in subcategory_items:
+            description = desc or "Subcategory overview."
+            sub_items.append(
+                f'<a href="{url}" class="block p-4 bg-white rounded-lg shadow-sm border hover:border-blue-500 hover:shadow-md transition">'
+                f'<div class="text-base font-semibold text-gray-800">{label}</div>'
+                f'<div class="text-sm text-gray-500 mt-1">{description}</div>'
+                f"</a>"
+            )
+        subcat_html = (
+            '<section class="mb-10">'
+            '<h2 class="text-2xl font-semibold text-gray-900 mb-4">Subcategories</h2>'
+            f'<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{"".join(sub_items)}</div>'
+            "</section>"
+        )
     breadcrumbs_html, breadcrumb_items = build_breadcrumbs(
         heading,
         section_slug,
@@ -409,6 +412,7 @@ def build_page_html(
         parent_slug=parent_slug,
     )
     json_ld = build_json_ld(title, canonical_path, breadcrumb_items, items)
+    meta_description = description or f"{heading} calculators and guides on CalcDomain."
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -416,7 +420,7 @@ def build_page_html(
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{title}</title>
-  <meta name="description" content="{heading} on CalcDomain.">
+  <meta name="description" content="{meta_description}">
   <link rel="canonical" href="https://calcdomain.com{canonical_path}">
   <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -440,10 +444,13 @@ def build_page_html(
       <h1 class="text-3xl font-bold text-gray-900">{heading}</h1>
       <p class="text-gray-600 mt-2">Browse calculators and resources in this section.</p>
     </div>
-    {categories_section}
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {cards_html}
-    </div>
+    {subcat_html}
+    <section>
+      <h2 class="text-2xl font-semibold text-gray-900 mb-4">Calculators</h2>
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {cards_html}
+      </div>
+    </section>
   </main>
 {footer}
   <script src="/assets/js/mobile-menu.js" defer></script>
@@ -481,44 +488,94 @@ def main() -> None:
     categories_dir.mkdir(parents=True, exist_ok=True)
     subcategories_dir.mkdir(parents=True, exist_ok=True)
 
+    subcategories_by_category: Dict[str, List[str]] = {c: [] for c in CATEGORY_SLUGS}
+    for sub_slug in SUBCATEGORY_SLUGS:
+        parent_slug = parent_category_for_subcategory(sub_slug)
+        if parent_slug:
+            subcategories_by_category[parent_slug].append(sub_slug)
+
     for cat_slug in CATEGORY_SLUGS:
+        posts = category_pages[cat_slug]
+        sub_slugs = subcategories_by_category.get(cat_slug, [])
+        sub_items = []
+        for sub_slug in sub_slugs:
+            if not subcategory_pages[sub_slug]:
+                continue
+            label = sub_slug.replace("-", " ").title()
+            sub_items.append((label, f"/subcategories/{sub_slug}", f"{label} calculators"))
+
+        if not posts and not sub_items:
+            cat_path = categories_dir / f"{cat_slug}.html"
+            if cat_path.exists():
+                cat_path.unlink()
+            continue
+
         heading = category_label(cat_slug)
+        desc_bits = []
+        if sub_items:
+            desc_bits.append(f"{len(sub_items)} subcategories")
+        if posts:
+            desc_bits.append(f"{len(posts)} calculators")
+        example = ", ".join([p[0] for p in posts[:3]])
+        description = f"{heading} includes {', '.join(desc_bits)}."
+        if example:
+            description += f" Examples: {example}."
         html = build_page_html(
             f"{heading} | CalcDomain",
             heading,
-            category_pages[cat_slug],
+            posts,
             f"/categories/{cat_slug}",
-            include_categories=True,
             section_slug="categories",
+            description=description,
+            subcategory_items=sub_items,
         )
         (categories_dir / f"{cat_slug}.html").write_text(html, encoding="utf-8")
 
     for sub_slug in SUBCATEGORY_SLUGS:
+        posts = subcategory_pages[sub_slug]
+        if not posts:
+            sub_path = subcategories_dir / f"{sub_slug}.html"
+            if sub_path.exists():
+                sub_path.unlink()
+            continue
         heading = sub_slug.replace("-", " ").title()
         parent_slug = parent_category_for_subcategory(sub_slug)
         parent_label = category_label(parent_slug) if parent_slug else None
+        example = ", ".join([p[0] for p in posts[:3]])
+        description = f"{heading} includes {len(posts)} calculators."
+        if example:
+            description += f" Examples: {example}."
         html = build_page_html(
             f"{heading} | CalcDomain",
             heading,
-            subcategory_pages[sub_slug],
+            posts,
             f"/subcategories/{sub_slug}",
-            include_categories=True,
             section_slug="subcategories",
             parent_label=parent_label,
             parent_slug=parent_slug,
+            description=description,
         )
         (subcategories_dir / f"{sub_slug}.html").write_text(html, encoding="utf-8")
 
     general_heading = "General"
-    general_html = build_page_html(
-        "General | CalcDomain",
-        general_heading,
-        general_pages,
-        "/categories/general",
-        include_categories=True,
-        section_slug="categories",
-    )
-    (categories_dir / "general.html").write_text(general_html, encoding="utf-8")
+    if general_pages:
+        example = ", ".join([p[0] for p in general_pages[:3]])
+        description = f"General includes {len(general_pages)} calculators."
+        if example:
+            description += f" Examples: {example}."
+        general_html = build_page_html(
+            "General | CalcDomain",
+            general_heading,
+            general_pages,
+            "/categories/general",
+            section_slug="categories",
+            description=description,
+        )
+        (categories_dir / "general.html").write_text(general_html, encoding="utf-8")
+    else:
+        general_path = categories_dir / "general.html"
+        if general_path.exists():
+            general_path.unlink()
 
     print(
         f"Wrote {len(CATEGORY_SLUGS)} category pages, "
