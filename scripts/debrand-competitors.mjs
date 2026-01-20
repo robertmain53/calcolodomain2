@@ -22,6 +22,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import * as cheerio from "cheerio";
+import { Worker, isMainThread, parentPort, workerData } from "node:worker_threads";
+
+const SKIPPED_CSV = path.resolve("./debrand-competitors-skipped-pages.csv");
+const FILE_TIMEOUT_MS = 120000;
 
 const args = process.argv.slice(2);
 const getArg = (k, def = null) => {
@@ -181,13 +185,97 @@ function writeCsv(rows) {
   fs.writeFileSync(OUT_CSV, lines.join("\n") + "\n", "utf8");
 }
 
-function main() {
+function writeSkippedCsv(rows) {
+  const header = ["slug", "file", "reason"].join(",");
+  const lines = [
+    header,
+    ...rows.map(r =>
+      [
+        r.slug,
+        r.file,
+        `"${String(r.reason).replace(/"/g, '""')}"`
+      ].join(",")
+    )
+  ];
+  fs.writeFileSync(SKIPPED_CSV, lines.join("\n") + "\n", "utf8");
+}
+
+function processFile(html, filePath) {
+  const $ = cheerio.load(html, { decodeEntities: false });
+
+  const removedLinks = scrubAnchors($);
+  const { replacements: textReplacements, replacedTokens } = scrubTextNodes($);
+  const jsonLdEdits = SCRUB_JSONLD ? scrubJsonLdBlocks($) : 0;
+
+  const outHtml = $.html();
+  const remaining = findForbiddenInHtml(outHtml);
+
+  const tokensStr = Array.from(replacedTokens.entries())
+    .map(([k, v]) => `${k}:${v}`)
+    .join(" | ");
+
+  const didChange = removedLinks > 0 || textReplacements > 0 || jsonLdEdits > 0;
+
+  return {
+    slug: slugFromFile(filePath),
+    file: filePath,
+    removedLinks,
+    textReplacements,
+    jsonLdEdits,
+    tokens: tokensStr,
+    remainingForbidden: remaining.join(" | "),
+    status: remaining.length ? "STILL_FORBIDDEN" : "CLEAN",
+    didChange,
+    outHtml
+  };
+}
+
+function runWorker(filePath, html) {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL(import.meta.url), {
+      workerData: { filePath, html, scrubJsonLd: SCRUB_JSONLD }
+    });
+
+    const timer = setTimeout(() => {
+      worker.terminate();
+      reject(new Error("TIMEOUT"));
+    }, FILE_TIMEOUT_MS);
+
+    worker.on("message", msg => {
+      clearTimeout(timer);
+      resolve(msg);
+    });
+    worker.on("error", err => {
+      clearTimeout(timer);
+      reject(err);
+    });
+    worker.on("exit", code => {
+      if (code !== 0) {
+        clearTimeout(timer);
+        reject(new Error(`Worker exit ${code}`));
+      }
+    });
+  });
+}
+
+async function main() {
   const files = listHtmlFiles(HTML_DIR);
   const rows = [];
+  const skipped = [];
 
   let ok = 0, changed = 0, failed = 0;
+  const start = Date.now();
 
-  for (const filePath of files) {
+  for (const [idx, filePath] of files.entries()) {
+    if (idx % 10 === 0) {
+      const elapsedMs = Date.now() - start;
+      const done = idx + 1;
+      const rate = elapsedMs > 0 ? done / (elapsedMs / 1000) : 0;
+      const remaining = files.length - done;
+      const etaSec = rate > 0 ? Math.round(remaining / rate) : 0;
+      console.log(`Processing ${done}/${files.length}... ETA ~${etaSec}s`);
+    }
+    console.log(`File: ${filePath}`);
     const slug = slugFromFile(filePath);
 
     let html;
@@ -208,45 +296,63 @@ function main() {
       continue;
     }
 
-    const $ = cheerio.load(html, { decodeEntities: false });
-
-    const removedLinks = scrubAnchors($);
-    const { replacements: textReplacements, replacedTokens } = scrubTextNodes($);
-    const jsonLdEdits = SCRUB_JSONLD ? scrubJsonLdBlocks($) : 0;
-
-    const outHtml = $.html();
-    const remaining = findForbiddenInHtml(outHtml);
-
-    const tokensStr = Array.from(replacedTokens.entries())
-      .map(([k, v]) => `${k}:${v}`)
-      .join(" | ");
-
-    const didChange = removedLinks > 0 || textReplacements > 0 || jsonLdEdits > 0;
-
-    if (!DRY_RUN && didChange) {
-      fs.writeFileSync(filePath, outHtml, "utf8");
+    let result;
+    try {
+      result = await runWorker(filePath, html);
+    } catch (err) {
+      skipped.push({
+        slug,
+        file: filePath,
+        reason: err && err.message ? err.message : "UNKNOWN_ERROR"
+      });
+      rows.push({
+        slug,
+        file: filePath,
+        status: "SKIPPED",
+        removedLinks: 0,
+        textReplacements: 0,
+        jsonLdEdits: 0,
+        tokens: "",
+        remainingForbidden: "SKIPPED"
+      });
+      continue;
     }
 
-    if (remaining.length === 0) ok++;
-    if (didChange) changed++;
+    if (!DRY_RUN && result.didChange) {
+      fs.writeFileSync(filePath, result.outHtml, "utf8");
+    }
+
+    if (result.status === "CLEAN") ok++;
+    if (result.didChange) changed++;
 
     rows.push({
-      slug,
-      file: filePath,
-      status: remaining.length ? "STILL_FORBIDDEN" : "CLEAN",
-      removedLinks,
-      textReplacements,
-      jsonLdEdits,
-      tokens: tokensStr,
-      remainingForbidden: remaining.join(" | ")
+      slug: result.slug,
+      file: result.file,
+      status: result.status,
+      removedLinks: result.removedLinks,
+      textReplacements: result.textReplacements,
+      jsonLdEdits: result.jsonLdEdits,
+      tokens: result.tokens,
+      remainingForbidden: result.remainingForbidden
     });
   }
 
   writeCsv(rows);
+  writeSkippedCsv(skipped);
 
   console.log(`Done. CLEAN=${ok} CHANGED=${changed} FAIL=${failed}`);
   console.log(`Report: ${OUT_CSV}`);
+  console.log(`Skipped report: ${SKIPPED_CSV}`);
   console.log(`DryRun: ${DRY_RUN}  ScrubJSONLD: ${SCRUB_JSONLD}`);
 }
 
-main();
+if (!isMainThread) {
+  const { filePath, html, scrubJsonLd } = workerData;
+  if (scrubJsonLd) {
+    // nothing to do; SCRUB_JSONLD is read inside scrubJsonLdBlocks
+  }
+  const result = processFile(html, filePath);
+  parentPort.postMessage(result);
+} else {
+  main();
+}
