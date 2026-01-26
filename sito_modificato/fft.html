@@ -93,10 +93,6 @@
 
   <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-  <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-  <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-  <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
   <script>
       window.ezstandalone = window.ezstandalone || {};
       ezstandalone.cmd = ezstandalone.cmd || [];
@@ -222,8 +218,6 @@
 
 <body class="bg-gray-50 text-gray-800">
   <!-- BODY_SCRIPTS_INIZIO -->
-  <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
   <header class="bg-white shadow-sm sticky top-0 z-50">
     <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
       <div class="flex justify-between items-center">
@@ -634,7 +628,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -702,13 +696,597 @@
 
 
 
+
   <script src="/assets/js/script_menu.js" defer=""></script>
   <script src="/assets/js/script_faq.js" defer=""></script>
   <script src="search.js" defer=""></script>
 
   <script>
-    window.MathJax = {
-      tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+    window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <script>
+    (function () {
+      function $(id) { return document.getElementById(id); }
+      function show(el) { el.classList.remove('hidden'); }
+      function hide(el) { el.classList.add('hidden'); }
+
+      function isPowerOfTwo(n) {
+        return n > 0 && (n & (n - 1)) === 0;
+      }
+
+      function parseSamples(text) {
+        var tokens = text
+          .replace(/[\n\r]/g, ' ')
+          .replace(/,/g, ' ')
+          .replace(/;/g, ' ')
+          .split(/\s+/)
+          .map(function (s) { return s.trim(); })
+          .filter(function (s) { return s.length > 0; });
+
+        if (tokens.length === 0) {
+          return { error: 'Please enter at least two numeric samples.' };
+        }
+
+        var x = [];
+        for (var i = 0; i < tokens.length; i++) {
+          var v = Number(tokens[i]);
+          if (!Number.isFinite(v)) {
+            return { error: 'Non-numeric value "' + tokens[i] + '" at position ' + (i + 1) + '.' };
+          }
+          x.push(v);
+        }
+
+        if (x.length < 2) {
+          return { error: 'You need at least 2 samples to compute a meaningful FFT.' };
+        }
+
+        if (!isPowerOfTwo(x.length)) {
+          return { error: 'The number of samples is ' + x.length + '. For this FFT implementation it must be a power of two (e.g. 64, 128, 256, 512, 1024).' };
+        }
+
+        return { samples: x };
+      }
+
+      // Cooley–Tukey radix-2 FFT for real input (produces complex output)
+      function fftRadix2Real(x) {
+        var N = x.length;
+        // Represent complex numbers as {re, im}
+        var X = new Array(N);
+        for (var i = 0; i < N; i++) {
+          X[i] = { re: x[i], im: 0 };
+        }
+
+        // Bit-reversal permutation
+        var j = 0;
+        for (var i = 1; i < N; i++) {
+          var bit = N >> 1;
+          while (j & bit) {
+            j ^= bit;
+            bit >>= 1;
+          }
+          j |= bit;
+          if (i < j) {
+            var tmp = X[i];
+            X[i] = X[j];
+            X[j] = tmp;
+          }
+        }
+
+        // Cooley–Tukey butterflies
+        for (var len = 2; len <= N; len <<= 1) {
+          var ang = -2 * Math.PI / len;
+          var wlen = { re: Math.cos(ang), im: Math.sin(ang) };
+          for (var i = 0; i < N; i += len) {
+            var w = { re: 1, im: 0 };
+            for (var k = 0; k < len / 2; k++) {
+              var u = X[i + k];
+              var tRe = w.re * X[i + k + len / 2].re - w.im * X[i + k + len / 2].im;
+              var tIm = w.re * X[i + k + len / 2].im + w.im * X[i + k + len / 2].re;
+              var t = { re: tRe, im: tIm };
+
+              X[i + k] = { re: u.re + t.re, im: u.im + t.im };
+              X[i + k + len / 2] = { re: u.re - t.re, im: u.im - t.im };
+
+              var wRe = w.re * wlen.re - w.im * wlen.im;
+              var wIm = w.re * wlen.im + w.im * wlen.re;
+              w.re = wRe;
+              w.im = wIm;
+            }
+          }
+        }
+
+        return X;
+      }
+
+      function fmt(x, digits) {
+        if (!Number.isFinite(x)) return '—';
+        digits = typeof digits === 'number' ? digits : 6;
+        return Number(x.toFixed(digits)).toString();
+      }
+
+      function buildHeadRow(showFreqHz, showMag, showPhase, showComplex) {
+        var tr = document.createElement('tr');
+
+        function addTh(text, alignRight) {
+          var th = document.createElement('th');
+          th.className = 'px-3 py-2 border-b border-gray-200 ' +
+            (alignRight ? 'text-right' : 'text-left') +
+            ' font-semibold text-gray-700';
+          th.textContent = text;
+          tr.appendChild(th);
+        }
+
+        addTh(showFreqHz ? 'f (Hz)' : 'Bin k', false);
+        addTh('Index k', true);
+        if (showMag) addTh('|X[k]|', true);
+        if (showPhase) addTh('Phase (°)', true);
+        if (showComplex) {
+          addTh('Re{X[k]}', true);
+          addTh('Im{X[k]}', true);
+        }
+        return tr;
+      }
+
+      function onSubmit(e) {
+        e.preventDefault();
+
+        var err = $('fft-error');
+        var res = $('fft-results');
+        var headEl = $('fft-head');
+        var bodyEl = $('fft-body');
+        var summaryEl = $('fft-summary');
+        var summaryDetailEl = $('fft-summary-detail');
+        var stepsEl = $('fft-steps');
+
+        hide(err);
+        hide(res);
+        headEl.innerHTML = '';
+        bodyEl.innerHTML = '';
+        summaryEl.textContent = '';
+        summaryDetailEl.textContent = '';
+        stepsEl.innerHTML = '';
+
+        var raw = $('fft-samples').value || '';
+        var parsed = parseSamples(raw);
+        if (parsed.error) {
+          err.textContent = parsed.error;
+          show(err);
+          return;
+        }
+
+        var x = parsed.samples;
+        var N = x.length;
+
+        var digits = parseInt($('fft-digits').value, 10);
+        if (!Number.isFinite(digits) || digits < 0) digits = 6;
+        if (digits > 10) digits = 10;
+
+        var fsInput = $('fft-fs').value.trim();
+        var fs = null;
+        var showFreqHz = false;
+        if (fsInput.length > 0) {
+          fs = Number(fsInput);
+          if (!Number.isFinite(fs) || fs <= 0) {
+            err.textContent = 'Sampling frequency must be a positive number if specified.';
+            show(err);
+            return;
+          }
+          showFreqHz = true;
+        }
+
+        var showHalf = $('fft-show-half').checked;
+        var showMag = $('fft-show-mag').checked;
+        var showPhase = $('fft-show-phase').checked;
+        var showComplex = $('fft-show-complex').checked;
+
+        if (!showMag && !showPhase && !showComplex) {
+          err.textContent = 'Please select at least one output: magnitude, phase or complex coefficients.';
+          show(err);
+          return;
+        }
+
+        var X = fftRadix2Real(x);
+
+        summaryEl.textContent =
+          'Computed FFT of a real sequence with N = ' + N + ' samples' +
+          (fs ? ' at sampling frequency f_s = ' + fmt(fs, 4) + ' Hz.' : '.');
+
+        var dfText = fs ? ('Frequency resolution Δf = f_s / N = ' + fmt(fs / N, 6) + ' Hz.') :
+          'Frequency bins are reported as discrete indices k (0 ≤ k ≤ N − 1).';
+        var halfNote = showHalf ? ' Showing only the non-negative half of the spectrum.' : ' Showing the full set of N frequency bins.';
+        summaryDetailEl.textContent = dfText + halfNote;
+
+        var startK = 0;
+        var endK = N - 1;
+        if (showHalf) {
+          endK = Math.floor(N / 2);
+        }
+
+        var trHead = buildHeadRow(showFreqHz, showMag, showPhase, showComplex);
+        headEl.appendChild(trHead);
+
+        for (var k = startK; k <= endK; k++) {
+          var coeff = X[k];
+          var re = coeff.re;
+          var im = coeff.im;
+          var mag = Math.sqrt(re * re + im * im);
+          var phase = Math.atan2(im, re) * 180 / Math.PI;
+          var freqVal = showFreqHz && fs ? (k * fs / N) : null;
+
+          var tr = document.createElement('tr');
+
+          function addTd(text, alignRight, extraClass) {
+            var td = document.createElement('td');
+            td.className = 'px-3 py-1 border-b border-gray-100 text-xs ' +
+              (alignRight ? 'text-right ' : 'text-left ') +
+              (extraClass || '');
+            td.textContent = text;
+            tr.appendChild(td);
+          }
+
+          addTd(showFreqHz ? fmt(freqVal, digits) : '', false);
+          if (!showFreqHz) {
+            tr.removeChild(tr.lastChild); // in case we added empty, but safer to just set text conditionally
+          }
+
+          // Actually simpler: override: first col either freq or just k label
+          tr.innerHTML = '';
+          addTd(showFreqHz ? fmt(freqVal, digits) : String(k), false);
+          addTd(String(k), true);
+
+          if (showMag) addTd(fmt(mag, digits), true, 'fft-mag');
+          if (showPhase) addTd(fmt(phase, digits), true, 'fft-phase');
+          if (showComplex) {
+            addTd(fmt(re, digits), true, 'fft-complex');
+            addTd(fmt(im, digits), true, 'fft-complex');
+          }
+
+          bodyEl.appendChild(tr);
+        }
+
+        var steps = [];
+        steps.push('1. Parse the input as a real sequence x[n], n = 0,…,N−1, checking that N is a power of two.');
+        steps.push('2. Apply a radix-2 Cooley–Tukey FFT: bit-reverse the input samples, then perform log₂N stages of butterfly operations using complex twiddle factors e^(−j 2π k / N).');
+        steps.push('3. For each bin k, compute magnitude |X[k]| and phase arg(X[k]) from the complex FFT coefficient X[k].');
+        steps.push('4. If a sampling frequency f_s is provided, convert bin index k to frequency f_k = k · f_s / N.');
+        steps.push('5. If “0…Nyquist” is selected and the input is real, display only indices 0…N/2 because the remaining bins are redundant conjugate-symmetric copies.');
+
+        steps.forEach(function (line) {
+          var pEl = document.createElement('p');
+          pEl.textContent = line;
+          stepsEl.appendChild(pEl);
+        });
+
+        show(res);
+
+        if (window.MathJax && window.MathJax.typesetPromise) {
+          window.MathJax.typesetPromise([stepsEl]).catch(function () {});
+        }
+      }
+
+      function onReset() {
+        $('fft-form').reset();
+        $('fft-samples').value = '';
+        hide($('fft-error'));
+        hide($('fft-results'));
+      }
+
+      function loadExample() {
+        // Simple 16-point example: sum of sinusoids with different frequencies
+        var ex = [
+          '0.00,  0.71,  1.00,  0.71,  0.00, -0.71, -1.00, -0.71,',
+          '0.00,  0.71,  1.00,  0.71,  0.00, -0.71, -1.00, -0.71'
+        ].join('\n');
+        $('fft-samples').value = ex;
+        $('fft-fs').value = '16';
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        $('fft-form').addEventListener('submit', onSubmit);
+        $('fft-reset').addEventListener('click', onReset);
+        $('fft-example').addEventListener('click', loadExample);
+      });
+    })();
+  </script>
+
+
+</body></html>, ',
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <script>
+    (function () {
+      function $(id) { return document.getElementById(id); }
+      function show(el) { el.classList.remove('hidden'); }
+      function hide(el) { el.classList.add('hidden'); }
+
+      function isPowerOfTwo(n) {
+        return n > 0 && (n & (n - 1)) === 0;
+      }
+
+      function parseSamples(text) {
+        var tokens = text
+          .replace(/[\n\r]/g, ' ')
+          .replace(/,/g, ' ')
+          .replace(/;/g, ' ')
+          .split(/\s+/)
+          .map(function (s) { return s.trim(); })
+          .filter(function (s) { return s.length > 0; });
+
+        if (tokens.length === 0) {
+          return { error: 'Please enter at least two numeric samples.' };
+        }
+
+        var x = [];
+        for (var i = 0; i < tokens.length; i++) {
+          var v = Number(tokens[i]);
+          if (!Number.isFinite(v)) {
+            return { error: 'Non-numeric value "' + tokens[i] + '" at position ' + (i + 1) + '.' };
+          }
+          x.push(v);
+        }
+
+        if (x.length < 2) {
+          return { error: 'You need at least 2 samples to compute a meaningful FFT.' };
+        }
+
+        if (!isPowerOfTwo(x.length)) {
+          return { error: 'The number of samples is ' + x.length + '. For this FFT implementation it must be a power of two (e.g. 64, 128, 256, 512, 1024).' };
+        }
+
+        return { samples: x };
+      }
+
+      // Cooley–Tukey radix-2 FFT for real input (produces complex output)
+      function fftRadix2Real(x) {
+        var N = x.length;
+        // Represent complex numbers as {re, im}
+        var X = new Array(N);
+        for (var i = 0; i < N; i++) {
+          X[i] = { re: x[i], im: 0 };
+        }
+
+        // Bit-reversal permutation
+        var j = 0;
+        for (var i = 1; i < N; i++) {
+          var bit = N >> 1;
+          while (j & bit) {
+            j ^= bit;
+            bit >>= 1;
+          }
+          j |= bit;
+          if (i < j) {
+            var tmp = X[i];
+            X[i] = X[j];
+            X[j] = tmp;
+          }
+        }
+
+        // Cooley–Tukey butterflies
+        for (var len = 2; len <= N; len <<= 1) {
+          var ang = -2 * Math.PI / len;
+          var wlen = { re: Math.cos(ang), im: Math.sin(ang) };
+          for (var i = 0; i < N; i += len) {
+            var w = { re: 1, im: 0 };
+            for (var k = 0; k < len / 2; k++) {
+              var u = X[i + k];
+              var tRe = w.re * X[i + k + len / 2].re - w.im * X[i + k + len / 2].im;
+              var tIm = w.re * X[i + k + len / 2].im + w.im * X[i + k + len / 2].re;
+              var t = { re: tRe, im: tIm };
+
+              X[i + k] = { re: u.re + t.re, im: u.im + t.im };
+              X[i + k + len / 2] = { re: u.re - t.re, im: u.im - t.im };
+
+              var wRe = w.re * wlen.re - w.im * wlen.im;
+              var wIm = w.re * wlen.im + w.im * wlen.re;
+              w.re = wRe;
+              w.im = wIm;
+            }
+          }
+        }
+
+        return X;
+      }
+
+      function fmt(x, digits) {
+        if (!Number.isFinite(x)) return '—';
+        digits = typeof digits === 'number' ? digits : 6;
+        return Number(x.toFixed(digits)).toString();
+      }
+
+      function buildHeadRow(showFreqHz, showMag, showPhase, showComplex) {
+        var tr = document.createElement('tr');
+
+        function addTh(text, alignRight) {
+          var th = document.createElement('th');
+          th.className = 'px-3 py-2 border-b border-gray-200 ' +
+            (alignRight ? 'text-right' : 'text-left') +
+            ' font-semibold text-gray-700';
+          th.textContent = text;
+          tr.appendChild(th);
+        }
+
+        addTh(showFreqHz ? 'f (Hz)' : 'Bin k', false);
+        addTh('Index k', true);
+        if (showMag) addTh('|X[k]|', true);
+        if (showPhase) addTh('Phase (°)', true);
+        if (showComplex) {
+          addTh('Re{X[k]}', true);
+          addTh('Im{X[k]}', true);
+        }
+        return tr;
+      }
+
+      function onSubmit(e) {
+        e.preventDefault();
+
+        var err = $('fft-error');
+        var res = $('fft-results');
+        var headEl = $('fft-head');
+        var bodyEl = $('fft-body');
+        var summaryEl = $('fft-summary');
+        var summaryDetailEl = $('fft-summary-detail');
+        var stepsEl = $('fft-steps');
+
+        hide(err);
+        hide(res);
+        headEl.innerHTML = '';
+        bodyEl.innerHTML = '';
+        summaryEl.textContent = '';
+        summaryDetailEl.textContent = '';
+        stepsEl.innerHTML = '';
+
+        var raw = $('fft-samples').value || '';
+        var parsed = parseSamples(raw);
+        if (parsed.error) {
+          err.textContent = parsed.error;
+          show(err);
+          return;
+        }
+
+        var x = parsed.samples;
+        var N = x.length;
+
+        var digits = parseInt($('fft-digits').value, 10);
+        if (!Number.isFinite(digits) || digits < 0) digits = 6;
+        if (digits > 10) digits = 10;
+
+        var fsInput = $('fft-fs').value.trim();
+        var fs = null;
+        var showFreqHz = false;
+        if (fsInput.length > 0) {
+          fs = Number(fsInput);
+          if (!Number.isFinite(fs) || fs <= 0) {
+            err.textContent = 'Sampling frequency must be a positive number if specified.';
+            show(err);
+            return;
+          }
+          showFreqHz = true;
+        }
+
+        var showHalf = $('fft-show-half').checked;
+        var showMag = $('fft-show-mag').checked;
+        var showPhase = $('fft-show-phase').checked;
+        var showComplex = $('fft-show-complex').checked;
+
+        if (!showMag && !showPhase && !showComplex) {
+          err.textContent = 'Please select at least one output: magnitude, phase or complex coefficients.';
+          show(err);
+          return;
+        }
+
+        var X = fftRadix2Real(x);
+
+        summaryEl.textContent =
+          'Computed FFT of a real sequence with N = ' + N + ' samples' +
+          (fs ? ' at sampling frequency f_s = ' + fmt(fs, 4) + ' Hz.' : '.');
+
+        var dfText = fs ? ('Frequency resolution Δf = f_s / N = ' + fmt(fs / N, 6) + ' Hz.') :
+          'Frequency bins are reported as discrete indices k (0 ≤ k ≤ N − 1).';
+        var halfNote = showHalf ? ' Showing only the non-negative half of the spectrum.' : ' Showing the full set of N frequency bins.';
+        summaryDetailEl.textContent = dfText + halfNote;
+
+        var startK = 0;
+        var endK = N - 1;
+        if (showHalf) {
+          endK = Math.floor(N / 2);
+        }
+
+        var trHead = buildHeadRow(showFreqHz, showMag, showPhase, showComplex);
+        headEl.appendChild(trHead);
+
+        for (var k = startK; k <= endK; k++) {
+          var coeff = X[k];
+          var re = coeff.re;
+          var im = coeff.im;
+          var mag = Math.sqrt(re * re + im * im);
+          var phase = Math.atan2(im, re) * 180 / Math.PI;
+          var freqVal = showFreqHz && fs ? (k * fs / N) : null;
+
+          var tr = document.createElement('tr');
+
+          function addTd(text, alignRight, extraClass) {
+            var td = document.createElement('td');
+            td.className = 'px-3 py-1 border-b border-gray-100 text-xs ' +
+              (alignRight ? 'text-right ' : 'text-left ') +
+              (extraClass || '');
+            td.textContent = text;
+            tr.appendChild(td);
+          }
+
+          addTd(showFreqHz ? fmt(freqVal, digits) : '', false);
+          if (!showFreqHz) {
+            tr.removeChild(tr.lastChild); // in case we added empty, but safer to just set text conditionally
+          }
+
+          // Actually simpler: override: first col either freq or just k label
+          tr.innerHTML = '';
+          addTd(showFreqHz ? fmt(freqVal, digits) : String(k), false);
+          addTd(String(k), true);
+
+          if (showMag) addTd(fmt(mag, digits), true, 'fft-mag');
+          if (showPhase) addTd(fmt(phase, digits), true, 'fft-phase');
+          if (showComplex) {
+            addTd(fmt(re, digits), true, 'fft-complex');
+            addTd(fmt(im, digits), true, 'fft-complex');
+          }
+
+          bodyEl.appendChild(tr);
+        }
+
+        var steps = [];
+        steps.push('1. Parse the input as a real sequence x[n], n = 0,…,N−1, checking that N is a power of two.');
+        steps.push('2. Apply a radix-2 Cooley–Tukey FFT: bit-reverse the input samples, then perform log₂N stages of butterfly operations using complex twiddle factors e^(−j 2π k / N).');
+        steps.push('3. For each bin k, compute magnitude |X[k]| and phase arg(X[k]) from the complex FFT coefficient X[k].');
+        steps.push('4. If a sampling frequency f_s is provided, convert bin index k to frequency f_k = k · f_s / N.');
+        steps.push('5. If “0…Nyquist” is selected and the input is real, display only indices 0…N/2 because the remaining bins are redundant conjugate-symmetric copies.');
+
+        steps.forEach(function (line) {
+          var pEl = document.createElement('p');
+          pEl.textContent = line;
+          stepsEl.appendChild(pEl);
+        });
+
+        show(res);
+
+        if (window.MathJax && window.MathJax.typesetPromise) {
+          window.MathJax.typesetPromise([stepsEl]).catch(function () {});
+        }
+      }
+
+      function onReset() {
+        $('fft-form').reset();
+        $('fft-samples').value = '';
+        hide($('fft-error'));
+        hide($('fft-results'));
+      }
+
+      function loadExample() {
+        // Simple 16-point example: sum of sinusoids with different frequencies
+        var ex = [
+          '0.00,  0.71,  1.00,  0.71,  0.00, -0.71, -1.00, -0.71,',
+          '0.00,  0.71,  1.00,  0.71,  0.00, -0.71, -1.00, -0.71'
+        ].join('\n');
+        $('fft-samples').value = ex;
+        $('fft-fs').value = '16';
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        $('fft-form').addEventListener('submit', onSubmit);
+        $('fft-reset').addEventListener('click', onReset);
+        $('fft-example').addEventListener('click', loadExample);
+      });
+    })();
+  </script>
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
       svg: { fontCache: 'global' }
     };
   </script>

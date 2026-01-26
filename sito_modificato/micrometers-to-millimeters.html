@@ -39,10 +39,6 @@
     
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
     
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-    
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -174,8 +170,6 @@
 </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
-
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
 
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
@@ -556,7 +550,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -623,14 +617,268 @@
 
 
 
+
     
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
     
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      // Mobile menu toggle
+      document.getElementById('mobile-menu-toggle')?.addEventListener('click', function () {
+        const menu = document.getElementById('mobile-menu');
+        if (!menu) return;
+        const isHidden = menu.classList.contains('hidden');
+        menu.classList.toggle('hidden', !isHidden);
+        this.setAttribute('aria-expanded', String(isHidden));
+      });
+
+      document.addEventListener('DOMContentLoaded', function () {
+        const umInput = document.getElementById('um-input');
+        const mmInput = document.getElementById('mm-input');
+        const coreClear = document.getElementById('core-clear');
+        const presetUmButtons = document.querySelectorAll('.preset-um-btn');
+
+        const nmOutput = document.getElementById('nm-output');
+        const mOutput = document.getElementById('m-output');
+        const inchOutput = document.getElementById('inch-output');
+
+        let isUpdating = false;
+
+        function formatNumber(value) {
+          if (!isFinite(value)) return '';
+          const absVal = Math.abs(value);
+          if (absVal !== 0 && (absVal < 1e-4 || absVal >= 1e7)) {
+            return value.toExponential(6);
+          }
+          return Number(value.toFixed(6)).toString();
+        }
+
+        function updateExtendedFromMm(mmValue) {
+          // mm -> m
+          const meters = mmValue / 1000;      // 1000 mm = 1 m
+          // mm -> inches
+          const inches = mmValue / 25.4;      // exact
+          // mm -> nm: first to µm then to nm, but easier via meters:
+          // 1 m = 10^9 nm, 1 mm = 10^-3 m => 1 mm = 10^6 nm
+          const nanometers = mmValue * 1e6;
+
+          if (nmOutput) nmOutput.value = formatNumber(nanometers);
+          if (mOutput) mOutput.value = formatNumber(meters);
+          if (inchOutput) inchOutput.value = formatNumber(inches);
+        }
+
+        function updateExtendedFromUm(umValue) {
+          // µm -> mm
+          const mmValue = umValue / 1000;
+          updateExtendedFromMm(mmValue);
+        }
+
+        if (umInput && mmInput) {
+          umInput.addEventListener('input', function () {
+            if (isUpdating) return;
+            const raw = this.value;
+            if (raw === '' || isNaN(Number(raw))) {
+              // Clear linked fields and extended outputs
+              isUpdating = true;
+              mmInput.value = '';
+              if (nmOutput) nmOutput.value = '';
+              if (mOutput) mOutput.value = '';
+              if (inchOutput) inchOutput.value = '';
+              isUpdating = false;
+              return;
+            }
+            const umValue = Number(raw);
+            const mmValue = umValue / 1000;
+            isUpdating = true;
+            mmInput.value = formatNumber(mmValue);
+            updateExtendedFromUm(umValue);
+            isUpdating = false;
+          });
+
+          mmInput.addEventListener('input', function () {
+            if (isUpdating) return;
+            const raw = this.value;
+            if (raw === '' || isNaN(Number(raw))) {
+              isUpdating = true;
+              umInput.value = '';
+              if (nmOutput) nmOutput.value = '';
+              if (mOutput) mOutput.value = '';
+              if (inchOutput) inchOutput.value = '';
+              isUpdating = false;
+              return;
+            }
+            const mmValue = Number(raw);
+            const umValue = mmValue * 1000;
+            isUpdating = true;
+            umInput.value = formatNumber(umValue);
+            updateExtendedFromMm(mmValue);
+            isUpdating = false;
+          });
+        }
+
+        if (coreClear && umInput && mmInput) {
+          coreClear.addEventListener('click', function () {
+            umInput.value = '';
+            mmInput.value = '';
+            if (nmOutput) nmOutput.value = '';
+            if (mOutput) mOutput.value = '';
+            if (inchOutput) inchOutput.value = '';
+          });
+        }
+
+        presetUmButtons.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const value = this.getAttribute('data-preset-um');
+            if (!value || !umInput || !mmInput) return;
+            const umVal = Number(value);
+            const mmVal = umVal / 1000;
+            isUpdating = true;
+            umInput.value = formatNumber(umVal);
+            mmInput.value = formatNumber(mmVal);
+            updateExtendedFromUm(umVal);
+            isUpdating = false;
+          });
+        });
+      });
+    </script>
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      // Mobile menu toggle
+      document.getElementById('mobile-menu-toggle')?.addEventListener('click', function () {
+        const menu = document.getElementById('mobile-menu');
+        if (!menu) return;
+        const isHidden = menu.classList.contains('hidden');
+        menu.classList.toggle('hidden', !isHidden);
+        this.setAttribute('aria-expanded', String(isHidden));
+      });
+
+      document.addEventListener('DOMContentLoaded', function () {
+        const umInput = document.getElementById('um-input');
+        const mmInput = document.getElementById('mm-input');
+        const coreClear = document.getElementById('core-clear');
+        const presetUmButtons = document.querySelectorAll('.preset-um-btn');
+
+        const nmOutput = document.getElementById('nm-output');
+        const mOutput = document.getElementById('m-output');
+        const inchOutput = document.getElementById('inch-output');
+
+        let isUpdating = false;
+
+        function formatNumber(value) {
+          if (!isFinite(value)) return '';
+          const absVal = Math.abs(value);
+          if (absVal !== 0 && (absVal < 1e-4 || absVal >= 1e7)) {
+            return value.toExponential(6);
+          }
+          return Number(value.toFixed(6)).toString();
+        }
+
+        function updateExtendedFromMm(mmValue) {
+          // mm -> m
+          const meters = mmValue / 1000;      // 1000 mm = 1 m
+          // mm -> inches
+          const inches = mmValue / 25.4;      // exact
+          // mm -> nm: first to µm then to nm, but easier via meters:
+          // 1 m = 10^9 nm, 1 mm = 10^-3 m => 1 mm = 10^6 nm
+          const nanometers = mmValue * 1e6;
+
+          if (nmOutput) nmOutput.value = formatNumber(nanometers);
+          if (mOutput) mOutput.value = formatNumber(meters);
+          if (inchOutput) inchOutput.value = formatNumber(inches);
+        }
+
+        function updateExtendedFromUm(umValue) {
+          // µm -> mm
+          const mmValue = umValue / 1000;
+          updateExtendedFromMm(mmValue);
+        }
+
+        if (umInput && mmInput) {
+          umInput.addEventListener('input', function () {
+            if (isUpdating) return;
+            const raw = this.value;
+            if (raw === '' || isNaN(Number(raw))) {
+              // Clear linked fields and extended outputs
+              isUpdating = true;
+              mmInput.value = '';
+              if (nmOutput) nmOutput.value = '';
+              if (mOutput) mOutput.value = '';
+              if (inchOutput) inchOutput.value = '';
+              isUpdating = false;
+              return;
+            }
+            const umValue = Number(raw);
+            const mmValue = umValue / 1000;
+            isUpdating = true;
+            mmInput.value = formatNumber(mmValue);
+            updateExtendedFromUm(umValue);
+            isUpdating = false;
+          });
+
+          mmInput.addEventListener('input', function () {
+            if (isUpdating) return;
+            const raw = this.value;
+            if (raw === '' || isNaN(Number(raw))) {
+              isUpdating = true;
+              umInput.value = '';
+              if (nmOutput) nmOutput.value = '';
+              if (mOutput) mOutput.value = '';
+              if (inchOutput) inchOutput.value = '';
+              isUpdating = false;
+              return;
+            }
+            const mmValue = Number(raw);
+            const umValue = mmValue * 1000;
+            isUpdating = true;
+            umInput.value = formatNumber(umValue);
+            updateExtendedFromMm(mmValue);
+            isUpdating = false;
+          });
+        }
+
+        if (coreClear && umInput && mmInput) {
+          coreClear.addEventListener('click', function () {
+            umInput.value = '';
+            mmInput.value = '';
+            if (nmOutput) nmOutput.value = '';
+            if (mOutput) mOutput.value = '';
+            if (inchOutput) inchOutput.value = '';
+          });
+        }
+
+        presetUmButtons.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const value = this.getAttribute('data-preset-um');
+            if (!value || !umInput || !mmInput) return;
+            const umVal = Number(value);
+            const mmVal = umVal / 1000;
+            isUpdating = true;
+            umInput.value = formatNumber(umVal);
+            mmInput.value = formatNumber(mmVal);
+            updateExtendedFromUm(umVal);
+            isUpdating = false;
+          });
+        });
+      });
+    </script>
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

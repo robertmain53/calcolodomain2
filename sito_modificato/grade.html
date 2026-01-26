@@ -50,10 +50,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -233,8 +229,6 @@
 <body class="bg-gray-50 text-gray-800">
 
     <!-- BODY_SCRIPTS_INIZIO -->
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
         <div class="flex justify-between items-center">
@@ -797,7 +791,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -864,14 +858,696 @@
 
 
 
+
     
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
     
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        // Mobile menu toggle (fallback)
+        const toggle = document.getElementById('mobile-menu-toggle');
+        const menu = document.getElementById('mobile-menu');
+        if (toggle && menu) {
+          toggle.addEventListener('click', () => {
+            const isHidden = menu.classList.contains('hidden');
+            menu.classList.toggle('hidden', !isHidden);
+            toggle.setAttribute('aria-expanded', String(isHidden));
+          });
+        }
+
+        // Utility: parse number
+        function parseNumber(value, label, options) {
+          const t = (value || '').trim();
+          if (!t) throw new Error(label + ' is required.');
+          const num = Number(t.replace(',', '.'));
+          if (!Number.isFinite(num)) throw new Error(label + ' must be a valid number.');
+          if (options && options.min != null && num < options.min) {
+            throw new Error(label + ' must be ≥ ' + options.min + '.');
+          }
+          return num;
+        }
+
+        // Utility: letter grade + GPA
+        function letterFromPercent(pct) {
+          let letter, gpa;
+          if (pct >= 90) { letter = 'A'; gpa = 4.0; }
+          else if (pct >= 80) { letter = 'B'; gpa = 3.0; }
+          else if (pct >= 70) { letter = 'C'; gpa = 2.0; }
+          else if (pct >= 60) { letter = 'D'; gpa = 1.0; }
+          else { letter = 'F'; gpa = 0.0; }
+          return { letter, gpa };
+        }
+
+        function badgeClassForPercent(pct) {
+          if (pct >= 90) return 'badge-good';
+          if (pct >= 70) return 'badge-warning';
+          return 'badge-risk';
+        }
+
+        // Mode switching
+        const modePointsBtn = document.getElementById('grade-mode-points-btn');
+        const modeWeightedBtn = document.getElementById('grade-mode-weighted-btn');
+        const panelPoints = document.getElementById('grade-panel-points');
+        const panelWeighted = document.getElementById('grade-panel-weighted');
+
+        function setMode(mode) {
+          const isPoints = mode === 'points';
+          panelPoints.classList.toggle('hidden', !isPoints);
+          panelWeighted.classList.toggle('hidden', isPoints);
+          modePointsBtn.classList.toggle('pill-active', isPoints);
+          modePointsBtn.classList.toggle('pill-inactive', !isPoints);
+          modeWeightedBtn.classList.toggle('pill-active', !isPoints);
+          modeWeightedBtn.classList.toggle('pill-inactive', isPoints);
+        }
+
+        modePointsBtn.addEventListener('click', () => setMode('points'));
+        modeWeightedBtn.addEventListener('click', () => setMode('weighted'));
+
+        // Points-based logic
+        const pointsTbody = document.getElementById('grade-points-tbody');
+        const pointsAddRowBtn = document.getElementById('grade-points-add-row');
+        const pointsComputeBtn = document.getElementById('grade-points-compute');
+        const pointsClearBtn = document.getElementById('grade-points-clear');
+        const pointsError = document.getElementById('grade-points-error');
+        const pointsResults = document.getElementById('grade-points-results');
+        const pointsBadge = document.getElementById('grade-points-badge');
+        const pointsTotal = document.getElementById('grade-points-total');
+        const pointsPercent = document.getElementById('grade-points-percent');
+        const pointsLetter = document.getElementById('grade-points-letter');
+        const pointsInterpretation = document.getElementById('grade-points-interpretation');
+
+        function createPointsRow(nameValue, earnedValue, possibleValue) {
+          const tr = document.createElement('tr');
+          tr.className = 'grade-points-row';
+          tr.innerHTML = `
+            <td class="px-3 py-1.5">
+              <input type="text" class="w-full border border-gray-200 rounded-md px-2 py-1 text-xs" placeholder="e.g. Midterm, Homework 1" value="${nameValue || ''}">
+            </td>
+            <td class="px-3 py-1.5 text-right">
+              <input type="text" class="w-full border border-gray-200 rounded-md px-2 py-1 text-xs text-right" placeholder="e.g. 45" value="${earnedValue || ''}">
+            </td>
+            <td class="px-3 py-1.5 text-right">
+              <input type="text" class="w-full border border-gray-200 rounded-md px-2 py-1 text-xs text-right" placeholder="e.g. 50" value="${possibleValue || ''}">
+            </td>
+            <td class="px-3 py-1.5 text-center">
+              <button type="button" class="text-xs text-red-600 hover:underline remove-row-btn">Remove</button>
+            </td>
+          `;
+          const removeBtn = tr.querySelector('.remove-row-btn');
+          removeBtn.addEventListener('click', () => {
+            tr.remove();
+          });
+          pointsTbody.appendChild(tr);
+        }
+
+        function seedPointsRows() {
+          pointsTbody.innerHTML = '';
+          createPointsRow('Homework 1', '9', '10');
+          createPointsRow('Homework 2', '8', '10');
+          createPointsRow('Quiz', '18', '20');
+          createPointsRow('Midterm', '42', '50');
+          createPointsRow('Project', '', '');
+        }
+
+        function clearPointsOutputs() {
+          pointsError.textContent = '';
+          pointsError.classList.add('hidden');
+          pointsResults.classList.add('hidden');
+          pointsBadge.textContent = '–';
+          pointsBadge.className = 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold badge-neutral';
+          pointsTotal.textContent = '';
+          pointsPercent.textContent = '';
+          pointsLetter.textContent = '';
+          pointsInterpretation.textContent = '';
+        }
+
+        function computePointsGrade() {
+          clearPointsOutputs();
+          try {
+            const rows = Array.from(pointsTbody.querySelectorAll('.grade-points-row'));
+            if (!rows.length) throw new Error('Add at least one row to compute a grade.');
+
+            let totalEarned = 0;
+            let totalPossible = 0;
+            let anyValid = false;
+
+            for (const row of rows) {
+              const inputs = row.querySelectorAll('input');
+              const earnedStr = inputs[1].value;
+              const possibleStr = inputs[2].value;
+
+              const hasAny = (earnedStr.trim() !== '' || possibleStr.trim() !== '');
+              if (!hasAny) continue;
+
+              const earned = parseNumber(earnedStr, 'Points earned', {});
+              const possible = parseNumber(possibleStr, 'Points possible', { min: 0.0000001 });
+              if (earned < 0) throw new Error('Points earned cannot be negative.');
+              if (earned > possible) {
+                // Not always an error, but warn
+                // We allow extra credit.
+              }
+              totalEarned += earned;
+              totalPossible += possible;
+              anyValid = true;
+            }
+
+            if (!anyValid) throw new Error('Enter points earned and possible for at least one row.');
+            if (totalPossible <= 0) throw new Error('Total points possible must be greater than zero.');
+
+            const pct = (totalEarned / totalPossible) * 100;
+            const { letter, gpa } = letterFromPercent(pct);
+
+            pointsTotal.textContent = `${totalEarned.toFixed(2)} / ${totalPossible.toFixed(2)}`;
+            pointsPercent.textContent = `${pct.toFixed(2)} %`;
+            pointsLetter.textContent = `${letter} (≈ ${gpa.toFixed(1)} on 4.0 scale)`;
+
+            const badgeClass = badgeClassForPercent(pct);
+            pointsBadge.className = `inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${badgeClass}`;
+            if (pct >= 90) {
+              pointsBadge.textContent = 'Excellent';
+              pointsInterpretation.textContent = 'You are currently in A-range. Maintaining your performance should keep your grade high; small fluctuations are unlikely to change the letter grade.';
+            } else if (pct >= 80) {
+              pointsBadge.textContent = 'Good';
+              pointsInterpretation.textContent = 'You are in B-range. A strong performance on remaining assessments could move you into the A-range.';
+            } else if (pct >= 70) {
+              pointsBadge.textContent = 'Satisfactory';
+              pointsInterpretation.textContent = 'You are in C-range. Focus on upcoming exams and assignments to improve your average and solidify your understanding.';
+            } else if (pct >= 60) {
+              pointsBadge.textContent = 'At risk';
+              pointsInterpretation.textContent = 'You are in D-range. Carefully review missing or low scores and speak with your instructor about strategies to improve.';
+            } else {
+              pointsBadge.textContent = 'Failing';
+              pointsInterpretation.textContent = 'Your current average is in F-range. Double-check all data entry and consult your syllabus or advisor about options for recovery or retaking the course.';
+            }
+
+            pointsResults.classList.remove('hidden');
+          } catch (err) {
+            pointsError.textContent = err.message || 'An error occurred while computing the grade.';
+            pointsError.classList.remove('hidden');
+          }
+        }
+
+        function clearPoints() {
+          seedPointsRows();
+          clearPointsOutputs();
+        }
+
+        pointsAddRowBtn.addEventListener('click', () => createPointsRow('', '', ''));
+        pointsComputeBtn.addEventListener('click', computePointsGrade);
+        pointsClearBtn.addEventListener('click', clearPoints);
+
+        // Weighted logic
+        const weightedTbody = document.getElementById('grade-weighted-tbody');
+        const weightedAddRowBtn = document.getElementById('grade-weighted-add-row');
+        const weightedComputeBtn = document.getElementById('grade-weighted-compute');
+        const weightedClearBtn = document.getElementById('grade-weighted-clear');
+        const weightedError = document.getElementById('grade-weighted-error');
+        const weightedResults = document.getElementById('grade-weighted-results');
+        const weightedBadge = document.getElementById('grade-weighted-badge');
+        const weightedTotalWeight = document.getElementById('grade-weighted-total-weight');
+        const weightedPercent = document.getElementById('grade-weighted-percent');
+        const weightedLetter = document.getElementById('grade-weighted-letter');
+        const weightedInterpretation = document.getElementById('grade-weighted-interpretation');
+
+        function createWeightedRow(nameValue, gradeValue, weightValue) {
+          const tr = document.createElement('tr');
+          tr.className = 'grade-weighted-row';
+          tr.innerHTML = `
+            <td class="px-3 py-1.5">
+              <input type="text" class="w-full border border-gray-200 rounded-md px-2 py-1 text-xs" placeholder="e.g. Homework, Exam" value="${nameValue || ''}">
+            </td>
+            <td class="px-3 py-1.5 text-right">
+              <input type="text" class="w-full border border-gray-200 rounded-md px-2 py-1 text-xs text-right" placeholder="e.g. 85" value="${gradeValue || ''}">
+            </td>
+            <td class="px-3 py-1.5 text-right">
+              <input type="text" class="w-full border border-gray-200 rounded-md px-2 py-1 text-xs text-right" placeholder="e.g. 30" value="${weightValue || ''}">
+            </td>
+            <td class="px-3 py-1.5 text-center">
+              <button type="button" class="text-xs text-red-600 hover:underline remove-row-btn">Remove</button>
+            </td>
+          `;
+          const removeBtn = tr.querySelector('.remove-row-btn');
+          removeBtn.addEventListener('click', () => {
+            tr.remove();
+          });
+          weightedTbody.appendChild(tr);
+        }
+
+        function seedWeightedRows() {
+          weightedTbody.innerHTML = '';
+          createWeightedRow('Homework', '88', '20');
+          createWeightedRow('Quizzes', '84', '30');
+          createWeightedRow('Exams', '79', '50');
+        }
+
+        function clearWeightedOutputs() {
+          weightedError.textContent = '';
+          weightedError.classList.add('hidden');
+          weightedResults.classList.add('hidden');
+          weightedBadge.textContent = '–';
+          weightedBadge.className = 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold badge-neutral';
+          weightedTotalWeight.textContent = '';
+          weightedPercent.textContent = '';
+          weightedLetter.textContent = '';
+          weightedInterpretation.textContent = '';
+        }
+
+        function computeWeightedGrade() {
+          clearWeightedOutputs();
+          try {
+            const rows = Array.from(weightedTbody.querySelectorAll('.grade-weighted-row'));
+            if (!rows.length) throw new Error('Add at least one category to compute a grade.');
+
+            let totalWeight = 0;
+            let weightedSum = 0;
+            let anyValid = false;
+
+            for (const row of rows) {
+              const inputs = row.querySelectorAll('input');
+              const gradeStr = inputs[1].value;
+              const weightStr = inputs[2].value;
+              const hasAny = (gradeStr.trim() !== '' || weightStr.trim() !== '');
+              if (!hasAny) continue;
+
+              const grade = parseNumber(gradeStr, 'Category grade', { min: 0 });
+              const weight = parseNumber(weightStr, 'Category weight', { min: 0 });
+              if (grade > 150) {
+                throw new Error('Category grade seems unrealistically high. Use 0–100 for percentages.');
+              }
+              if (weight === 0) continue;
+
+              weightedSum += grade * weight;
+              totalWeight += weight;
+              anyValid = true;
+            }
+
+            if (!anyValid) throw new Error('Enter grade and weight for at least one category.');
+            if (totalWeight <= 0) throw new Error('Total weight must be greater than zero.');
+
+            const normalizedPercent = weightedSum / totalWeight;
+            const { letter, gpa } = letterFromPercent(normalizedPercent);
+
+            weightedTotalWeight.textContent = `${totalWeight.toFixed(2)} (relative units)`;
+            weightedPercent.textContent = `${normalizedPercent.toFixed(2)} %`;
+            weightedLetter.textContent = `${letter} (≈ ${gpa.toFixed(1)} on 4.0 scale)`;
+
+            const badgeClass = badgeClassForPercent(normalizedPercent);
+            weightedBadge.className = `inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${badgeClass}`;
+
+            if (normalizedPercent >= 90) {
+              weightedBadge.textContent = 'Excellent';
+              weightedInterpretation.textContent = 'Across all weighted categories, your performance is in A-range. Future scores will have the greatest impact in the categories with the largest weights.';
+            } else if (normalizedPercent >= 80) {
+              weightedBadge.textContent = 'Good';
+              weightedInterpretation.textContent = 'You are in B-range overall. Check the category with the lowest percentage or highest weight to see where improvements will matter most.';
+            } else if (normalizedPercent >= 70) {
+              weightedBadge.textContent = 'Satisfactory';
+              weightedInterpretation.textContent = 'Your grade is in C-range. Strengthening one or two key categories—often exams or projects—can noticeably shift your final outcome.';
+            } else if (normalizedPercent >= 60) {
+              weightedBadge.textContent = 'At risk';
+              weightedInterpretation.textContent = 'You are in D-range. Consider reviewing course materials, using office hours, or adjusting your study plan in the heaviest-weight categories.';
+            } else {
+              weightedBadge.textContent = 'Failing';
+              weightedInterpretation.textContent = 'Your current weighted average is in F-range. Double-check the inputs against your syllabus and speak with your instructor or advisor for guidance.';
+            }
+
+            weightedResults.classList.remove('hidden');
+          } catch (err) {
+            weightedError.textContent = err.message || 'An error occurred while computing the weighted grade.';
+            weightedError.classList.remove('hidden');
+          }
+        }
+
+        function clearWeighted() {
+          seedWeightedRows();
+          clearWeightedOutputs();
+        }
+
+        weightedAddRowBtn.addEventListener('click', () => createWeightedRow('', '', ''));
+        weightedComputeBtn.addEventListener('click', computeWeightedGrade);
+        weightedClearBtn.addEventListener('click', clearWeighted);
+
+        // Initial seeding
+        seedPointsRows();
+        seedWeightedRows();
+        setMode('points');
+      });
+    </script>
+    
+
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        // Mobile menu toggle (fallback)
+        const toggle = document.getElementById('mobile-menu-toggle');
+        const menu = document.getElementById('mobile-menu');
+        if (toggle && menu) {
+          toggle.addEventListener('click', () => {
+            const isHidden = menu.classList.contains('hidden');
+            menu.classList.toggle('hidden', !isHidden);
+            toggle.setAttribute('aria-expanded', String(isHidden));
+          });
+        }
+
+        // Utility: parse number
+        function parseNumber(value, label, options) {
+          const t = (value || '').trim();
+          if (!t) throw new Error(label + ' is required.');
+          const num = Number(t.replace(',', '.'));
+          if (!Number.isFinite(num)) throw new Error(label + ' must be a valid number.');
+          if (options && options.min != null && num < options.min) {
+            throw new Error(label + ' must be ≥ ' + options.min + '.');
+          }
+          return num;
+        }
+
+        // Utility: letter grade + GPA
+        function letterFromPercent(pct) {
+          let letter, gpa;
+          if (pct >= 90) { letter = 'A'; gpa = 4.0; }
+          else if (pct >= 80) { letter = 'B'; gpa = 3.0; }
+          else if (pct >= 70) { letter = 'C'; gpa = 2.0; }
+          else if (pct >= 60) { letter = 'D'; gpa = 1.0; }
+          else { letter = 'F'; gpa = 0.0; }
+          return { letter, gpa };
+        }
+
+        function badgeClassForPercent(pct) {
+          if (pct >= 90) return 'badge-good';
+          if (pct >= 70) return 'badge-warning';
+          return 'badge-risk';
+        }
+
+        // Mode switching
+        const modePointsBtn = document.getElementById('grade-mode-points-btn');
+        const modeWeightedBtn = document.getElementById('grade-mode-weighted-btn');
+        const panelPoints = document.getElementById('grade-panel-points');
+        const panelWeighted = document.getElementById('grade-panel-weighted');
+
+        function setMode(mode) {
+          const isPoints = mode === 'points';
+          panelPoints.classList.toggle('hidden', !isPoints);
+          panelWeighted.classList.toggle('hidden', isPoints);
+          modePointsBtn.classList.toggle('pill-active', isPoints);
+          modePointsBtn.classList.toggle('pill-inactive', !isPoints);
+          modeWeightedBtn.classList.toggle('pill-active', !isPoints);
+          modeWeightedBtn.classList.toggle('pill-inactive', isPoints);
+        }
+
+        modePointsBtn.addEventListener('click', () => setMode('points'));
+        modeWeightedBtn.addEventListener('click', () => setMode('weighted'));
+
+        // Points-based logic
+        const pointsTbody = document.getElementById('grade-points-tbody');
+        const pointsAddRowBtn = document.getElementById('grade-points-add-row');
+        const pointsComputeBtn = document.getElementById('grade-points-compute');
+        const pointsClearBtn = document.getElementById('grade-points-clear');
+        const pointsError = document.getElementById('grade-points-error');
+        const pointsResults = document.getElementById('grade-points-results');
+        const pointsBadge = document.getElementById('grade-points-badge');
+        const pointsTotal = document.getElementById('grade-points-total');
+        const pointsPercent = document.getElementById('grade-points-percent');
+        const pointsLetter = document.getElementById('grade-points-letter');
+        const pointsInterpretation = document.getElementById('grade-points-interpretation');
+
+        function createPointsRow(nameValue, earnedValue, possibleValue) {
+          const tr = document.createElement('tr');
+          tr.className = 'grade-points-row';
+          tr.innerHTML = `
+            <td class="px-3 py-1.5">
+              <input type="text" class="w-full border border-gray-200 rounded-md px-2 py-1 text-xs" placeholder="e.g. Midterm, Homework 1" value="${nameValue || ''}">
+            </td>
+            <td class="px-3 py-1.5 text-right">
+              <input type="text" class="w-full border border-gray-200 rounded-md px-2 py-1 text-xs text-right" placeholder="e.g. 45" value="${earnedValue || ''}">
+            </td>
+            <td class="px-3 py-1.5 text-right">
+              <input type="text" class="w-full border border-gray-200 rounded-md px-2 py-1 text-xs text-right" placeholder="e.g. 50" value="${possibleValue || ''}">
+            </td>
+            <td class="px-3 py-1.5 text-center">
+              <button type="button" class="text-xs text-red-600 hover:underline remove-row-btn">Remove</button>
+            </td>
+          `;
+          const removeBtn = tr.querySelector('.remove-row-btn');
+          removeBtn.addEventListener('click', () => {
+            tr.remove();
+          });
+          pointsTbody.appendChild(tr);
+        }
+
+        function seedPointsRows() {
+          pointsTbody.innerHTML = '';
+          createPointsRow('Homework 1', '9', '10');
+          createPointsRow('Homework 2', '8', '10');
+          createPointsRow('Quiz', '18', '20');
+          createPointsRow('Midterm', '42', '50');
+          createPointsRow('Project', '', '');
+        }
+
+        function clearPointsOutputs() {
+          pointsError.textContent = '';
+          pointsError.classList.add('hidden');
+          pointsResults.classList.add('hidden');
+          pointsBadge.textContent = '–';
+          pointsBadge.className = 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold badge-neutral';
+          pointsTotal.textContent = '';
+          pointsPercent.textContent = '';
+          pointsLetter.textContent = '';
+          pointsInterpretation.textContent = '';
+        }
+
+        function computePointsGrade() {
+          clearPointsOutputs();
+          try {
+            const rows = Array.from(pointsTbody.querySelectorAll('.grade-points-row'));
+            if (!rows.length) throw new Error('Add at least one row to compute a grade.');
+
+            let totalEarned = 0;
+            let totalPossible = 0;
+            let anyValid = false;
+
+            for (const row of rows) {
+              const inputs = row.querySelectorAll('input');
+              const earnedStr = inputs[1].value;
+              const possibleStr = inputs[2].value;
+
+              const hasAny = (earnedStr.trim() !== '' || possibleStr.trim() !== '');
+              if (!hasAny) continue;
+
+              const earned = parseNumber(earnedStr, 'Points earned', {});
+              const possible = parseNumber(possibleStr, 'Points possible', { min: 0.0000001 });
+              if (earned < 0) throw new Error('Points earned cannot be negative.');
+              if (earned > possible) {
+                // Not always an error, but warn
+                // We allow extra credit.
+              }
+              totalEarned += earned;
+              totalPossible += possible;
+              anyValid = true;
+            }
+
+            if (!anyValid) throw new Error('Enter points earned and possible for at least one row.');
+            if (totalPossible <= 0) throw new Error('Total points possible must be greater than zero.');
+
+            const pct = (totalEarned / totalPossible) * 100;
+            const { letter, gpa } = letterFromPercent(pct);
+
+            pointsTotal.textContent = `${totalEarned.toFixed(2)} / ${totalPossible.toFixed(2)}`;
+            pointsPercent.textContent = `${pct.toFixed(2)} %`;
+            pointsLetter.textContent = `${letter} (≈ ${gpa.toFixed(1)} on 4.0 scale)`;
+
+            const badgeClass = badgeClassForPercent(pct);
+            pointsBadge.className = `inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${badgeClass}`;
+            if (pct >= 90) {
+              pointsBadge.textContent = 'Excellent';
+              pointsInterpretation.textContent = 'You are currently in A-range. Maintaining your performance should keep your grade high; small fluctuations are unlikely to change the letter grade.';
+            } else if (pct >= 80) {
+              pointsBadge.textContent = 'Good';
+              pointsInterpretation.textContent = 'You are in B-range. A strong performance on remaining assessments could move you into the A-range.';
+            } else if (pct >= 70) {
+              pointsBadge.textContent = 'Satisfactory';
+              pointsInterpretation.textContent = 'You are in C-range. Focus on upcoming exams and assignments to improve your average and solidify your understanding.';
+            } else if (pct >= 60) {
+              pointsBadge.textContent = 'At risk';
+              pointsInterpretation.textContent = 'You are in D-range. Carefully review missing or low scores and speak with your instructor about strategies to improve.';
+            } else {
+              pointsBadge.textContent = 'Failing';
+              pointsInterpretation.textContent = 'Your current average is in F-range. Double-check all data entry and consult your syllabus or advisor about options for recovery or retaking the course.';
+            }
+
+            pointsResults.classList.remove('hidden');
+          } catch (err) {
+            pointsError.textContent = err.message || 'An error occurred while computing the grade.';
+            pointsError.classList.remove('hidden');
+          }
+        }
+
+        function clearPoints() {
+          seedPointsRows();
+          clearPointsOutputs();
+        }
+
+        pointsAddRowBtn.addEventListener('click', () => createPointsRow('', '', ''));
+        pointsComputeBtn.addEventListener('click', computePointsGrade);
+        pointsClearBtn.addEventListener('click', clearPoints);
+
+        // Weighted logic
+        const weightedTbody = document.getElementById('grade-weighted-tbody');
+        const weightedAddRowBtn = document.getElementById('grade-weighted-add-row');
+        const weightedComputeBtn = document.getElementById('grade-weighted-compute');
+        const weightedClearBtn = document.getElementById('grade-weighted-clear');
+        const weightedError = document.getElementById('grade-weighted-error');
+        const weightedResults = document.getElementById('grade-weighted-results');
+        const weightedBadge = document.getElementById('grade-weighted-badge');
+        const weightedTotalWeight = document.getElementById('grade-weighted-total-weight');
+        const weightedPercent = document.getElementById('grade-weighted-percent');
+        const weightedLetter = document.getElementById('grade-weighted-letter');
+        const weightedInterpretation = document.getElementById('grade-weighted-interpretation');
+
+        function createWeightedRow(nameValue, gradeValue, weightValue) {
+          const tr = document.createElement('tr');
+          tr.className = 'grade-weighted-row';
+          tr.innerHTML = `
+            <td class="px-3 py-1.5">
+              <input type="text" class="w-full border border-gray-200 rounded-md px-2 py-1 text-xs" placeholder="e.g. Homework, Exam" value="${nameValue || ''}">
+            </td>
+            <td class="px-3 py-1.5 text-right">
+              <input type="text" class="w-full border border-gray-200 rounded-md px-2 py-1 text-xs text-right" placeholder="e.g. 85" value="${gradeValue || ''}">
+            </td>
+            <td class="px-3 py-1.5 text-right">
+              <input type="text" class="w-full border border-gray-200 rounded-md px-2 py-1 text-xs text-right" placeholder="e.g. 30" value="${weightValue || ''}">
+            </td>
+            <td class="px-3 py-1.5 text-center">
+              <button type="button" class="text-xs text-red-600 hover:underline remove-row-btn">Remove</button>
+            </td>
+          `;
+          const removeBtn = tr.querySelector('.remove-row-btn');
+          removeBtn.addEventListener('click', () => {
+            tr.remove();
+          });
+          weightedTbody.appendChild(tr);
+        }
+
+        function seedWeightedRows() {
+          weightedTbody.innerHTML = '';
+          createWeightedRow('Homework', '88', '20');
+          createWeightedRow('Quizzes', '84', '30');
+          createWeightedRow('Exams', '79', '50');
+        }
+
+        function clearWeightedOutputs() {
+          weightedError.textContent = '';
+          weightedError.classList.add('hidden');
+          weightedResults.classList.add('hidden');
+          weightedBadge.textContent = '–';
+          weightedBadge.className = 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold badge-neutral';
+          weightedTotalWeight.textContent = '';
+          weightedPercent.textContent = '';
+          weightedLetter.textContent = '';
+          weightedInterpretation.textContent = '';
+        }
+
+        function computeWeightedGrade() {
+          clearWeightedOutputs();
+          try {
+            const rows = Array.from(weightedTbody.querySelectorAll('.grade-weighted-row'));
+            if (!rows.length) throw new Error('Add at least one category to compute a grade.');
+
+            let totalWeight = 0;
+            let weightedSum = 0;
+            let anyValid = false;
+
+            for (const row of rows) {
+              const inputs = row.querySelectorAll('input');
+              const gradeStr = inputs[1].value;
+              const weightStr = inputs[2].value;
+              const hasAny = (gradeStr.trim() !== '' || weightStr.trim() !== '');
+              if (!hasAny) continue;
+
+              const grade = parseNumber(gradeStr, 'Category grade', { min: 0 });
+              const weight = parseNumber(weightStr, 'Category weight', { min: 0 });
+              if (grade > 150) {
+                throw new Error('Category grade seems unrealistically high. Use 0–100 for percentages.');
+              }
+              if (weight === 0) continue;
+
+              weightedSum += grade * weight;
+              totalWeight += weight;
+              anyValid = true;
+            }
+
+            if (!anyValid) throw new Error('Enter grade and weight for at least one category.');
+            if (totalWeight <= 0) throw new Error('Total weight must be greater than zero.');
+
+            const normalizedPercent = weightedSum / totalWeight;
+            const { letter, gpa } = letterFromPercent(normalizedPercent);
+
+            weightedTotalWeight.textContent = `${totalWeight.toFixed(2)} (relative units)`;
+            weightedPercent.textContent = `${normalizedPercent.toFixed(2)} %`;
+            weightedLetter.textContent = `${letter} (≈ ${gpa.toFixed(1)} on 4.0 scale)`;
+
+            const badgeClass = badgeClassForPercent(normalizedPercent);
+            weightedBadge.className = `inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${badgeClass}`;
+
+            if (normalizedPercent >= 90) {
+              weightedBadge.textContent = 'Excellent';
+              weightedInterpretation.textContent = 'Across all weighted categories, your performance is in A-range. Future scores will have the greatest impact in the categories with the largest weights.';
+            } else if (normalizedPercent >= 80) {
+              weightedBadge.textContent = 'Good';
+              weightedInterpretation.textContent = 'You are in B-range overall. Check the category with the lowest percentage or highest weight to see where improvements will matter most.';
+            } else if (normalizedPercent >= 70) {
+              weightedBadge.textContent = 'Satisfactory';
+              weightedInterpretation.textContent = 'Your grade is in C-range. Strengthening one or two key categories—often exams or projects—can noticeably shift your final outcome.';
+            } else if (normalizedPercent >= 60) {
+              weightedBadge.textContent = 'At risk';
+              weightedInterpretation.textContent = 'You are in D-range. Consider reviewing course materials, using office hours, or adjusting your study plan in the heaviest-weight categories.';
+            } else {
+              weightedBadge.textContent = 'Failing';
+              weightedInterpretation.textContent = 'Your current weighted average is in F-range. Double-check the inputs against your syllabus and speak with your instructor or advisor for guidance.';
+            }
+
+            weightedResults.classList.remove('hidden');
+          } catch (err) {
+            weightedError.textContent = err.message || 'An error occurred while computing the weighted grade.';
+            weightedError.classList.remove('hidden');
+          }
+        }
+
+        function clearWeighted() {
+          seedWeightedRows();
+          clearWeightedOutputs();
+        }
+
+        weightedAddRowBtn.addEventListener('click', () => createWeightedRow('', '', ''));
+        weightedComputeBtn.addEventListener('click', computeWeightedGrade);
+        weightedClearBtn.addEventListener('click', clearWeighted);
+
+        // Initial seeding
+        seedPointsRows();
+        seedWeightedRows();
+        setMode('points');
+      });
+    </script>
+    
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

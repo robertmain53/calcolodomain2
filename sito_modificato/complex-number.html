@@ -50,10 +50,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -177,8 +173,6 @@
 </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
-
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
 
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
@@ -779,7 +773,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -847,13 +841,681 @@
 
 
 
+
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
 
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      (function () {
+        const modeSelect = document.getElementById('complex-mode');
+        const form = document.getElementById('complex-form');
+        const resetBtn = document.getElementById('complex-reset');
+
+        const opFields = document.getElementById('op-fields');
+        const rectFields = document.getElementById('rect-fields');
+        const polarFields = document.getElementById('polar-fields');
+
+        const resultsBox = document.getElementById('complex-results');
+        const summaryEl = document.getElementById('complex-summary');
+        const mainEl = document.getElementById('complex-main');
+        const extraEl = document.getElementById('complex-extra');
+        const stepsEl = document.getElementById('complex-steps');
+        const extraContainer = document.getElementById('complex-extra');
+
+        const opShowPolar = document.getElementById('op-show-polar');
+
+        function parseNum(value) {
+          if (typeof value !== 'string') return NaN;
+          const cleaned = value.trim().replace(',', '.');
+          if (!cleaned) return NaN;
+          const n = Number(cleaned);
+          return Number.isFinite(n) ? n : NaN;
+        }
+
+        function cleanZero(x) {
+          return Math.abs(x) < 1e-12 ? 0 : x;
+        }
+
+        function fmt(val, digits = 6) {
+          if (!Number.isFinite(val)) return '—';
+          val = cleanZero(val);
+          if (val === 0) return '0';
+          const abs = Math.abs(val);
+          if (abs >= 1e6 || abs < 1e-4) {
+            return val.toExponential(4);
+          }
+          return Number(val.toPrecision(digits));
+        }
+
+        function fmtAngleDeg(rad) {
+          if (!Number.isFinite(rad)) return '—';
+          const deg = rad * 180 / Math.PI;
+          return fmt(deg, 6) + '°';
+        }
+
+        function fmtAngleRad(rad) {
+          if (!Number.isFinite(rad)) return '—';
+          return fmt(rad, 6) + ' rad';
+        }
+
+        function fmtComplexRect(a, b) {
+          a = cleanZero(a);
+          b = cleanZero(b);
+          const aStr = fmt(a);
+          const absB = Math.abs(b);
+          const bStr = fmt(absB);
+          if (b === 0) return aStr;
+          if (a === 0) {
+            return (b >= 0 ? '' : '-') + bStr + 'i';
+          }
+          const sign = b >= 0 ? ' + ' : ' - ';
+          return aStr + sign + bStr + 'i';
+        }
+
+        function fmtComplexPolar(r, thetaRad) {
+          r = cleanZero(r);
+          if (r === 0) return '0';
+          return '|z| = ' + fmt(r) + ', θ = ' + fmtAngleDeg(thetaRad) + ' (' + fmtAngleRad(thetaRad) + ')';
+        }
+
+        function magnitude(a, b) {
+          return Math.sqrt(a * a + b * b);
+        }
+
+        function argument(a, b) {
+          if (a === 0 && b === 0) return NaN;
+          return Math.atan2(b, a);
+        }
+
+        function clearResults() {
+          resultsBox.classList.add('hidden');
+          summaryEl.textContent = '';
+          mainEl.innerHTML = '';
+          stepsEl.innerHTML = '';
+          extraEl.innerHTML = '';
+          extraContainer.classList.add('hidden');
+        }
+
+        function setModeVisibility() {
+          const mode = modeSelect.value;
+          clearResults();
+          opFields.classList.add('hidden');
+          rectFields.classList.add('hidden');
+          polarFields.classList.add('hidden');
+
+          if (mode === 'operations') {
+            opFields.classList.remove('hidden');
+          } else if (mode === 'rect-to-polar') {
+            rectFields.classList.remove('hidden');
+          } else if (mode === 'polar-to-rect') {
+            polarFields.classList.remove('hidden');
+          }
+        }
+
+        function handleSubmit(evt) {
+          evt.preventDefault();
+          clearResults();
+          const mode = modeSelect.value;
+          const steps = [];
+
+          if (mode === 'operations') {
+            const a1 = parseNum(document.getElementById('op-a1').value);
+            const b1 = parseNum(document.getElementById('op-b1').value);
+            const a2 = parseNum(document.getElementById('op-a2').value);
+            const b2 = parseNum(document.getElementById('op-b2').value);
+            const op = document.getElementById('op-operation').value;
+
+            if (!Number.isFinite(a1) || !Number.isFinite(b1) || !Number.isFinite(a2) || !Number.isFinite(b2)) {
+              alert('Please enter numeric real and imaginary parts for both z₁ and z₂.');
+              return;
+            }
+
+            const z1Rect = fmtComplexRect(a1, b1);
+            const z2Rect = fmtComplexRect(a2, b2);
+
+            let resA, resB, opSymbol, opLabel;
+            if (op === 'add') {
+              resA = a1 + a2;
+              resB = b1 + b2;
+              opSymbol = '+';
+              opLabel = 'z₁ + z₂';
+              steps.push('1. Add real parts and imaginary parts separately:');
+              steps.push('   Re(z₁ + z₂) = a₁ + a₂ = ' + a1 + ' + ' + a2 + ' = ' + (a1 + a2) + '.');
+              steps.push('   Im(z₁ + z₂) = b₁ + b₂ = ' + b1 + ' + ' + b2 + ' = ' + (b1 + b2) + '.');
+            } else if (op === 'sub') {
+              resA = a1 - a2;
+              resB = b1 - b2;
+              opSymbol = '−';
+              opLabel = 'z₁ − z₂';
+              steps.push('1. Subtract real parts and imaginary parts separately:');
+              steps.push('   Re(z₁ − z₂) = a₁ − a₂ = ' + a1 + ' − ' + a2 + ' = ' + (a1 - a2) + '.');
+              steps.push('   Im(z₁ − z₂) = b₁ − b₂ = ' + b1 + ' − ' + b2 + ' = ' + (b1 - b2) + '.');
+            } else if (op === 'mul') {
+              resA = a1 * a2 - b1 * b2;
+              resB = a1 * b2 + a2 * b1;
+              opSymbol = '·';
+              opLabel = 'z₁ · z₂';
+              steps.push('1. Use (a₁ + b₁i)(a₂ + b₂i) = (a₁a₂ − b₁b₂) + (a₁b₂ + a₂b₁)i.');
+              steps.push('2. Compute real part: a₁a₂ − b₁b₂ = ' + a1 + '·' + a2 + ' − ' + b1 + '·' + b2 + ' = ' + resA + '.');
+              steps.push('3. Compute imaginary part: a₁b₂ + a₂b₁ = ' + a1 + '·' + b2 + ' + ' + a2 + '·' + b1 + ' = ' + resB + '.');
+            } else if (op === 'div') {
+              const denom = a2 * a2 + b2 * b2;
+              if (denom === 0) {
+                alert('Division by zero: z₂ must not be zero.');
+                return;
+              }
+              resA = (a1 * a2 + b1 * b2) / denom;
+              resB = (b1 * a2 - a1 * b2) / denom;
+              opSymbol = '÷';
+              opLabel = 'z₁ ÷ z₂';
+              steps.push('1. Use (a₁ + b₁i) / (a₂ + b₂i) = ((a₁a₂ + b₁b₂) + (b₁a₂ − a₁b₂)i) / (a₂² + b₂²).');
+              steps.push('2. Denominator: a₂² + b₂² = ' + a2 + '² + ' + b2 + '² = ' + denom + '.');
+              const numRe = a1 * a2 + b1 * b2;
+              const numIm = b1 * a2 - a1 * b2;
+              steps.push('3. Real numerator: a₁a₂ + b₁b₂ = ' + numRe + '.');
+              steps.push('4. Imaginary numerator: b₁a₂ − a₁b₂ = ' + numIm + '.');
+              steps.push('5. Re(z₁ / z₂) = ' + numRe + ' / ' + denom + ' = ' + resA + '.');
+              steps.push('6. Im(z₁ / z₂) = ' + numIm + ' / ' + denom + ' = ' + resB + '.');
+            }
+
+            const resRect = fmtComplexRect(resA, resB);
+            const r1 = magnitude(a1, b1);
+            const t1 = argument(a1, b1);
+            const r2 = magnitude(a2, b2);
+            const t2 = argument(a2, b2);
+            const rRes = magnitude(resA, resB);
+            const tRes = argument(resA, resB);
+
+            summaryEl.textContent = opLabel + ' result: ' + resRect + '.';
+
+            mainEl.innerHTML = '';
+            const p1 = document.createElement('p');
+            p1.textContent = 'z₁ = ' + z1Rect;
+            const p2 = document.createElement('p');
+            p2.textContent = 'z₂ = ' + z2Rect;
+            const p3 = document.createElement('p');
+            p3.textContent = opLabel + ' = ' + resRect;
+            mainEl.appendChild(p1);
+            mainEl.appendChild(p2);
+            mainEl.appendChild(p3);
+
+            if (opShowPolar.checked) {
+              extraContainer.classList.remove('hidden');
+              extraEl.innerHTML = '';
+
+              const e1 = document.createElement('p');
+              e1.textContent = 'z₁ polar: ' + fmtComplexPolar(r1, t1);
+              const e2 = document.createElement('p');
+              e2.textContent = 'z₂ polar: ' + fmtComplexPolar(r2, t2);
+              const e3 = document.createElement('p');
+              e3.textContent = opLabel + ' polar: ' + fmtComplexPolar(rRes, tRes);
+              extraEl.appendChild(e1);
+              extraEl.appendChild(e2);
+              extraEl.appendChild(e3);
+            }
+
+            steps.push('7. Optionally convert each complex number to polar form using |z| = √(a² + b²) and θ = atan2(b, a).');
+
+          } else if (mode === 'rect-to-polar') {
+            const a = parseNum(document.getElementById('rect-a').value);
+            const b = parseNum(document.getElementById('rect-b').value);
+
+            if (!Number.isFinite(a) || !Number.isFinite(b)) {
+              alert('Please enter numeric real and imaginary parts a and b.');
+              return;
+            }
+
+            const r = magnitude(a, b);
+            const theta = argument(a, b);
+
+            const zRect = fmtComplexRect(a, b);
+            summaryEl.textContent = 'Rectangular to polar conversion for z = ' + zRect + '.';
+
+            mainEl.innerHTML = '';
+            const p1 = document.createElement('p');
+            p1.textContent = '|z| = ' + fmt(r);
+            const p2 = document.createElement('p');
+            p2.textContent = 'arg(z) (principal) = ' + fmtAngleDeg(theta) + ' = ' + fmtAngleRad(theta) + '.';
+            mainEl.appendChild(p1);
+            mainEl.appendChild(p2);
+
+            extraContainer.classList.remove('hidden');
+            extraEl.innerHTML = '';
+            const p3 = document.createElement('p');
+            if (r === 0) {
+              p3.textContent = 'z = 0, so the argument is undefined and polar form has magnitude 0 with no unique angle.';
+            } else {
+              p3.textContent = 'Polar form: z = ' + fmt(r) + ' ∠ ' + fmtAngleDeg(theta);
+            }
+            extraEl.appendChild(p3);
+
+            steps.push('1. Start from z = a + bi with a = ' + a + ', b = ' + b + '.');
+            steps.push('2. Compute magnitude |z| = √(a² + b²) = √(' + a + '² + ' + b + '²) = ' + r + '.');
+            if (r === 0) {
+              steps.push('3. Since |z| = 0, z is the zero complex number and has no well-defined argument.');
+            } else {
+              steps.push('3. Compute argument θ = atan2(b, a) = atan2(' + b + ', ' + a + ') ≈ ' + theta + ' rad.');
+              steps.push('4. Convert argument to degrees: θ ≈ ' + (theta * 180 / Math.PI) + '°.');
+              steps.push('5. Write polar form: z = |z| ∠ θ = ' + r + ' ∠ ' + (theta * 180 / Math.PI) + '°.');
+            }
+
+          } else if (mode === 'polar-to-rect') {
+            const r = parseNum(document.getElementById('polar-r').value);
+            const thetaVal = parseNum(document.getElementById('polar-theta').value);
+            const unit = document.getElementById('polar-unit').value;
+
+            if (!Number.isFinite(r) || !Number.isFinite(thetaVal)) {
+              alert('Please enter numeric values for magnitude r and angle θ.');
+              return;
+            }
+            if (r < 0) {
+              alert('Magnitude r must be non-negative.');
+              return;
+            }
+
+            let thetaRad = thetaVal;
+            if (unit === 'deg') {
+              thetaRad = thetaVal * Math.PI / 180;
+            }
+
+            const a = r * Math.cos(thetaRad);
+            const b = r * Math.sin(thetaRad);
+
+            const zRect = fmtComplexRect(a, b);
+            summaryEl.textContent = 'Polar to rectangular conversion for z = ' + fmt(r) + ' ∠ ' + (unit === 'deg' ? thetaVal + '°' : thetaVal + ' rad') + '.';
+
+            mainEl.innerHTML = '';
+            const p1 = document.createElement('p');
+            p1.textContent = 'a = r cos θ = ' + fmt(a) + ', b = r sin θ = ' + fmt(b) + '.';
+            const p2 = document.createElement('p');
+            p2.textContent = 'Rectangular form: z = ' + zRect;
+            mainEl.appendChild(p1);
+            mainEl.appendChild(p2);
+
+            extraContainer.classList.remove('hidden');
+            extraEl.innerHTML = '';
+            const p3 = document.createElement('p');
+            p3.textContent = 'Angle in radians: θ = ' + fmt(thetaRad) + ' rad, in degrees: ' + fmt(thetaRad * 180 / Math.PI) + '°.';
+            extraEl.appendChild(p3);
+
+            steps.push('1. Start from z = r ∠ θ with r = ' + r + ' and θ = ' + thetaVal + (unit === "deg" ? '°' : ' rad') + '.');
+            if (unit === 'deg') {
+              steps.push('2. Convert θ to radians: θ = θ_deg · π/180 ≈ ' + thetaRad + ' rad.');
+            }
+            steps.push('3. Compute real part a = r cos θ = ' + a + '.');
+            steps.push('4. Compute imaginary part b = r sin θ = ' + b + '.');
+            steps.push('5. Rectangular form is z = a + bi = ' + zRect + '.');
+          }
+
+          stepsEl.innerHTML = '';
+          steps.forEach(function (line) {
+            const p = document.createElement('p');
+            p.textContent = line;
+            stepsEl.appendChild(p);
+          });
+
+          resultsBox.classList.remove('hidden');
+        }
+
+        function handleReset() {
+          form.reset();
+          clearResults();
+          setModeVisibility();
+        }
+
+        modeSelect.addEventListener('change', setModeVisibility);
+        form.addEventListener('submit', handleSubmit);
+        resetBtn.addEventListener('click', handleReset);
+
+        setModeVisibility();
+      })();
+    </script>
+
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      (function () {
+        const modeSelect = document.getElementById('complex-mode');
+        const form = document.getElementById('complex-form');
+        const resetBtn = document.getElementById('complex-reset');
+
+        const opFields = document.getElementById('op-fields');
+        const rectFields = document.getElementById('rect-fields');
+        const polarFields = document.getElementById('polar-fields');
+
+        const resultsBox = document.getElementById('complex-results');
+        const summaryEl = document.getElementById('complex-summary');
+        const mainEl = document.getElementById('complex-main');
+        const extraEl = document.getElementById('complex-extra');
+        const stepsEl = document.getElementById('complex-steps');
+        const extraContainer = document.getElementById('complex-extra');
+
+        const opShowPolar = document.getElementById('op-show-polar');
+
+        function parseNum(value) {
+          if (typeof value !== 'string') return NaN;
+          const cleaned = value.trim().replace(',', '.');
+          if (!cleaned) return NaN;
+          const n = Number(cleaned);
+          return Number.isFinite(n) ? n : NaN;
+        }
+
+        function cleanZero(x) {
+          return Math.abs(x) < 1e-12 ? 0 : x;
+        }
+
+        function fmt(val, digits = 6) {
+          if (!Number.isFinite(val)) return '—';
+          val = cleanZero(val);
+          if (val === 0) return '0';
+          const abs = Math.abs(val);
+          if (abs >= 1e6 || abs < 1e-4) {
+            return val.toExponential(4);
+          }
+          return Number(val.toPrecision(digits));
+        }
+
+        function fmtAngleDeg(rad) {
+          if (!Number.isFinite(rad)) return '—';
+          const deg = rad * 180 / Math.PI;
+          return fmt(deg, 6) + '°';
+        }
+
+        function fmtAngleRad(rad) {
+          if (!Number.isFinite(rad)) return '—';
+          return fmt(rad, 6) + ' rad';
+        }
+
+        function fmtComplexRect(a, b) {
+          a = cleanZero(a);
+          b = cleanZero(b);
+          const aStr = fmt(a);
+          const absB = Math.abs(b);
+          const bStr = fmt(absB);
+          if (b === 0) return aStr;
+          if (a === 0) {
+            return (b >= 0 ? '' : '-') + bStr + 'i';
+          }
+          const sign = b >= 0 ? ' + ' : ' - ';
+          return aStr + sign + bStr + 'i';
+        }
+
+        function fmtComplexPolar(r, thetaRad) {
+          r = cleanZero(r);
+          if (r === 0) return '0';
+          return '|z| = ' + fmt(r) + ', θ = ' + fmtAngleDeg(thetaRad) + ' (' + fmtAngleRad(thetaRad) + ')';
+        }
+
+        function magnitude(a, b) {
+          return Math.sqrt(a * a + b * b);
+        }
+
+        function argument(a, b) {
+          if (a === 0 && b === 0) return NaN;
+          return Math.atan2(b, a);
+        }
+
+        function clearResults() {
+          resultsBox.classList.add('hidden');
+          summaryEl.textContent = '';
+          mainEl.innerHTML = '';
+          stepsEl.innerHTML = '';
+          extraEl.innerHTML = '';
+          extraContainer.classList.add('hidden');
+        }
+
+        function setModeVisibility() {
+          const mode = modeSelect.value;
+          clearResults();
+          opFields.classList.add('hidden');
+          rectFields.classList.add('hidden');
+          polarFields.classList.add('hidden');
+
+          if (mode === 'operations') {
+            opFields.classList.remove('hidden');
+          } else if (mode === 'rect-to-polar') {
+            rectFields.classList.remove('hidden');
+          } else if (mode === 'polar-to-rect') {
+            polarFields.classList.remove('hidden');
+          }
+        }
+
+        function handleSubmit(evt) {
+          evt.preventDefault();
+          clearResults();
+          const mode = modeSelect.value;
+          const steps = [];
+
+          if (mode === 'operations') {
+            const a1 = parseNum(document.getElementById('op-a1').value);
+            const b1 = parseNum(document.getElementById('op-b1').value);
+            const a2 = parseNum(document.getElementById('op-a2').value);
+            const b2 = parseNum(document.getElementById('op-b2').value);
+            const op = document.getElementById('op-operation').value;
+
+            if (!Number.isFinite(a1) || !Number.isFinite(b1) || !Number.isFinite(a2) || !Number.isFinite(b2)) {
+              alert('Please enter numeric real and imaginary parts for both z₁ and z₂.');
+              return;
+            }
+
+            const z1Rect = fmtComplexRect(a1, b1);
+            const z2Rect = fmtComplexRect(a2, b2);
+
+            let resA, resB, opSymbol, opLabel;
+            if (op === 'add') {
+              resA = a1 + a2;
+              resB = b1 + b2;
+              opSymbol = '+';
+              opLabel = 'z₁ + z₂';
+              steps.push('1. Add real parts and imaginary parts separately:');
+              steps.push('   Re(z₁ + z₂) = a₁ + a₂ = ' + a1 + ' + ' + a2 + ' = ' + (a1 + a2) + '.');
+              steps.push('   Im(z₁ + z₂) = b₁ + b₂ = ' + b1 + ' + ' + b2 + ' = ' + (b1 + b2) + '.');
+            } else if (op === 'sub') {
+              resA = a1 - a2;
+              resB = b1 - b2;
+              opSymbol = '−';
+              opLabel = 'z₁ − z₂';
+              steps.push('1. Subtract real parts and imaginary parts separately:');
+              steps.push('   Re(z₁ − z₂) = a₁ − a₂ = ' + a1 + ' − ' + a2 + ' = ' + (a1 - a2) + '.');
+              steps.push('   Im(z₁ − z₂) = b₁ − b₂ = ' + b1 + ' − ' + b2 + ' = ' + (b1 - b2) + '.');
+            } else if (op === 'mul') {
+              resA = a1 * a2 - b1 * b2;
+              resB = a1 * b2 + a2 * b1;
+              opSymbol = '·';
+              opLabel = 'z₁ · z₂';
+              steps.push('1. Use (a₁ + b₁i)(a₂ + b₂i) = (a₁a₂ − b₁b₂) + (a₁b₂ + a₂b₁)i.');
+              steps.push('2. Compute real part: a₁a₂ − b₁b₂ = ' + a1 + '·' + a2 + ' − ' + b1 + '·' + b2 + ' = ' + resA + '.');
+              steps.push('3. Compute imaginary part: a₁b₂ + a₂b₁ = ' + a1 + '·' + b2 + ' + ' + a2 + '·' + b1 + ' = ' + resB + '.');
+            } else if (op === 'div') {
+              const denom = a2 * a2 + b2 * b2;
+              if (denom === 0) {
+                alert('Division by zero: z₂ must not be zero.');
+                return;
+              }
+              resA = (a1 * a2 + b1 * b2) / denom;
+              resB = (b1 * a2 - a1 * b2) / denom;
+              opSymbol = '÷';
+              opLabel = 'z₁ ÷ z₂';
+              steps.push('1. Use (a₁ + b₁i) / (a₂ + b₂i) = ((a₁a₂ + b₁b₂) + (b₁a₂ − a₁b₂)i) / (a₂² + b₂²).');
+              steps.push('2. Denominator: a₂² + b₂² = ' + a2 + '² + ' + b2 + '² = ' + denom + '.');
+              const numRe = a1 * a2 + b1 * b2;
+              const numIm = b1 * a2 - a1 * b2;
+              steps.push('3. Real numerator: a₁a₂ + b₁b₂ = ' + numRe + '.');
+              steps.push('4. Imaginary numerator: b₁a₂ − a₁b₂ = ' + numIm + '.');
+              steps.push('5. Re(z₁ / z₂) = ' + numRe + ' / ' + denom + ' = ' + resA + '.');
+              steps.push('6. Im(z₁ / z₂) = ' + numIm + ' / ' + denom + ' = ' + resB + '.');
+            }
+
+            const resRect = fmtComplexRect(resA, resB);
+            const r1 = magnitude(a1, b1);
+            const t1 = argument(a1, b1);
+            const r2 = magnitude(a2, b2);
+            const t2 = argument(a2, b2);
+            const rRes = magnitude(resA, resB);
+            const tRes = argument(resA, resB);
+
+            summaryEl.textContent = opLabel + ' result: ' + resRect + '.';
+
+            mainEl.innerHTML = '';
+            const p1 = document.createElement('p');
+            p1.textContent = 'z₁ = ' + z1Rect;
+            const p2 = document.createElement('p');
+            p2.textContent = 'z₂ = ' + z2Rect;
+            const p3 = document.createElement('p');
+            p3.textContent = opLabel + ' = ' + resRect;
+            mainEl.appendChild(p1);
+            mainEl.appendChild(p2);
+            mainEl.appendChild(p3);
+
+            if (opShowPolar.checked) {
+              extraContainer.classList.remove('hidden');
+              extraEl.innerHTML = '';
+
+              const e1 = document.createElement('p');
+              e1.textContent = 'z₁ polar: ' + fmtComplexPolar(r1, t1);
+              const e2 = document.createElement('p');
+              e2.textContent = 'z₂ polar: ' + fmtComplexPolar(r2, t2);
+              const e3 = document.createElement('p');
+              e3.textContent = opLabel + ' polar: ' + fmtComplexPolar(rRes, tRes);
+              extraEl.appendChild(e1);
+              extraEl.appendChild(e2);
+              extraEl.appendChild(e3);
+            }
+
+            steps.push('7. Optionally convert each complex number to polar form using |z| = √(a² + b²) and θ = atan2(b, a).');
+
+          } else if (mode === 'rect-to-polar') {
+            const a = parseNum(document.getElementById('rect-a').value);
+            const b = parseNum(document.getElementById('rect-b').value);
+
+            if (!Number.isFinite(a) || !Number.isFinite(b)) {
+              alert('Please enter numeric real and imaginary parts a and b.');
+              return;
+            }
+
+            const r = magnitude(a, b);
+            const theta = argument(a, b);
+
+            const zRect = fmtComplexRect(a, b);
+            summaryEl.textContent = 'Rectangular to polar conversion for z = ' + zRect + '.';
+
+            mainEl.innerHTML = '';
+            const p1 = document.createElement('p');
+            p1.textContent = '|z| = ' + fmt(r);
+            const p2 = document.createElement('p');
+            p2.textContent = 'arg(z) (principal) = ' + fmtAngleDeg(theta) + ' = ' + fmtAngleRad(theta) + '.';
+            mainEl.appendChild(p1);
+            mainEl.appendChild(p2);
+
+            extraContainer.classList.remove('hidden');
+            extraEl.innerHTML = '';
+            const p3 = document.createElement('p');
+            if (r === 0) {
+              p3.textContent = 'z = 0, so the argument is undefined and polar form has magnitude 0 with no unique angle.';
+            } else {
+              p3.textContent = 'Polar form: z = ' + fmt(r) + ' ∠ ' + fmtAngleDeg(theta);
+            }
+            extraEl.appendChild(p3);
+
+            steps.push('1. Start from z = a + bi with a = ' + a + ', b = ' + b + '.');
+            steps.push('2. Compute magnitude |z| = √(a² + b²) = √(' + a + '² + ' + b + '²) = ' + r + '.');
+            if (r === 0) {
+              steps.push('3. Since |z| = 0, z is the zero complex number and has no well-defined argument.');
+            } else {
+              steps.push('3. Compute argument θ = atan2(b, a) = atan2(' + b + ', ' + a + ') ≈ ' + theta + ' rad.');
+              steps.push('4. Convert argument to degrees: θ ≈ ' + (theta * 180 / Math.PI) + '°.');
+              steps.push('5. Write polar form: z = |z| ∠ θ = ' + r + ' ∠ ' + (theta * 180 / Math.PI) + '°.');
+            }
+
+          } else if (mode === 'polar-to-rect') {
+            const r = parseNum(document.getElementById('polar-r').value);
+            const thetaVal = parseNum(document.getElementById('polar-theta').value);
+            const unit = document.getElementById('polar-unit').value;
+
+            if (!Number.isFinite(r) || !Number.isFinite(thetaVal)) {
+              alert('Please enter numeric values for magnitude r and angle θ.');
+              return;
+            }
+            if (r < 0) {
+              alert('Magnitude r must be non-negative.');
+              return;
+            }
+
+            let thetaRad = thetaVal;
+            if (unit === 'deg') {
+              thetaRad = thetaVal * Math.PI / 180;
+            }
+
+            const a = r * Math.cos(thetaRad);
+            const b = r * Math.sin(thetaRad);
+
+            const zRect = fmtComplexRect(a, b);
+            summaryEl.textContent = 'Polar to rectangular conversion for z = ' + fmt(r) + ' ∠ ' + (unit === 'deg' ? thetaVal + '°' : thetaVal + ' rad') + '.';
+
+            mainEl.innerHTML = '';
+            const p1 = document.createElement('p');
+            p1.textContent = 'a = r cos θ = ' + fmt(a) + ', b = r sin θ = ' + fmt(b) + '.';
+            const p2 = document.createElement('p');
+            p2.textContent = 'Rectangular form: z = ' + zRect;
+            mainEl.appendChild(p1);
+            mainEl.appendChild(p2);
+
+            extraContainer.classList.remove('hidden');
+            extraEl.innerHTML = '';
+            const p3 = document.createElement('p');
+            p3.textContent = 'Angle in radians: θ = ' + fmt(thetaRad) + ' rad, in degrees: ' + fmt(thetaRad * 180 / Math.PI) + '°.';
+            extraEl.appendChild(p3);
+
+            steps.push('1. Start from z = r ∠ θ with r = ' + r + ' and θ = ' + thetaVal + (unit === "deg" ? '°' : ' rad') + '.');
+            if (unit === 'deg') {
+              steps.push('2. Convert θ to radians: θ = θ_deg · π/180 ≈ ' + thetaRad + ' rad.');
+            }
+            steps.push('3. Compute real part a = r cos θ = ' + a + '.');
+            steps.push('4. Compute imaginary part b = r sin θ = ' + b + '.');
+            steps.push('5. Rectangular form is z = a + bi = ' + zRect + '.');
+          }
+
+          stepsEl.innerHTML = '';
+          steps.forEach(function (line) {
+            const p = document.createElement('p');
+            p.textContent = line;
+            stepsEl.appendChild(p);
+          });
+
+          resultsBox.classList.remove('hidden');
+        }
+
+        function handleReset() {
+          form.reset();
+          clearResults();
+          setModeVisibility();
+        }
+
+        modeSelect.addEventListener('change', setModeVisibility);
+        form.addEventListener('submit', handleSubmit);
+        resetBtn.addEventListener('click', handleReset);
+
+        setModeVisibility();
+      })();
+    </script>
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

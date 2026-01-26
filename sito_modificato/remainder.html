@@ -145,10 +145,6 @@
 
   <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-  <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-  <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-  <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
   <script>
     window.ezstandalone = window.ezstandalone || {};
     ezstandalone.cmd = ezstandalone.cmd || [];
@@ -298,8 +294,6 @@
 
 <body class="bg-gray-50 text-gray-800">
   <!-- BODY_SCRIPTS_INIZIO -->
-  <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
   <header class="bg-white shadow-sm sticky top-0 z-50">
     <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
       <div class="flex justify-between items-center">
@@ -750,7 +744,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -818,13 +812,477 @@
 
 
 
+
   <script src="/assets/js/script_menu.js" defer=""></script>
   <script src="/assets/js/script_faq.js" defer=""></script>
   <script src="search.js" defer=""></script>
 
   <script>
-    window.MathJax = {
-      tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+    window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <script>
+    (function () {
+      function $(id) { return document.getElementById(id); }
+      function show(el) { el && el.classList.remove('hidden'); }
+      function hide(el) { el && el.classList.add('hidden'); }
+
+      // Mobile menu
+      var toggle = document.getElementById('mobile-menu-toggle');
+      var mobileMenu = document.getElementById('mobile-menu');
+      if (toggle && mobileMenu) {
+        toggle.addEventListener('click', function () {
+          var isHidden = mobileMenu.classList.contains('hidden');
+          if (isHidden) {
+            mobileMenu.classList.remove('hidden');
+            toggle.setAttribute('aria-expanded', 'true');
+          } else {
+            mobileMenu.classList.add('hidden');
+            toggle.setAttribute('aria-expanded', 'false');
+          }
+        });
+      }
+
+      // Parse integer safely
+      function parseInteger(value) {
+        var s = String(value || '').trim();
+        if (!s) return { ok: false, error: 'Value is empty.' };
+        // Allow leading + or -, digits only
+        if (!/^[+-]?\d+$/.test(s)) {
+          return { ok: false, error: 'Please enter an integer value (no decimals).' };
+        }
+        var n = Number(s);
+        if (!Number.isFinite(n)) {
+          return { ok: false, error: 'Value is too large to handle safely.' };
+        }
+        if (!Number.isInteger(n)) {
+          return { ok: false, error: 'Please enter an integer value.' };
+        }
+        if (Math.abs(n) > 1e15) {
+          return { ok: false, error: 'Please use |value| ≤ 1e15 for reliable integer arithmetic.' };
+        }
+        return { ok: true, value: n };
+      }
+
+      function euclideanDivision(a, b) {
+        // Use positive divisor magnitude for the remainder range
+        var d = Math.abs(b);
+        // JS % uses truncated division; we adapt to ensure 0 <= r < d
+        var r = ((a % d) + d) % d;
+        var q = (a - r) / b;
+        return { q: q, r: r };
+      }
+
+      function truncatedDivision(a, b) {
+        var q = (a / b) < 0 ? Math.ceil(a / b) : Math.floor(a / b); // floor toward zero?
+        // Wait: floor/ceil pattern not correct; easier: truncate toward zero:
+        q = (a / b) < 0 ? Math.ceil(a / b) : Math.floor(a / b);
+        var r = a - b * q;
+        return { q: q, r: r };
+      }
+
+      // Correct truncated division: quotient toward zero
+      function truncatedDivisionTowardZero(a, b) {
+        var q = a / b;
+        q = q < 0 ? Math.ceil(q) : Math.floor(q);
+        var r = a - b * q;
+        return { q: q, r: r };
+      }
+
+      var form = $('rem-form');
+      var aInput = $('rem-a');
+      var bInput = $('rem-b');
+      var showEuclidCb = $('show-euclidean');
+      var showTruncCb = $('show-truncated');
+      var errorBox = $('rem-error');
+      var resultsBox = $('rem-results');
+      var summaryOut = $('rem-summary');
+      var eBlock = $('rem-euclidean-block');
+      var eMain = $('rem-euclidean-main');
+      var eCheck = $('rem-euclidean-check');
+      var tBlock = $('rem-truncated-block');
+      var tMain = $('rem-truncated-main');
+      var tCheck = $('rem-truncated-check');
+      var cmpBlock = $('rem-compare-block');
+      var cmpText = $('rem-compare-text');
+      var swapBtn = $('rem-swap');
+      var resetBtn = $('rem-reset');
+
+      function handleSubmit(e) {
+        e.preventDefault();
+        hide(errorBox);
+        hide(resultsBox);
+        hide(eBlock);
+        hide(tBlock);
+        hide(cmpBlock);
+
+        summaryOut.textContent = '';
+        eMain.textContent = '';
+        eCheck.textContent = '';
+        tMain.textContent = '';
+        tCheck.textContent = '';
+        cmpText.textContent = '';
+
+        var pa = parseInteger(aInput.value);
+        if (!pa.ok) {
+          errorBox.textContent = 'Dividend a: ' + pa.error;
+          show(errorBox);
+          return;
+        }
+        var pb = parseInteger(bInput.value);
+        if (!pb.ok) {
+          errorBox.textContent = 'Divisor b: ' + pb.error;
+          show(errorBox);
+          return;
+        }
+        var a = pa.value;
+        var b = pb.value;
+        if (b === 0) {
+          errorBox.textContent = 'Divisor b must be non-zero.';
+          show(errorBox);
+          return;
+        }
+
+        summaryOut.innerHTML =
+          '<span class="vector-pill">a = ' + a + '</span>' +
+          '<span class="vector-pill">b = ' + b + '</span>';
+
+        var haveEuclid = false;
+        var haveTrunc = false;
+        var euclid, trunc;
+
+        if (showEuclidCb.checked) {
+          euclid = euclideanDivision(a, b);
+          haveEuclid = true;
+          eMain.innerHTML =
+            'Quotient q = <strong>' + euclid.q + '</strong>, ' +
+            'remainder r = <strong>' + euclid.r + '</strong>, with 0 ≤ r &lt; |b| = ' + Math.abs(b) + '.';
+          eCheck.textContent =
+            'Check: a = b·q + r ⇒ ' + a + ' = ' + b + '·' + euclid.q + ' + ' + euclid.r +
+            ' = ' + (b * euclid.q + euclid.r) + '.';
+          show(eBlock);
+        }
+
+        if (showTruncCb.checked) {
+          trunc = truncatedDivisionTowardZero(a, b);
+          haveTrunc = true;
+          tMain.innerHTML =
+            'Quotient q_trunc = <strong>' + trunc.q + '</strong>, ' +
+            'remainder r_trunc = <strong>' + trunc.r + '</strong> (quotient rounded toward zero).';
+          tCheck.textContent =
+            'Check: a = b·q_trunc + r_trunc ⇒ ' + a + ' = ' + b + '·' + trunc.q + ' + ' + trunc.r +
+            ' = ' + (b * trunc.q + trunc.r) + '.';
+          show(tBlock);
+        }
+
+        if (!haveEuclid && !haveTrunc) {
+          errorBox.textContent = 'Please select at least one remainder convention to display.';
+          show(errorBox);
+          return;
+        }
+
+        if (haveEuclid && haveTrunc) {
+          if (euclid.r === trunc.r) {
+            cmpText.innerHTML =
+              'For these inputs, both conventions produce the same remainder (' + euclid.r +
+              '), so there is no difference between Euclidean and programming-style remainder.';
+          } else {
+            cmpText.innerHTML =
+              'For these inputs, the Euclidean remainder is <strong>' + euclid.r +
+              '</strong>, while the programming-style remainder is <strong>' + trunc.r +
+              '</strong>. This happens because the truncated quotient rounds toward zero instead of downwards, ' +
+              'which changes the leftover term when a or b is negative.';
+          }
+          show(cmpBlock);
+        }
+
+        show(resultsBox);
+
+        if (window.MathJax && window.MathJax.typesetPromise) {
+          window.MathJax.typesetPromise();
+        }
+      }
+
+      function handleSwap() {
+        var aVal = aInput.value;
+        aInput.value = bInput.value;
+        bInput.value = aVal;
+      }
+
+      function handleReset() {
+        aInput.value = '17';
+        bInput.value = '5';
+        showEuclidCb.checked = true;
+        showTruncCb.checked = true;
+        hide(errorBox);
+        hide(resultsBox);
+        hide(eBlock);
+        hide(tBlock);
+        hide(cmpBlock);
+        summaryOut.textContent = '';
+        eMain.textContent = '';
+        eCheck.textContent = '';
+        tMain.textContent = '';
+        tCheck.textContent = '';
+        cmpText.textContent = '';
+      }
+
+      // Example chips
+      document.querySelectorAll('.chip-button[data-rem-example]').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+          var val = chip.getAttribute('data-rem-example') || '';
+          var parts = val.split(',');
+          if (parts.length === 2) {
+            aInput.value = parts[0].trim();
+            bInput.value = parts[1].trim();
+            form.dispatchEvent(new Event('submit'));
+          }
+        });
+      });
+
+      if (form) form.addEventListener('submit', handleSubmit);
+      if (swapBtn) swapBtn.addEventListener('click', handleSwap);
+      if (resetBtn) resetBtn.addEventListener('click', handleReset);
+    })();
+  </script>
+
+
+</body></html>, ',
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <script>
+    (function () {
+      function $(id) { return document.getElementById(id); }
+      function show(el) { el && el.classList.remove('hidden'); }
+      function hide(el) { el && el.classList.add('hidden'); }
+
+      // Mobile menu
+      var toggle = document.getElementById('mobile-menu-toggle');
+      var mobileMenu = document.getElementById('mobile-menu');
+      if (toggle && mobileMenu) {
+        toggle.addEventListener('click', function () {
+          var isHidden = mobileMenu.classList.contains('hidden');
+          if (isHidden) {
+            mobileMenu.classList.remove('hidden');
+            toggle.setAttribute('aria-expanded', 'true');
+          } else {
+            mobileMenu.classList.add('hidden');
+            toggle.setAttribute('aria-expanded', 'false');
+          }
+        });
+      }
+
+      // Parse integer safely
+      function parseInteger(value) {
+        var s = String(value || '').trim();
+        if (!s) return { ok: false, error: 'Value is empty.' };
+        // Allow leading + or -, digits only
+        if (!/^[+-]?\d+$/.test(s)) {
+          return { ok: false, error: 'Please enter an integer value (no decimals).' };
+        }
+        var n = Number(s);
+        if (!Number.isFinite(n)) {
+          return { ok: false, error: 'Value is too large to handle safely.' };
+        }
+        if (!Number.isInteger(n)) {
+          return { ok: false, error: 'Please enter an integer value.' };
+        }
+        if (Math.abs(n) > 1e15) {
+          return { ok: false, error: 'Please use |value| ≤ 1e15 for reliable integer arithmetic.' };
+        }
+        return { ok: true, value: n };
+      }
+
+      function euclideanDivision(a, b) {
+        // Use positive divisor magnitude for the remainder range
+        var d = Math.abs(b);
+        // JS % uses truncated division; we adapt to ensure 0 <= r < d
+        var r = ((a % d) + d) % d;
+        var q = (a - r) / b;
+        return { q: q, r: r };
+      }
+
+      function truncatedDivision(a, b) {
+        var q = (a / b) < 0 ? Math.ceil(a / b) : Math.floor(a / b); // floor toward zero?
+        // Wait: floor/ceil pattern not correct; easier: truncate toward zero:
+        q = (a / b) < 0 ? Math.ceil(a / b) : Math.floor(a / b);
+        var r = a - b * q;
+        return { q: q, r: r };
+      }
+
+      // Correct truncated division: quotient toward zero
+      function truncatedDivisionTowardZero(a, b) {
+        var q = a / b;
+        q = q < 0 ? Math.ceil(q) : Math.floor(q);
+        var r = a - b * q;
+        return { q: q, r: r };
+      }
+
+      var form = $('rem-form');
+      var aInput = $('rem-a');
+      var bInput = $('rem-b');
+      var showEuclidCb = $('show-euclidean');
+      var showTruncCb = $('show-truncated');
+      var errorBox = $('rem-error');
+      var resultsBox = $('rem-results');
+      var summaryOut = $('rem-summary');
+      var eBlock = $('rem-euclidean-block');
+      var eMain = $('rem-euclidean-main');
+      var eCheck = $('rem-euclidean-check');
+      var tBlock = $('rem-truncated-block');
+      var tMain = $('rem-truncated-main');
+      var tCheck = $('rem-truncated-check');
+      var cmpBlock = $('rem-compare-block');
+      var cmpText = $('rem-compare-text');
+      var swapBtn = $('rem-swap');
+      var resetBtn = $('rem-reset');
+
+      function handleSubmit(e) {
+        e.preventDefault();
+        hide(errorBox);
+        hide(resultsBox);
+        hide(eBlock);
+        hide(tBlock);
+        hide(cmpBlock);
+
+        summaryOut.textContent = '';
+        eMain.textContent = '';
+        eCheck.textContent = '';
+        tMain.textContent = '';
+        tCheck.textContent = '';
+        cmpText.textContent = '';
+
+        var pa = parseInteger(aInput.value);
+        if (!pa.ok) {
+          errorBox.textContent = 'Dividend a: ' + pa.error;
+          show(errorBox);
+          return;
+        }
+        var pb = parseInteger(bInput.value);
+        if (!pb.ok) {
+          errorBox.textContent = 'Divisor b: ' + pb.error;
+          show(errorBox);
+          return;
+        }
+        var a = pa.value;
+        var b = pb.value;
+        if (b === 0) {
+          errorBox.textContent = 'Divisor b must be non-zero.';
+          show(errorBox);
+          return;
+        }
+
+        summaryOut.innerHTML =
+          '<span class="vector-pill">a = ' + a + '</span>' +
+          '<span class="vector-pill">b = ' + b + '</span>';
+
+        var haveEuclid = false;
+        var haveTrunc = false;
+        var euclid, trunc;
+
+        if (showEuclidCb.checked) {
+          euclid = euclideanDivision(a, b);
+          haveEuclid = true;
+          eMain.innerHTML =
+            'Quotient q = <strong>' + euclid.q + '</strong>, ' +
+            'remainder r = <strong>' + euclid.r + '</strong>, with 0 ≤ r &lt; |b| = ' + Math.abs(b) + '.';
+          eCheck.textContent =
+            'Check: a = b·q + r ⇒ ' + a + ' = ' + b + '·' + euclid.q + ' + ' + euclid.r +
+            ' = ' + (b * euclid.q + euclid.r) + '.';
+          show(eBlock);
+        }
+
+        if (showTruncCb.checked) {
+          trunc = truncatedDivisionTowardZero(a, b);
+          haveTrunc = true;
+          tMain.innerHTML =
+            'Quotient q_trunc = <strong>' + trunc.q + '</strong>, ' +
+            'remainder r_trunc = <strong>' + trunc.r + '</strong> (quotient rounded toward zero).';
+          tCheck.textContent =
+            'Check: a = b·q_trunc + r_trunc ⇒ ' + a + ' = ' + b + '·' + trunc.q + ' + ' + trunc.r +
+            ' = ' + (b * trunc.q + trunc.r) + '.';
+          show(tBlock);
+        }
+
+        if (!haveEuclid && !haveTrunc) {
+          errorBox.textContent = 'Please select at least one remainder convention to display.';
+          show(errorBox);
+          return;
+        }
+
+        if (haveEuclid && haveTrunc) {
+          if (euclid.r === trunc.r) {
+            cmpText.innerHTML =
+              'For these inputs, both conventions produce the same remainder (' + euclid.r +
+              '), so there is no difference between Euclidean and programming-style remainder.';
+          } else {
+            cmpText.innerHTML =
+              'For these inputs, the Euclidean remainder is <strong>' + euclid.r +
+              '</strong>, while the programming-style remainder is <strong>' + trunc.r +
+              '</strong>. This happens because the truncated quotient rounds toward zero instead of downwards, ' +
+              'which changes the leftover term when a or b is negative.';
+          }
+          show(cmpBlock);
+        }
+
+        show(resultsBox);
+
+        if (window.MathJax && window.MathJax.typesetPromise) {
+          window.MathJax.typesetPromise();
+        }
+      }
+
+      function handleSwap() {
+        var aVal = aInput.value;
+        aInput.value = bInput.value;
+        bInput.value = aVal;
+      }
+
+      function handleReset() {
+        aInput.value = '17';
+        bInput.value = '5';
+        showEuclidCb.checked = true;
+        showTruncCb.checked = true;
+        hide(errorBox);
+        hide(resultsBox);
+        hide(eBlock);
+        hide(tBlock);
+        hide(cmpBlock);
+        summaryOut.textContent = '';
+        eMain.textContent = '';
+        eCheck.textContent = '';
+        tMain.textContent = '';
+        tCheck.textContent = '';
+        cmpText.textContent = '';
+      }
+
+      // Example chips
+      document.querySelectorAll('.chip-button[data-rem-example]').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+          var val = chip.getAttribute('data-rem-example') || '';
+          var parts = val.split(',');
+          if (parts.length === 2) {
+            aInput.value = parts[0].trim();
+            bInput.value = parts[1].trim();
+            form.dispatchEvent(new Event('submit'));
+          }
+        });
+      });
+
+      if (form) form.addEventListener('submit', handleSubmit);
+      if (swapBtn) swapBtn.addEventListener('click', handleSwap);
+      if (resetBtn) resetBtn.addEventListener('click', handleReset);
+    })();
+  </script>
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
       svg: { fontCache: 'global' }
     };
   </script>

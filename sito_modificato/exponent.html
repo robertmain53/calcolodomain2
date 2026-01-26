@@ -48,10 +48,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -224,8 +220,6 @@
 <body class="bg-gray-50 text-gray-800">
 
     <!-- BODY SCRIPTS INIZIO -->
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
         <div class="flex justify-between items-center">
@@ -671,7 +665,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -739,13 +733,495 @@
 
 
 
+
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
 
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      // Mobile menu toggle (fallback if script_menu.js doesn't handle it)
+      document.addEventListener('DOMContentLoaded', function () {
+        const toggle = document.getElementById('mobile-menu-toggle');
+        const menu = document.getElementById('mobile-menu');
+        if (toggle && menu) {
+          toggle.addEventListener('click', () => {
+            const isHidden = menu.classList.contains('hidden');
+            menu.classList.toggle('hidden', !isHidden);
+            toggle.setAttribute('aria-expanded', String(isHidden));
+          });
+        }
+      });
+
+      // Exponent calculator logic
+      document.addEventListener('DOMContentLoaded', function () {
+        const baseInput = document.getElementById('exp-base');
+        const expInput = document.getElementById('exp-exponent');
+        const decimalsSelect = document.getElementById('exp-decimals');
+        const showStepsCheckbox = document.getElementById('exp-show-steps');
+        const forceSciCheckbox = document.getElementById('exp-force-sci');
+
+        const calcBtn = document.getElementById('exp-calc-btn');
+        const clearBtn = document.getElementById('exp-clear-btn');
+        const ex1Btn = document.getElementById('exp-example1-btn');
+        const ex2Btn = document.getElementById('exp-example2-btn');
+        const ex3Btn = document.getElementById('exp-example3-btn');
+
+        const errorEl = document.getElementById('exp-error');
+        const resultsCard = document.getElementById('exp-results-card');
+        const mainEl = document.getElementById('exp-main');
+        const sciEl = document.getElementById('exp-sci');
+        const interpretEl = document.getElementById('exp-interpret');
+        const stepsSection = document.getElementById('exp-steps-section');
+        const stepsEl = document.getElementById('exp-steps');
+
+        function resetResults() {
+          errorEl.textContent = '';
+          errorEl.classList.add('hidden');
+          resultsCard.classList.add('hidden');
+          mainEl.textContent = '';
+          sciEl.textContent = '';
+          interpretEl.textContent = '';
+          stepsSection.classList.add('hidden');
+          stepsEl.textContent = '';
+        }
+
+        function parseMaybeFraction(str, label) {
+          const t = str.trim();
+          if (!t) {
+            throw new Error(label + ' is required.');
+          }
+          // Fraction like a/b
+          const fracMatch = t.match(/^\s*([+-]?\d+(?:\.\d+)?)\s*\/\s*([+-]?\d+(?:\.\d+)?)\s*$/);
+          if (fracMatch) {
+            const num = Number(fracMatch[1]);
+            const den = Number(fracMatch[2]);
+            if (!Number.isFinite(num) || !Number.isFinite(den) || den === 0) {
+              throw new Error('Invalid fraction provided for ' + label + '.');
+            }
+            return num / den;
+          }
+          const x = Number(t);
+          if (!Number.isFinite(x)) {
+            throw new Error(label + ' must be a valid real number or simple fraction.');
+          }
+          return x;
+        }
+
+        function toScientific(val, decimals) {
+          if (!Number.isFinite(val)) {
+            return 'Result is not finite (overflow or underflow).';
+          }
+          if (val === 0) {
+            return '0 (exactly zero)';
+          }
+          const sign = val < 0 ? -1 : 1;
+          const abs = Math.abs(val);
+          const exponent = Math.floor(Math.log10(abs));
+          const mantissa = sign * abs / Math.pow(10, exponent);
+          const mantStr = mantissa.toFixed(decimals);
+          return mantStr + ' × 10^' + exponent;
+        }
+
+        function describeExponent(base, exponent) {
+          if (!Number.isFinite(base) || !Number.isFinite(exponent)) return '';
+          let parts = [];
+          if (exponent === 0 && base !== 0) {
+            parts.push('Any nonzero number to the power 0 equals 1, so this is 1 by definition.');
+          } else if (exponent === 1) {
+            parts.push('An exponent of 1 leaves the base unchanged, so the result equals the base.');
+          } else if (Number.isInteger(exponent) && exponent > 1) {
+            parts.push('This is repeated multiplication of the base by itself ' + exponent + ' times.');
+          } else if (Number.isInteger(exponent) && exponent < 0) {
+            parts.push('A negative integer exponent means a reciprocal: a^(-n) = 1/a^n.');
+          } else if (!Number.isInteger(exponent)) {
+            parts.push('A non-integer exponent is interpreted via roots and logarithms, e.g. a^(p/q) as a q-th root and power for positive bases.');
+          }
+          if (base === 10 && Number.isInteger(exponent)) {
+            parts.push('Since the base is 10, the exponent counts how many zeros or decimal places are shifted, which is the basis of scientific notation.');
+          }
+          return parts.join(' ');
+        }
+
+        function buildSteps(base, exponent) {
+          if (!Number.isInteger(exponent)) return '';
+          const n = exponent;
+          const absN = Math.abs(n);
+          if (absN === 0 || absN > 12) return '';
+          const terms = [];
+          for (let i = 0; i < absN; i++) {
+            terms.push('(' + base + ')');
+          }
+          let s = '';
+          if (n > 0) {
+            s += base + '^' + n + ' = ' + terms.join(' × ');
+          } else if (n < 0) {
+            s += base + '^' + n + ' = 1 / ' + base + '^' + absN + ' = 1 / (' + terms.join(' × ') + ')';
+          }
+          return s;
+        }
+
+        function calculate() {
+          resetResults();
+          try {
+            const base = parseMaybeFraction(baseInput.value, 'Base');
+            const exp = parseMaybeFraction(expInput.value, 'Exponent');
+            const decimals = parseInt(decimalsSelect.value, 10) || 8;
+            const showSteps = showStepsCheckbox.checked;
+            const forceSci = forceSciCheckbox.checked;
+
+            // Domain checks
+            if (base === 0 && exp <= 0) {
+              throw new Error('0 to the power of 0 or a negative number is undefined in the real numbers.');
+            }
+            if (base < 0 && !Number.isInteger(exp)) {
+              throw new Error('Negative bases with non-integer exponents usually give complex results; this tool only supports real outputs.');
+            }
+
+            const result = Math.pow(base, exp);
+            if (!Number.isFinite(result)) {
+              throw new Error('The result is not finite (overflow or underflow). Try smaller absolute values for base or exponent.');
+            }
+
+            // Main display
+            const mainStr =
+              base + '^' + exp + ' = ' +
+              result.toFixed(decimals) +
+              ' (rounded to ' + decimals + ' decimal places).';
+
+            mainEl.textContent = mainStr;
+
+            // Scientific notation
+            const sciStr = toScientific(result, decimals);
+            sciEl.textContent = sciStr;
+
+            // Interpretation
+            interpretEl.textContent = describeExponent(base, exp);
+
+            // Steps
+            const stepsText = showSteps ? buildSteps(base, exp) : '';
+            if (stepsText) {
+              stepsSection.classList.remove('hidden');
+              stepsEl.textContent = stepsText;
+            }
+
+            // If not forcing sci and result is a "nice" integer, soften the sci line
+            if (!forceSci && Number.isInteger(result) && Math.abs(result) < 1e6 && Math.abs(result) >= 1e-6) {
+              sciEl.textContent = 'Scientific notation is most useful for very large or very small numbers; here the standard form is already clear.';
+            }
+
+            resultsCard.classList.remove('hidden');
+          } catch (e) {
+            errorEl.textContent = e.message || 'An error occurred while computing the power.';
+            errorEl.classList.remove('hidden');
+          }
+        }
+
+        function clearAll() {
+          baseInput.value = '';
+          expInput.value = '';
+          decimalsSelect.value = '8';
+          showStepsCheckbox.checked = false;
+          forceSciCheckbox.checked = false;
+          resetResults();
+        }
+
+        function loadExample1() {
+          baseInput.value = '2';
+          expInput.value = '10';
+          decimalsSelect.value = '4';
+          showStepsCheckbox.checked = true;
+          forceSciCheckbox.checked = false;
+          calculate();
+        }
+
+        function loadExample2() {
+          baseInput.value = '10';
+          expInput.value = '-3';
+          decimalsSelect.value = '8';
+          showStepsCheckbox.checked = false;
+          forceSciCheckbox.checked = true;
+          calculate();
+        }
+
+        function loadExample3() {
+          baseInput.value = '9';
+          expInput.value = '1/2';
+          decimalsSelect.value = '8';
+          showStepsCheckbox.checked = true;
+          forceSciCheckbox.checked = false;
+          calculate();
+        }
+
+        calcBtn.addEventListener('click', calculate);
+        clearBtn.addEventListener('click', clearAll);
+        ex1Btn.addEventListener('click', loadExample1);
+        ex2Btn.addEventListener('click', loadExample2);
+        ex3Btn.addEventListener('click', loadExample3);
+
+        // Ctrl+Enter on base or exponent triggers calculation
+        [baseInput, expInput].forEach(function (el) {
+          el.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+              e.preventDefault();
+              calculate();
+            }
+          });
+        });
+      });
+    </script>
+
+
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      // Mobile menu toggle (fallback if script_menu.js doesn't handle it)
+      document.addEventListener('DOMContentLoaded', function () {
+        const toggle = document.getElementById('mobile-menu-toggle');
+        const menu = document.getElementById('mobile-menu');
+        if (toggle && menu) {
+          toggle.addEventListener('click', () => {
+            const isHidden = menu.classList.contains('hidden');
+            menu.classList.toggle('hidden', !isHidden);
+            toggle.setAttribute('aria-expanded', String(isHidden));
+          });
+        }
+      });
+
+      // Exponent calculator logic
+      document.addEventListener('DOMContentLoaded', function () {
+        const baseInput = document.getElementById('exp-base');
+        const expInput = document.getElementById('exp-exponent');
+        const decimalsSelect = document.getElementById('exp-decimals');
+        const showStepsCheckbox = document.getElementById('exp-show-steps');
+        const forceSciCheckbox = document.getElementById('exp-force-sci');
+
+        const calcBtn = document.getElementById('exp-calc-btn');
+        const clearBtn = document.getElementById('exp-clear-btn');
+        const ex1Btn = document.getElementById('exp-example1-btn');
+        const ex2Btn = document.getElementById('exp-example2-btn');
+        const ex3Btn = document.getElementById('exp-example3-btn');
+
+        const errorEl = document.getElementById('exp-error');
+        const resultsCard = document.getElementById('exp-results-card');
+        const mainEl = document.getElementById('exp-main');
+        const sciEl = document.getElementById('exp-sci');
+        const interpretEl = document.getElementById('exp-interpret');
+        const stepsSection = document.getElementById('exp-steps-section');
+        const stepsEl = document.getElementById('exp-steps');
+
+        function resetResults() {
+          errorEl.textContent = '';
+          errorEl.classList.add('hidden');
+          resultsCard.classList.add('hidden');
+          mainEl.textContent = '';
+          sciEl.textContent = '';
+          interpretEl.textContent = '';
+          stepsSection.classList.add('hidden');
+          stepsEl.textContent = '';
+        }
+
+        function parseMaybeFraction(str, label) {
+          const t = str.trim();
+          if (!t) {
+            throw new Error(label + ' is required.');
+          }
+          // Fraction like a/b
+          const fracMatch = t.match(/^\s*([+-]?\d+(?:\.\d+)?)\s*\/\s*([+-]?\d+(?:\.\d+)?)\s*$/);
+          if (fracMatch) {
+            const num = Number(fracMatch[1]);
+            const den = Number(fracMatch[2]);
+            if (!Number.isFinite(num) || !Number.isFinite(den) || den === 0) {
+              throw new Error('Invalid fraction provided for ' + label + '.');
+            }
+            return num / den;
+          }
+          const x = Number(t);
+          if (!Number.isFinite(x)) {
+            throw new Error(label + ' must be a valid real number or simple fraction.');
+          }
+          return x;
+        }
+
+        function toScientific(val, decimals) {
+          if (!Number.isFinite(val)) {
+            return 'Result is not finite (overflow or underflow).';
+          }
+          if (val === 0) {
+            return '0 (exactly zero)';
+          }
+          const sign = val < 0 ? -1 : 1;
+          const abs = Math.abs(val);
+          const exponent = Math.floor(Math.log10(abs));
+          const mantissa = sign * abs / Math.pow(10, exponent);
+          const mantStr = mantissa.toFixed(decimals);
+          return mantStr + ' × 10^' + exponent;
+        }
+
+        function describeExponent(base, exponent) {
+          if (!Number.isFinite(base) || !Number.isFinite(exponent)) return '';
+          let parts = [];
+          if (exponent === 0 && base !== 0) {
+            parts.push('Any nonzero number to the power 0 equals 1, so this is 1 by definition.');
+          } else if (exponent === 1) {
+            parts.push('An exponent of 1 leaves the base unchanged, so the result equals the base.');
+          } else if (Number.isInteger(exponent) && exponent > 1) {
+            parts.push('This is repeated multiplication of the base by itself ' + exponent + ' times.');
+          } else if (Number.isInteger(exponent) && exponent < 0) {
+            parts.push('A negative integer exponent means a reciprocal: a^(-n) = 1/a^n.');
+          } else if (!Number.isInteger(exponent)) {
+            parts.push('A non-integer exponent is interpreted via roots and logarithms, e.g. a^(p/q) as a q-th root and power for positive bases.');
+          }
+          if (base === 10 && Number.isInteger(exponent)) {
+            parts.push('Since the base is 10, the exponent counts how many zeros or decimal places are shifted, which is the basis of scientific notation.');
+          }
+          return parts.join(' ');
+        }
+
+        function buildSteps(base, exponent) {
+          if (!Number.isInteger(exponent)) return '';
+          const n = exponent;
+          const absN = Math.abs(n);
+          if (absN === 0 || absN > 12) return '';
+          const terms = [];
+          for (let i = 0; i < absN; i++) {
+            terms.push('(' + base + ')');
+          }
+          let s = '';
+          if (n > 0) {
+            s += base + '^' + n + ' = ' + terms.join(' × ');
+          } else if (n < 0) {
+            s += base + '^' + n + ' = 1 / ' + base + '^' + absN + ' = 1 / (' + terms.join(' × ') + ')';
+          }
+          return s;
+        }
+
+        function calculate() {
+          resetResults();
+          try {
+            const base = parseMaybeFraction(baseInput.value, 'Base');
+            const exp = parseMaybeFraction(expInput.value, 'Exponent');
+            const decimals = parseInt(decimalsSelect.value, 10) || 8;
+            const showSteps = showStepsCheckbox.checked;
+            const forceSci = forceSciCheckbox.checked;
+
+            // Domain checks
+            if (base === 0 && exp <= 0) {
+              throw new Error('0 to the power of 0 or a negative number is undefined in the real numbers.');
+            }
+            if (base < 0 && !Number.isInteger(exp)) {
+              throw new Error('Negative bases with non-integer exponents usually give complex results; this tool only supports real outputs.');
+            }
+
+            const result = Math.pow(base, exp);
+            if (!Number.isFinite(result)) {
+              throw new Error('The result is not finite (overflow or underflow). Try smaller absolute values for base or exponent.');
+            }
+
+            // Main display
+            const mainStr =
+              base + '^' + exp + ' = ' +
+              result.toFixed(decimals) +
+              ' (rounded to ' + decimals + ' decimal places).';
+
+            mainEl.textContent = mainStr;
+
+            // Scientific notation
+            const sciStr = toScientific(result, decimals);
+            sciEl.textContent = sciStr;
+
+            // Interpretation
+            interpretEl.textContent = describeExponent(base, exp);
+
+            // Steps
+            const stepsText = showSteps ? buildSteps(base, exp) : '';
+            if (stepsText) {
+              stepsSection.classList.remove('hidden');
+              stepsEl.textContent = stepsText;
+            }
+
+            // If not forcing sci and result is a "nice" integer, soften the sci line
+            if (!forceSci && Number.isInteger(result) && Math.abs(result) < 1e6 && Math.abs(result) >= 1e-6) {
+              sciEl.textContent = 'Scientific notation is most useful for very large or very small numbers; here the standard form is already clear.';
+            }
+
+            resultsCard.classList.remove('hidden');
+          } catch (e) {
+            errorEl.textContent = e.message || 'An error occurred while computing the power.';
+            errorEl.classList.remove('hidden');
+          }
+        }
+
+        function clearAll() {
+          baseInput.value = '';
+          expInput.value = '';
+          decimalsSelect.value = '8';
+          showStepsCheckbox.checked = false;
+          forceSciCheckbox.checked = false;
+          resetResults();
+        }
+
+        function loadExample1() {
+          baseInput.value = '2';
+          expInput.value = '10';
+          decimalsSelect.value = '4';
+          showStepsCheckbox.checked = true;
+          forceSciCheckbox.checked = false;
+          calculate();
+        }
+
+        function loadExample2() {
+          baseInput.value = '10';
+          expInput.value = '-3';
+          decimalsSelect.value = '8';
+          showStepsCheckbox.checked = false;
+          forceSciCheckbox.checked = true;
+          calculate();
+        }
+
+        function loadExample3() {
+          baseInput.value = '9';
+          expInput.value = '1/2';
+          decimalsSelect.value = '8';
+          showStepsCheckbox.checked = true;
+          forceSciCheckbox.checked = false;
+          calculate();
+        }
+
+        calcBtn.addEventListener('click', calculate);
+        clearBtn.addEventListener('click', clearAll);
+        ex1Btn.addEventListener('click', loadExample1);
+        ex2Btn.addEventListener('click', loadExample2);
+        ex3Btn.addEventListener('click', loadExample3);
+
+        // Ctrl+Enter on base or exponent triggers calculation
+        [baseInput, expInput].forEach(function (el) {
+          el.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+              e.preventDefault();
+              calculate();
+            }
+          });
+        });
+      });
+    </script>
+
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

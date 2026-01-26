@@ -49,10 +49,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -220,8 +216,6 @@
 <body class="bg-gray-50 text-gray-800">
 
     <!-- BODY SCRIPTS (replacement for %%BODY_SCRIPTS_INIZIO%%) -->
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
         <div class="flex justify-between items-center">
@@ -635,7 +629,7 @@ P | Q, P &amp; Q, P ^ Q"></textarea>
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -703,13 +697,905 @@ P | Q, P &amp; Q, P ^ Q"></textarea>
 
 
 
+
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
 
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Truth table generator logic -->
+    <script>
+      (function() {
+        const exprInput = document.getElementById('tt-expression');
+        const generateBtn = document.getElementById('tt-generate-btn');
+        const clearBtn = document.getElementById('tt-clear-btn');
+        const errorBox = document.getElementById('tt-error-box');
+        const resultsBox = document.getElementById('tt-results');
+        const summaryEl = document.getElementById('tt-summary');
+        const tableContainer = document.getElementById('tt-table-container');
+        const displayRadios = document.querySelectorAll('input[name="tt-display-mode"]');
+
+        function currentDisplayMode() {
+          for (const r of displayRadios) {
+            if (r.checked) return r.value;
+          }
+          return 'TF';
+        }
+
+        function clearError() {
+          errorBox.textContent = '';
+          errorBox.classList.add('hidden');
+        }
+
+        function showError(msg) {
+          errorBox.textContent = msg;
+          errorBox.classList.remove('hidden');
+          resultsBox.classList.add('hidden');
+        }
+
+        function clearAll() {
+          exprInput.value = '';
+          clearError();
+          resultsBox.classList.add('hidden');
+          tableContainer.innerHTML = '';
+        }
+
+        clearBtn.addEventListener('click', clearAll);
+
+        // Split formulas by commas not inside parentheses
+        function splitFormulas(input) {
+          const parts = [];
+          let depth = 0;
+          let current = '';
+          for (let i = 0; i < input.length; i++) {
+            const ch = input[i];
+            if (ch === '(') {
+              depth++;
+              current += ch;
+            } else if (ch === ')') {
+              depth = Math.max(0, depth - 1);
+              current += ch;
+            } else if (ch === ',' && depth === 0) {
+              if (current.trim() !== '') {
+                parts.push(current.trim());
+              }
+              current = '';
+            } else {
+              current += ch;
+            }
+          }
+          if (current.trim() !== '') {
+            parts.push(current.trim());
+          }
+          return parts;
+        }
+
+        function isLetter(ch) {
+          return /[A-Za-z]/.test(ch);
+        }
+
+        function isDigit(ch) {
+          return /[0-9]/.test(ch);
+        }
+
+        function tokenize(expr) {
+          const tokens = [];
+          let i = 0;
+          while (i < expr.length) {
+            const ch = expr[i];
+
+            if (/\s/.test(ch)) {
+              i++;
+              continue;
+            }
+
+            // Parentheses
+            if (ch === '(' || ch === ')') {
+              tokens.push({ type: 'paren', value: ch });
+              i++;
+              continue;
+            }
+
+            // Multi-character operators
+            const two = expr.slice(i, i + 2);
+            const three = expr.slice(i, i + 3);
+            const four = expr.slice(i, i + 4);
+
+            if (four === '<=>') {
+              tokens.push({ type: 'op', value: 'IFF' });
+              i += 3;
+              continue;
+            }
+            if (three === '<->') {
+              tokens.push({ type: 'op', value: 'IFF' });
+              i += 3;
+              continue;
+            }
+            if (two === '->' || two === '=>') {
+              tokens.push({ type: 'op', value: 'IMP' });
+              i += 2;
+              continue;
+            }
+
+            // Single-character operators
+            if (ch === '!' || ch === '~' || ch === '¬') {
+              tokens.push({ type: 'op', value: 'NOT' });
+              i++;
+              continue;
+            }
+            if (ch === '&' || ch === '∧') {
+              tokens.push({ type: 'op', value: 'AND' });
+              i++;
+              continue;
+            }
+            if (ch === '|' || ch === '∨' || ch === '+') {
+              tokens.push({ type: 'op', value: 'OR' });
+              i++;
+              continue;
+            }
+            if (ch === '^') {
+              tokens.push({ type: 'op', value: 'XOR' });
+              i++;
+              continue;
+            }
+            // Allow /\ and \/ as AND/OR
+            if (ch === '/' && expr[i + 1] === '\\') {
+              tokens.push({ type: 'op', value: 'AND' });
+              i += 2;
+              continue;
+            }
+            if (ch === '\\' && expr[i + 1] === '/') {
+              tokens.push({ type: 'op', value: 'OR' });
+              i += 2;
+              continue;
+            }
+
+            // Variable or keyword
+            if (isLetter(ch)) {
+              let j = i;
+              while (j < expr.length && /[A-Za-z0-9_]/.test(expr[j])) {
+                j++;
+              }
+              const word = expr.slice(i, j);
+              const lower = word.toLowerCase();
+              if (lower === 't' || lower === 'true' || lower === '1') {
+                tokens.push({ type: 'const', value: true });
+              } else if (lower === 'f' || lower === 'false' || lower === '0') {
+                tokens.push({ type: 'const', value: false });
+              } else {
+                tokens.push({ type: 'var', value: word });
+              }
+              i = j;
+              continue;
+            }
+
+            // Numeric constants 0/1
+            if (isDigit(ch)) {
+              let j = i;
+              while (j < expr.length && isDigit(expr[j])) {
+                j++;
+              }
+              const numStr = expr.slice(i, j);
+              if (numStr === '0') {
+                tokens.push({ type: 'const', value: false });
+              } else if (numStr === '1') {
+                tokens.push({ type: 'const', value: true });
+              } else {
+                throw new Error('Only 0 or 1 are allowed as numeric constants (found "' + numStr + '").');
+              }
+              i = j;
+              continue;
+            }
+
+            throw new Error('Unrecognized symbol "' + ch + '" in expression.');
+          }
+
+          return tokens;
+        }
+
+        function toPostfix(tokens) {
+          const output = [];
+          const stack = [];
+
+          const prec = {
+            'NOT': 5,
+            'AND': 4,
+            'XOR': 3,
+            'OR': 2,
+            'IMP': 1,
+            'IFF': 0
+          };
+
+          const rightAssoc = {
+            'NOT': true,
+            'IMP': true,
+            'IFF': true
+          };
+
+          tokens.forEach(token => {
+            if (token.type === 'var' || token.type === 'const') {
+              output.push(token);
+            } else if (token.type === 'op') {
+              const o1 = token.value;
+              while (stack.length > 0) {
+                const top = stack[stack.length - 1];
+                if (top.type === 'op') {
+                  const o2 = top.value;
+                  if (
+                    (prec[o2] > prec[o1]) ||
+                    (prec[o2] === prec[o1] && !rightAssoc[o1])
+                  ) {
+                    output.push(stack.pop());
+                    continue;
+                  }
+                }
+                break;
+              }
+              stack.push(token);
+            } else if (token.type === 'paren' && token.value === '(') {
+              stack.push(token);
+            } else if (token.type === 'paren' && token.value === ')') {
+              let foundLeft = false;
+              while (stack.length > 0) {
+                const top = stack.pop();
+                if (top.type === 'paren' && top.value === '(') {
+                  foundLeft = true;
+                  break;
+                } else {
+                  output.push(top);
+                }
+              }
+              if (!foundLeft) {
+                throw new Error('Mismatched parentheses: missing "(".');
+              }
+            } else {
+              throw new Error('Unexpected token type.');
+            }
+          });
+
+          while (stack.length > 0) {
+            const top = stack.pop();
+            if (top.type === 'paren') {
+              throw new Error('Mismatched parentheses: missing ")".');
+            }
+            output.push(top);
+          }
+
+          return output;
+        }
+
+        function evalPostfix(postfix, assignment) {
+          const stack = [];
+          for (const token of postfix) {
+            if (token.type === 'var') {
+              const v = assignment[token.value];
+              if (typeof v !== 'boolean') {
+                throw new Error('Internal error: variable "' + token.value + '" not assigned.');
+              }
+              stack.push(v);
+            } else if (token.type === 'const') {
+              stack.push(token.value);
+            } else if (token.type === 'op') {
+              const op = token.value;
+              if (op === 'NOT') {
+                if (stack.length < 1) throw new Error('Missing operand for NOT.');
+                const a = stack.pop();
+                stack.push(!a);
+              } else {
+                if (stack.length < 2) throw new Error('Missing operand for binary operator.');
+                const b = stack.pop();
+                const a = stack.pop();
+                let res;
+                if (op === 'AND') {
+                  res = a && b;
+                } else if (op === 'OR') {
+                  res = a || b;
+                } else if (op === 'XOR') {
+                  res = !!(a ^ b);
+                } else if (op === 'IMP') {
+                  res = (!a) || b;
+                } else if (op === 'IFF') {
+                  res = a === b;
+                } else {
+                  throw new Error('Unknown operator "' + op + '".');
+                }
+                stack.push(res);
+              }
+            } else {
+              throw new Error('Unexpected token in evaluation.');
+            }
+          }
+          if (stack.length !== 1) {
+            throw new Error('Malformed expression: evaluation did not result in a single value.');
+          }
+          return stack[0];
+        }
+
+        function generateTruthTable() {
+          clearError();
+          resultsBox.classList.add('hidden');
+          tableContainer.innerHTML = '';
+
+          const input = exprInput.value.trim();
+          if (!input) {
+            showError('Please enter at least one logical formula.');
+            return;
+          }
+
+          let formulas;
+          try {
+            formulas = splitFormulas(input);
+          } catch (e) {
+            showError(e.message || String(e));
+            return;
+          }
+
+          if (formulas.length === 0) {
+            showError('Please enter at least one non-empty formula.');
+            return;
+          }
+
+          const parsed = [];
+          const varSet = new Set();
+
+          try {
+            for (const f of formulas) {
+              const tokens = tokenize(f);
+              tokens.forEach(tok => {
+                if (tok.type === 'var') {
+                  varSet.add(tok.value);
+                }
+              });
+              const postfix = toPostfix(tokens);
+              parsed.push({ raw: f, postfix: postfix });
+            }
+          } catch (e) {
+            showError(e.message || String(e));
+            return;
+          }
+
+          const vars = Array.from(varSet);
+          vars.sort((a, b) => a.localeCompare(b));
+
+          const n = vars.length;
+          if (n === 0) {
+            showError('No propositional variables detected. Use at least one variable such as P, Q, rain, etc.');
+            return;
+          }
+          if (n > 6) {
+            showError('Too many distinct variables (' + n + '). This tool supports up to 6 variables (64 rows) for readability.');
+            return;
+          }
+
+          const rows = 1 << n;
+          const mode = currentDisplayMode();
+
+          const table = document.createElement('table');
+          table.className = 'tt-table';
+
+          const thead = document.createElement('thead');
+          const headerRow = document.createElement('tr');
+
+          vars.forEach(v => {
+            const th = document.createElement('th');
+            th.textContent = v;
+            th.className = 'tt-var-col';
+            headerRow.appendChild(th);
+          });
+
+          parsed.forEach((p, idx) => {
+            const th = document.createElement('th');
+            th.textContent = p.raw;
+            th.className = 'tt-expr-col';
+            headerRow.appendChild(th);
+          });
+
+          thead.appendChild(headerRow);
+          table.appendChild(thead);
+
+          const tbody = document.createElement('tbody');
+
+          for (let r = 0; r < rows; r++) {
+            const tr = document.createElement('tr');
+
+            const assignment = {};
+            for (let i = 0; i < n; i++) {
+              const bit = (r >> (n - 1 - i)) & 1;
+              const val = bit === 1;
+              assignment[vars[i]] = val;
+              const td = document.createElement('td');
+              td.textContent = mode === '01' ? (val ? '1' : '0') : (val ? 'T' : 'F');
+              tr.appendChild(td);
+            }
+
+            for (const p of parsed) {
+              let val;
+              try {
+                val = evalPostfix(p.postfix, assignment);
+              } catch (e) {
+                showError(e.message || String(e));
+                return;
+              }
+              const td = document.createElement('td');
+              td.textContent = mode === '01' ? (val ? '1' : '0') : (val ? 'T' : 'F');
+              tr.appendChild(td);
+            }
+
+            tbody.appendChild(tr);
+          }
+
+          table.appendChild(tbody);
+          tableContainer.appendChild(table);
+
+          summaryEl.textContent =
+            'Detected ' + n + ' variable' + (n === 1 ? '' : 's') +
+            ' (' + vars.join(', ') + ') and ' + parsed.length +
+            ' formula' + (parsed.length === 1 ? '' : 's') +
+            ', producing ' + rows + ' row' + (rows === 1 ? '' : 's') + ' in the table.';
+
+          resultsBox.classList.remove('hidden');
+        }
+
+        generateBtn.addEventListener('click', generateTruthTable);
+      })();
+    </script>
+
+
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Truth table generator logic -->
+    <script>
+      (function() {
+        const exprInput = document.getElementById('tt-expression');
+        const generateBtn = document.getElementById('tt-generate-btn');
+        const clearBtn = document.getElementById('tt-clear-btn');
+        const errorBox = document.getElementById('tt-error-box');
+        const resultsBox = document.getElementById('tt-results');
+        const summaryEl = document.getElementById('tt-summary');
+        const tableContainer = document.getElementById('tt-table-container');
+        const displayRadios = document.querySelectorAll('input[name="tt-display-mode"]');
+
+        function currentDisplayMode() {
+          for (const r of displayRadios) {
+            if (r.checked) return r.value;
+          }
+          return 'TF';
+        }
+
+        function clearError() {
+          errorBox.textContent = '';
+          errorBox.classList.add('hidden');
+        }
+
+        function showError(msg) {
+          errorBox.textContent = msg;
+          errorBox.classList.remove('hidden');
+          resultsBox.classList.add('hidden');
+        }
+
+        function clearAll() {
+          exprInput.value = '';
+          clearError();
+          resultsBox.classList.add('hidden');
+          tableContainer.innerHTML = '';
+        }
+
+        clearBtn.addEventListener('click', clearAll);
+
+        // Split formulas by commas not inside parentheses
+        function splitFormulas(input) {
+          const parts = [];
+          let depth = 0;
+          let current = '';
+          for (let i = 0; i < input.length; i++) {
+            const ch = input[i];
+            if (ch === '(') {
+              depth++;
+              current += ch;
+            } else if (ch === ')') {
+              depth = Math.max(0, depth - 1);
+              current += ch;
+            } else if (ch === ',' && depth === 0) {
+              if (current.trim() !== '') {
+                parts.push(current.trim());
+              }
+              current = '';
+            } else {
+              current += ch;
+            }
+          }
+          if (current.trim() !== '') {
+            parts.push(current.trim());
+          }
+          return parts;
+        }
+
+        function isLetter(ch) {
+          return /[A-Za-z]/.test(ch);
+        }
+
+        function isDigit(ch) {
+          return /[0-9]/.test(ch);
+        }
+
+        function tokenize(expr) {
+          const tokens = [];
+          let i = 0;
+          while (i < expr.length) {
+            const ch = expr[i];
+
+            if (/\s/.test(ch)) {
+              i++;
+              continue;
+            }
+
+            // Parentheses
+            if (ch === '(' || ch === ')') {
+              tokens.push({ type: 'paren', value: ch });
+              i++;
+              continue;
+            }
+
+            // Multi-character operators
+            const two = expr.slice(i, i + 2);
+            const three = expr.slice(i, i + 3);
+            const four = expr.slice(i, i + 4);
+
+            if (four === '<=>') {
+              tokens.push({ type: 'op', value: 'IFF' });
+              i += 3;
+              continue;
+            }
+            if (three === '<->') {
+              tokens.push({ type: 'op', value: 'IFF' });
+              i += 3;
+              continue;
+            }
+            if (two === '->' || two === '=>') {
+              tokens.push({ type: 'op', value: 'IMP' });
+              i += 2;
+              continue;
+            }
+
+            // Single-character operators
+            if (ch === '!' || ch === '~' || ch === '¬') {
+              tokens.push({ type: 'op', value: 'NOT' });
+              i++;
+              continue;
+            }
+            if (ch === '&' || ch === '∧') {
+              tokens.push({ type: 'op', value: 'AND' });
+              i++;
+              continue;
+            }
+            if (ch === '|' || ch === '∨' || ch === '+') {
+              tokens.push({ type: 'op', value: 'OR' });
+              i++;
+              continue;
+            }
+            if (ch === '^') {
+              tokens.push({ type: 'op', value: 'XOR' });
+              i++;
+              continue;
+            }
+            // Allow /\ and \/ as AND/OR
+            if (ch === '/' && expr[i + 1] === '\\') {
+              tokens.push({ type: 'op', value: 'AND' });
+              i += 2;
+              continue;
+            }
+            if (ch === '\\' && expr[i + 1] === '/') {
+              tokens.push({ type: 'op', value: 'OR' });
+              i += 2;
+              continue;
+            }
+
+            // Variable or keyword
+            if (isLetter(ch)) {
+              let j = i;
+              while (j < expr.length && /[A-Za-z0-9_]/.test(expr[j])) {
+                j++;
+              }
+              const word = expr.slice(i, j);
+              const lower = word.toLowerCase();
+              if (lower === 't' || lower === 'true' || lower === '1') {
+                tokens.push({ type: 'const', value: true });
+              } else if (lower === 'f' || lower === 'false' || lower === '0') {
+                tokens.push({ type: 'const', value: false });
+              } else {
+                tokens.push({ type: 'var', value: word });
+              }
+              i = j;
+              continue;
+            }
+
+            // Numeric constants 0/1
+            if (isDigit(ch)) {
+              let j = i;
+              while (j < expr.length && isDigit(expr[j])) {
+                j++;
+              }
+              const numStr = expr.slice(i, j);
+              if (numStr === '0') {
+                tokens.push({ type: 'const', value: false });
+              } else if (numStr === '1') {
+                tokens.push({ type: 'const', value: true });
+              } else {
+                throw new Error('Only 0 or 1 are allowed as numeric constants (found "' + numStr + '").');
+              }
+              i = j;
+              continue;
+            }
+
+            throw new Error('Unrecognized symbol "' + ch + '" in expression.');
+          }
+
+          return tokens;
+        }
+
+        function toPostfix(tokens) {
+          const output = [];
+          const stack = [];
+
+          const prec = {
+            'NOT': 5,
+            'AND': 4,
+            'XOR': 3,
+            'OR': 2,
+            'IMP': 1,
+            'IFF': 0
+          };
+
+          const rightAssoc = {
+            'NOT': true,
+            'IMP': true,
+            'IFF': true
+          };
+
+          tokens.forEach(token => {
+            if (token.type === 'var' || token.type === 'const') {
+              output.push(token);
+            } else if (token.type === 'op') {
+              const o1 = token.value;
+              while (stack.length > 0) {
+                const top = stack[stack.length - 1];
+                if (top.type === 'op') {
+                  const o2 = top.value;
+                  if (
+                    (prec[o2] > prec[o1]) ||
+                    (prec[o2] === prec[o1] && !rightAssoc[o1])
+                  ) {
+                    output.push(stack.pop());
+                    continue;
+                  }
+                }
+                break;
+              }
+              stack.push(token);
+            } else if (token.type === 'paren' && token.value === '(') {
+              stack.push(token);
+            } else if (token.type === 'paren' && token.value === ')') {
+              let foundLeft = false;
+              while (stack.length > 0) {
+                const top = stack.pop();
+                if (top.type === 'paren' && top.value === '(') {
+                  foundLeft = true;
+                  break;
+                } else {
+                  output.push(top);
+                }
+              }
+              if (!foundLeft) {
+                throw new Error('Mismatched parentheses: missing "(".');
+              }
+            } else {
+              throw new Error('Unexpected token type.');
+            }
+          });
+
+          while (stack.length > 0) {
+            const top = stack.pop();
+            if (top.type === 'paren') {
+              throw new Error('Mismatched parentheses: missing ")".');
+            }
+            output.push(top);
+          }
+
+          return output;
+        }
+
+        function evalPostfix(postfix, assignment) {
+          const stack = [];
+          for (const token of postfix) {
+            if (token.type === 'var') {
+              const v = assignment[token.value];
+              if (typeof v !== 'boolean') {
+                throw new Error('Internal error: variable "' + token.value + '" not assigned.');
+              }
+              stack.push(v);
+            } else if (token.type === 'const') {
+              stack.push(token.value);
+            } else if (token.type === 'op') {
+              const op = token.value;
+              if (op === 'NOT') {
+                if (stack.length < 1) throw new Error('Missing operand for NOT.');
+                const a = stack.pop();
+                stack.push(!a);
+              } else {
+                if (stack.length < 2) throw new Error('Missing operand for binary operator.');
+                const b = stack.pop();
+                const a = stack.pop();
+                let res;
+                if (op === 'AND') {
+                  res = a && b;
+                } else if (op === 'OR') {
+                  res = a || b;
+                } else if (op === 'XOR') {
+                  res = !!(a ^ b);
+                } else if (op === 'IMP') {
+                  res = (!a) || b;
+                } else if (op === 'IFF') {
+                  res = a === b;
+                } else {
+                  throw new Error('Unknown operator "' + op + '".');
+                }
+                stack.push(res);
+              }
+            } else {
+              throw new Error('Unexpected token in evaluation.');
+            }
+          }
+          if (stack.length !== 1) {
+            throw new Error('Malformed expression: evaluation did not result in a single value.');
+          }
+          return stack[0];
+        }
+
+        function generateTruthTable() {
+          clearError();
+          resultsBox.classList.add('hidden');
+          tableContainer.innerHTML = '';
+
+          const input = exprInput.value.trim();
+          if (!input) {
+            showError('Please enter at least one logical formula.');
+            return;
+          }
+
+          let formulas;
+          try {
+            formulas = splitFormulas(input);
+          } catch (e) {
+            showError(e.message || String(e));
+            return;
+          }
+
+          if (formulas.length === 0) {
+            showError('Please enter at least one non-empty formula.');
+            return;
+          }
+
+          const parsed = [];
+          const varSet = new Set();
+
+          try {
+            for (const f of formulas) {
+              const tokens = tokenize(f);
+              tokens.forEach(tok => {
+                if (tok.type === 'var') {
+                  varSet.add(tok.value);
+                }
+              });
+              const postfix = toPostfix(tokens);
+              parsed.push({ raw: f, postfix: postfix });
+            }
+          } catch (e) {
+            showError(e.message || String(e));
+            return;
+          }
+
+          const vars = Array.from(varSet);
+          vars.sort((a, b) => a.localeCompare(b));
+
+          const n = vars.length;
+          if (n === 0) {
+            showError('No propositional variables detected. Use at least one variable such as P, Q, rain, etc.');
+            return;
+          }
+          if (n > 6) {
+            showError('Too many distinct variables (' + n + '). This tool supports up to 6 variables (64 rows) for readability.');
+            return;
+          }
+
+          const rows = 1 << n;
+          const mode = currentDisplayMode();
+
+          const table = document.createElement('table');
+          table.className = 'tt-table';
+
+          const thead = document.createElement('thead');
+          const headerRow = document.createElement('tr');
+
+          vars.forEach(v => {
+            const th = document.createElement('th');
+            th.textContent = v;
+            th.className = 'tt-var-col';
+            headerRow.appendChild(th);
+          });
+
+          parsed.forEach((p, idx) => {
+            const th = document.createElement('th');
+            th.textContent = p.raw;
+            th.className = 'tt-expr-col';
+            headerRow.appendChild(th);
+          });
+
+          thead.appendChild(headerRow);
+          table.appendChild(thead);
+
+          const tbody = document.createElement('tbody');
+
+          for (let r = 0; r < rows; r++) {
+            const tr = document.createElement('tr');
+
+            const assignment = {};
+            for (let i = 0; i < n; i++) {
+              const bit = (r >> (n - 1 - i)) & 1;
+              const val = bit === 1;
+              assignment[vars[i]] = val;
+              const td = document.createElement('td');
+              td.textContent = mode === '01' ? (val ? '1' : '0') : (val ? 'T' : 'F');
+              tr.appendChild(td);
+            }
+
+            for (const p of parsed) {
+              let val;
+              try {
+                val = evalPostfix(p.postfix, assignment);
+              } catch (e) {
+                showError(e.message || String(e));
+                return;
+              }
+              const td = document.createElement('td');
+              td.textContent = mode === '01' ? (val ? '1' : '0') : (val ? 'T' : 'F');
+              tr.appendChild(td);
+            }
+
+            tbody.appendChild(tr);
+          }
+
+          table.appendChild(tbody);
+          tableContainer.appendChild(table);
+
+          summaryEl.textContent =
+            'Detected ' + n + ' variable' + (n === 1 ? '' : 's') +
+            ' (' + vars.join(', ') + ') and ' + parsed.length +
+            ' formula' + (parsed.length === 1 ? '' : 's') +
+            ', producing ' + rows + ' row' + (rows === 1 ? '' : 's') + ' in the table.';
+
+          resultsBox.classList.remove('hidden');
+        }
+
+        generateBtn.addEventListener('click', generateTruthTable);
+      })();
+    </script>
+
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

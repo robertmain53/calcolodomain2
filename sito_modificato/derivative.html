@@ -47,10 +47,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -211,8 +207,6 @@
 <body class="bg-gray-50 text-gray-800">
 
     <!-- BODY_SCRIPTS_INIZIO -->
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
         <div class="flex justify-between items-center">
@@ -720,7 +714,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -787,14 +781,786 @@
 
 
 
+
     
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
     
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      // Mobile menu toggle
+      document.getElementById('mobile-menu-toggle')?.addEventListener('click', function () {
+        const menu = document.getElementById('mobile-menu');
+        if (!menu) return;
+        const isHidden = menu.classList.contains('hidden');
+        menu.classList.toggle('hidden', !isHidden);
+        this.setAttribute('aria-expanded', String(isHidden));
+      });
+
+      document.addEventListener('DOMContentLoaded', function () {
+        const funcInput = document.getElementById('func-input');
+        const pointInput = document.getElementById('point-input');
+        const stepInput = document.getElementById('step-input');
+        const intervalLowerInput = document.getElementById('interval-lower-input');
+        const intervalUpperInput = document.getElementById('interval-upper-input');
+        const samplesInput = document.getElementById('samples-input');
+        const decimalsSelect = document.getElementById('decimals');
+
+        const btnCalc = document.getElementById('btn-calc-derivative');
+        const btnClear = document.getElementById('btn-clear-derivative');
+        const errorEl = document.getElementById('derivative-error');
+
+        const resFx0 = document.getElementById('res-fx0');
+        const resDerivH = document.getElementById('res-deriv-h');
+        const resDerivH2 = document.getElementById('res-deriv-h2');
+        const resError = document.getElementById('res-error');
+        const resScheme = document.getElementById('res-scheme');
+        const resStability = document.getElementById('res-stability');
+        const resWarnings = document.getElementById('res-warnings');
+        const samplesBody = document.getElementById('table-samples-body');
+
+        const exampleButtons = document.querySelectorAll('[data-example]');
+
+        function setResult(container, text) {
+          if (!container) return;
+          const span = container.querySelector('.result-value');
+          if (span) span.textContent = text;
+        }
+
+        function clearAll() {
+          [resFx0, resDerivH, resDerivH2, resError, resScheme, resStability, resWarnings].forEach(function (el) {
+            if (!el) return;
+            const spans = el.querySelectorAll('.result-value');
+            spans.forEach(span => span.textContent = '—');
+          });
+          if (samplesBody) samplesBody.innerHTML = '';
+          if (errorEl) errorEl.textContent = '';
+        }
+
+        function getDecimals() {
+          const d = Number(decimalsSelect.value);
+          if (!Number.isInteger(d) || d < 0 || d > 16) return 6;
+          return d;
+        }
+
+        function fmt(v) {
+          if (!isFinite(v)) {
+            if (v === Infinity) return '+∞';
+            if (v === -Infinity) return '−∞';
+            return 'NaN';
+          }
+          const d = getDecimals();
+          return Number(v.toFixed(d)).toString();
+        }
+
+        function buildEvaluator(exprRaw) {
+          if (!exprRaw || !exprRaw.trim()) {
+            throw new Error('Function is empty.');
+          }
+          let expr = exprRaw.trim();
+
+          // Replace caret with exponentiation operator
+          expr = expr.replace(/\^/g, '**');
+
+          // Replace common math functions with Math.* equivalents
+          const funcs = [
+            'sin','cos','tan','asin','acos','atan',
+            'sinh','cosh','tanh',
+            'log','ln','sqrt','abs','exp',
+            'floor','ceil','round','pow','max','min'
+          ];
+          funcs.forEach(function (fn) {
+            const re = new RegExp('\\b' + fn + '\\b', 'g');
+            if (fn === 'ln') {
+              expr = expr.replace(re, 'Math.log');
+            } else if (fn === 'log') {
+              expr = expr.replace(re, 'Math.log');
+            } else {
+              expr = expr.replace(re, 'Math.' + fn);
+            }
+          });
+
+          // Constants
+          expr = expr.replace(/\bpi\b/gi, 'Math.PI');
+          expr = expr.replace(/π/g, 'Math.PI');
+          expr = expr.replace(/\be\b/g, 'Math.E');
+
+          const fn = new Function('x', '"use strict"; return (' + expr + ');');
+          return function (x) {
+            const val = fn(x);
+            return val;
+          };
+        }
+
+        function centralDifference(f, x, h) {
+          const hAbs = Math.abs(h);
+          if (hAbs === 0 || !isFinite(hAbs)) return NaN;
+          let fp = NaN, fm = NaN;
+          try { fp = f(x + hAbs); } catch (e) { fp = NaN; }
+          try { fm = f(x - hAbs); } catch (e) { fm = NaN; }
+          if (isFinite(fp) && isFinite(fm)) {
+            return (fp - fm) / (2 * hAbs);
+          }
+          return NaN;
+        }
+
+        function forwardDifference(f, x, h) {
+          const hAbs = Math.abs(h);
+          if (hAbs === 0 || !isFinite(hAbs)) return NaN;
+          let fp = NaN, f0 = NaN;
+          try { fp = f(x + hAbs); } catch (e) { fp = NaN; }
+          try { f0 = f(x); } catch (e) { f0 = NaN; }
+          if (isFinite(fp) && isFinite(f0)) {
+            return (fp - f0) / hAbs;
+          }
+          return NaN;
+        }
+
+        function backwardDifference(f, x, h) {
+          const hAbs = Math.abs(h);
+          if (hAbs === 0 || !isFinite(hAbs)) return NaN;
+          let fm = NaN, f0 = NaN;
+          try { fm = f(x - hAbs); } catch (e) { fm = NaN; }
+          try { f0 = f(x); } catch (e) { f0 = NaN; }
+          if (isFinite(fm) && isFinite(f0)) {
+            return (f0 - fm) / hAbs;
+          }
+          return NaN;
+        }
+
+        function derivativeAtPoint(f, x0, h) {
+          const hAbs = Math.abs(h);
+          let scheme = 'central';
+          let d = centralDifference(f, x0, hAbs);
+          if (!isFinite(d)) {
+            d = forwardDifference(f, x0, hAbs);
+            scheme = 'forward';
+          }
+          if (!isFinite(d)) {
+            d = backwardDifference(f, x0, hAbs);
+            scheme = 'backward';
+          }
+          if (!isFinite(d)) {
+            return { value: NaN, scheme: 'failed' };
+          }
+          return { value: d, scheme: scheme };
+        }
+
+        function populateSamples(f, x0, h, a, b, n) {
+          if (!samplesBody) return;
+          samplesBody.innerHTML = '';
+          if (!isFinite(a) || !isFinite(b) || n < 2) return;
+          if (a === b) return;
+
+          const d = getDecimals();
+          const count = Math.max(2, Math.min(200, n));
+          const step = (b - a) / (count - 1);
+          let nanCount = 0;
+
+          for (let i = 0; i < count; i++) {
+            const x = a + i * step;
+            let fx = NaN, dfx = NaN;
+            try { fx = f(x); } catch (e) { fx = NaN; }
+            if (isFinite(fx)) {
+              const deriv = derivativeAtPoint(f, x, h);
+              dfx = deriv.value;
+            }
+
+            const tr = document.createElement('tr');
+            tr.className = 'border-b';
+            const tdX = document.createElement('td');
+            tdX.className = 'px-3 py-1.5 text-gray-700';
+            tdX.textContent = Number(x.toFixed(d)).toString();
+
+            const tdFx = document.createElement('td');
+            tdFx.className = 'px-3 py-1.5 text-gray-700';
+            if (!isFinite(fx)) {
+              tdFx.textContent = 'NaN / undefined';
+              tdFx.classList.add('text-red-600');
+            } else {
+              tdFx.textContent = Number(fx.toFixed(d)).toString();
+            }
+
+            const tdDfx = document.createElement('td');
+            tdDfx.className = 'px-3 py-1.5 text-gray-700';
+            if (!isFinite(dfx)) {
+              tdDfx.textContent = 'NaN';
+              tdDfx.classList.add('text-red-600');
+            } else {
+              tdDfx.textContent = Number(dfx.toFixed(d)).toString();
+            }
+
+            if (!isFinite(fx) || !isFinite(dfx)) {
+              nanCount++;
+            }
+
+            tr.appendChild(tdX);
+            tr.appendChild(tdFx);
+            tr.appendChild(tdDfx);
+            samplesBody.appendChild(tr);
+          }
+
+          return nanCount;
+        }
+
+        function computeDerivative() {
+          clearAll();
+
+          const expr = funcInput.value;
+          if (!expr || !expr.trim()) {
+            errorEl.textContent = 'Please enter a function f(x).';
+            return;
+          }
+
+          const x0 = Number(pointInput.value);
+          if (!isFinite(x0)) {
+            errorEl.textContent = 'Point x₀ must be a valid number.';
+            return;
+          }
+
+          let h = Number(stepInput.value);
+          if (!isFinite(h) || h === 0) {
+            errorEl.textContent = 'Step size h must be a non-zero number.';
+            return;
+          }
+          if (Math.abs(h) < 1e-10) {
+            errorEl.textContent = 'Step size |h| is too small; increase it to avoid numerical noise.';
+            return;
+          }
+
+          let a = Number(intervalLowerInput.value);
+          let b = Number(intervalUpperInput.value);
+          let n = Number(samplesInput.value);
+          if (!isFinite(a) || !isFinite(b)) {
+            a = x0 - 2;
+            b = x0 + 2;
+          }
+          if (a === b) {
+            b = a + 1;
+          }
+          if (!Number.isInteger(n) || n < 5 || n > 200) {
+            n = 41;
+          }
+
+          let f;
+          try {
+            f = buildEvaluator(expr);
+          } catch (e) {
+            errorEl.textContent = 'Could not parse function: ' + e.message;
+            return;
+          }
+
+          let fx0 = NaN;
+          try { fx0 = f(x0); } catch (e) { fx0 = NaN; }
+
+          if (isFinite(fx0)) {
+            setResult(resFx0, fmt(fx0));
+          } else {
+            setResult(resFx0, 'undefined at x₀');
+          }
+
+          const derivH = derivativeAtPoint(f, x0, h);
+          const derivH2 = derivativeAtPoint(f, x0, h / 2);
+
+          if (isFinite(derivH.value)) {
+            setResult(resDerivH, fmt(derivH.value));
+          } else {
+            setResult(resDerivH, 'NaN');
+          }
+
+          if (isFinite(derivH2.value)) {
+            setResult(resDerivH2, fmt(derivH2.value));
+          } else {
+            setResult(resDerivH2, 'NaN');
+          }
+
+          setResult(resScheme, derivH.scheme === 'failed'
+            ? 'Failed to compute a stable finite difference at x₀.'
+            : (derivH.scheme.charAt(0).toUpperCase() + derivH.scheme.slice(1) + ' difference scheme.'));
+
+          let errorEstimate = NaN;
+          if (isFinite(derivH.value) && isFinite(derivH2.value)) {
+            errorEstimate = Math.abs(derivH2.value - derivH.value);
+            setResult(resError, fmt(errorEstimate));
+          } else {
+            setResult(resError, '—');
+          }
+
+          let stabilityMsg = '—';
+          if (isFinite(errorEstimate)) {
+            if (errorEstimate < 1e-6) {
+              stabilityMsg = 'Derivative appears numerically stable for the chosen h (h and h/2 agree very closely).';
+            } else if (errorEstimate < 1e-3) {
+              stabilityMsg = 'Derivative is reasonably stable; consider adjusting h if you need more precision.';
+            } else {
+              stabilityMsg = 'Derivative is sensitive to step size; try reducing |h| or inspecting the function near x₀.';
+            }
+          } else {
+            stabilityMsg = 'Stability could not be assessed because one of the approximations failed.';
+          }
+          setResult(resStability, stabilityMsg);
+
+          const nanCount = populateSamples(f, x0, h, a, b, n);
+          let warnings = [];
+          if (!isFinite(fx0)) {
+            warnings.push('The function is undefined at x₀; derivative interpretation may be subtle.');
+          }
+          if (derivH.scheme === 'failed') {
+            warnings.push('All finite difference schemes failed at x₀; the derivative may not exist or the function may be numerically unstable there.');
+          }
+          if (nanCount && nanCount > 0) {
+            warnings.push('Some sample points on [a, b] produced NaN or undefined values; check the domain (division by zero, sqrt of negatives, log of non-positive values, etc.).');
+          }
+
+          if (warnings.length === 0) {
+            setResult(resWarnings, 'No major numerical issues detected. For high-stakes use, always verify with analytic methods.');
+          } else {
+            setResult(resWarnings, warnings.join(' '));
+          }
+        }
+
+        if (btnCalc) btnCalc.addEventListener('click', computeDerivative);
+
+        if (btnClear) {
+          btnClear.addEventListener('click', function () {
+            if (funcInput) funcInput.value = '';
+            if (pointInput) pointInput.value = '0';
+            if (stepInput) stepInput.value = '0.0001';
+            if (intervalLowerInput) intervalLowerInput.value = '-2';
+            if (intervalUpperInput) intervalUpperInput.value = '2';
+            if (samplesInput) samplesInput.value = '41';
+            if (decimalsSelect) decimalsSelect.value = '6';
+            clearAll();
+          });
+        }
+
+        // Example buttons
+        exampleButtons.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const type = btn.getAttribute('data-example');
+            if (!type || !funcInput || !pointInput) return;
+            if (type === 'poly') {
+              funcInput.value = 'x^2';
+              pointInput.value = '1';
+              intervalLowerInput.value = '-2';
+              intervalUpperInput.value = '2';
+            } else if (type === 'sin') {
+              funcInput.value = 'sin(x)';
+              pointInput.value = '0';
+              intervalLowerInput.value = '-3.14159';
+              intervalUpperInput.value = '3.14159';
+            } else if (type === 'exp') {
+              funcInput.value = 'exp(x)';
+              pointInput.value = '0';
+              intervalLowerInput.value = '-2';
+              intervalUpperInput.value = '2';
+            } else if (type === 'abs') {
+              funcInput.value = 'abs(x)';
+              pointInput.value = '0';
+              intervalLowerInput.value = '-2';
+              intervalUpperInput.value = '2';
+            }
+            clearAll();
+          });
+        });
+      });
+    </script>
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      // Mobile menu toggle
+      document.getElementById('mobile-menu-toggle')?.addEventListener('click', function () {
+        const menu = document.getElementById('mobile-menu');
+        if (!menu) return;
+        const isHidden = menu.classList.contains('hidden');
+        menu.classList.toggle('hidden', !isHidden);
+        this.setAttribute('aria-expanded', String(isHidden));
+      });
+
+      document.addEventListener('DOMContentLoaded', function () {
+        const funcInput = document.getElementById('func-input');
+        const pointInput = document.getElementById('point-input');
+        const stepInput = document.getElementById('step-input');
+        const intervalLowerInput = document.getElementById('interval-lower-input');
+        const intervalUpperInput = document.getElementById('interval-upper-input');
+        const samplesInput = document.getElementById('samples-input');
+        const decimalsSelect = document.getElementById('decimals');
+
+        const btnCalc = document.getElementById('btn-calc-derivative');
+        const btnClear = document.getElementById('btn-clear-derivative');
+        const errorEl = document.getElementById('derivative-error');
+
+        const resFx0 = document.getElementById('res-fx0');
+        const resDerivH = document.getElementById('res-deriv-h');
+        const resDerivH2 = document.getElementById('res-deriv-h2');
+        const resError = document.getElementById('res-error');
+        const resScheme = document.getElementById('res-scheme');
+        const resStability = document.getElementById('res-stability');
+        const resWarnings = document.getElementById('res-warnings');
+        const samplesBody = document.getElementById('table-samples-body');
+
+        const exampleButtons = document.querySelectorAll('[data-example]');
+
+        function setResult(container, text) {
+          if (!container) return;
+          const span = container.querySelector('.result-value');
+          if (span) span.textContent = text;
+        }
+
+        function clearAll() {
+          [resFx0, resDerivH, resDerivH2, resError, resScheme, resStability, resWarnings].forEach(function (el) {
+            if (!el) return;
+            const spans = el.querySelectorAll('.result-value');
+            spans.forEach(span => span.textContent = '—');
+          });
+          if (samplesBody) samplesBody.innerHTML = '';
+          if (errorEl) errorEl.textContent = '';
+        }
+
+        function getDecimals() {
+          const d = Number(decimalsSelect.value);
+          if (!Number.isInteger(d) || d < 0 || d > 16) return 6;
+          return d;
+        }
+
+        function fmt(v) {
+          if (!isFinite(v)) {
+            if (v === Infinity) return '+∞';
+            if (v === -Infinity) return '−∞';
+            return 'NaN';
+          }
+          const d = getDecimals();
+          return Number(v.toFixed(d)).toString();
+        }
+
+        function buildEvaluator(exprRaw) {
+          if (!exprRaw || !exprRaw.trim()) {
+            throw new Error('Function is empty.');
+          }
+          let expr = exprRaw.trim();
+
+          // Replace caret with exponentiation operator
+          expr = expr.replace(/\^/g, '**');
+
+          // Replace common math functions with Math.* equivalents
+          const funcs = [
+            'sin','cos','tan','asin','acos','atan',
+            'sinh','cosh','tanh',
+            'log','ln','sqrt','abs','exp',
+            'floor','ceil','round','pow','max','min'
+          ];
+          funcs.forEach(function (fn) {
+            const re = new RegExp('\\b' + fn + '\\b', 'g');
+            if (fn === 'ln') {
+              expr = expr.replace(re, 'Math.log');
+            } else if (fn === 'log') {
+              expr = expr.replace(re, 'Math.log');
+            } else {
+              expr = expr.replace(re, 'Math.' + fn);
+            }
+          });
+
+          // Constants
+          expr = expr.replace(/\bpi\b/gi, 'Math.PI');
+          expr = expr.replace(/π/g, 'Math.PI');
+          expr = expr.replace(/\be\b/g, 'Math.E');
+
+          const fn = new Function('x', '"use strict"; return (' + expr + ');');
+          return function (x) {
+            const val = fn(x);
+            return val;
+          };
+        }
+
+        function centralDifference(f, x, h) {
+          const hAbs = Math.abs(h);
+          if (hAbs === 0 || !isFinite(hAbs)) return NaN;
+          let fp = NaN, fm = NaN;
+          try { fp = f(x + hAbs); } catch (e) { fp = NaN; }
+          try { fm = f(x - hAbs); } catch (e) { fm = NaN; }
+          if (isFinite(fp) && isFinite(fm)) {
+            return (fp - fm) / (2 * hAbs);
+          }
+          return NaN;
+        }
+
+        function forwardDifference(f, x, h) {
+          const hAbs = Math.abs(h);
+          if (hAbs === 0 || !isFinite(hAbs)) return NaN;
+          let fp = NaN, f0 = NaN;
+          try { fp = f(x + hAbs); } catch (e) { fp = NaN; }
+          try { f0 = f(x); } catch (e) { f0 = NaN; }
+          if (isFinite(fp) && isFinite(f0)) {
+            return (fp - f0) / hAbs;
+          }
+          return NaN;
+        }
+
+        function backwardDifference(f, x, h) {
+          const hAbs = Math.abs(h);
+          if (hAbs === 0 || !isFinite(hAbs)) return NaN;
+          let fm = NaN, f0 = NaN;
+          try { fm = f(x - hAbs); } catch (e) { fm = NaN; }
+          try { f0 = f(x); } catch (e) { f0 = NaN; }
+          if (isFinite(fm) && isFinite(f0)) {
+            return (f0 - fm) / hAbs;
+          }
+          return NaN;
+        }
+
+        function derivativeAtPoint(f, x0, h) {
+          const hAbs = Math.abs(h);
+          let scheme = 'central';
+          let d = centralDifference(f, x0, hAbs);
+          if (!isFinite(d)) {
+            d = forwardDifference(f, x0, hAbs);
+            scheme = 'forward';
+          }
+          if (!isFinite(d)) {
+            d = backwardDifference(f, x0, hAbs);
+            scheme = 'backward';
+          }
+          if (!isFinite(d)) {
+            return { value: NaN, scheme: 'failed' };
+          }
+          return { value: d, scheme: scheme };
+        }
+
+        function populateSamples(f, x0, h, a, b, n) {
+          if (!samplesBody) return;
+          samplesBody.innerHTML = '';
+          if (!isFinite(a) || !isFinite(b) || n < 2) return;
+          if (a === b) return;
+
+          const d = getDecimals();
+          const count = Math.max(2, Math.min(200, n));
+          const step = (b - a) / (count - 1);
+          let nanCount = 0;
+
+          for (let i = 0; i < count; i++) {
+            const x = a + i * step;
+            let fx = NaN, dfx = NaN;
+            try { fx = f(x); } catch (e) { fx = NaN; }
+            if (isFinite(fx)) {
+              const deriv = derivativeAtPoint(f, x, h);
+              dfx = deriv.value;
+            }
+
+            const tr = document.createElement('tr');
+            tr.className = 'border-b';
+            const tdX = document.createElement('td');
+            tdX.className = 'px-3 py-1.5 text-gray-700';
+            tdX.textContent = Number(x.toFixed(d)).toString();
+
+            const tdFx = document.createElement('td');
+            tdFx.className = 'px-3 py-1.5 text-gray-700';
+            if (!isFinite(fx)) {
+              tdFx.textContent = 'NaN / undefined';
+              tdFx.classList.add('text-red-600');
+            } else {
+              tdFx.textContent = Number(fx.toFixed(d)).toString();
+            }
+
+            const tdDfx = document.createElement('td');
+            tdDfx.className = 'px-3 py-1.5 text-gray-700';
+            if (!isFinite(dfx)) {
+              tdDfx.textContent = 'NaN';
+              tdDfx.classList.add('text-red-600');
+            } else {
+              tdDfx.textContent = Number(dfx.toFixed(d)).toString();
+            }
+
+            if (!isFinite(fx) || !isFinite(dfx)) {
+              nanCount++;
+            }
+
+            tr.appendChild(tdX);
+            tr.appendChild(tdFx);
+            tr.appendChild(tdDfx);
+            samplesBody.appendChild(tr);
+          }
+
+          return nanCount;
+        }
+
+        function computeDerivative() {
+          clearAll();
+
+          const expr = funcInput.value;
+          if (!expr || !expr.trim()) {
+            errorEl.textContent = 'Please enter a function f(x).';
+            return;
+          }
+
+          const x0 = Number(pointInput.value);
+          if (!isFinite(x0)) {
+            errorEl.textContent = 'Point x₀ must be a valid number.';
+            return;
+          }
+
+          let h = Number(stepInput.value);
+          if (!isFinite(h) || h === 0) {
+            errorEl.textContent = 'Step size h must be a non-zero number.';
+            return;
+          }
+          if (Math.abs(h) < 1e-10) {
+            errorEl.textContent = 'Step size |h| is too small; increase it to avoid numerical noise.';
+            return;
+          }
+
+          let a = Number(intervalLowerInput.value);
+          let b = Number(intervalUpperInput.value);
+          let n = Number(samplesInput.value);
+          if (!isFinite(a) || !isFinite(b)) {
+            a = x0 - 2;
+            b = x0 + 2;
+          }
+          if (a === b) {
+            b = a + 1;
+          }
+          if (!Number.isInteger(n) || n < 5 || n > 200) {
+            n = 41;
+          }
+
+          let f;
+          try {
+            f = buildEvaluator(expr);
+          } catch (e) {
+            errorEl.textContent = 'Could not parse function: ' + e.message;
+            return;
+          }
+
+          let fx0 = NaN;
+          try { fx0 = f(x0); } catch (e) { fx0 = NaN; }
+
+          if (isFinite(fx0)) {
+            setResult(resFx0, fmt(fx0));
+          } else {
+            setResult(resFx0, 'undefined at x₀');
+          }
+
+          const derivH = derivativeAtPoint(f, x0, h);
+          const derivH2 = derivativeAtPoint(f, x0, h / 2);
+
+          if (isFinite(derivH.value)) {
+            setResult(resDerivH, fmt(derivH.value));
+          } else {
+            setResult(resDerivH, 'NaN');
+          }
+
+          if (isFinite(derivH2.value)) {
+            setResult(resDerivH2, fmt(derivH2.value));
+          } else {
+            setResult(resDerivH2, 'NaN');
+          }
+
+          setResult(resScheme, derivH.scheme === 'failed'
+            ? 'Failed to compute a stable finite difference at x₀.'
+            : (derivH.scheme.charAt(0).toUpperCase() + derivH.scheme.slice(1) + ' difference scheme.'));
+
+          let errorEstimate = NaN;
+          if (isFinite(derivH.value) && isFinite(derivH2.value)) {
+            errorEstimate = Math.abs(derivH2.value - derivH.value);
+            setResult(resError, fmt(errorEstimate));
+          } else {
+            setResult(resError, '—');
+          }
+
+          let stabilityMsg = '—';
+          if (isFinite(errorEstimate)) {
+            if (errorEstimate < 1e-6) {
+              stabilityMsg = 'Derivative appears numerically stable for the chosen h (h and h/2 agree very closely).';
+            } else if (errorEstimate < 1e-3) {
+              stabilityMsg = 'Derivative is reasonably stable; consider adjusting h if you need more precision.';
+            } else {
+              stabilityMsg = 'Derivative is sensitive to step size; try reducing |h| or inspecting the function near x₀.';
+            }
+          } else {
+            stabilityMsg = 'Stability could not be assessed because one of the approximations failed.';
+          }
+          setResult(resStability, stabilityMsg);
+
+          const nanCount = populateSamples(f, x0, h, a, b, n);
+          let warnings = [];
+          if (!isFinite(fx0)) {
+            warnings.push('The function is undefined at x₀; derivative interpretation may be subtle.');
+          }
+          if (derivH.scheme === 'failed') {
+            warnings.push('All finite difference schemes failed at x₀; the derivative may not exist or the function may be numerically unstable there.');
+          }
+          if (nanCount && nanCount > 0) {
+            warnings.push('Some sample points on [a, b] produced NaN or undefined values; check the domain (division by zero, sqrt of negatives, log of non-positive values, etc.).');
+          }
+
+          if (warnings.length === 0) {
+            setResult(resWarnings, 'No major numerical issues detected. For high-stakes use, always verify with analytic methods.');
+          } else {
+            setResult(resWarnings, warnings.join(' '));
+          }
+        }
+
+        if (btnCalc) btnCalc.addEventListener('click', computeDerivative);
+
+        if (btnClear) {
+          btnClear.addEventListener('click', function () {
+            if (funcInput) funcInput.value = '';
+            if (pointInput) pointInput.value = '0';
+            if (stepInput) stepInput.value = '0.0001';
+            if (intervalLowerInput) intervalLowerInput.value = '-2';
+            if (intervalUpperInput) intervalUpperInput.value = '2';
+            if (samplesInput) samplesInput.value = '41';
+            if (decimalsSelect) decimalsSelect.value = '6';
+            clearAll();
+          });
+        }
+
+        // Example buttons
+        exampleButtons.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const type = btn.getAttribute('data-example');
+            if (!type || !funcInput || !pointInput) return;
+            if (type === 'poly') {
+              funcInput.value = 'x^2';
+              pointInput.value = '1';
+              intervalLowerInput.value = '-2';
+              intervalUpperInput.value = '2';
+            } else if (type === 'sin') {
+              funcInput.value = 'sin(x)';
+              pointInput.value = '0';
+              intervalLowerInput.value = '-3.14159';
+              intervalUpperInput.value = '3.14159';
+            } else if (type === 'exp') {
+              funcInput.value = 'exp(x)';
+              pointInput.value = '0';
+              intervalLowerInput.value = '-2';
+              intervalUpperInput.value = '2';
+            } else if (type === 'abs') {
+              funcInput.value = 'abs(x)';
+              pointInput.value = '0';
+              intervalLowerInput.value = '-2';
+              intervalUpperInput.value = '2';
+            }
+            clearAll();
+          });
+        });
+      });
+    </script>
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

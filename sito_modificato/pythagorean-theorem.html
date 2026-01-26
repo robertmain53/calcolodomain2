@@ -665,7 +665,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -732,14 +732,456 @@
 
 
 
+
     
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
     
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      // Pythagorean theorem calculator logic
+      document.addEventListener('DOMContentLoaded', function () {
+        const sideAInput = document.getElementById('side-a');
+        const sideBInput = document.getElementById('side-b');
+        const sideCInput = document.getElementById('side-c');
+        const unitsInput = document.getElementById('pythag-units');
+        const decimalsSelect = document.getElementById('pythag-decimals');
+
+        const calcBtn = document.getElementById('pythag-calc-btn');
+        const clearBtn = document.getElementById('pythag-clear-btn');
+        const exampleBtn = document.getElementById('pythag-example-btn');
+        const errorEl = document.getElementById('pythag-error');
+
+        const resultsCard = document.getElementById('pythag-results-card');
+        const mainResultEl = document.getElementById('pythag-main-result');
+        const geoEl = document.getElementById('pythag-geo');
+        const checkEl = document.getElementById('pythag-check');
+        const stepsEl = document.getElementById('pythag-steps');
+
+        function getSolveFor() {
+          const radios = document.querySelectorAll('input[name="solveFor"]');
+          for (const r of radios) {
+            if (r.checked) return r.value;
+          }
+          return 'c';
+        }
+
+        function fmt(value, decimals) {
+          if (!isFinite(value)) return 'NaN';
+          return Number(value).toFixed(decimals);
+        }
+
+        function unitSuffix() {
+          const u = (unitsInput.value || '').trim();
+          return u ? ' ' + u : '';
+        }
+
+        function resetOutput() {
+          resultsCard.classList.add('hidden');
+          errorEl.textContent = '';
+          errorEl.classList.add('hidden');
+          mainResultEl.textContent = '';
+          geoEl.textContent = '';
+          checkEl.textContent = '';
+          stepsEl.textContent = '';
+        }
+
+        function parseSide(input) {
+          const v = input.value;
+          if (!v || v.trim() === '') return null;
+          const num = Number(v);
+          if (!isFinite(num) || num <= 0) return NaN;
+          return num;
+        }
+
+        function calculate() {
+          resetOutput();
+          const solveFor = getSolveFor();
+          const decimals = parseInt(decimalsSelect.value, 10) || 2;
+
+          let a = parseSide(sideAInput);
+          let b = parseSide(sideBInput);
+          let c = parseSide(sideCInput);
+
+          if (solveFor === 'c') {
+            if (a === null || b === null) {
+              errorEl.textContent = 'Please enter positive values for legs a and b to solve for c.';
+              errorEl.classList.remove('hidden');
+              return;
+            }
+            if (isNaN(a) || isNaN(b)) {
+              errorEl.textContent = 'All side lengths must be positive real numbers.';
+              errorEl.classList.remove('hidden');
+              return;
+            }
+            c = Math.sqrt(a * a + b * b);
+          } else if (solveFor === 'a') {
+            if (c === null || b === null) {
+              errorEl.textContent = 'Please enter c (hypotenuse) and b (leg) to solve for a.';
+              errorEl.classList.remove('hidden');
+              return;
+            }
+            if (isNaN(c) || isNaN(b) || c <= b) {
+              errorEl.textContent = 'For a right triangle, the hypotenuse c must be the largest side and greater than b.';
+              errorEl.classList.remove('hidden');
+              return;
+            }
+            a = Math.sqrt(c * c - b * b);
+          } else if (solveFor === 'b') {
+            if (c === null || a === null) {
+              errorEl.textContent = 'Please enter c (hypotenuse) and a (leg) to solve for b.';
+              errorEl.classList.remove('hidden');
+              return;
+            }
+            if (isNaN(c) || isNaN(a) || c <= a) {
+              errorEl.textContent = 'For a right triangle, the hypotenuse c must be the largest side and greater than a.';
+              errorEl.classList.remove('hidden');
+              return;
+            }
+            b = Math.sqrt(c * c - a * a);
+          }
+
+          // Final sanity checks
+          if (a === null || b === null || c === null || !isFinite(a) || !isFinite(b) || !isFinite(c)) {
+            errorEl.textContent = 'Unable to compute a valid triangle with the given values.';
+            errorEl.classList.remove('hidden');
+            return;
+          }
+
+          const sfx = unitSuffix();
+          const aF = fmt(a, decimals);
+          const bF = fmt(b, decimals);
+          const cF = fmt(c, decimals);
+
+          // Area and perimeter
+          const area = 0.5 * a * b;
+          const perimeter = a + b + c;
+
+          // Check Pythagorean relation
+          const lhs = a * a + b * b;
+          const rhs = c * c;
+          const diff = Math.abs(lhs - rhs);
+          const relErr = rhs !== 0 ? diff / rhs : diff;
+          let checkMsg;
+          if (relErr < 1e-9) {
+            checkMsg = 'Exactly satisfies a² + b² = c² within numerical precision.';
+          } else if (relErr < 1e-4) {
+            checkMsg = 'Satisfies a² + b² ≈ c² to within small rounding error.';
+          } else {
+            checkMsg = 'Warning: a² + b² differs noticeably from c². Re-check the inputs and that this is a right triangle.';
+          }
+
+          let mainMsg;
+          if (solveFor === 'c') {
+            mainMsg = `Hypotenuse c = ${cF}${sfx} for legs a = ${aF}${sfx}, b = ${bF}${sfx}.`;
+          } else if (solveFor === 'a') {
+            mainMsg = `Leg a = ${aF}${sfx} for leg b = ${bF}${sfx} and hypotenuse c = ${cF}${sfx}.`;
+          } else {
+            mainMsg = `Leg b = ${bF}${sfx} for leg a = ${aF}${sfx} and hypotenuse c = ${cF}${sfx}.`;
+          }
+
+          const geoMsg = `Area = ${fmt(area, decimals)}${sfx ? ' ' + sfx.trim() + '²' : ''}, `
+            + `Perimeter = ${fmt(perimeter, decimals)}${sfx}.`;
+
+          const stepsLines = [];
+
+          if (solveFor === 'c') {
+            stepsLines.push('Given legs a and b, use c = √(a² + b²)');
+            stepsLines.push(`1) a² = ${a}² = ${fmt(a * a, decimals)}`);
+            stepsLines.push(`2) b² = ${b}² = ${fmt(b * b, decimals)}`);
+            stepsLines.push(`3) a² + b² = ${fmt(a * a, decimals)} + ${fmt(b * b, decimals)} = ${fmt(lhs, decimals)}`);
+            stepsLines.push(`4) c = √(${fmt(lhs, decimals)}) = ${cF}${sfx}`);
+          } else if (solveFor === 'a') {
+            stepsLines.push('Rearrange a² + b² = c² to a = √(c² − b²)');
+            stepsLines.push(`1) c² = ${c}² = ${fmt(c * c, decimals)}`);
+            stepsLines.push(`2) b² = ${b}² = ${fmt(b * b, decimals)}`);
+            stepsLines.push(`3) c² − b² = ${fmt(c * c, decimals)} − ${fmt(b * b, decimals)} = ${fmt(c * c - b * b, decimals)}`);
+            stepsLines.push(`4) a = √(${fmt(c * c - b * b, decimals)}) = ${aF}${sfx}`);
+          } else {
+            stepsLines.push('Rearrange a² + b² = c² to b = √(c² − a²)');
+            stepsLines.push(`1) c² = ${c}² = ${fmt(c * c, decimals)}`);
+            stepsLines.push(`2) a² = ${a}² = ${fmt(a * a, decimals)}`);
+            stepsLines.push(`3) c² − a² = ${fmt(c * c, decimals)} − ${fmt(a * a, decimals)} = ${fmt(c * c - a * a, decimals)}`);
+            stepsLines.push(`4) b = √(${fmt(c * c - a * a, decimals)}) = ${bF}${sfx}`);
+          }
+
+          stepsLines.push('');
+          stepsLines.push(`Check: a² + b² = ${fmt(lhs, decimals)}, c² = ${fmt(rhs, decimals)}, difference = ${fmt(diff, decimals)}.`);
+
+          // Populate DOM
+          mainResultEl.textContent = mainMsg;
+          geoEl.textContent = geoMsg;
+          checkEl.textContent = checkMsg;
+          stepsEl.textContent = stepsLines.join('\n');
+
+          resultsCard.classList.remove('hidden');
+        }
+
+        function clearAll() {
+          sideAInput.value = '';
+          sideBInput.value = '';
+          sideCInput.value = '';
+          unitsInput.value = '';
+          decimalsSelect.value = '2';
+          resetOutput();
+        }
+
+        function loadExample() {
+          sideAInput.value = '3';
+          sideBInput.value = '4';
+          sideCInput.value = '';
+          unitsInput.value = '';
+          const radios = document.querySelectorAll('input[name="solveFor"]');
+          radios.forEach(r => { r.checked = (r.value === 'c'); });
+          calculate();
+        }
+
+        calcBtn.addEventListener('click', calculate);
+        clearBtn.addEventListener('click', clearAll);
+        exampleBtn.addEventListener('click', loadExample);
+
+        [sideAInput, sideBInput, sideCInput].forEach(input => {
+          input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              calculate();
+            }
+          });
+        });
+      });
+    </script>
+
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      // Pythagorean theorem calculator logic
+      document.addEventListener('DOMContentLoaded', function () {
+        const sideAInput = document.getElementById('side-a');
+        const sideBInput = document.getElementById('side-b');
+        const sideCInput = document.getElementById('side-c');
+        const unitsInput = document.getElementById('pythag-units');
+        const decimalsSelect = document.getElementById('pythag-decimals');
+
+        const calcBtn = document.getElementById('pythag-calc-btn');
+        const clearBtn = document.getElementById('pythag-clear-btn');
+        const exampleBtn = document.getElementById('pythag-example-btn');
+        const errorEl = document.getElementById('pythag-error');
+
+        const resultsCard = document.getElementById('pythag-results-card');
+        const mainResultEl = document.getElementById('pythag-main-result');
+        const geoEl = document.getElementById('pythag-geo');
+        const checkEl = document.getElementById('pythag-check');
+        const stepsEl = document.getElementById('pythag-steps');
+
+        function getSolveFor() {
+          const radios = document.querySelectorAll('input[name="solveFor"]');
+          for (const r of radios) {
+            if (r.checked) return r.value;
+          }
+          return 'c';
+        }
+
+        function fmt(value, decimals) {
+          if (!isFinite(value)) return 'NaN';
+          return Number(value).toFixed(decimals);
+        }
+
+        function unitSuffix() {
+          const u = (unitsInput.value || '').trim();
+          return u ? ' ' + u : '';
+        }
+
+        function resetOutput() {
+          resultsCard.classList.add('hidden');
+          errorEl.textContent = '';
+          errorEl.classList.add('hidden');
+          mainResultEl.textContent = '';
+          geoEl.textContent = '';
+          checkEl.textContent = '';
+          stepsEl.textContent = '';
+        }
+
+        function parseSide(input) {
+          const v = input.value;
+          if (!v || v.trim() === '') return null;
+          const num = Number(v);
+          if (!isFinite(num) || num <= 0) return NaN;
+          return num;
+        }
+
+        function calculate() {
+          resetOutput();
+          const solveFor = getSolveFor();
+          const decimals = parseInt(decimalsSelect.value, 10) || 2;
+
+          let a = parseSide(sideAInput);
+          let b = parseSide(sideBInput);
+          let c = parseSide(sideCInput);
+
+          if (solveFor === 'c') {
+            if (a === null || b === null) {
+              errorEl.textContent = 'Please enter positive values for legs a and b to solve for c.';
+              errorEl.classList.remove('hidden');
+              return;
+            }
+            if (isNaN(a) || isNaN(b)) {
+              errorEl.textContent = 'All side lengths must be positive real numbers.';
+              errorEl.classList.remove('hidden');
+              return;
+            }
+            c = Math.sqrt(a * a + b * b);
+          } else if (solveFor === 'a') {
+            if (c === null || b === null) {
+              errorEl.textContent = 'Please enter c (hypotenuse) and b (leg) to solve for a.';
+              errorEl.classList.remove('hidden');
+              return;
+            }
+            if (isNaN(c) || isNaN(b) || c <= b) {
+              errorEl.textContent = 'For a right triangle, the hypotenuse c must be the largest side and greater than b.';
+              errorEl.classList.remove('hidden');
+              return;
+            }
+            a = Math.sqrt(c * c - b * b);
+          } else if (solveFor === 'b') {
+            if (c === null || a === null) {
+              errorEl.textContent = 'Please enter c (hypotenuse) and a (leg) to solve for b.';
+              errorEl.classList.remove('hidden');
+              return;
+            }
+            if (isNaN(c) || isNaN(a) || c <= a) {
+              errorEl.textContent = 'For a right triangle, the hypotenuse c must be the largest side and greater than a.';
+              errorEl.classList.remove('hidden');
+              return;
+            }
+            b = Math.sqrt(c * c - a * a);
+          }
+
+          // Final sanity checks
+          if (a === null || b === null || c === null || !isFinite(a) || !isFinite(b) || !isFinite(c)) {
+            errorEl.textContent = 'Unable to compute a valid triangle with the given values.';
+            errorEl.classList.remove('hidden');
+            return;
+          }
+
+          const sfx = unitSuffix();
+          const aF = fmt(a, decimals);
+          const bF = fmt(b, decimals);
+          const cF = fmt(c, decimals);
+
+          // Area and perimeter
+          const area = 0.5 * a * b;
+          const perimeter = a + b + c;
+
+          // Check Pythagorean relation
+          const lhs = a * a + b * b;
+          const rhs = c * c;
+          const diff = Math.abs(lhs - rhs);
+          const relErr = rhs !== 0 ? diff / rhs : diff;
+          let checkMsg;
+          if (relErr < 1e-9) {
+            checkMsg = 'Exactly satisfies a² + b² = c² within numerical precision.';
+          } else if (relErr < 1e-4) {
+            checkMsg = 'Satisfies a² + b² ≈ c² to within small rounding error.';
+          } else {
+            checkMsg = 'Warning: a² + b² differs noticeably from c². Re-check the inputs and that this is a right triangle.';
+          }
+
+          let mainMsg;
+          if (solveFor === 'c') {
+            mainMsg = `Hypotenuse c = ${cF}${sfx} for legs a = ${aF}${sfx}, b = ${bF}${sfx}.`;
+          } else if (solveFor === 'a') {
+            mainMsg = `Leg a = ${aF}${sfx} for leg b = ${bF}${sfx} and hypotenuse c = ${cF}${sfx}.`;
+          } else {
+            mainMsg = `Leg b = ${bF}${sfx} for leg a = ${aF}${sfx} and hypotenuse c = ${cF}${sfx}.`;
+          }
+
+          const geoMsg = `Area = ${fmt(area, decimals)}${sfx ? ' ' + sfx.trim() + '²' : ''}, `
+            + `Perimeter = ${fmt(perimeter, decimals)}${sfx}.`;
+
+          const stepsLines = [];
+
+          if (solveFor === 'c') {
+            stepsLines.push('Given legs a and b, use c = √(a² + b²)');
+            stepsLines.push(`1) a² = ${a}² = ${fmt(a * a, decimals)}`);
+            stepsLines.push(`2) b² = ${b}² = ${fmt(b * b, decimals)}`);
+            stepsLines.push(`3) a² + b² = ${fmt(a * a, decimals)} + ${fmt(b * b, decimals)} = ${fmt(lhs, decimals)}`);
+            stepsLines.push(`4) c = √(${fmt(lhs, decimals)}) = ${cF}${sfx}`);
+          } else if (solveFor === 'a') {
+            stepsLines.push('Rearrange a² + b² = c² to a = √(c² − b²)');
+            stepsLines.push(`1) c² = ${c}² = ${fmt(c * c, decimals)}`);
+            stepsLines.push(`2) b² = ${b}² = ${fmt(b * b, decimals)}`);
+            stepsLines.push(`3) c² − b² = ${fmt(c * c, decimals)} − ${fmt(b * b, decimals)} = ${fmt(c * c - b * b, decimals)}`);
+            stepsLines.push(`4) a = √(${fmt(c * c - b * b, decimals)}) = ${aF}${sfx}`);
+          } else {
+            stepsLines.push('Rearrange a² + b² = c² to b = √(c² − a²)');
+            stepsLines.push(`1) c² = ${c}² = ${fmt(c * c, decimals)}`);
+            stepsLines.push(`2) a² = ${a}² = ${fmt(a * a, decimals)}`);
+            stepsLines.push(`3) c² − a² = ${fmt(c * c, decimals)} − ${fmt(a * a, decimals)} = ${fmt(c * c - a * a, decimals)}`);
+            stepsLines.push(`4) b = √(${fmt(c * c - a * a, decimals)}) = ${bF}${sfx}`);
+          }
+
+          stepsLines.push('');
+          stepsLines.push(`Check: a² + b² = ${fmt(lhs, decimals)}, c² = ${fmt(rhs, decimals)}, difference = ${fmt(diff, decimals)}.`);
+
+          // Populate DOM
+          mainResultEl.textContent = mainMsg;
+          geoEl.textContent = geoMsg;
+          checkEl.textContent = checkMsg;
+          stepsEl.textContent = stepsLines.join('\n');
+
+          resultsCard.classList.remove('hidden');
+        }
+
+        function clearAll() {
+          sideAInput.value = '';
+          sideBInput.value = '';
+          sideCInput.value = '';
+          unitsInput.value = '';
+          decimalsSelect.value = '2';
+          resetOutput();
+        }
+
+        function loadExample() {
+          sideAInput.value = '3';
+          sideBInput.value = '4';
+          sideCInput.value = '';
+          unitsInput.value = '';
+          const radios = document.querySelectorAll('input[name="solveFor"]');
+          radios.forEach(r => { r.checked = (r.value === 'c'); });
+          calculate();
+        }
+
+        calcBtn.addEventListener('click', calculate);
+        clearBtn.addEventListener('click', clearAll);
+        exampleBtn.addEventListener('click', loadExample);
+
+        [sideAInput, sideBInput, sideCInput].forEach(input => {
+          input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              calculate();
+            }
+          });
+        });
+      });
+    </script>
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

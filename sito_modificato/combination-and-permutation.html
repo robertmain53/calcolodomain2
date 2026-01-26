@@ -39,10 +39,6 @@
     
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
     
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-    
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -188,8 +184,6 @@
 </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
-
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
 
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
@@ -662,7 +656,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -729,14 +723,450 @@
 
 
 
+
     
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
     
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      (function() {
+        const nInput = document.getElementById('input-n');
+        const rInput = document.getElementById('input-r');
+        const errorEl = document.getElementById('cp-error');
+        const resultsBody = document.getElementById('cp-results-body');
+        const btnCalc = document.getElementById('btn-calc');
+        const btnClear = document.getElementById('btn-clear');
+
+        function getRadioValue(name) {
+          const nodes = document.querySelectorAll('input[name="' + name + '"]');
+          for (const n of nodes) {
+            if (n.checked) return n.value;
+          }
+          return null;
+        }
+
+        function factorialBigInt(k) {
+          let n = BigInt(k);
+          if (n < 0n) return null;
+          let res = 1n;
+          for (let i = 2n; i <= n; i++) {
+            res *= i;
+          }
+          return res;
+        }
+
+        function binomialBigInt(n, r) {
+          n = BigInt(n);
+          r = BigInt(r);
+          if (r < 0n || r > n) return 0n;
+          if (r === 0n || r === n) return 1n;
+          if (r > n - r) r = n - r;
+          let result = 1n;
+          for (let i = 1n; i <= r; i++) {
+            result = result * (n - r + i) / i;
+          }
+          return result;
+        }
+
+        function powBigInt(base, exp) {
+          base = BigInt(base);
+          exp = BigInt(exp);
+          if (exp < 0n) return null;
+          let result = 1n;
+          while (exp > 0n) {
+            if (exp & 1n) result *= base;
+            base *= base;
+            exp >>= 1n;
+          }
+          return result;
+        }
+
+        function formatBigIntSummary(valueBigInt) {
+          const s = valueBigInt.toString();
+          const digits = s.length;
+          let preview = s;
+          if (digits > 20) {
+            preview = s.slice(0, 10) + '…' + s.slice(-5);
+          }
+          let sci = '';
+          if (digits > 1) {
+            const first = s[0];
+            const rest = s.slice(1, Math.min(5, s.length));
+            const mantissa = first + (rest ? '.' + rest : '');
+            const exponent = digits - 1;
+            sci = mantissa + ' × 10^' + exponent;
+          } else {
+            sci = s;
+          }
+          return { s, digits, preview, sci };
+        }
+
+        function buildStepByStep(n, r, mode, repetition) {
+          n = Number(n);
+          r = Number(r);
+          const maxStepN = 50;
+          if (n > maxStepN || r > maxStepN) {
+            return '<p class="text-xs text-gray-500 mt-2">Step-by-step factorial expansion is shown only for n, r ≤ ' + maxStepN + ' to keep the output readable.</p>';
+          }
+
+          let html = '<div class="mt-3 text-xs text-gray-700 space-y-2">';
+          if (repetition === 'no') {
+            if (mode === 'combination' || mode === 'both') {
+              html += '<p><strong>Combinations (no repetition):</strong> \\( C(n,r) = \\frac{n!}{r!(n-r)!} \\)</p>';
+              html += '<p>Here: \\( C(' + n + ',' + r + ') = \\frac{' + n + '!}{' + r + '!\\,' + (n - r) + '!} \\)</p>';
+            }
+            if (mode === 'permutation' || mode === 'both') {
+              html += '<p><strong>Permutations (no repetition):</strong> \\( P(n,r) = \\frac{n!}{(n-r)!} \\)</p>';
+              html += '<p>Here: \\( P(' + n + ',' + r + ') = \\frac{' + n + '!}{' + (n - r) + '!} \\)</p>';
+            }
+          } else {
+            if (mode === 'combination' || mode === 'both') {
+              html += '<p><strong>Combinations with repetition:</strong> \\( C_{rep}(n,r) = \\binom{n+r-1}{r} \\)</p>';
+              html += '<p>Here: \\( C_{rep}(' + n + ',' + r + ') = \\binom{' + (n + r - 1) + '}{' + r + '} \\)</p>';
+            }
+            if (mode === 'permutation' || mode === 'both') {
+              html += '<p><strong>Permutations with repetition:</strong> \\( P_{rep}(n,r) = n^r \\)</p>';
+              html += '<p>Here: \\( P_{rep}(' + n + ',' + r + ') = ' + n + '^' + r + ' \\)</p>';
+            }
+          }
+          html += '</div>';
+          return html;
+        }
+
+        function calculate() {
+          errorEl.classList.add('hidden');
+          errorEl.textContent = '';
+
+          const nVal = Number(nInput.value);
+          const rVal = Number(rInput.value);
+          const mode = getRadioValue('mode') || 'both';
+          const repetition = getRadioValue('repetition') || 'no';
+
+          if (!Number.isInteger(nVal) || !Number.isInteger(rVal)) {
+            errorEl.textContent = 'Please enter integer values for n and r.';
+            errorEl.classList.remove('hidden');
+            resultsBody.innerHTML = '';
+            return;
+          }
+          if (nVal < 0 || rVal < 0) {
+            errorEl.textContent = 'n and r must be non-negative integers.';
+            errorEl.classList.remove('hidden');
+            resultsBody.innerHTML = '';
+            return;
+          }
+          if (nVal > 500 || rVal > 500) {
+            errorEl.textContent = 'To keep calculations stable, please use n and r ≤ 500.';
+            errorEl.classList.remove('hidden');
+            resultsBody.innerHTML = '';
+            return;
+          }
+          if (repetition === 'no' && rVal > nVal) {
+            errorEl.textContent = 'Without repetition, r cannot be greater than n.';
+            errorEl.classList.remove('hidden');
+            resultsBody.innerHTML = '';
+            return;
+          }
+
+          let html = '<div class="space-y-3">';
+
+          if (mode === 'combination' || mode === 'both') {
+            let comb;
+            if (repetition === 'no') {
+              comb = binomialBigInt(nVal, rVal);
+            } else {
+              comb = binomialBigInt(nVal + rVal - 1, rVal);
+            }
+            const combInfo = formatBigIntSummary(comb);
+            html += '<div>';
+            html += '<h4 class="font-semibold text-gray-900">Combinations (C)</h4>';
+            html += '<p class="text-sm text-gray-700 mt-1"><span class="font-mono">';
+            if (repetition === 'no') {
+              html += 'C(' + nVal + ',' + rVal + ')';
+            } else {
+              html += 'C_rep(' + nVal + ',' + rVal + ')';
+            }
+            html += '</span> = <span class="break-all">' + combInfo.s + '</span></p>';
+            html += '<p class="text-xs text-gray-500">Digits: ' + combInfo.digits + ' &middot; Scientific notation: ' + combInfo.sci + '</p>';
+            html += '</div>';
+          }
+
+          if (mode === 'permutation' || mode === 'both') {
+            let perm;
+            if (repetition === 'no') {
+              const nFact = factorialBigInt(nVal);
+              const nrFact = factorialBigInt(nVal - rVal);
+              perm = nFact / nrFact;
+            } else {
+              perm = powBigInt(nVal, rVal);
+            }
+            const permInfo = formatBigIntSummary(perm);
+            html += '<div>';
+            html += '<h4 class="font-semibold text-gray-900">Permutations (P)</h4>';
+            html += '<p class="text-sm text-gray-700 mt-1"><span class="font-mono">';
+            if (repetition === 'no') {
+              html += 'P(' + nVal + ',' + rVal + ')';
+            } else {
+              html += 'P_rep(' + nVal + ',' + rVal + ')';
+            }
+            html += '</span> = <span class="break-all">' + permInfo.s + '</span></p>';
+            html += '<p class="text-xs text-gray-500">Digits: ' + permInfo.digits + ' &middot; Scientific notation: ' + permInfo.sci + '</p>';
+            html += '</div>';
+          }
+
+          html += buildStepByStep(nVal, rVal, mode, repetition);
+
+          html += '</div>';
+          resultsBody.innerHTML = html;
+
+          if (window.MathJax && window.MathJax.typeset) {
+            window.MathJax.typeset();
+          }
+        }
+
+        btnCalc.addEventListener('click', calculate);
+
+        btnClear.addEventListener('click', function() {
+          nInput.value = 10;
+          rInput.value = 3;
+          const modeRadios = document.querySelectorAll('input[name="mode"]');
+          modeRadios.forEach(r => { r.checked = (r.value === 'both'); });
+          const repRadios = document.querySelectorAll('input[name="repetition"]');
+          repRadios.forEach(r => { r.checked = (r.value === 'no'); });
+          errorEl.textContent = '';
+          errorEl.classList.add('hidden');
+          resultsBody.innerHTML = '<p class="text-gray-500">Enter values for n and r, choose the options above, then click <strong>Calculate</strong> to see combinations and permutations.</p>';
+        });
+      })();
+    </script>
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      (function() {
+        const nInput = document.getElementById('input-n');
+        const rInput = document.getElementById('input-r');
+        const errorEl = document.getElementById('cp-error');
+        const resultsBody = document.getElementById('cp-results-body');
+        const btnCalc = document.getElementById('btn-calc');
+        const btnClear = document.getElementById('btn-clear');
+
+        function getRadioValue(name) {
+          const nodes = document.querySelectorAll('input[name="' + name + '"]');
+          for (const n of nodes) {
+            if (n.checked) return n.value;
+          }
+          return null;
+        }
+
+        function factorialBigInt(k) {
+          let n = BigInt(k);
+          if (n < 0n) return null;
+          let res = 1n;
+          for (let i = 2n; i <= n; i++) {
+            res *= i;
+          }
+          return res;
+        }
+
+        function binomialBigInt(n, r) {
+          n = BigInt(n);
+          r = BigInt(r);
+          if (r < 0n || r > n) return 0n;
+          if (r === 0n || r === n) return 1n;
+          if (r > n - r) r = n - r;
+          let result = 1n;
+          for (let i = 1n; i <= r; i++) {
+            result = result * (n - r + i) / i;
+          }
+          return result;
+        }
+
+        function powBigInt(base, exp) {
+          base = BigInt(base);
+          exp = BigInt(exp);
+          if (exp < 0n) return null;
+          let result = 1n;
+          while (exp > 0n) {
+            if (exp & 1n) result *= base;
+            base *= base;
+            exp >>= 1n;
+          }
+          return result;
+        }
+
+        function formatBigIntSummary(valueBigInt) {
+          const s = valueBigInt.toString();
+          const digits = s.length;
+          let preview = s;
+          if (digits > 20) {
+            preview = s.slice(0, 10) + '…' + s.slice(-5);
+          }
+          let sci = '';
+          if (digits > 1) {
+            const first = s[0];
+            const rest = s.slice(1, Math.min(5, s.length));
+            const mantissa = first + (rest ? '.' + rest : '');
+            const exponent = digits - 1;
+            sci = mantissa + ' × 10^' + exponent;
+          } else {
+            sci = s;
+          }
+          return { s, digits, preview, sci };
+        }
+
+        function buildStepByStep(n, r, mode, repetition) {
+          n = Number(n);
+          r = Number(r);
+          const maxStepN = 50;
+          if (n > maxStepN || r > maxStepN) {
+            return '<p class="text-xs text-gray-500 mt-2">Step-by-step factorial expansion is shown only for n, r ≤ ' + maxStepN + ' to keep the output readable.</p>';
+          }
+
+          let html = '<div class="mt-3 text-xs text-gray-700 space-y-2">';
+          if (repetition === 'no') {
+            if (mode === 'combination' || mode === 'both') {
+              html += '<p><strong>Combinations (no repetition):</strong> \\( C(n,r) = \\frac{n!}{r!(n-r)!} \\)</p>';
+              html += '<p>Here: \\( C(' + n + ',' + r + ') = \\frac{' + n + '!}{' + r + '!\\,' + (n - r) + '!} \\)</p>';
+            }
+            if (mode === 'permutation' || mode === 'both') {
+              html += '<p><strong>Permutations (no repetition):</strong> \\( P(n,r) = \\frac{n!}{(n-r)!} \\)</p>';
+              html += '<p>Here: \\( P(' + n + ',' + r + ') = \\frac{' + n + '!}{' + (n - r) + '!} \\)</p>';
+            }
+          } else {
+            if (mode === 'combination' || mode === 'both') {
+              html += '<p><strong>Combinations with repetition:</strong> \\( C_{rep}(n,r) = \\binom{n+r-1}{r} \\)</p>';
+              html += '<p>Here: \\( C_{rep}(' + n + ',' + r + ') = \\binom{' + (n + r - 1) + '}{' + r + '} \\)</p>';
+            }
+            if (mode === 'permutation' || mode === 'both') {
+              html += '<p><strong>Permutations with repetition:</strong> \\( P_{rep}(n,r) = n^r \\)</p>';
+              html += '<p>Here: \\( P_{rep}(' + n + ',' + r + ') = ' + n + '^' + r + ' \\)</p>';
+            }
+          }
+          html += '</div>';
+          return html;
+        }
+
+        function calculate() {
+          errorEl.classList.add('hidden');
+          errorEl.textContent = '';
+
+          const nVal = Number(nInput.value);
+          const rVal = Number(rInput.value);
+          const mode = getRadioValue('mode') || 'both';
+          const repetition = getRadioValue('repetition') || 'no';
+
+          if (!Number.isInteger(nVal) || !Number.isInteger(rVal)) {
+            errorEl.textContent = 'Please enter integer values for n and r.';
+            errorEl.classList.remove('hidden');
+            resultsBody.innerHTML = '';
+            return;
+          }
+          if (nVal < 0 || rVal < 0) {
+            errorEl.textContent = 'n and r must be non-negative integers.';
+            errorEl.classList.remove('hidden');
+            resultsBody.innerHTML = '';
+            return;
+          }
+          if (nVal > 500 || rVal > 500) {
+            errorEl.textContent = 'To keep calculations stable, please use n and r ≤ 500.';
+            errorEl.classList.remove('hidden');
+            resultsBody.innerHTML = '';
+            return;
+          }
+          if (repetition === 'no' && rVal > nVal) {
+            errorEl.textContent = 'Without repetition, r cannot be greater than n.';
+            errorEl.classList.remove('hidden');
+            resultsBody.innerHTML = '';
+            return;
+          }
+
+          let html = '<div class="space-y-3">';
+
+          if (mode === 'combination' || mode === 'both') {
+            let comb;
+            if (repetition === 'no') {
+              comb = binomialBigInt(nVal, rVal);
+            } else {
+              comb = binomialBigInt(nVal + rVal - 1, rVal);
+            }
+            const combInfo = formatBigIntSummary(comb);
+            html += '<div>';
+            html += '<h4 class="font-semibold text-gray-900">Combinations (C)</h4>';
+            html += '<p class="text-sm text-gray-700 mt-1"><span class="font-mono">';
+            if (repetition === 'no') {
+              html += 'C(' + nVal + ',' + rVal + ')';
+            } else {
+              html += 'C_rep(' + nVal + ',' + rVal + ')';
+            }
+            html += '</span> = <span class="break-all">' + combInfo.s + '</span></p>';
+            html += '<p class="text-xs text-gray-500">Digits: ' + combInfo.digits + ' &middot; Scientific notation: ' + combInfo.sci + '</p>';
+            html += '</div>';
+          }
+
+          if (mode === 'permutation' || mode === 'both') {
+            let perm;
+            if (repetition === 'no') {
+              const nFact = factorialBigInt(nVal);
+              const nrFact = factorialBigInt(nVal - rVal);
+              perm = nFact / nrFact;
+            } else {
+              perm = powBigInt(nVal, rVal);
+            }
+            const permInfo = formatBigIntSummary(perm);
+            html += '<div>';
+            html += '<h4 class="font-semibold text-gray-900">Permutations (P)</h4>';
+            html += '<p class="text-sm text-gray-700 mt-1"><span class="font-mono">';
+            if (repetition === 'no') {
+              html += 'P(' + nVal + ',' + rVal + ')';
+            } else {
+              html += 'P_rep(' + nVal + ',' + rVal + ')';
+            }
+            html += '</span> = <span class="break-all">' + permInfo.s + '</span></p>';
+            html += '<p class="text-xs text-gray-500">Digits: ' + permInfo.digits + ' &middot; Scientific notation: ' + permInfo.sci + '</p>';
+            html += '</div>';
+          }
+
+          html += buildStepByStep(nVal, rVal, mode, repetition);
+
+          html += '</div>';
+          resultsBody.innerHTML = html;
+
+          if (window.MathJax && window.MathJax.typeset) {
+            window.MathJax.typeset();
+          }
+        }
+
+        btnCalc.addEventListener('click', calculate);
+
+        btnClear.addEventListener('click', function() {
+          nInput.value = 10;
+          rInput.value = 3;
+          const modeRadios = document.querySelectorAll('input[name="mode"]');
+          modeRadios.forEach(r => { r.checked = (r.value === 'both'); });
+          const repRadios = document.querySelectorAll('input[name="repetition"]');
+          repRadios.forEach(r => { r.checked = (r.value === 'no'); });
+          errorEl.textContent = '';
+          errorEl.classList.add('hidden');
+          resultsBody.innerHTML = '<p class="text-gray-500">Enter values for n and r, choose the options above, then click <strong>Calculate</strong> to see combinations and permutations.</p>';
+        });
+      })();
+    </script>
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

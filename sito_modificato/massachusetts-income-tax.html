@@ -312,7 +312,7 @@ CalcDomain
 </div>
 </div>
 </header>
-<main class="container" id="main" role="main">
+<main class="container w-full lg:w-2/3" id="main" role="main">
 <nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Massachusetts State Income Tax Calculator</h1>
 <p>
@@ -672,7 +672,404 @@ CalcDomain
 </main>
 <!-- Standard Footer --> 
 <!-- MathJax for LaTeX rendering -->
-<script defer="" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)'], ['</script>
+<script defer="">
+  (function(){
+    'use strict';
+
+    // Currency/percent formatters
+    const fmtUSD = new Intl.NumberFormat(undefined, { style:'currency', currency:'USD', maximumFractionDigits:2 });
+    const fmtPct = new Intl.NumberFormat(undefined, { style:'percent', maximumFractionDigits:2 });
+
+    // DOM elements
+    const els = {
+      income: document.getElementById('income'),
+      pretax: document.getElementById('pretax'),
+      dependents: document.getElementById('dependents'),
+      otherDeduct: document.getElementById('otherDeduct'),
+      threshold: document.getElementById('threshold'),
+      frequency: document.getElementById('frequency'),
+      calcBtn: document.getElementById('calcBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      resPersonal: document.getElementById('res-personal'),
+      resDependent: document.getElementById('res-dependent'),
+      resTaxable: document.getElementById('res-taxable'),
+      resBaseTax: document.getElementById('res-baseTax'),
+      resSurtax: document.getElementById('res-surtax'),
+      resTotalTax: document.getElementById('res-totalTax'),
+      resEffective: document.getElementById('res-effective'),
+      resAfterAnnual: document.getElementById('res-afterAnnual'),
+      resAfterPeriod: document.getElementById('res-afterPeriod'),
+      rowAfterPeriod: document.getElementById('row-after-period'),
+      rowAfterAnnual: document.getElementById('row-after-annual'),
+      errIncome: document.getElementById('err-income'),
+      errDependents: document.getElementById('err-dependents'),
+      tooltipButtons: Array.from(document.querySelectorAll('.tooltip-btn'))
+    };
+
+    // Constants (sourced from DOR instructions; see Methodology)
+    const DEP_EXEMPTION_PER = 1000;
+    const PERSONAL_EXEMPTIONS = {
+      single: 4400,
+      mfs: 4400,
+      mfj: 8800,
+      hoh: 6800
+    };
+    const BASE_RATE = 0.05;
+    const SURTAX_RATE = 0.04;
+
+    function getFilingStatus(){
+      const checked = document.querySelector('input[name="filingStatus"]:checked');
+      return checked ? checked.value : 'single';
+    }
+
+    // Validation helpers
+    function setError(input, errEl, msg){
+      if(!errEl) return;
+      input.setAttribute('aria-invalid', 'true');
+      errEl.textContent = msg;
+    }
+    function clearError(input, errEl){
+      if(!errEl) return;
+      input.setAttribute('aria-invalid', 'false');
+      errEl.textContent = '';
+    }
+    function validateIncome(){
+      const v = Number(els.income.value);
+      if(!Number.isFinite(v) || v < 0){
+        setError(els.income, els.errIncome, 'Please enter a valid non-negative income amount (e.g., 120000).');
+        return false;
+      }
+      clearError(els.income, els.errIncome);
+      return true;
+    }
+    function validateDependents(){
+      const v = Number(els.dependents.value);
+      if(!Number.isInteger(v) || v < 0){
+        setError(els.dependents, els.errDependents, 'Dependents must be a whole number of 0 or greater.');
+        return false;
+      }
+      clearError(els.dependents, els.errDependents);
+      return true;
+    }
+
+    // Calculation
+    function calculate(){
+      if(!validateIncome() | !validateDependents()){
+        // keep results unchanged if validation fails
+        return;
+      }
+      const status = getFilingStatus();
+      const income = Number(els.income.value || 0);
+      const pretax = Math.max(0, Number(els.pretax.value || 0));
+      const other = Math.max(0, Number(els.otherDeduct.value || 0));
+      const deps = Math.max(0, Number(els.dependents.value || 0));
+      const threshold = Math.max(0, Number(els.threshold.value || 0));
+      const period = els.frequency.value;
+
+      const personalEx = PERSONAL_EXEMPTIONS[status] ?? PERSONAL_EXEMPTIONS.single;
+      const dependentEx = deps * DEP_EXEMPTION_PER;
+
+      const taxable = Math.max(0, income - pretax - other - personalEx - dependentEx);
+      const baseTax = taxable * BASE_RATE;
+      const surtax = Math.max(0, taxable - threshold) * SURTAX_RATE;
+      const totalTax = baseTax + surtax;
+
+      const etr = income > 0 ? totalTax / income : 0;
+      const afterAnnual = income - totalTax;
+
+      // period conversion
+      let afterPeriod = null;
+      switch(period){
+        case 'monthly': afterPeriod = afterAnnual/12; break;
+        case 'biweekly': afterPeriod = afterAnnual/26; break;
+        case 'weekly': afterPeriod = afterAnnual/52; break;
+        default: afterPeriod = null;
+      }
+
+      // render
+      els.resPersonal.textContent = fmtUSD.format(personalEx);
+      els.resDependent.textContent = fmtUSD.format(dependentEx);
+      els.resTaxable.textContent = fmtUSD.format(taxable);
+      els.resBaseTax.textContent = fmtUSD.format(baseTax);
+      els.resSurtax.textContent = fmtUSD.format(surtax);
+      els.resTotalTax.textContent = fmtUSD.format(totalTax);
+      els.resEffective.textContent = fmtPct.format(etr);
+      els.resAfterAnnual.textContent = fmtUSD.format(afterAnnual);
+      if(afterPeriod != null){
+        els.rowAfterPeriod.style.display = '';
+        els.resAfterPeriod.textContent = fmtUSD.format(afterPeriod);
+      }else{
+        els.rowAfterPeriod.style.display = 'none';
+      }
+    }
+
+    // Events
+    els.calcBtn.addEventListener('click', calculate);
+    ['change','input'].forEach(evt=>{
+      document.getElementById('ma-tax-calculator').addEventListener(evt, (e)=>{
+        const t = e.target;
+        if(t === els.income) validateIncome();
+        if(t === els.dependents) validateDependents();
+      }, {passive:true});
+    });
+    // On blur inline validation
+    els.income.addEventListener('blur', validateIncome);
+    els.dependents.addEventListener('blur', validateDependents);
+    els.pretax.addEventListener('blur', ()=>{ if(Number(els.pretax.value)<0) els.pretax.value = 0; });
+    els.otherDeduct.addEventListener('blur', ()=>{ if(Number(els.otherDeduct.value)<0) els.otherDeduct.value = 0; });
+    els.threshold.addEventListener('blur', ()=>{ if(Number(els.threshold.value)<0) els.threshold.value = 0; });
+
+    // Tooltips (accessible toggle)
+    els.tooltipButtons.forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = btn.getAttribute('aria-controls');
+        const tip = document.getElementById(id);
+        const open = tip.getAttribute('data-open') === 'true';
+        tip.setAttribute('data-open', String(!open));
+        btn.setAttribute('aria-expanded', String(!open));
+      });
+      btn.addEventListener('keydown', (ev)=>{
+        if(ev.key === 'Enter' || ev.key === ' '){
+          ev.preventDefault(); btn.click();
+        }
+      });
+    });
+
+    // Reset
+    els.resetBtn.addEventListener('click', ()=>{
+      // Restore defaults
+      document.getElementById('fs-single').checked = true;
+      els.income.value = '';
+      els.pretax.value = '0';
+      els.dependents.value = '0';
+      els.otherDeduct.value = '0';
+      els.threshold.value = '1000000';
+      els.frequency.value = 'annual';
+      clearError(els.income, els.errIncome);
+      clearError(els.dependents, els.errDependents);
+      // Collapse tooltips
+      document.querySelectorAll('.tooltip').forEach(t=>t.setAttribute('data-open','false'));
+      document.querySelectorAll('.tooltip-btn').forEach(b=>b.setAttribute('aria-expanded','false'));
+      // Clear results
+      ['res-personal','res-dependent','res-taxable','res-baseTax','res-surtax','res-totalTax','res-afterAnnual','res-afterPeriod'].forEach(id=>{
+        const el = document.getElementById(id);
+        if(el) el.textContent = '$0';
+      });
+      document.getElementById('res-effective').textContent = '0%';
+      document.getElementById('row-after-period').style.display = 'none';
+      // Move focus back to first input for accessibility
+      els.income.focus();
+    });
+
+    // Initial compute when the page is ready if values are present
+    window.addEventListener('DOMContentLoaded', ()=>{ calculate(); });
+  })();
+  </script>
+
+<script defer="" src="/assets/js/mobile-menu.js"></script>
+<script defer="" src="/assets/js/page-enhancements.js"></script>
+</body></html>, '</script>
+<script defer="">
+  (function(){
+    'use strict';
+
+    // Currency/percent formatters
+    const fmtUSD = new Intl.NumberFormat(undefined, { style:'currency', currency:'USD', maximumFractionDigits:2 });
+    const fmtPct = new Intl.NumberFormat(undefined, { style:'percent', maximumFractionDigits:2 });
+
+    // DOM elements
+    const els = {
+      income: document.getElementById('income'),
+      pretax: document.getElementById('pretax'),
+      dependents: document.getElementById('dependents'),
+      otherDeduct: document.getElementById('otherDeduct'),
+      threshold: document.getElementById('threshold'),
+      frequency: document.getElementById('frequency'),
+      calcBtn: document.getElementById('calcBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      resPersonal: document.getElementById('res-personal'),
+      resDependent: document.getElementById('res-dependent'),
+      resTaxable: document.getElementById('res-taxable'),
+      resBaseTax: document.getElementById('res-baseTax'),
+      resSurtax: document.getElementById('res-surtax'),
+      resTotalTax: document.getElementById('res-totalTax'),
+      resEffective: document.getElementById('res-effective'),
+      resAfterAnnual: document.getElementById('res-afterAnnual'),
+      resAfterPeriod: document.getElementById('res-afterPeriod'),
+      rowAfterPeriod: document.getElementById('row-after-period'),
+      rowAfterAnnual: document.getElementById('row-after-annual'),
+      errIncome: document.getElementById('err-income'),
+      errDependents: document.getElementById('err-dependents'),
+      tooltipButtons: Array.from(document.querySelectorAll('.tooltip-btn'))
+    };
+
+    // Constants (sourced from DOR instructions; see Methodology)
+    const DEP_EXEMPTION_PER = 1000;
+    const PERSONAL_EXEMPTIONS = {
+      single: 4400,
+      mfs: 4400,
+      mfj: 8800,
+      hoh: 6800
+    };
+    const BASE_RATE = 0.05;
+    const SURTAX_RATE = 0.04;
+
+    function getFilingStatus(){
+      const checked = document.querySelector('input[name="filingStatus"]:checked');
+      return checked ? checked.value : 'single';
+    }
+
+    // Validation helpers
+    function setError(input, errEl, msg){
+      if(!errEl) return;
+      input.setAttribute('aria-invalid', 'true');
+      errEl.textContent = msg;
+    }
+    function clearError(input, errEl){
+      if(!errEl) return;
+      input.setAttribute('aria-invalid', 'false');
+      errEl.textContent = '';
+    }
+    function validateIncome(){
+      const v = Number(els.income.value);
+      if(!Number.isFinite(v) || v < 0){
+        setError(els.income, els.errIncome, 'Please enter a valid non-negative income amount (e.g., 120000).');
+        return false;
+      }
+      clearError(els.income, els.errIncome);
+      return true;
+    }
+    function validateDependents(){
+      const v = Number(els.dependents.value);
+      if(!Number.isInteger(v) || v < 0){
+        setError(els.dependents, els.errDependents, 'Dependents must be a whole number of 0 or greater.');
+        return false;
+      }
+      clearError(els.dependents, els.errDependents);
+      return true;
+    }
+
+    // Calculation
+    function calculate(){
+      if(!validateIncome() | !validateDependents()){
+        // keep results unchanged if validation fails
+        return;
+      }
+      const status = getFilingStatus();
+      const income = Number(els.income.value || 0);
+      const pretax = Math.max(0, Number(els.pretax.value || 0));
+      const other = Math.max(0, Number(els.otherDeduct.value || 0));
+      const deps = Math.max(0, Number(els.dependents.value || 0));
+      const threshold = Math.max(0, Number(els.threshold.value || 0));
+      const period = els.frequency.value;
+
+      const personalEx = PERSONAL_EXEMPTIONS[status] ?? PERSONAL_EXEMPTIONS.single;
+      const dependentEx = deps * DEP_EXEMPTION_PER;
+
+      const taxable = Math.max(0, income - pretax - other - personalEx - dependentEx);
+      const baseTax = taxable * BASE_RATE;
+      const surtax = Math.max(0, taxable - threshold) * SURTAX_RATE;
+      const totalTax = baseTax + surtax;
+
+      const etr = income > 0 ? totalTax / income : 0;
+      const afterAnnual = income - totalTax;
+
+      // period conversion
+      let afterPeriod = null;
+      switch(period){
+        case 'monthly': afterPeriod = afterAnnual/12; break;
+        case 'biweekly': afterPeriod = afterAnnual/26; break;
+        case 'weekly': afterPeriod = afterAnnual/52; break;
+        default: afterPeriod = null;
+      }
+
+      // render
+      els.resPersonal.textContent = fmtUSD.format(personalEx);
+      els.resDependent.textContent = fmtUSD.format(dependentEx);
+      els.resTaxable.textContent = fmtUSD.format(taxable);
+      els.resBaseTax.textContent = fmtUSD.format(baseTax);
+      els.resSurtax.textContent = fmtUSD.format(surtax);
+      els.resTotalTax.textContent = fmtUSD.format(totalTax);
+      els.resEffective.textContent = fmtPct.format(etr);
+      els.resAfterAnnual.textContent = fmtUSD.format(afterAnnual);
+      if(afterPeriod != null){
+        els.rowAfterPeriod.style.display = '';
+        els.resAfterPeriod.textContent = fmtUSD.format(afterPeriod);
+      }else{
+        els.rowAfterPeriod.style.display = 'none';
+      }
+    }
+
+    // Events
+    els.calcBtn.addEventListener('click', calculate);
+    ['change','input'].forEach(evt=>{
+      document.getElementById('ma-tax-calculator').addEventListener(evt, (e)=>{
+        const t = e.target;
+        if(t === els.income) validateIncome();
+        if(t === els.dependents) validateDependents();
+      }, {passive:true});
+    });
+    // On blur inline validation
+    els.income.addEventListener('blur', validateIncome);
+    els.dependents.addEventListener('blur', validateDependents);
+    els.pretax.addEventListener('blur', ()=>{ if(Number(els.pretax.value)<0) els.pretax.value = 0; });
+    els.otherDeduct.addEventListener('blur', ()=>{ if(Number(els.otherDeduct.value)<0) els.otherDeduct.value = 0; });
+    els.threshold.addEventListener('blur', ()=>{ if(Number(els.threshold.value)<0) els.threshold.value = 0; });
+
+    // Tooltips (accessible toggle)
+    els.tooltipButtons.forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = btn.getAttribute('aria-controls');
+        const tip = document.getElementById(id);
+        const open = tip.getAttribute('data-open') === 'true';
+        tip.setAttribute('data-open', String(!open));
+        btn.setAttribute('aria-expanded', String(!open));
+      });
+      btn.addEventListener('keydown', (ev)=>{
+        if(ev.key === 'Enter' || ev.key === ' '){
+          ev.preventDefault(); btn.click();
+        }
+      });
+    });
+
+    // Reset
+    els.resetBtn.addEventListener('click', ()=>{
+      // Restore defaults
+      document.getElementById('fs-single').checked = true;
+      els.income.value = '';
+      els.pretax.value = '0';
+      els.dependents.value = '0';
+      els.otherDeduct.value = '0';
+      els.threshold.value = '1000000';
+      els.frequency.value = 'annual';
+      clearError(els.income, els.errIncome);
+      clearError(els.dependents, els.errDependents);
+      // Collapse tooltips
+      document.querySelectorAll('.tooltip').forEach(t=>t.setAttribute('data-open','false'));
+      document.querySelectorAll('.tooltip-btn').forEach(b=>b.setAttribute('aria-expanded','false'));
+      // Clear results
+      ['res-personal','res-dependent','res-taxable','res-baseTax','res-surtax','res-totalTax','res-afterAnnual','res-afterPeriod'].forEach(id=>{
+        const el = document.getElementById(id);
+        if(el) el.textContent = '$0';
+      });
+      document.getElementById('res-effective').textContent = '0%';
+      document.getElementById('row-after-period').style.display = 'none';
+      // Move focus back to first input for accessibility
+      els.income.focus();
+    });
+
+    // Initial compute when the page is ready if values are present
+    window.addEventListener('DOMContentLoaded', ()=>{ calculate(); });
+  })();
+  </script>
+
+<script defer="" src="/assets/js/mobile-menu.js"></script>
+<script defer="" src="/assets/js/page-enhancements.js"></script>
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };
+</script>
+<script defer="" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <script defer="">
   (function(){
     'use strict';

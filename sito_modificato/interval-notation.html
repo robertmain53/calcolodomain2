@@ -41,10 +41,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -194,8 +190,6 @@
 </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
-
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
 
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
@@ -678,7 +672,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -745,14 +739,756 @@
 
 
 
+
     
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
     
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      // Tab switching
+      (function() {
+        const tabs = {
+          inequality: {
+            tab: document.getElementById('tab-inequality'),
+            panel: document.getElementById('panel-inequality')
+          },
+          interval: {
+            tab: document.getElementById('tab-interval'),
+            panel: document.getElementById('panel-interval')
+          },
+          endpoints: {
+            tab: document.getElementById('tab-endpoints'),
+            panel: document.getElementById('panel-endpoints')
+          }
+        };
+
+        function activateTab(name) {
+          Object.keys(tabs).forEach(key => {
+            const { tab, panel } = tabs[key];
+            const isActive = key === name;
+            tab.classList.toggle('tab-active', isActive);
+            tab.classList.toggle('tab-inactive', !isActive);
+            tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            panel.classList.toggle('hidden', !isActive);
+          });
+        }
+
+        tabs.inequality.tab.addEventListener('click', () => activateTab('inequality'));
+        tabs.interval.tab.addEventListener('click', () => activateTab('interval'));
+        tabs.endpoints.tab.addEventListener('click', () => activateTab('endpoints'));
+      })();
+
+      // Parsing helpers
+      function parseNumberLike(value) {
+        if (!value || value.trim() === '') return null;
+        const v = value.trim().toLowerCase();
+        if (v === 'inf' || v === '+inf' || v === 'infinity' || v === '+infinity' || v === '∞' || v === '+∞') {
+          return Infinity;
+        }
+        if (v === '-inf' || v === '-infinity' || v === '-∞') {
+          return -Infinity;
+        }
+        const num = Number(v.replace(',', '.'));
+        return isNaN(num) ? NaN : num;
+      }
+
+      function formatEndpoint(x) {
+        if (x === Infinity) return '∞';
+        if (x === -Infinity) return '−∞';
+        if (Number.isInteger(x)) return String(x);
+        return String(x);
+      }
+
+      function intervalToInequality(a, b, leftClosed, rightClosed) {
+        const parts = [];
+        if (a !== -Infinity && b !== Infinity) {
+          const leftOp = leftClosed ? '≤' : '<';
+          const rightOp = rightClosed ? '≤' : '<';
+          parts.push(formatEndpoint(a) + ' ' + leftOp + ' x ' + rightOp + ' ' + formatEndpoint(b));
+        } else if (a === -Infinity && b !== Infinity) {
+          const op = rightClosed ? '≤' : '<';
+          parts.push('x ' + op + ' ' + formatEndpoint(b));
+        } else if (a !== -Infinity && b === Infinity) {
+          const op = leftClosed ? '≥' : '>';
+          parts.push('x ' + op + ' ' + formatEndpoint(a));
+        } else {
+          parts.push('x ∈ ℝ');
+        }
+        return parts.join(' and ');
+      }
+
+      function intervalToSetBuilder(a, b, leftClosed, rightClosed) {
+        const inequality = intervalToInequality(a, b, leftClosed, rightClosed);
+        return '{ x ∈ ℝ | ' + inequality + ' }';
+      }
+
+      function describeInterval(a, b, leftClosed, rightClosed) {
+        let desc = 'All real numbers x ';
+        if (a === -Infinity && b === Infinity) {
+          return 'All real numbers.';
+        }
+        if (a === -Infinity) {
+          desc += rightClosed ? 'less than or equal to ' : 'strictly less than ';
+          desc += formatEndpoint(b) + '.';
+          return desc;
+        }
+        if (b === Infinity) {
+          desc += leftClosed ? 'greater than or equal to ' : 'strictly greater than ';
+          desc += formatEndpoint(a) + '.';
+          return desc;
+        }
+        // bounded
+        const leftPhrase = leftClosed ? 'greater than or equal to ' : 'strictly greater than ';
+        const rightPhrase = rightClosed ? 'less than or equal to ' : 'strictly less than ';
+        desc += 'that are ' + leftPhrase + formatEndpoint(a) + ' and ' + rightPhrase + formatEndpoint(b) + '.';
+        return desc;
+      }
+
+      function updateResults(a, b, leftClosed, rightClosed) {
+        if (!(typeof a === 'number') || !(typeof b === 'number') || isNaN(a) || isNaN(b) || a > b) {
+          document.getElementById('intervalResult').textContent = 'Invalid or unsupported input.';
+          document.getElementById('inequalityResult').textContent = '—';
+          document.getElementById('setBuilderResult').textContent = '—';
+          document.getElementById('descriptionResult').textContent = 'Please check your input. The lower endpoint must be ≤ the upper endpoint.';
+          drawNumberLine(null, null, false, false);
+          return;
+        }
+
+        const leftSymbol = leftClosed ? '[' : '(';
+        const rightSymbol = rightClosed ? ']' : ')';
+        const intervalStr = leftSymbol + formatEndpoint(a) + ', ' + formatEndpoint(b) + rightSymbol;
+        const inequalityStr = intervalToInequality(a, b, leftClosed, rightClosed);
+        const setBuilderStr = intervalToSetBuilder(a, b, leftClosed, rightClosed);
+        const descriptionStr = describeInterval(a, b, leftClosed, rightClosed);
+
+        document.getElementById('intervalResult').textContent = intervalStr;
+        document.getElementById('inequalityResult').textContent = inequalityStr;
+        document.getElementById('setBuilderResult').textContent = setBuilderStr;
+        document.getElementById('descriptionResult').textContent = descriptionStr;
+
+        drawNumberLine(a, b, leftClosed, rightClosed);
+      }
+
+      // Inequality parser
+      function parseInequality(input) {
+        let s = input.replace(/\s+/g, ' ').trim();
+        if (!s) return null;
+
+        // Normalize symbols
+        s = s.replace(/≤/g, '<=').replace(/≥/g, '>=');
+
+        // Try double inequality: a < x < b, a <= x < b, etc.
+        const doubleRegex = /^(-?\d*\.?\d+)\s*(<|<=)\s*x\s*(<|<=)\s*(-?\d*\.?\d+)$/i;
+        let m = s.match(doubleRegex);
+        if (m) {
+          const a = Number(m[1]);
+          const leftOp = m[2];
+          const rightOp = m[3];
+          const b = Number(m[4]);
+          const leftClosed = leftOp === '<='; // a <= x ...
+          const rightClosed = rightOp === '<='; // ... x <= b
+          return { a, b, leftClosed, rightClosed };
+        }
+
+        // Single-sided: x > a, x >= a, x < b, x <= b
+        const singleRegex = /^x\s*(<|<=|>|>=)\s*(-?\d*\.?\d+)$/i;
+        m = s.match(singleRegex);
+        if (m) {
+          const op = m[1];
+          const c = Number(m[2]);
+          if (op === '<') {
+            return { a: -Infinity, b: c, leftClosed: false, rightClosed: false };
+          } else if (op === '<=') {
+            return { a: -Infinity, b: c, leftClosed: false, rightClosed: true };
+          } else if (op === '>') {
+            return { a: c, b: Infinity, leftClosed: false, rightClosed: false };
+          } else if (op === '>=') {
+            return { a: c, b: Infinity, leftClosed: true, rightClosed: false };
+          }
+        }
+
+        return null;
+      }
+
+      // Interval string parser
+      function parseIntervalString(input) {
+        let s = input.trim();
+        if (!s) return null;
+
+        // Replace different minus signs
+        s = s.replace(/−/g, '-');
+
+        const m = s.match(/^(\(|\[)\s*([^,]+)\s*,\s*([^)\]]+)\s*(\)|\])$/);
+        if (!m) return null;
+
+        const leftBracket = m[1];
+        const leftClosed = leftBracket === '[';
+        const rightBracket = m[4];
+        const rightClosed = rightBracket === ']';
+
+        const aRaw = m[2].trim();
+        const bRaw = m[3].trim();
+
+        const aParsed = parseNumberLike(aRaw);
+        const bParsed = parseNumberLike(bRaw);
+
+        if (aParsed === null || bParsed === null || isNaN(aParsed) || isNaN(bParsed)) {
+          return null;
+        }
+
+        return {
+          a: aParsed,
+          b: bParsed,
+          leftClosed,
+          rightClosed
+        };
+      }
+
+      // Number line drawing (SVG)
+      function drawNumberLine(a, b, leftClosed, rightClosed) {
+        const svg = document.getElementById('intervalNumberLine');
+        while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+        const width = 400;
+        const height = 80;
+        svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+
+        const lineY = 40;
+
+        // Base line
+        const baseLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        baseLine.setAttribute('x1', 20);
+        baseLine.setAttribute('y1', lineY);
+        baseLine.setAttribute('x2', width - 20);
+        baseLine.setAttribute('y2', lineY);
+        baseLine.setAttribute('stroke', '#9ca3af');
+        baseLine.setAttribute('stroke-width', '2');
+        svg.appendChild(baseLine);
+
+        if (a == null || b == null || isNaN(a) || isNaN(b) || a > b) {
+          // Draw a simple baseline with no interval
+          return;
+        }
+
+        // Determine finite plotting range
+        let min = a, max = b;
+        if (a === -Infinity && b === Infinity) {
+          min = -5;
+          max = 5;
+        } else if (a === -Infinity) {
+          max = (b === Infinity || isNaN(b)) ? 5 : b;
+          min = max - 10;
+        } else if (b === Infinity) {
+          min = a;
+          max = min + 10;
+        } else {
+          const padding = (b - a) * 0.2 || 1;
+          min = a - padding;
+          max = b + padding;
+        }
+
+        if (min === max) {
+          min -= 1;
+          max += 1;
+        }
+
+        function xScale(v) {
+          const x1 = 30;
+          const x2 = width - 30;
+          return x1 + (x2 - x1) * ((v - min) / (max - min));
+        }
+
+        const aPos = (a === -Infinity) ? 30 : xScale(a);
+        const bPos = (b === Infinity) ? width - 30 : xScale(b);
+
+        // Interval segment
+        const seg = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        seg.setAttribute('x1', aPos);
+        seg.setAttribute('y1', lineY);
+        seg.setAttribute('x2', bPos);
+        seg.setAttribute('y2', lineY);
+        seg.setAttribute('stroke', '#2563eb');
+        seg.setAttribute('stroke-width', '4');
+        svg.appendChild(seg);
+
+        // Endpoints
+        function drawEndpoint(x, closed) {
+          const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          circle.setAttribute('cx', x);
+          circle.setAttribute('cy', lineY);
+          circle.setAttribute('r', 6);
+          circle.setAttribute('stroke', '#2563eb');
+          circle.setAttribute('stroke-width', '2');
+          circle.setAttribute('fill', closed ? '#2563eb' : '#ffffff');
+          svg.appendChild(circle);
+        }
+
+        if (a !== -Infinity) {
+          drawEndpoint(aPos, leftClosed);
+        }
+        if (b !== Infinity) {
+          drawEndpoint(bPos, rightClosed);
+        }
+
+        // Tick labels (approximate)
+        const tickValues = [];
+        tickValues.push(a);
+        tickValues.push(b);
+        const mid = (a + b) / 2;
+        if (isFinite(mid)) tickValues.push(mid);
+
+        const uniqueTicks = Array.from(new Set(tickValues.filter(v => isFinite(v)))).slice(0, 3);
+
+        uniqueTicks.forEach(v => {
+          const x = xScale(v);
+          const tick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          tick.setAttribute('x1', x);
+          tick.setAttribute('y1', lineY - 6);
+          tick.setAttribute('x2', x);
+          tick.setAttribute('y2', lineY + 6);
+          tick.setAttribute('stroke', '#4b5563');
+          tick.setAttribute('stroke-width', '1.5');
+          svg.appendChild(tick);
+
+          const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          label.setAttribute('x', x);
+          label.setAttribute('y', lineY + 20);
+          label.setAttribute('text-anchor', 'middle');
+          label.setAttribute('font-size', '10');
+          label.setAttribute('fill', '#374151');
+          label.textContent = formatEndpoint(v);
+          svg.appendChild(label);
+        });
+      }
+
+      // Button handlers
+      document.getElementById('btnFromInequality').addEventListener('click', function () {
+        const raw = document.getElementById('ineqInput').value;
+        const parsed = parseInequality(raw);
+        if (!parsed) {
+          updateResults(NaN, NaN, false, false);
+          return;
+        }
+        updateResults(parsed.a, parsed.b, parsed.leftClosed, parsed.rightClosed);
+      });
+
+      document.getElementById('btnFromInterval').addEventListener('click', function () {
+        const raw = document.getElementById('intervalInput').value;
+        const parsed = parseIntervalString(raw);
+        if (!parsed) {
+          updateResults(NaN, NaN, false, false);
+          return;
+        }
+        updateResults(parsed.a, parsed.b, parsed.leftClosed, parsed.rightClosed);
+      });
+
+      document.getElementById('btnFromEndpoints').addEventListener('click', function () {
+        const leftVal = document.getElementById('leftEndpoint').value;
+        const rightVal = document.getElementById('rightEndpoint').value;
+        const leftType = document.getElementById('leftType').value;
+        const rightType = document.getElementById('rightType').value;
+
+        const a = parseNumberLike(leftVal === '' ? '-inf' : leftVal);
+        const b = parseNumberLike(rightVal === '' ? 'inf' : rightVal);
+
+        if (a === null || b === null || isNaN(a) || isNaN(b)) {
+          updateResults(NaN, NaN, false, false);
+          return;
+        }
+
+        const leftClosed = (leftType === 'closed') && a !== -Infinity;
+        const rightClosed = (rightType === 'closed') && b !== Infinity;
+
+        updateResults(a, b, leftClosed, rightClosed);
+      });
+
+      // Initialize empty number line
+      drawNumberLine(null, null, false, false);
+    </script>
+
+
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      // Tab switching
+      (function() {
+        const tabs = {
+          inequality: {
+            tab: document.getElementById('tab-inequality'),
+            panel: document.getElementById('panel-inequality')
+          },
+          interval: {
+            tab: document.getElementById('tab-interval'),
+            panel: document.getElementById('panel-interval')
+          },
+          endpoints: {
+            tab: document.getElementById('tab-endpoints'),
+            panel: document.getElementById('panel-endpoints')
+          }
+        };
+
+        function activateTab(name) {
+          Object.keys(tabs).forEach(key => {
+            const { tab, panel } = tabs[key];
+            const isActive = key === name;
+            tab.classList.toggle('tab-active', isActive);
+            tab.classList.toggle('tab-inactive', !isActive);
+            tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            panel.classList.toggle('hidden', !isActive);
+          });
+        }
+
+        tabs.inequality.tab.addEventListener('click', () => activateTab('inequality'));
+        tabs.interval.tab.addEventListener('click', () => activateTab('interval'));
+        tabs.endpoints.tab.addEventListener('click', () => activateTab('endpoints'));
+      })();
+
+      // Parsing helpers
+      function parseNumberLike(value) {
+        if (!value || value.trim() === '') return null;
+        const v = value.trim().toLowerCase();
+        if (v === 'inf' || v === '+inf' || v === 'infinity' || v === '+infinity' || v === '∞' || v === '+∞') {
+          return Infinity;
+        }
+        if (v === '-inf' || v === '-infinity' || v === '-∞') {
+          return -Infinity;
+        }
+        const num = Number(v.replace(',', '.'));
+        return isNaN(num) ? NaN : num;
+      }
+
+      function formatEndpoint(x) {
+        if (x === Infinity) return '∞';
+        if (x === -Infinity) return '−∞';
+        if (Number.isInteger(x)) return String(x);
+        return String(x);
+      }
+
+      function intervalToInequality(a, b, leftClosed, rightClosed) {
+        const parts = [];
+        if (a !== -Infinity && b !== Infinity) {
+          const leftOp = leftClosed ? '≤' : '<';
+          const rightOp = rightClosed ? '≤' : '<';
+          parts.push(formatEndpoint(a) + ' ' + leftOp + ' x ' + rightOp + ' ' + formatEndpoint(b));
+        } else if (a === -Infinity && b !== Infinity) {
+          const op = rightClosed ? '≤' : '<';
+          parts.push('x ' + op + ' ' + formatEndpoint(b));
+        } else if (a !== -Infinity && b === Infinity) {
+          const op = leftClosed ? '≥' : '>';
+          parts.push('x ' + op + ' ' + formatEndpoint(a));
+        } else {
+          parts.push('x ∈ ℝ');
+        }
+        return parts.join(' and ');
+      }
+
+      function intervalToSetBuilder(a, b, leftClosed, rightClosed) {
+        const inequality = intervalToInequality(a, b, leftClosed, rightClosed);
+        return '{ x ∈ ℝ | ' + inequality + ' }';
+      }
+
+      function describeInterval(a, b, leftClosed, rightClosed) {
+        let desc = 'All real numbers x ';
+        if (a === -Infinity && b === Infinity) {
+          return 'All real numbers.';
+        }
+        if (a === -Infinity) {
+          desc += rightClosed ? 'less than or equal to ' : 'strictly less than ';
+          desc += formatEndpoint(b) + '.';
+          return desc;
+        }
+        if (b === Infinity) {
+          desc += leftClosed ? 'greater than or equal to ' : 'strictly greater than ';
+          desc += formatEndpoint(a) + '.';
+          return desc;
+        }
+        // bounded
+        const leftPhrase = leftClosed ? 'greater than or equal to ' : 'strictly greater than ';
+        const rightPhrase = rightClosed ? 'less than or equal to ' : 'strictly less than ';
+        desc += 'that are ' + leftPhrase + formatEndpoint(a) + ' and ' + rightPhrase + formatEndpoint(b) + '.';
+        return desc;
+      }
+
+      function updateResults(a, b, leftClosed, rightClosed) {
+        if (!(typeof a === 'number') || !(typeof b === 'number') || isNaN(a) || isNaN(b) || a > b) {
+          document.getElementById('intervalResult').textContent = 'Invalid or unsupported input.';
+          document.getElementById('inequalityResult').textContent = '—';
+          document.getElementById('setBuilderResult').textContent = '—';
+          document.getElementById('descriptionResult').textContent = 'Please check your input. The lower endpoint must be ≤ the upper endpoint.';
+          drawNumberLine(null, null, false, false);
+          return;
+        }
+
+        const leftSymbol = leftClosed ? '[' : '(';
+        const rightSymbol = rightClosed ? ']' : ')';
+        const intervalStr = leftSymbol + formatEndpoint(a) + ', ' + formatEndpoint(b) + rightSymbol;
+        const inequalityStr = intervalToInequality(a, b, leftClosed, rightClosed);
+        const setBuilderStr = intervalToSetBuilder(a, b, leftClosed, rightClosed);
+        const descriptionStr = describeInterval(a, b, leftClosed, rightClosed);
+
+        document.getElementById('intervalResult').textContent = intervalStr;
+        document.getElementById('inequalityResult').textContent = inequalityStr;
+        document.getElementById('setBuilderResult').textContent = setBuilderStr;
+        document.getElementById('descriptionResult').textContent = descriptionStr;
+
+        drawNumberLine(a, b, leftClosed, rightClosed);
+      }
+
+      // Inequality parser
+      function parseInequality(input) {
+        let s = input.replace(/\s+/g, ' ').trim();
+        if (!s) return null;
+
+        // Normalize symbols
+        s = s.replace(/≤/g, '<=').replace(/≥/g, '>=');
+
+        // Try double inequality: a < x < b, a <= x < b, etc.
+        const doubleRegex = /^(-?\d*\.?\d+)\s*(<|<=)\s*x\s*(<|<=)\s*(-?\d*\.?\d+)$/i;
+        let m = s.match(doubleRegex);
+        if (m) {
+          const a = Number(m[1]);
+          const leftOp = m[2];
+          const rightOp = m[3];
+          const b = Number(m[4]);
+          const leftClosed = leftOp === '<='; // a <= x ...
+          const rightClosed = rightOp === '<='; // ... x <= b
+          return { a, b, leftClosed, rightClosed };
+        }
+
+        // Single-sided: x > a, x >= a, x < b, x <= b
+        const singleRegex = /^x\s*(<|<=|>|>=)\s*(-?\d*\.?\d+)$/i;
+        m = s.match(singleRegex);
+        if (m) {
+          const op = m[1];
+          const c = Number(m[2]);
+          if (op === '<') {
+            return { a: -Infinity, b: c, leftClosed: false, rightClosed: false };
+          } else if (op === '<=') {
+            return { a: -Infinity, b: c, leftClosed: false, rightClosed: true };
+          } else if (op === '>') {
+            return { a: c, b: Infinity, leftClosed: false, rightClosed: false };
+          } else if (op === '>=') {
+            return { a: c, b: Infinity, leftClosed: true, rightClosed: false };
+          }
+        }
+
+        return null;
+      }
+
+      // Interval string parser
+      function parseIntervalString(input) {
+        let s = input.trim();
+        if (!s) return null;
+
+        // Replace different minus signs
+        s = s.replace(/−/g, '-');
+
+        const m = s.match(/^(\(|\[)\s*([^,]+)\s*,\s*([^)\]]+)\s*(\)|\])$/);
+        if (!m) return null;
+
+        const leftBracket = m[1];
+        const leftClosed = leftBracket === '[';
+        const rightBracket = m[4];
+        const rightClosed = rightBracket === ']';
+
+        const aRaw = m[2].trim();
+        const bRaw = m[3].trim();
+
+        const aParsed = parseNumberLike(aRaw);
+        const bParsed = parseNumberLike(bRaw);
+
+        if (aParsed === null || bParsed === null || isNaN(aParsed) || isNaN(bParsed)) {
+          return null;
+        }
+
+        return {
+          a: aParsed,
+          b: bParsed,
+          leftClosed,
+          rightClosed
+        };
+      }
+
+      // Number line drawing (SVG)
+      function drawNumberLine(a, b, leftClosed, rightClosed) {
+        const svg = document.getElementById('intervalNumberLine');
+        while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+        const width = 400;
+        const height = 80;
+        svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+
+        const lineY = 40;
+
+        // Base line
+        const baseLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        baseLine.setAttribute('x1', 20);
+        baseLine.setAttribute('y1', lineY);
+        baseLine.setAttribute('x2', width - 20);
+        baseLine.setAttribute('y2', lineY);
+        baseLine.setAttribute('stroke', '#9ca3af');
+        baseLine.setAttribute('stroke-width', '2');
+        svg.appendChild(baseLine);
+
+        if (a == null || b == null || isNaN(a) || isNaN(b) || a > b) {
+          // Draw a simple baseline with no interval
+          return;
+        }
+
+        // Determine finite plotting range
+        let min = a, max = b;
+        if (a === -Infinity && b === Infinity) {
+          min = -5;
+          max = 5;
+        } else if (a === -Infinity) {
+          max = (b === Infinity || isNaN(b)) ? 5 : b;
+          min = max - 10;
+        } else if (b === Infinity) {
+          min = a;
+          max = min + 10;
+        } else {
+          const padding = (b - a) * 0.2 || 1;
+          min = a - padding;
+          max = b + padding;
+        }
+
+        if (min === max) {
+          min -= 1;
+          max += 1;
+        }
+
+        function xScale(v) {
+          const x1 = 30;
+          const x2 = width - 30;
+          return x1 + (x2 - x1) * ((v - min) / (max - min));
+        }
+
+        const aPos = (a === -Infinity) ? 30 : xScale(a);
+        const bPos = (b === Infinity) ? width - 30 : xScale(b);
+
+        // Interval segment
+        const seg = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        seg.setAttribute('x1', aPos);
+        seg.setAttribute('y1', lineY);
+        seg.setAttribute('x2', bPos);
+        seg.setAttribute('y2', lineY);
+        seg.setAttribute('stroke', '#2563eb');
+        seg.setAttribute('stroke-width', '4');
+        svg.appendChild(seg);
+
+        // Endpoints
+        function drawEndpoint(x, closed) {
+          const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          circle.setAttribute('cx', x);
+          circle.setAttribute('cy', lineY);
+          circle.setAttribute('r', 6);
+          circle.setAttribute('stroke', '#2563eb');
+          circle.setAttribute('stroke-width', '2');
+          circle.setAttribute('fill', closed ? '#2563eb' : '#ffffff');
+          svg.appendChild(circle);
+        }
+
+        if (a !== -Infinity) {
+          drawEndpoint(aPos, leftClosed);
+        }
+        if (b !== Infinity) {
+          drawEndpoint(bPos, rightClosed);
+        }
+
+        // Tick labels (approximate)
+        const tickValues = [];
+        tickValues.push(a);
+        tickValues.push(b);
+        const mid = (a + b) / 2;
+        if (isFinite(mid)) tickValues.push(mid);
+
+        const uniqueTicks = Array.from(new Set(tickValues.filter(v => isFinite(v)))).slice(0, 3);
+
+        uniqueTicks.forEach(v => {
+          const x = xScale(v);
+          const tick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          tick.setAttribute('x1', x);
+          tick.setAttribute('y1', lineY - 6);
+          tick.setAttribute('x2', x);
+          tick.setAttribute('y2', lineY + 6);
+          tick.setAttribute('stroke', '#4b5563');
+          tick.setAttribute('stroke-width', '1.5');
+          svg.appendChild(tick);
+
+          const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          label.setAttribute('x', x);
+          label.setAttribute('y', lineY + 20);
+          label.setAttribute('text-anchor', 'middle');
+          label.setAttribute('font-size', '10');
+          label.setAttribute('fill', '#374151');
+          label.textContent = formatEndpoint(v);
+          svg.appendChild(label);
+        });
+      }
+
+      // Button handlers
+      document.getElementById('btnFromInequality').addEventListener('click', function () {
+        const raw = document.getElementById('ineqInput').value;
+        const parsed = parseInequality(raw);
+        if (!parsed) {
+          updateResults(NaN, NaN, false, false);
+          return;
+        }
+        updateResults(parsed.a, parsed.b, parsed.leftClosed, parsed.rightClosed);
+      });
+
+      document.getElementById('btnFromInterval').addEventListener('click', function () {
+        const raw = document.getElementById('intervalInput').value;
+        const parsed = parseIntervalString(raw);
+        if (!parsed) {
+          updateResults(NaN, NaN, false, false);
+          return;
+        }
+        updateResults(parsed.a, parsed.b, parsed.leftClosed, parsed.rightClosed);
+      });
+
+      document.getElementById('btnFromEndpoints').addEventListener('click', function () {
+        const leftVal = document.getElementById('leftEndpoint').value;
+        const rightVal = document.getElementById('rightEndpoint').value;
+        const leftType = document.getElementById('leftType').value;
+        const rightType = document.getElementById('rightType').value;
+
+        const a = parseNumberLike(leftVal === '' ? '-inf' : leftVal);
+        const b = parseNumberLike(rightVal === '' ? 'inf' : rightVal);
+
+        if (a === null || b === null || isNaN(a) || isNaN(b)) {
+          updateResults(NaN, NaN, false, false);
+          return;
+        }
+
+        const leftClosed = (leftType === 'closed') && a !== -Infinity;
+        const rightClosed = (rightType === 'closed') && b !== Infinity;
+
+        updateResults(a, b, leftClosed, rightClosed);
+      });
+
+      // Initialize empty number line
+      drawNumberLine(null, null, false, false);
+    </script>
+
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

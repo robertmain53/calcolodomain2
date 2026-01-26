@@ -41,10 +41,6 @@
 
 <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-<script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-<script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-<script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
 <script>
     window.ezstandalone = window.ezstandalone || {};
     ezstandalone.cmd = ezstandalone.cmd || [];
@@ -179,8 +175,6 @@
 </head>
 
 <body class="bg-gray-50 text-gray-800">
-
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
 
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
@@ -712,7 +706,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -779,14 +773,344 @@
 
 
 
+
     
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
     
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Mohs converter logic -->
+    <script>
+      (function () {
+        const mohsData = [
+          { mohs: 1, mineral: 'Talc', absolute: 1 },
+          { mohs: 2, mineral: 'Gypsum', absolute: 2 },
+          { mohs: 3, mineral: 'Calcite', absolute: 14 },
+          { mohs: 4, mineral: 'Fluorite', absolute: 21 },
+          { mohs: 5, mineral: 'Apatite', absolute: 48 },
+          { mohs: 6, mineral: 'Orthoclase feldspar', absolute: 72 },
+          { mohs: 7, mineral: 'Quartz', absolute: 100 },
+          { mohs: 8, mineral: 'Topaz', absolute: 200 },
+          { mohs: 9, mineral: 'Corundum', absolute: 400 },
+          { mohs: 10, mineral: 'Diamond', absolute: 1500 }
+        ];
+
+        const modeMohsToAbs = document.getElementById('mode-mohs-to-absolute');
+        const modeAbsToMohs = document.getElementById('mode-absolute-to-mohs');
+        const mohsInputGroup = document.getElementById('mohs-input-group');
+        const absInputGroup = document.getElementById('absolute-input-group');
+        const mohsInput = document.getElementById('mohs-value');
+        const absInput = document.getElementById('absolute-value');
+
+        const resultMohs = document.getElementById('result-mohs');
+        const resultAbs = document.getElementById('result-absolute');
+        const resultClass = document.getElementById('result-class');
+        const resultMineral = document.getElementById('result-mineral');
+        const resultNote = document.getElementById('result-note');
+
+        const tableBody = document.getElementById('mohs-table-body');
+
+        function setMode(mode) {
+          if (mode === 'mohs-to-absolute') {
+            mohsInputGroup.classList.remove('hidden');
+            absInputGroup.classList.add('hidden');
+            absInput.value = '';
+          } else {
+            mohsInputGroup.classList.add('hidden');
+            absInputGroup.classList.remove('hidden');
+            mohsInput.value = '';
+          }
+          clearHighlight();
+        }
+
+        function classifyMohs(m) {
+          if (isNaN(m)) return '—';
+          if (m < 3) return 'Soft';
+          if (m < 5.5) return 'Medium';
+          if (m < 7.5) return 'Hard';
+          return 'Very hard';
+        }
+
+        function interpolateByMohs(m) {
+          if (m <= mohsData[0].mohs) return mohsData[0];
+          if (m >= mohsData[mohsData.length - 1].mohs) return mohsData[mohsData.length - 1];
+          for (let i = 0; i < mohsData.length - 1; i++) {
+            const a = mohsData[i];
+            const b = mohsData[i + 1];
+            if (m >= a.mohs && m <= b.mohs) {
+              const t = (m - a.mohs) / (b.mohs - a.mohs);
+              const absolute = a.absolute + t * (b.absolute - a.absolute);
+              return {
+                mohs: m,
+                absolute: absolute,
+                mineral: t < 0.5 ? a.mineral : b.mineral
+              };
+            }
+          }
+          return mohsData[mohsData.length - 1];
+        }
+
+        function interpolateByAbsolute(aVal) {
+          const sorted = mohsData.slice().sort((a, b) => a.absolute - b.absolute);
+          if (aVal <= sorted[0].absolute) return sorted[0];
+          if (aVal >= sorted[sorted.length - 1].absolute) return sorted[sorted.length - 1];
+          for (let i = 0; i < sorted.length - 1; i++) {
+            const a = sorted[i];
+            const b = sorted[i + 1];
+            if (aVal >= a.absolute && aVal <= b.absolute) {
+              const t = (aVal - a.absolute) / (b.absolute - a.absolute);
+              const mohs = a.mohs + t * (b.mohs - a.mohs);
+              return {
+                mohs: mohs,
+                absolute: aVal,
+                mineral: t < 0.5 ? a.mineral : b.mineral
+              };
+            }
+          }
+          return sorted[sorted.length - 1];
+        }
+
+        function clearHighlight() {
+          if (!tableBody) return;
+          const rows = tableBody.querySelectorAll('tr');
+          rows.forEach(row => row.classList.remove('highlight-row'));
+        }
+
+        function highlightNearest(mohsVal) {
+          if (!tableBody || isNaN(mohsVal)) return;
+          clearHighlight();
+          let nearestRow = null;
+          let nearestDiff = Infinity;
+          const rows = tableBody.querySelectorAll('tr');
+          rows.forEach(row => {
+            const val = parseFloat(row.getAttribute('data-mohs'));
+            const diff = Math.abs(val - mohsVal);
+            if (diff < nearestDiff) {
+              nearestDiff = diff;
+              nearestRow = row;
+            }
+          });
+          if (nearestRow) {
+            nearestRow.classList.add('highlight-row');
+          }
+        }
+
+        function convert() {
+          const mode = modeMohsToAbs.checked ? 'mohs-to-absolute' : 'absolute-to-mohs';
+          let result;
+          if (mode === 'mohs-to-absolute') {
+            const m = parseFloat(mohsInput.value);
+            if (isNaN(m)) {
+              resultNote.textContent = 'Please enter a Mohs hardness value between 1 and 10.';
+              return;
+            }
+            const clamped = Math.min(10, Math.max(1, m));
+            result = interpolateByMohs(clamped);
+          } else {
+            const aVal = parseFloat(absInput.value);
+            if (isNaN(aVal) || aVal <= 0) {
+              resultNote.textContent = 'Please enter a positive absolute hardness value.';
+              return;
+            }
+            result = interpolateByAbsolute(aVal);
+          }
+
+          if (!result) return;
+
+          resultMohs.textContent = result.mohs.toFixed(2);
+          resultAbs.textContent = result.absolute.toFixed(1);
+          resultClass.textContent = classifyMohs(result.mohs);
+          resultMineral.textContent = result.mineral;
+          resultNote.textContent = 'Values are approximate and based on a reference table with simple interpolation.';
+          highlightNearest(result.mohs);
+        }
+
+        modeMohsToAbs.addEventListener('change', () => setMode('mohs-to-absolute'));
+        modeAbsToMohs.addEventListener('change', () => setMode('absolute-to-mohs'));
+        document.getElementById('convert-btn').addEventListener('click', convert);
+        mohsInput.addEventListener('keyup', function (e) {
+          if (e.key === 'Enter') convert();
+        });
+        absInput.addEventListener('keyup', function (e) {
+          if (e.key === 'Enter') convert();
+        });
+      })();
+    </script>
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Mohs converter logic -->
+    <script>
+      (function () {
+        const mohsData = [
+          { mohs: 1, mineral: 'Talc', absolute: 1 },
+          { mohs: 2, mineral: 'Gypsum', absolute: 2 },
+          { mohs: 3, mineral: 'Calcite', absolute: 14 },
+          { mohs: 4, mineral: 'Fluorite', absolute: 21 },
+          { mohs: 5, mineral: 'Apatite', absolute: 48 },
+          { mohs: 6, mineral: 'Orthoclase feldspar', absolute: 72 },
+          { mohs: 7, mineral: 'Quartz', absolute: 100 },
+          { mohs: 8, mineral: 'Topaz', absolute: 200 },
+          { mohs: 9, mineral: 'Corundum', absolute: 400 },
+          { mohs: 10, mineral: 'Diamond', absolute: 1500 }
+        ];
+
+        const modeMohsToAbs = document.getElementById('mode-mohs-to-absolute');
+        const modeAbsToMohs = document.getElementById('mode-absolute-to-mohs');
+        const mohsInputGroup = document.getElementById('mohs-input-group');
+        const absInputGroup = document.getElementById('absolute-input-group');
+        const mohsInput = document.getElementById('mohs-value');
+        const absInput = document.getElementById('absolute-value');
+
+        const resultMohs = document.getElementById('result-mohs');
+        const resultAbs = document.getElementById('result-absolute');
+        const resultClass = document.getElementById('result-class');
+        const resultMineral = document.getElementById('result-mineral');
+        const resultNote = document.getElementById('result-note');
+
+        const tableBody = document.getElementById('mohs-table-body');
+
+        function setMode(mode) {
+          if (mode === 'mohs-to-absolute') {
+            mohsInputGroup.classList.remove('hidden');
+            absInputGroup.classList.add('hidden');
+            absInput.value = '';
+          } else {
+            mohsInputGroup.classList.add('hidden');
+            absInputGroup.classList.remove('hidden');
+            mohsInput.value = '';
+          }
+          clearHighlight();
+        }
+
+        function classifyMohs(m) {
+          if (isNaN(m)) return '—';
+          if (m < 3) return 'Soft';
+          if (m < 5.5) return 'Medium';
+          if (m < 7.5) return 'Hard';
+          return 'Very hard';
+        }
+
+        function interpolateByMohs(m) {
+          if (m <= mohsData[0].mohs) return mohsData[0];
+          if (m >= mohsData[mohsData.length - 1].mohs) return mohsData[mohsData.length - 1];
+          for (let i = 0; i < mohsData.length - 1; i++) {
+            const a = mohsData[i];
+            const b = mohsData[i + 1];
+            if (m >= a.mohs && m <= b.mohs) {
+              const t = (m - a.mohs) / (b.mohs - a.mohs);
+              const absolute = a.absolute + t * (b.absolute - a.absolute);
+              return {
+                mohs: m,
+                absolute: absolute,
+                mineral: t < 0.5 ? a.mineral : b.mineral
+              };
+            }
+          }
+          return mohsData[mohsData.length - 1];
+        }
+
+        function interpolateByAbsolute(aVal) {
+          const sorted = mohsData.slice().sort((a, b) => a.absolute - b.absolute);
+          if (aVal <= sorted[0].absolute) return sorted[0];
+          if (aVal >= sorted[sorted.length - 1].absolute) return sorted[sorted.length - 1];
+          for (let i = 0; i < sorted.length - 1; i++) {
+            const a = sorted[i];
+            const b = sorted[i + 1];
+            if (aVal >= a.absolute && aVal <= b.absolute) {
+              const t = (aVal - a.absolute) / (b.absolute - a.absolute);
+              const mohs = a.mohs + t * (b.mohs - a.mohs);
+              return {
+                mohs: mohs,
+                absolute: aVal,
+                mineral: t < 0.5 ? a.mineral : b.mineral
+              };
+            }
+          }
+          return sorted[sorted.length - 1];
+        }
+
+        function clearHighlight() {
+          if (!tableBody) return;
+          const rows = tableBody.querySelectorAll('tr');
+          rows.forEach(row => row.classList.remove('highlight-row'));
+        }
+
+        function highlightNearest(mohsVal) {
+          if (!tableBody || isNaN(mohsVal)) return;
+          clearHighlight();
+          let nearestRow = null;
+          let nearestDiff = Infinity;
+          const rows = tableBody.querySelectorAll('tr');
+          rows.forEach(row => {
+            const val = parseFloat(row.getAttribute('data-mohs'));
+            const diff = Math.abs(val - mohsVal);
+            if (diff < nearestDiff) {
+              nearestDiff = diff;
+              nearestRow = row;
+            }
+          });
+          if (nearestRow) {
+            nearestRow.classList.add('highlight-row');
+          }
+        }
+
+        function convert() {
+          const mode = modeMohsToAbs.checked ? 'mohs-to-absolute' : 'absolute-to-mohs';
+          let result;
+          if (mode === 'mohs-to-absolute') {
+            const m = parseFloat(mohsInput.value);
+            if (isNaN(m)) {
+              resultNote.textContent = 'Please enter a Mohs hardness value between 1 and 10.';
+              return;
+            }
+            const clamped = Math.min(10, Math.max(1, m));
+            result = interpolateByMohs(clamped);
+          } else {
+            const aVal = parseFloat(absInput.value);
+            if (isNaN(aVal) || aVal <= 0) {
+              resultNote.textContent = 'Please enter a positive absolute hardness value.';
+              return;
+            }
+            result = interpolateByAbsolute(aVal);
+          }
+
+          if (!result) return;
+
+          resultMohs.textContent = result.mohs.toFixed(2);
+          resultAbs.textContent = result.absolute.toFixed(1);
+          resultClass.textContent = classifyMohs(result.mohs);
+          resultMineral.textContent = result.mineral;
+          resultNote.textContent = 'Values are approximate and based on a reference table with simple interpolation.';
+          highlightNearest(result.mohs);
+        }
+
+        modeMohsToAbs.addEventListener('change', () => setMode('mohs-to-absolute'));
+        modeAbsToMohs.addEventListener('change', () => setMode('absolute-to-mohs'));
+        document.getElementById('convert-btn').addEventListener('click', convert);
+        mohsInput.addEventListener('keyup', function (e) {
+          if (e.key === 'Enter') convert();
+        });
+        absInput.addEventListener('keyup', function (e) {
+          if (e.key === 'Enter') convert();
+        });
+      })();
+    </script>
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

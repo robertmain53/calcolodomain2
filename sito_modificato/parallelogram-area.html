@@ -59,10 +59,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -219,8 +215,6 @@
 </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
-
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
 
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
@@ -803,7 +797,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -871,13 +865,631 @@
 
 
 
+
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
 
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      (function () {
+        const modeSelect = document.getElementById('calc-mode');
+        const unitSelect = document.getElementById('length-unit');
+        const form = document.getElementById('parallelogram-form');
+        const resetBtn = document.getElementById('parallelogram-reset');
+
+        const blockBH = document.getElementById('block-base-height');
+        const blockSA = document.getElementById('block-sides-angle');
+        const blockCoord = document.getElementById('block-coordinates');
+        const blockSolve = document.getElementById('block-solve-dimension');
+
+        const resultsBox = document.getElementById('parallelogram-results');
+        const summaryEl = document.getElementById('result-summary');
+        const detailsEl = document.getElementById('result-details');
+        const secondaryEl = document.getElementById('result-secondary');
+        const stepsEl = document.getElementById('result-steps');
+
+        function parseNum(value) {
+          if (typeof value !== 'string') return NaN;
+          const cleaned = value.trim().replace(',', '.');
+          if (!cleaned) return NaN;
+          const n = Number(cleaned);
+          return Number.isFinite(n) ? n : NaN;
+        }
+
+        function cleanZero(x) {
+          return Math.abs(x) < 1e-12 ? 0 : x;
+        }
+
+        function fmt(val, digits = 6) {
+          if (!Number.isFinite(val)) return '—';
+          val = cleanZero(val);
+          if (val === 0) return '0';
+          const abs = Math.abs(val);
+          if (abs >= 1e6 || abs < 1e-4) {
+            return val.toExponential(4);
+          }
+          return Number(val.toPrecision(digits));
+        }
+
+        const unitToMeter = {
+          mm: 0.001,
+          cm: 0.01,
+          m: 1,
+          in: 0.0254,
+          ft: 0.3048
+        };
+
+        function clearResults() {
+          resultsBox.classList.add('hidden');
+          summaryEl.textContent = '';
+          detailsEl.innerHTML = '';
+          secondaryEl.innerHTML = '';
+          secondaryEl.classList.add('hidden');
+          stepsEl.innerHTML = '';
+        }
+
+        function setModeVisibility() {
+          const mode = modeSelect.value;
+          clearResults();
+
+          blockBH.classList.add('hidden');
+          blockSA.classList.add('hidden');
+          blockCoord.classList.add('hidden');
+          blockSolve.classList.add('hidden');
+
+          if (mode === 'base-height') {
+            blockBH.classList.remove('hidden');
+          } else if (mode === 'sides-angle') {
+            blockSA.classList.remove('hidden');
+          } else if (mode === 'coordinates') {
+            blockCoord.classList.remove('hidden');
+          } else if (mode === 'solve-dimension') {
+            blockSolve.classList.remove('hidden');
+          }
+        }
+
+        function handleSubmit(evt) {
+          evt.preventDefault();
+          clearResults();
+
+          const mode = modeSelect.value;
+          const lengthUnit = unitSelect.value;
+          const toMeter = unitToMeter[lengthUnit] || 1;
+          const steps = [];
+
+          if (mode === 'base-height') {
+            const b = parseNum(document.getElementById('bh-base').value);
+            const h = parseNum(document.getElementById('bh-height').value);
+
+            if (!Number.isFinite(b) || !Number.isFinite(h)) {
+              alert('Please enter numeric values for base and height.');
+              return;
+            }
+            if (b <= 0 || h <= 0) {
+              alert('Base and height must be strictly positive.');
+              return;
+            }
+
+            steps.push('1. Inputs: base b = ' + b + ' ' + lengthUnit + ', height h = ' + h + ' ' + lengthUnit + '.');
+            const A_unit2 = b * h;
+            steps.push('2. Compute area A = b × h = ' + b + ' × ' + h + ' = ' + A_unit2 + ' ' + lengthUnit + '².');
+
+            const A_m2 = A_unit2 * Math.pow(toMeter, 2);
+
+            summaryEl.textContent = 'Parallelogram area A ≈ ' + fmt(A_unit2) + ' ' + lengthUnit + '²';
+            detailsEl.innerHTML = '';
+
+            const d1 = document.createElement('p');
+            d1.textContent = 'Area in ' + lengthUnit + '²: A ≈ ' + fmt(A_unit2) + ' ' + lengthUnit + '².';
+            detailsEl.appendChild(d1);
+
+            const d2 = document.createElement('p');
+            d2.textContent = 'Area in square meters: A ≈ ' + fmt(A_m2) + ' m².';
+            detailsEl.appendChild(d2);
+
+            const d3 = document.createElement('p');
+            const A_cm2 = A_m2 * 10000;
+            d3.textContent = 'Area in square centimeters (approx): A ≈ ' + fmt(A_cm2) + ' cm².';
+            detailsEl.appendChild(d3);
+
+          } else if (mode === 'sides-angle') {
+            const a = parseNum(document.getElementById('sa-a').value);
+            const b = parseNum(document.getElementById('sa-b').value);
+            const thetaVal = parseNum(document.getElementById('sa-angle').value);
+            const thetaUnit = document.getElementById('sa-angle-unit').value;
+
+            if (!Number.isFinite(a) || !Number.isFinite(b) || !Number.isFinite(thetaVal)) {
+              alert('Please enter numeric values for both sides and the angle.');
+              return;
+            }
+            if (a <= 0 || b <= 0) {
+              alert('Side lengths must be strictly positive.');
+              return;
+            }
+
+            let thetaRad = thetaVal;
+            if (thetaUnit === 'deg') {
+              thetaRad = thetaVal * Math.PI / 180;
+            }
+
+            const sinTheta = Math.sin(thetaRad);
+            steps.push('1. Inputs: sides a = ' + a + ', b = ' + b + ' (' + lengthUnit + '), angle θ = ' + thetaVal + ' ' + thetaUnit + '.');
+            if (thetaUnit === 'deg') {
+              steps.push('2. Convert θ to radians: θ = ' + thetaVal + '° × π/180 ≈ ' + thetaRad + ' rad.');
+            }
+            steps.push('3. Compute sin(θ) ≈ ' + sinTheta + '.');
+
+            const A_unit2 = a * b * sinTheta;
+            steps.push('4. Compute area A = a × b × sin(θ) ≈ ' + a + ' × ' + b + ' × ' + sinTheta + ' = ' + A_unit2 + ' ' + lengthUnit + '².');
+
+            const A_m2 = A_unit2 * Math.pow(toMeter, 2);
+
+            summaryEl.textContent = 'Parallelogram area A ≈ ' + fmt(A_unit2) + ' ' + lengthUnit + '²';
+            detailsEl.innerHTML = '';
+
+            const d1 = document.createElement('p');
+            d1.textContent = 'Area in ' + lengthUnit + '²: A ≈ ' + fmt(A_unit2) + ' ' + lengthUnit + '².';
+            detailsEl.appendChild(d1);
+
+            const d2 = document.createElement('p');
+            d2.textContent = 'Area in square meters: A ≈ ' + fmt(A_m2) + ' m².';
+            detailsEl.appendChild(d2);
+
+            const d3 = document.createElement('p');
+            const A_cm2 = A_m2 * 10000;
+            d3.textContent = 'Area in square centimeters (approx): A ≈ ' + fmt(A_cm2) + ' cm².';
+            detailsEl.appendChild(d3);
+
+          } else if (mode === 'coordinates') {
+            const Ax = parseNum(document.getElementById('A-x').value);
+            const Ay = parseNum(document.getElementById('A-y').value);
+            const Bx = parseNum(document.getElementById('B-x').value);
+            const By = parseNum(document.getElementById('B-y').value);
+            const Cx = parseNum(document.getElementById('C-x').value);
+            const Cy = parseNum(document.getElementById('C-y').value);
+
+            if (!Number.isFinite(Ax) || !Number.isFinite(Ay) ||
+                !Number.isFinite(Bx) || !Number.isFinite(By) ||
+                !Number.isFinite(Cx) || !Number.isFinite(Cy)) {
+              alert('Please enter numeric coordinates for A, B and C.');
+              return;
+            }
+
+            const ABx = Bx - Ax;
+            const ABy = By - Ay;
+            const ACx = Cx - Ax;
+            const ACy = Cy - Ay;
+
+            steps.push('1. Inputs: A(' + Ax + ', ' + Ay + '), B(' + Bx + ', ' + By + '), C(' + Cx + ', ' + Cy + ').');
+            steps.push('2. Compute side vectors: AB = (' + ABx + ', ' + ABy + '), AC = (' + ACx + ', ' + ACy + ').');
+
+            const cross = ABx * ACy - ACx * ABy;
+            const A_unit2 = Math.abs(cross);
+
+            steps.push('3. Cross product magnitude: |AB × AC| = |AB_x·AC_y − AC_x·AB_y| = |' +
+                       ABx + '·' + ACy + ' − ' + ACx + '·' + ABy + '| = |' + cross + '| = ' + A_unit2 + '.');
+            steps.push('4. Area A = |AB × AC| = ' + A_unit2 + ' (square coordinate units).');
+
+            const A_m2 = A_unit2 * Math.pow(toMeter, 2);
+
+            summaryEl.textContent = 'Parallelogram area A ≈ ' + fmt(A_unit2) + ' (in squared coordinate units)';
+            detailsEl.innerHTML = '';
+
+            const d1 = document.createElement('p');
+            d1.textContent = 'Area from coordinate geometry: A ≈ ' + fmt(A_unit2) + ' ' + lengthUnit + '² (if coordinates are in ' + lengthUnit + ').';
+            detailsEl.appendChild(d1);
+
+            const d2 = document.createElement('p');
+            d2.textContent = 'Area in square meters (assuming coordinates in ' + lengthUnit + '): A ≈ ' + fmt(A_m2) + ' m².';
+            detailsEl.appendChild(d2);
+
+          } else if (mode === 'solve-dimension') {
+            const A = parseNum(document.getElementById('sd-area').value);
+            const unknown = document.getElementById('sd-unknown').value;
+            const bInput = parseNum(document.getElementById('sd-base').value);
+            const hInput = parseNum(document.getElementById('sd-height').value);
+
+            if (!Number.isFinite(A) || A <= 0) {
+              alert('Please enter a positive numeric area A.');
+              return;
+            }
+
+            steps.push('1. Input area: A = ' + A + ' ' + lengthUnit + '².');
+
+            let solved, b = bInput, h = hInput;
+
+            if (unknown === 'base') {
+              if (!Number.isFinite(h) || h <= 0) {
+                alert('To solve for base, provide a positive numeric height h.');
+                return;
+              }
+              solved = A / h;
+              b = solved;
+              steps.push('2. Rearranged formula: b = A / h.');
+              steps.push('3. Substitute: b = ' + A + ' / ' + h + ' ≈ ' + solved + ' ' + lengthUnit + '.');
+            } else if (unknown === 'height') {
+              if (!Number.isFinite(b) || b <= 0) {
+                alert('To solve for height, provide a positive numeric base b.');
+                return;
+              }
+              solved = A / b;
+              h = solved;
+              steps.push('2. Rearranged formula: h = A / b.');
+              steps.push('3. Substitute: h = ' + A + ' / ' + b + ' ≈ ' + solved + ' ' + lengthUnit + '.');
+            }
+
+            if (!Number.isFinite(solved) || solved <= 0) {
+              alert('The combination of area and known dimension does not yield a positive solution. Please check inputs.');
+              return;
+            }
+
+            const A_check = b * h;
+            steps.push('4. Check: recompute area with b = ' + b + ', h = ' + h + '.');
+            steps.push('   A_check = b × h = ' + b + ' × ' + h + ' = ' + A_check + ' ' + lengthUnit + '² (should match original area).');
+
+            summaryEl.textContent = 'Solved ' + unknown + ' ≈ ' + fmt(solved) + ' ' + lengthUnit;
+            detailsEl.innerHTML = '';
+
+            const d1 = document.createElement('p');
+            d1.textContent = 'Solved ' + unknown + ': ' + fmt(solved) + ' ' + lengthUnit + '.';
+            detailsEl.appendChild(d1);
+
+            const d2 = document.createElement('p');
+            d2.textContent = 'Consistency check area A_check ≈ ' + fmt(A_check) + ' ' + lengthUnit + '².';
+            detailsEl.appendChild(d2);
+
+            secondaryEl.classList.remove('hidden');
+            secondaryEl.innerHTML = '';
+            const s1 = document.createElement('p');
+            s1.textContent = 'Base b = ' + (Number.isFinite(bInput) ? fmt(bInput) : '[' + fmt(b) + ' solved]') +
+                             ', height h = ' + (Number.isFinite(hInput) ? fmt(hInput) : '[' + fmt(h) + ' solved].');
+            secondaryEl.appendChild(s1);
+          }
+
+          // Render steps
+          stepsEl.innerHTML = '';
+          steps.forEach(function (line) {
+            const p = document.createElement('p');
+            p.textContent = line;
+            stepsEl.appendChild(p);
+          });
+
+          resultsBox.classList.remove('hidden');
+        }
+
+        function handleReset() {
+          form.reset();
+          clearResults();
+          setModeVisibility();
+        }
+
+        modeSelect.addEventListener('change', setModeVisibility);
+        form.addEventListener('submit', handleSubmit);
+        resetBtn.addEventListener('click', handleReset);
+
+        setModeVisibility();
+      })();
+    </script>
+
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      (function () {
+        const modeSelect = document.getElementById('calc-mode');
+        const unitSelect = document.getElementById('length-unit');
+        const form = document.getElementById('parallelogram-form');
+        const resetBtn = document.getElementById('parallelogram-reset');
+
+        const blockBH = document.getElementById('block-base-height');
+        const blockSA = document.getElementById('block-sides-angle');
+        const blockCoord = document.getElementById('block-coordinates');
+        const blockSolve = document.getElementById('block-solve-dimension');
+
+        const resultsBox = document.getElementById('parallelogram-results');
+        const summaryEl = document.getElementById('result-summary');
+        const detailsEl = document.getElementById('result-details');
+        const secondaryEl = document.getElementById('result-secondary');
+        const stepsEl = document.getElementById('result-steps');
+
+        function parseNum(value) {
+          if (typeof value !== 'string') return NaN;
+          const cleaned = value.trim().replace(',', '.');
+          if (!cleaned) return NaN;
+          const n = Number(cleaned);
+          return Number.isFinite(n) ? n : NaN;
+        }
+
+        function cleanZero(x) {
+          return Math.abs(x) < 1e-12 ? 0 : x;
+        }
+
+        function fmt(val, digits = 6) {
+          if (!Number.isFinite(val)) return '—';
+          val = cleanZero(val);
+          if (val === 0) return '0';
+          const abs = Math.abs(val);
+          if (abs >= 1e6 || abs < 1e-4) {
+            return val.toExponential(4);
+          }
+          return Number(val.toPrecision(digits));
+        }
+
+        const unitToMeter = {
+          mm: 0.001,
+          cm: 0.01,
+          m: 1,
+          in: 0.0254,
+          ft: 0.3048
+        };
+
+        function clearResults() {
+          resultsBox.classList.add('hidden');
+          summaryEl.textContent = '';
+          detailsEl.innerHTML = '';
+          secondaryEl.innerHTML = '';
+          secondaryEl.classList.add('hidden');
+          stepsEl.innerHTML = '';
+        }
+
+        function setModeVisibility() {
+          const mode = modeSelect.value;
+          clearResults();
+
+          blockBH.classList.add('hidden');
+          blockSA.classList.add('hidden');
+          blockCoord.classList.add('hidden');
+          blockSolve.classList.add('hidden');
+
+          if (mode === 'base-height') {
+            blockBH.classList.remove('hidden');
+          } else if (mode === 'sides-angle') {
+            blockSA.classList.remove('hidden');
+          } else if (mode === 'coordinates') {
+            blockCoord.classList.remove('hidden');
+          } else if (mode === 'solve-dimension') {
+            blockSolve.classList.remove('hidden');
+          }
+        }
+
+        function handleSubmit(evt) {
+          evt.preventDefault();
+          clearResults();
+
+          const mode = modeSelect.value;
+          const lengthUnit = unitSelect.value;
+          const toMeter = unitToMeter[lengthUnit] || 1;
+          const steps = [];
+
+          if (mode === 'base-height') {
+            const b = parseNum(document.getElementById('bh-base').value);
+            const h = parseNum(document.getElementById('bh-height').value);
+
+            if (!Number.isFinite(b) || !Number.isFinite(h)) {
+              alert('Please enter numeric values for base and height.');
+              return;
+            }
+            if (b <= 0 || h <= 0) {
+              alert('Base and height must be strictly positive.');
+              return;
+            }
+
+            steps.push('1. Inputs: base b = ' + b + ' ' + lengthUnit + ', height h = ' + h + ' ' + lengthUnit + '.');
+            const A_unit2 = b * h;
+            steps.push('2. Compute area A = b × h = ' + b + ' × ' + h + ' = ' + A_unit2 + ' ' + lengthUnit + '².');
+
+            const A_m2 = A_unit2 * Math.pow(toMeter, 2);
+
+            summaryEl.textContent = 'Parallelogram area A ≈ ' + fmt(A_unit2) + ' ' + lengthUnit + '²';
+            detailsEl.innerHTML = '';
+
+            const d1 = document.createElement('p');
+            d1.textContent = 'Area in ' + lengthUnit + '²: A ≈ ' + fmt(A_unit2) + ' ' + lengthUnit + '².';
+            detailsEl.appendChild(d1);
+
+            const d2 = document.createElement('p');
+            d2.textContent = 'Area in square meters: A ≈ ' + fmt(A_m2) + ' m².';
+            detailsEl.appendChild(d2);
+
+            const d3 = document.createElement('p');
+            const A_cm2 = A_m2 * 10000;
+            d3.textContent = 'Area in square centimeters (approx): A ≈ ' + fmt(A_cm2) + ' cm².';
+            detailsEl.appendChild(d3);
+
+          } else if (mode === 'sides-angle') {
+            const a = parseNum(document.getElementById('sa-a').value);
+            const b = parseNum(document.getElementById('sa-b').value);
+            const thetaVal = parseNum(document.getElementById('sa-angle').value);
+            const thetaUnit = document.getElementById('sa-angle-unit').value;
+
+            if (!Number.isFinite(a) || !Number.isFinite(b) || !Number.isFinite(thetaVal)) {
+              alert('Please enter numeric values for both sides and the angle.');
+              return;
+            }
+            if (a <= 0 || b <= 0) {
+              alert('Side lengths must be strictly positive.');
+              return;
+            }
+
+            let thetaRad = thetaVal;
+            if (thetaUnit === 'deg') {
+              thetaRad = thetaVal * Math.PI / 180;
+            }
+
+            const sinTheta = Math.sin(thetaRad);
+            steps.push('1. Inputs: sides a = ' + a + ', b = ' + b + ' (' + lengthUnit + '), angle θ = ' + thetaVal + ' ' + thetaUnit + '.');
+            if (thetaUnit === 'deg') {
+              steps.push('2. Convert θ to radians: θ = ' + thetaVal + '° × π/180 ≈ ' + thetaRad + ' rad.');
+            }
+            steps.push('3. Compute sin(θ) ≈ ' + sinTheta + '.');
+
+            const A_unit2 = a * b * sinTheta;
+            steps.push('4. Compute area A = a × b × sin(θ) ≈ ' + a + ' × ' + b + ' × ' + sinTheta + ' = ' + A_unit2 + ' ' + lengthUnit + '².');
+
+            const A_m2 = A_unit2 * Math.pow(toMeter, 2);
+
+            summaryEl.textContent = 'Parallelogram area A ≈ ' + fmt(A_unit2) + ' ' + lengthUnit + '²';
+            detailsEl.innerHTML = '';
+
+            const d1 = document.createElement('p');
+            d1.textContent = 'Area in ' + lengthUnit + '²: A ≈ ' + fmt(A_unit2) + ' ' + lengthUnit + '².';
+            detailsEl.appendChild(d1);
+
+            const d2 = document.createElement('p');
+            d2.textContent = 'Area in square meters: A ≈ ' + fmt(A_m2) + ' m².';
+            detailsEl.appendChild(d2);
+
+            const d3 = document.createElement('p');
+            const A_cm2 = A_m2 * 10000;
+            d3.textContent = 'Area in square centimeters (approx): A ≈ ' + fmt(A_cm2) + ' cm².';
+            detailsEl.appendChild(d3);
+
+          } else if (mode === 'coordinates') {
+            const Ax = parseNum(document.getElementById('A-x').value);
+            const Ay = parseNum(document.getElementById('A-y').value);
+            const Bx = parseNum(document.getElementById('B-x').value);
+            const By = parseNum(document.getElementById('B-y').value);
+            const Cx = parseNum(document.getElementById('C-x').value);
+            const Cy = parseNum(document.getElementById('C-y').value);
+
+            if (!Number.isFinite(Ax) || !Number.isFinite(Ay) ||
+                !Number.isFinite(Bx) || !Number.isFinite(By) ||
+                !Number.isFinite(Cx) || !Number.isFinite(Cy)) {
+              alert('Please enter numeric coordinates for A, B and C.');
+              return;
+            }
+
+            const ABx = Bx - Ax;
+            const ABy = By - Ay;
+            const ACx = Cx - Ax;
+            const ACy = Cy - Ay;
+
+            steps.push('1. Inputs: A(' + Ax + ', ' + Ay + '), B(' + Bx + ', ' + By + '), C(' + Cx + ', ' + Cy + ').');
+            steps.push('2. Compute side vectors: AB = (' + ABx + ', ' + ABy + '), AC = (' + ACx + ', ' + ACy + ').');
+
+            const cross = ABx * ACy - ACx * ABy;
+            const A_unit2 = Math.abs(cross);
+
+            steps.push('3. Cross product magnitude: |AB × AC| = |AB_x·AC_y − AC_x·AB_y| = |' +
+                       ABx + '·' + ACy + ' − ' + ACx + '·' + ABy + '| = |' + cross + '| = ' + A_unit2 + '.');
+            steps.push('4. Area A = |AB × AC| = ' + A_unit2 + ' (square coordinate units).');
+
+            const A_m2 = A_unit2 * Math.pow(toMeter, 2);
+
+            summaryEl.textContent = 'Parallelogram area A ≈ ' + fmt(A_unit2) + ' (in squared coordinate units)';
+            detailsEl.innerHTML = '';
+
+            const d1 = document.createElement('p');
+            d1.textContent = 'Area from coordinate geometry: A ≈ ' + fmt(A_unit2) + ' ' + lengthUnit + '² (if coordinates are in ' + lengthUnit + ').';
+            detailsEl.appendChild(d1);
+
+            const d2 = document.createElement('p');
+            d2.textContent = 'Area in square meters (assuming coordinates in ' + lengthUnit + '): A ≈ ' + fmt(A_m2) + ' m².';
+            detailsEl.appendChild(d2);
+
+          } else if (mode === 'solve-dimension') {
+            const A = parseNum(document.getElementById('sd-area').value);
+            const unknown = document.getElementById('sd-unknown').value;
+            const bInput = parseNum(document.getElementById('sd-base').value);
+            const hInput = parseNum(document.getElementById('sd-height').value);
+
+            if (!Number.isFinite(A) || A <= 0) {
+              alert('Please enter a positive numeric area A.');
+              return;
+            }
+
+            steps.push('1. Input area: A = ' + A + ' ' + lengthUnit + '².');
+
+            let solved, b = bInput, h = hInput;
+
+            if (unknown === 'base') {
+              if (!Number.isFinite(h) || h <= 0) {
+                alert('To solve for base, provide a positive numeric height h.');
+                return;
+              }
+              solved = A / h;
+              b = solved;
+              steps.push('2. Rearranged formula: b = A / h.');
+              steps.push('3. Substitute: b = ' + A + ' / ' + h + ' ≈ ' + solved + ' ' + lengthUnit + '.');
+            } else if (unknown === 'height') {
+              if (!Number.isFinite(b) || b <= 0) {
+                alert('To solve for height, provide a positive numeric base b.');
+                return;
+              }
+              solved = A / b;
+              h = solved;
+              steps.push('2. Rearranged formula: h = A / b.');
+              steps.push('3. Substitute: h = ' + A + ' / ' + b + ' ≈ ' + solved + ' ' + lengthUnit + '.');
+            }
+
+            if (!Number.isFinite(solved) || solved <= 0) {
+              alert('The combination of area and known dimension does not yield a positive solution. Please check inputs.');
+              return;
+            }
+
+            const A_check = b * h;
+            steps.push('4. Check: recompute area with b = ' + b + ', h = ' + h + '.');
+            steps.push('   A_check = b × h = ' + b + ' × ' + h + ' = ' + A_check + ' ' + lengthUnit + '² (should match original area).');
+
+            summaryEl.textContent = 'Solved ' + unknown + ' ≈ ' + fmt(solved) + ' ' + lengthUnit;
+            detailsEl.innerHTML = '';
+
+            const d1 = document.createElement('p');
+            d1.textContent = 'Solved ' + unknown + ': ' + fmt(solved) + ' ' + lengthUnit + '.';
+            detailsEl.appendChild(d1);
+
+            const d2 = document.createElement('p');
+            d2.textContent = 'Consistency check area A_check ≈ ' + fmt(A_check) + ' ' + lengthUnit + '².';
+            detailsEl.appendChild(d2);
+
+            secondaryEl.classList.remove('hidden');
+            secondaryEl.innerHTML = '';
+            const s1 = document.createElement('p');
+            s1.textContent = 'Base b = ' + (Number.isFinite(bInput) ? fmt(bInput) : '[' + fmt(b) + ' solved]') +
+                             ', height h = ' + (Number.isFinite(hInput) ? fmt(hInput) : '[' + fmt(h) + ' solved].');
+            secondaryEl.appendChild(s1);
+          }
+
+          // Render steps
+          stepsEl.innerHTML = '';
+          steps.forEach(function (line) {
+            const p = document.createElement('p');
+            p.textContent = line;
+            stepsEl.appendChild(p);
+          });
+
+          resultsBox.classList.remove('hidden');
+        }
+
+        function handleReset() {
+          form.reset();
+          clearResults();
+          setModeVisibility();
+        }
+
+        modeSelect.addEventListener('change', setModeVisibility);
+        form.addEventListener('submit', handleSubmit);
+        resetBtn.addEventListener('click', handleReset);
+
+        setModeVisibility();
+      })();
+    </script>
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

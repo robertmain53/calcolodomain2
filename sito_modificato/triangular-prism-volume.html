@@ -49,10 +49,6 @@
 
   <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-  <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-  <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-  <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
   <script>
     window.ezstandalone = window.ezstandalone || {};
     ezstandalone.cmd = ezstandalone.cmd || [];
@@ -240,8 +236,6 @@
 <body class="bg-gray-50 text-gray-800">
 
   <!-- BODY_SCRIPTS_INIZIO -->
-  <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
   <header class="bg-white shadow-sm sticky top-0 z-50">
     <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
       <div class="flex justify-between items-center">
@@ -778,7 +772,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -846,13 +840,467 @@
 
 
 
+
   <script src="/assets/js/script_menu.js" defer=""></script>
   <script src="/assets/js/script_faq.js" defer=""></script>
   <script src="search.js" defer=""></script>
 
   <script>
-    window.MathJax = {
-      tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+    window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <script>
+    // Mobile menu toggle
+    document.getElementById('mobile-menu-toggle')?.addEventListener('click', function () {
+      const menu = document.getElementById('mobile-menu');
+      if (!menu) return;
+      const isHidden = menu.classList.contains('hidden');
+      menu.classList.toggle('hidden', !isHidden);
+      this.setAttribute('aria-expanded', String(isHidden));
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const modeButtons = document.querySelectorAll('.mode-pill');
+      const modeGroups = document.querySelectorAll('.mode-group');
+
+      const inputBase = document.getElementById('tp-base');
+      const inputHeight = document.getElementById('tp-height');
+      const inputA = document.getElementById('tp-a');
+      const inputB = document.getElementById('tp-b');
+      const inputC = document.getElementById('tp-c');
+      const inputArea = document.getElementById('tp-area');
+      const inputLength = document.getElementById('tp-length');
+      const selectUnit = document.getElementById('tp-unit');
+
+      const btnCalc = document.getElementById('tp-calc');
+      const btnReset = document.getElementById('tp-reset');
+      const errorEl = document.getElementById('tp-error');
+
+      const resArea = document.getElementById('tp-res-area');
+      const resM3 = document.getElementById('tp-res-m3');
+      const resUnit3 = document.getElementById('tp-res-unit3');
+      const resUnit3Label = document.getElementById('tp-res-unit3-label');
+      const resLiters = document.getElementById('tp-res-liters');
+      const resCm3 = document.getElementById('tp-res-cm3');
+      const resFt3 = document.getElementById('tp-res-ft3');
+
+      let currentMode = 'right';
+
+      function setMode(mode) {
+        currentMode = mode;
+        modeButtons.forEach(btn => {
+          const m = btn.getAttribute('data-mode');
+          if (m === mode) {
+            btn.classList.add('mode-pill-active');
+          } else {
+            btn.classList.remove('mode-pill-active');
+          }
+        });
+        modeGroups.forEach(group => {
+          const g = group.getAttribute('data-group');
+          if (g === mode) {
+            group.classList.remove('hidden');
+          } else if (g !== 'right' && g !== 'heron' && g !== 'area') {
+            // ignore
+          } else {
+            group.classList.add('hidden');
+          }
+        });
+        clearResults();
+        errorEl.textContent = '';
+      }
+
+      modeButtons.forEach(btn => {
+        btn.addEventListener('click', function () {
+          const mode = btn.getAttribute('data-mode');
+          if (mode) setMode(mode);
+        });
+      });
+
+      function clearResults() {
+        function setBoxValue(box, text) {
+          if (!box) return;
+          const span = box.querySelector('.result-value');
+          if (span) span.textContent = text;
+        }
+        setBoxValue(resArea, '—');
+        setBoxValue(resM3, '—');
+        setBoxValue(resUnit3, '—');
+        setBoxValue(resLiters, '—');
+        setBoxValue(resCm3, '—');
+        setBoxValue(resFt3, '—');
+        if (resUnit3Label) resUnit3Label.textContent = '—';
+      }
+
+      function resetFields() {
+        inputBase.value = '';
+        inputHeight.value = '';
+        inputA.value = '';
+        inputB.value = '';
+        inputC.value = '';
+        inputArea.value = '';
+        inputLength.value = '';
+        selectUnit.value = 'cm';
+        setMode('right');
+        clearResults();
+        errorEl.textContent = '';
+      }
+
+      function unitToMetersFactor(unit) {
+        switch (unit) {
+          case 'mm': return 0.001;
+          case 'cm': return 0.01;
+          case 'm':  return 1;
+          case 'km': return 1000;
+          case 'in': return 0.0254;
+          case 'ft': return 0.3048;
+          default:   return 1;
+        }
+      }
+
+      function formatNumber(num, decimals) {
+        if (!Number.isFinite(num)) return '—';
+        const abs = Math.abs(num);
+        if (abs !== 0 && (abs < 1e-3 || abs >= 1e6)) {
+          return num.toExponential(decimals != null ? decimals : 4);
+        }
+        return num.toLocaleString(undefined, {
+          maximumFractionDigits: decimals != null ? decimals : 6
+        });
+      }
+
+      function calculateVolume() {
+        clearResults();
+        errorEl.textContent = '';
+
+        const unit = selectUnit.value || 'm';
+        const f = unitToMetersFactor(unit);
+
+        const L = Number(inputLength.value);
+        if (!Number.isFinite(L) || L <= 0) {
+          errorEl.textContent = 'Please enter a positive prism length.';
+          return;
+        }
+
+        let area_m2 = null;
+
+        if (currentMode === 'right') {
+          const b = Number(inputBase.value);
+          const h = Number(inputHeight.value);
+          if (!Number.isFinite(b) || !Number.isFinite(h) || b <= 0 || h <= 0) {
+            errorEl.textContent = 'Please enter positive values for base and height.';
+            return;
+          }
+          const b_m = b * f;
+          const h_m = h * f;
+          area_m2 = 0.5 * b_m * h_m;
+        } else if (currentMode === 'heron') {
+          const a = Number(inputA.value);
+          const b = Number(inputB.value);
+          const c = Number(inputC.value);
+          if (!Number.isFinite(a) || !Number.isFinite(b) || !Number.isFinite(c) ||
+              a <= 0 || b <= 0 || c <= 0) {
+            errorEl.textContent = 'Please enter positive values for all three sides.';
+            return;
+          }
+          if (a + b <= c || a + c <= b || b + c <= a) {
+            errorEl.textContent = 'The three sides do not satisfy the triangle inequality.';
+            return;
+          }
+          const a_m = a * f;
+          const b_m = b * f;
+          const c_m = c * f;
+          const s = (a_m + b_m + c_m) / 2;
+          const rad = s * (s - a_m) * (s - b_m) * (s - c_m);
+          if (rad < 0) {
+            errorEl.textContent = 'Numerical error in Heron’s formula. Check the side lengths.';
+            return;
+          }
+          area_m2 = Math.sqrt(rad);
+        } else if (currentMode === 'area') {
+          const A = Number(inputArea.value);
+          if (!Number.isFinite(A) || A <= 0) {
+            errorEl.textContent = 'Please enter a positive value for the base area.';
+            return;
+          }
+          // Area provided in unit²
+          area_m2 = A * f * f;
+        } else {
+          errorEl.textContent = 'Unknown input mode.';
+          return;
+        }
+
+        const L_m = L * f;
+        const volume_m3 = area_m2 * L_m;
+
+        if (!Number.isFinite(volume_m3) || volume_m3 <= 0) {
+          errorEl.textContent = 'Computation failed. Please check your inputs.';
+          return;
+        }
+
+        const unit3Label = unit + '³';
+        const unitFactor = f * f * f;
+        const volume_unit3 = volume_m3 / unitFactor;
+        const volume_liters = volume_m3 * 1000;
+        const volume_cm3 = volume_m3 * 1e6;
+        const volume_ft3 = volume_m3 * 35.3146667;
+
+        const setBoxValue = (box, text) => {
+          if (!box) return;
+          const span = box.querySelector('.result-value');
+          if (span) span.textContent = text;
+        };
+
+        setBoxValue(resArea, formatNumber(area_m2, 6));
+        setBoxValue(resM3, formatNumber(volume_m3, 6));
+        setBoxValue(resUnit3, formatNumber(volume_unit3, 6));
+        if (resUnit3Label) resUnit3Label.textContent = 'in ' + unit3Label;
+        setBoxValue(resLiters, formatNumber(volume_liters, 4));
+        setBoxValue(resCm3, formatNumber(volume_cm3, 2));
+        setBoxValue(resFt3, formatNumber(volume_ft3, 4));
+      }
+
+      if (btnCalc) btnCalc.addEventListener('click', calculateVolume);
+      if (btnReset) btnReset.addEventListener('click', resetFields);
+
+      // Initialise defaults
+      setMode('right');
+    });
+  </script>
+
+
+</body></html>
+, ',
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <script>
+    // Mobile menu toggle
+    document.getElementById('mobile-menu-toggle')?.addEventListener('click', function () {
+      const menu = document.getElementById('mobile-menu');
+      if (!menu) return;
+      const isHidden = menu.classList.contains('hidden');
+      menu.classList.toggle('hidden', !isHidden);
+      this.setAttribute('aria-expanded', String(isHidden));
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const modeButtons = document.querySelectorAll('.mode-pill');
+      const modeGroups = document.querySelectorAll('.mode-group');
+
+      const inputBase = document.getElementById('tp-base');
+      const inputHeight = document.getElementById('tp-height');
+      const inputA = document.getElementById('tp-a');
+      const inputB = document.getElementById('tp-b');
+      const inputC = document.getElementById('tp-c');
+      const inputArea = document.getElementById('tp-area');
+      const inputLength = document.getElementById('tp-length');
+      const selectUnit = document.getElementById('tp-unit');
+
+      const btnCalc = document.getElementById('tp-calc');
+      const btnReset = document.getElementById('tp-reset');
+      const errorEl = document.getElementById('tp-error');
+
+      const resArea = document.getElementById('tp-res-area');
+      const resM3 = document.getElementById('tp-res-m3');
+      const resUnit3 = document.getElementById('tp-res-unit3');
+      const resUnit3Label = document.getElementById('tp-res-unit3-label');
+      const resLiters = document.getElementById('tp-res-liters');
+      const resCm3 = document.getElementById('tp-res-cm3');
+      const resFt3 = document.getElementById('tp-res-ft3');
+
+      let currentMode = 'right';
+
+      function setMode(mode) {
+        currentMode = mode;
+        modeButtons.forEach(btn => {
+          const m = btn.getAttribute('data-mode');
+          if (m === mode) {
+            btn.classList.add('mode-pill-active');
+          } else {
+            btn.classList.remove('mode-pill-active');
+          }
+        });
+        modeGroups.forEach(group => {
+          const g = group.getAttribute('data-group');
+          if (g === mode) {
+            group.classList.remove('hidden');
+          } else if (g !== 'right' && g !== 'heron' && g !== 'area') {
+            // ignore
+          } else {
+            group.classList.add('hidden');
+          }
+        });
+        clearResults();
+        errorEl.textContent = '';
+      }
+
+      modeButtons.forEach(btn => {
+        btn.addEventListener('click', function () {
+          const mode = btn.getAttribute('data-mode');
+          if (mode) setMode(mode);
+        });
+      });
+
+      function clearResults() {
+        function setBoxValue(box, text) {
+          if (!box) return;
+          const span = box.querySelector('.result-value');
+          if (span) span.textContent = text;
+        }
+        setBoxValue(resArea, '—');
+        setBoxValue(resM3, '—');
+        setBoxValue(resUnit3, '—');
+        setBoxValue(resLiters, '—');
+        setBoxValue(resCm3, '—');
+        setBoxValue(resFt3, '—');
+        if (resUnit3Label) resUnit3Label.textContent = '—';
+      }
+
+      function resetFields() {
+        inputBase.value = '';
+        inputHeight.value = '';
+        inputA.value = '';
+        inputB.value = '';
+        inputC.value = '';
+        inputArea.value = '';
+        inputLength.value = '';
+        selectUnit.value = 'cm';
+        setMode('right');
+        clearResults();
+        errorEl.textContent = '';
+      }
+
+      function unitToMetersFactor(unit) {
+        switch (unit) {
+          case 'mm': return 0.001;
+          case 'cm': return 0.01;
+          case 'm':  return 1;
+          case 'km': return 1000;
+          case 'in': return 0.0254;
+          case 'ft': return 0.3048;
+          default:   return 1;
+        }
+      }
+
+      function formatNumber(num, decimals) {
+        if (!Number.isFinite(num)) return '—';
+        const abs = Math.abs(num);
+        if (abs !== 0 && (abs < 1e-3 || abs >= 1e6)) {
+          return num.toExponential(decimals != null ? decimals : 4);
+        }
+        return num.toLocaleString(undefined, {
+          maximumFractionDigits: decimals != null ? decimals : 6
+        });
+      }
+
+      function calculateVolume() {
+        clearResults();
+        errorEl.textContent = '';
+
+        const unit = selectUnit.value || 'm';
+        const f = unitToMetersFactor(unit);
+
+        const L = Number(inputLength.value);
+        if (!Number.isFinite(L) || L <= 0) {
+          errorEl.textContent = 'Please enter a positive prism length.';
+          return;
+        }
+
+        let area_m2 = null;
+
+        if (currentMode === 'right') {
+          const b = Number(inputBase.value);
+          const h = Number(inputHeight.value);
+          if (!Number.isFinite(b) || !Number.isFinite(h) || b <= 0 || h <= 0) {
+            errorEl.textContent = 'Please enter positive values for base and height.';
+            return;
+          }
+          const b_m = b * f;
+          const h_m = h * f;
+          area_m2 = 0.5 * b_m * h_m;
+        } else if (currentMode === 'heron') {
+          const a = Number(inputA.value);
+          const b = Number(inputB.value);
+          const c = Number(inputC.value);
+          if (!Number.isFinite(a) || !Number.isFinite(b) || !Number.isFinite(c) ||
+              a <= 0 || b <= 0 || c <= 0) {
+            errorEl.textContent = 'Please enter positive values for all three sides.';
+            return;
+          }
+          if (a + b <= c || a + c <= b || b + c <= a) {
+            errorEl.textContent = 'The three sides do not satisfy the triangle inequality.';
+            return;
+          }
+          const a_m = a * f;
+          const b_m = b * f;
+          const c_m = c * f;
+          const s = (a_m + b_m + c_m) / 2;
+          const rad = s * (s - a_m) * (s - b_m) * (s - c_m);
+          if (rad < 0) {
+            errorEl.textContent = 'Numerical error in Heron’s formula. Check the side lengths.';
+            return;
+          }
+          area_m2 = Math.sqrt(rad);
+        } else if (currentMode === 'area') {
+          const A = Number(inputArea.value);
+          if (!Number.isFinite(A) || A <= 0) {
+            errorEl.textContent = 'Please enter a positive value for the base area.';
+            return;
+          }
+          // Area provided in unit²
+          area_m2 = A * f * f;
+        } else {
+          errorEl.textContent = 'Unknown input mode.';
+          return;
+        }
+
+        const L_m = L * f;
+        const volume_m3 = area_m2 * L_m;
+
+        if (!Number.isFinite(volume_m3) || volume_m3 <= 0) {
+          errorEl.textContent = 'Computation failed. Please check your inputs.';
+          return;
+        }
+
+        const unit3Label = unit + '³';
+        const unitFactor = f * f * f;
+        const volume_unit3 = volume_m3 / unitFactor;
+        const volume_liters = volume_m3 * 1000;
+        const volume_cm3 = volume_m3 * 1e6;
+        const volume_ft3 = volume_m3 * 35.3146667;
+
+        const setBoxValue = (box, text) => {
+          if (!box) return;
+          const span = box.querySelector('.result-value');
+          if (span) span.textContent = text;
+        };
+
+        setBoxValue(resArea, formatNumber(area_m2, 6));
+        setBoxValue(resM3, formatNumber(volume_m3, 6));
+        setBoxValue(resUnit3, formatNumber(volume_unit3, 6));
+        if (resUnit3Label) resUnit3Label.textContent = 'in ' + unit3Label;
+        setBoxValue(resLiters, formatNumber(volume_liters, 4));
+        setBoxValue(resCm3, formatNumber(volume_cm3, 2));
+        setBoxValue(resFt3, formatNumber(volume_ft3, 4));
+      }
+
+      if (btnCalc) btnCalc.addEventListener('click', calculateVolume);
+      if (btnReset) btnReset.addEventListener('click', resetFields);
+
+      // Initialise defaults
+      setMode('right');
+    });
+  </script>
+
+
+</body></html>
+]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
       svg: { fontCache: 'global' }
     };
   </script>

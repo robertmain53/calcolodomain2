@@ -52,10 +52,6 @@
 
   <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-  <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-  <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-  <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
   <script>
     window.ezstandalone = window.ezstandalone || {};
     ezstandalone.cmd = ezstandalone.cmd || [];
@@ -216,8 +212,6 @@
 <body class="bg-gray-50 text-gray-800">
 
   <!-- BODY_SCRIPTS_INIZIO -->
-  <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
   <header class="bg-white shadow-sm sticky top-0 z-50">
     <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
       <div class="flex justify-between items-center">
@@ -697,7 +691,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -765,13 +759,885 @@
 
 
 
+
   <script src="/assets/js/script_menu.js" defer=""></script>
   <script src="/assets/js/script_faq.js" defer=""></script>
   <script src="search.js" defer=""></script>
 
   <script>
-    window.MathJax = {
-      tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+    window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <script>
+    // Mobile menu toggle
+    document.getElementById('mobile-menu-toggle')?.addEventListener('click', function () {
+      const menu = document.getElementById('mobile-menu');
+      if (!menu) return;
+      const isHidden = menu.classList.contains('hidden');
+      menu.classList.toggle('hidden', !isHidden);
+      this.setAttribute('aria-expanded', String(isHidden));
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const fxInput = document.getElementById('ts-fx');
+      const aInput = document.getElementById('ts-a');
+      const nInput = document.getElementById('ts-n');
+      const xInput = document.getElementById('ts-xval');
+      const exampleButtons = document.querySelectorAll('[data-example]');
+
+      const btnCalc = document.getElementById('ts-calc');
+      const btnReset = document.getElementById('ts-reset');
+      const errorEl = document.getElementById('ts-error');
+
+      const polyEl = document.getElementById('ts-poly');
+      const fxResBox = document.getElementById('ts-fx-result');
+      const pnResBox = document.getElementById('ts-pn-result');
+      const tableBody = document.getElementById('ts-table-body');
+      const plotSvg = document.getElementById('ts-plot');
+
+      function setBoxValue(box, text) {
+        if (!box) return;
+        const span = box.querySelector('.result-value');
+        if (span) span.textContent = text;
+      }
+
+      function clearResults() {
+        if (polyEl) polyEl.textContent = '—';
+        setBoxValue(fxResBox, '—');
+        setBoxValue(pnResBox, '—');
+        if (tableBody) tableBody.innerHTML = '';
+        if (plotSvg) plotSvg.innerHTML = '';
+        if (errorEl) errorEl.textContent = '';
+      }
+
+      function buildFunction(expr, variableNames) {
+        const trimmed = (expr || '').trim();
+        if (!trimmed) return null;
+
+        let safeExpr = trimmed.replace(/\^/g, '**');
+
+        const globals = [
+          'sin','cos','tan','asin','acos','atan','sinh','cosh','tanh',
+          'exp','log','sqrt','abs','pow','floor','ceil','round','max','min'
+        ];
+
+        const args = variableNames.concat(globals.map(name => name));
+        const argList = args.join(',');
+
+        const body = 'return (' + safeExpr + ');';
+
+        try {
+          /* eslint no-new-func: "off" */
+          const fn = new Function(argList, body);
+          const bound = function () {
+            const vars = Array.prototype.slice.call(arguments);
+            const mathArgs = globals.map(name => Math[name] || Math[name.toLowerCase()]);
+            return fn.apply(null, vars.concat(mathArgs));
+          };
+          return bound;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function factorial(k) {
+        if (k < 0) return NaN;
+        let res = 1;
+        for (let i = 2; i <= k; i++) res *= i;
+        return res;
+      }
+
+      function nthDerivativeAt(f, a, k, h) {
+        if (k === 0) return f(a);
+        // repeated centered differences
+        let g = f;
+        for (let order = 0; order < k; order++) {
+          const prev = g;
+          g = function (x) {
+            return (prev(x + h) - prev(x - h)) / (2 * h);
+          };
+        }
+        return g(a);
+      }
+
+      function formatNumber(num, decimals) {
+        if (!Number.isFinite(num)) return '—';
+        const abs = Math.abs(num);
+        if (abs !== 0 && (abs < 1e-4 || abs >= 1e6)) {
+          return num.toExponential(decimals != null ? decimals : 4);
+        }
+        return num.toLocaleString(undefined, {
+          maximumFractionDigits: decimals != null ? decimals : 6
+        });
+      }
+
+      function buildPolyString(coeffs, a, n) {
+        if (!coeffs || !coeffs.length) return '—';
+        const terms = [];
+        for (let k = 0; k < coeffs.length; k++) {
+          const c = coeffs[k];
+          if (!Number.isFinite(c) || c === 0) continue;
+          let term = '';
+          const sign = c < 0 ? ' - ' : (terms.length ? ' + ' : '');
+          const absC = Math.abs(c);
+
+          if (k === 0) {
+            term = sign + formatNumber(c, 6);
+          } else {
+            const isOne = Math.abs(absC - 1) < 1e-12;
+            term = sign + (isOne ? '' : formatNumber(absC, 6));
+            term += (a === 0 ? 'x' : '(x - ' + a + ')');
+            if (k > 1) term += '^' + k;
+          }
+          terms.push(term);
+        }
+        if (!terms.length) return 'P_' + n + '(x) = 0';
+        return 'P_' + n + '(x) ≈ ' + terms.join('');
+      }
+
+      function updatePlot(f, polyFn, a, n, xEval) {
+        if (!plotSvg || !f || !polyFn) return;
+        plotSvg.innerHTML = '';
+
+        const width = 400;
+        const height = 260;
+        const pad = 30;
+
+        let xMin = a - 2;
+        let xMax = a + 2;
+        if (Number.isFinite(xEval)) {
+          const spread = Math.max(2, Math.abs(xEval - a) * 1.2);
+          xMin = a - spread;
+          xMax = a + spread;
+        }
+        if (xMin === xMax) {
+          xMin -= 1;
+          xMax += 1;
+        }
+
+        const samples = 200;
+        const xs = [];
+        const ysF = [];
+        const ysP = [];
+
+        for (let i = 0; i <= samples; i++) {
+          const x = xMin + (xMax - xMin) * i / samples;
+          let yF = f(x);
+          let yP = polyFn(x);
+          if (!Number.isFinite(yF) || Math.abs(yF) > 1e8) yF = NaN;
+          if (!Number.isFinite(yP) || Math.abs(yP) > 1e8) yP = NaN;
+          xs.push(x);
+          ysF.push(yF);
+          ysP.push(yP);
+        }
+
+        const ysAll = ysF.concat(ysP).filter(v => Number.isFinite(v));
+        if (!ysAll.length) return;
+
+        let yMin = Math.min.apply(null, ysAll);
+        let yMax = Math.max.apply(null, ysAll);
+        if (yMin === yMax) {
+          yMin -= 1;
+          yMax += 1;
+        }
+
+        function mapX(x) {
+          return pad + (x - xMin) / (xMax - xMin) * (width - 2 * pad);
+        }
+        function mapY(y) {
+          return height - pad - (y - yMin) / (yMax - yMin) * (height - 2 * pad);
+        }
+
+        const axes = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const xAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        xAxis.setAttribute('x1', String(pad));
+        xAxis.setAttribute('y1', String(height - pad));
+        xAxis.setAttribute('x2', String(width - pad));
+        xAxis.setAttribute('y2', String(height - pad));
+        xAxis.setAttribute('stroke', '#d1d5db');
+        xAxis.setAttribute('stroke-width', '1');
+
+        const yAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        yAxis.setAttribute('x1', String(pad));
+        yAxis.setAttribute('y1', String(pad));
+        yAxis.setAttribute('x2', String(pad));
+        yAxis.setAttribute('y2', String(height - pad));
+        yAxis.setAttribute('stroke', '#d1d5db');
+        yAxis.setAttribute('stroke-width', '1');
+
+        axes.appendChild(xAxis);
+        axes.appendChild(yAxis);
+        plotSvg.appendChild(axes);
+
+        function addPath(ys, color) {
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          let d = '';
+          let started = false;
+          for (let i = 0; i <= samples; i++) {
+            const y = ys[i];
+            const x = xs[i];
+            if (!Number.isFinite(y)) {
+              started = false;
+              continue;
+            }
+            const X = mapX(x);
+            const Y = mapY(y);
+            if (!started) {
+              d += 'M ' + X + ' ' + Y;
+              started = true;
+            } else {
+              d += ' L ' + X + ' ' + Y;
+            }
+          }
+          path.setAttribute('d', d);
+          path.setAttribute('fill', 'none');
+          path.setAttribute('stroke', color);
+          path.setAttribute('stroke-width', '1.5');
+          plotSvg.appendChild(path);
+        }
+
+        addPath(ysF, '#1d4ed8');
+        addPath(ysP, '#16a34a');
+      }
+
+      function computeTaylor() {
+        clearResults();
+
+        const fxExpr = (fxInput.value || '').trim();
+        const a = Number(aInput.value);
+        let n = Number(nInput.value);
+        let xEval = xInput.value.trim() === '' ? null : Number(xInput.value);
+
+        if (!fxExpr) {
+          errorEl.textContent = 'Please enter a function f(x).';
+          return;
+        }
+        if (!Number.isFinite(a)) {
+          errorEl.textContent = 'Expansion point a must be a number.';
+          return;
+        }
+        if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) {
+          errorEl.textContent = 'Degree n must be a non-negative integer.';
+          return;
+        }
+        if (n > 10) {
+          errorEl.textContent = 'Degree n is limited to 10 for numerical stability.';
+          return;
+        }
+        if (xEval !== null && !Number.isFinite(xEval)) {
+          errorEl.textContent = 'Evaluation point x must be a number (or left blank).';
+          return;
+        }
+
+        const f = buildFunction(fxExpr, ['x']);
+        if (!f) {
+          errorEl.textContent = 'Could not parse f(x). Check the expression syntax.';
+          return;
+        }
+
+        const h = 1e-4;
+        const derivs = [];
+        const coeffs = [];
+
+        try {
+          for (let k = 0; k <= n; k++) {
+            const fk = nthDerivativeAt(f, a, k, h);
+            if (!Number.isFinite(fk)) {
+              throw new Error('Non-finite derivative f^{(' + k + ')}(a) encountered.');
+            }
+            const kFact = factorial(k);
+            const ak = fk / kFact;
+            derivs.push(fk);
+            coeffs.push(ak);
+          }
+        } catch (e) {
+          errorEl.textContent = e.message || 'Error while computing derivatives. Try a lower degree.';
+          return;
+        }
+
+        if (polyEl) {
+          polyEl.textContent = buildPolyString(coeffs, a, n);
+        }
+
+        let fAtX = null;
+        let pAtX = null;
+        let errAtX = null;
+        if (xEval !== null) {
+          try {
+            fAtX = f(xEval);
+            const polyFn = function (x) {
+              let sum = 0;
+              const dx = x - a;
+              let pow = 1;
+              for (let k = 0; k <= n; k++) {
+                if (k > 0) pow *= dx;
+                sum += coeffs[k] * pow;
+              }
+              return sum;
+            };
+            pAtX = polyFn(xEval);
+            if (Number.isFinite(fAtX) && Number.isFinite(pAtX)) {
+              errAtX = Math.abs(fAtX - pAtX);
+            }
+          } catch (e) {
+            // ignore, will show dashes
+          }
+        }
+
+        if (xEval === null) {
+          setBoxValue(fxResBox, '— (no x provided)');
+          setBoxValue(pnResBox, '— (no x provided)');
+        } else {
+          if (Number.isFinite(fAtX)) {
+            setBoxValue(fxResBox, 'f(' + xEval + ') ≈ ' + formatNumber(fAtX, 8));
+          } else {
+            setBoxValue(fxResBox, 'f(' + xEval + ') could not be evaluated.');
+          }
+          if (Number.isFinite(pAtX)) {
+            let text = 'P_' + n + '(' + xEval + ') ≈ ' + formatNumber(pAtX, 8);
+            if (Number.isFinite(errAtX)) {
+              text += ' ; |error| ≈ ' + formatNumber(errAtX, 4);
+            } else {
+              text += ' ; |error| not available.';
+            }
+            setBoxValue(pnResBox, text);
+          } else {
+            setBoxValue(pnResBox, 'Taylor polynomial could not be evaluated at x = ' + xEval + '.');
+          }
+        }
+
+        if (tableBody) {
+          tableBody.innerHTML = '';
+          for (let k = 0; k <= n; k++) {
+            const fk = derivs[k];
+            const ak = coeffs[k];
+            const kFact = factorial(k);
+
+            const tr = document.createElement('tr');
+            tr.className = 'border-b';
+
+            const tdK = document.createElement('td');
+            tdK.className = 'px-3 py-1.5 text-gray-700';
+            tdK.textContent = String(k);
+
+            const tdDeriv = document.createElement('td');
+            tdDeriv.className = 'px-3 py-1.5 text-gray-700';
+            tdDeriv.textContent = formatNumber(fk, 8);
+
+            const tdFact = document.createElement('td');
+            tdFact.className = 'px-3 py-1.5 text-gray-700';
+            tdFact.textContent = String(kFact);
+
+            const tdCoeff = document.createElement('td');
+            tdCoeff.className = 'px-3 py-1.5 text-gray-700';
+            tdCoeff.textContent = formatNumber(ak, 8);
+
+            const tdTerm = document.createElement('td');
+            tdTerm.className = 'px-3 py-1.5 text-gray-700 small-code';
+            let termStr;
+            if (k === 0) {
+              termStr = formatNumber(ak, 8);
+            } else {
+              const absAk = Math.abs(ak);
+              const signStr = ak < 0 ? '-' : '';
+              const coeffStr = Math.abs(absAk - 1) < 1e-12 ? '' : formatNumber(absAk, 8);
+              let base = (a === 0 ? 'x' : '(x - ' + a + ')');
+              if (k > 1) base += '^' + k;
+              termStr = signStr + (coeffStr ? coeffStr + '·' : '') + base;
+            }
+            tdTerm.textContent = termStr;
+
+            tr.appendChild(tdK);
+            tr.appendChild(tdDeriv);
+            tr.appendChild(tdFact);
+            tr.appendChild(tdCoeff);
+            tr.appendChild(tdTerm);
+            tableBody.appendChild(tr);
+          }
+        }
+
+        const polyFnGlobal = function (x) {
+          let sum = 0;
+          const dx = x - a;
+          let pow = 1;
+          for (let k = 0; k <= n; k++) {
+            if (k > 0) pow *= dx;
+            sum += coeffs[k] * pow;
+          }
+          return sum;
+        };
+        updatePlot(f, polyFnGlobal, a, n, xEval);
+      }
+
+      function resetTaylor() {
+        fxInput.value = 'exp(x)';
+        aInput.value = '0';
+        nInput.value = '5';
+        xInput.value = '';
+        clearResults();
+      }
+
+      if (btnCalc) btnCalc.addEventListener('click', computeTaylor);
+      if (btnReset) btnReset.addEventListener('click', resetTaylor);
+
+      exampleButtons.forEach(btn => {
+        btn.addEventListener('click', function () {
+          const payload = btn.getAttribute('data-example') || '';
+          const parts = payload.split(',');
+          if (parts.length >= 4) {
+            fxInput.value = parts[0];
+            aInput.value = parts[1];
+            nInput.value = parts[2];
+            xInput.value = parts[3];
+          }
+          clearResults();
+        });
+      });
+    });
+  </script>
+
+
+</body></html>
+, ',
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <script>
+    // Mobile menu toggle
+    document.getElementById('mobile-menu-toggle')?.addEventListener('click', function () {
+      const menu = document.getElementById('mobile-menu');
+      if (!menu) return;
+      const isHidden = menu.classList.contains('hidden');
+      menu.classList.toggle('hidden', !isHidden);
+      this.setAttribute('aria-expanded', String(isHidden));
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const fxInput = document.getElementById('ts-fx');
+      const aInput = document.getElementById('ts-a');
+      const nInput = document.getElementById('ts-n');
+      const xInput = document.getElementById('ts-xval');
+      const exampleButtons = document.querySelectorAll('[data-example]');
+
+      const btnCalc = document.getElementById('ts-calc');
+      const btnReset = document.getElementById('ts-reset');
+      const errorEl = document.getElementById('ts-error');
+
+      const polyEl = document.getElementById('ts-poly');
+      const fxResBox = document.getElementById('ts-fx-result');
+      const pnResBox = document.getElementById('ts-pn-result');
+      const tableBody = document.getElementById('ts-table-body');
+      const plotSvg = document.getElementById('ts-plot');
+
+      function setBoxValue(box, text) {
+        if (!box) return;
+        const span = box.querySelector('.result-value');
+        if (span) span.textContent = text;
+      }
+
+      function clearResults() {
+        if (polyEl) polyEl.textContent = '—';
+        setBoxValue(fxResBox, '—');
+        setBoxValue(pnResBox, '—');
+        if (tableBody) tableBody.innerHTML = '';
+        if (plotSvg) plotSvg.innerHTML = '';
+        if (errorEl) errorEl.textContent = '';
+      }
+
+      function buildFunction(expr, variableNames) {
+        const trimmed = (expr || '').trim();
+        if (!trimmed) return null;
+
+        let safeExpr = trimmed.replace(/\^/g, '**');
+
+        const globals = [
+          'sin','cos','tan','asin','acos','atan','sinh','cosh','tanh',
+          'exp','log','sqrt','abs','pow','floor','ceil','round','max','min'
+        ];
+
+        const args = variableNames.concat(globals.map(name => name));
+        const argList = args.join(',');
+
+        const body = 'return (' + safeExpr + ');';
+
+        try {
+          /* eslint no-new-func: "off" */
+          const fn = new Function(argList, body);
+          const bound = function () {
+            const vars = Array.prototype.slice.call(arguments);
+            const mathArgs = globals.map(name => Math[name] || Math[name.toLowerCase()]);
+            return fn.apply(null, vars.concat(mathArgs));
+          };
+          return bound;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function factorial(k) {
+        if (k < 0) return NaN;
+        let res = 1;
+        for (let i = 2; i <= k; i++) res *= i;
+        return res;
+      }
+
+      function nthDerivativeAt(f, a, k, h) {
+        if (k === 0) return f(a);
+        // repeated centered differences
+        let g = f;
+        for (let order = 0; order < k; order++) {
+          const prev = g;
+          g = function (x) {
+            return (prev(x + h) - prev(x - h)) / (2 * h);
+          };
+        }
+        return g(a);
+      }
+
+      function formatNumber(num, decimals) {
+        if (!Number.isFinite(num)) return '—';
+        const abs = Math.abs(num);
+        if (abs !== 0 && (abs < 1e-4 || abs >= 1e6)) {
+          return num.toExponential(decimals != null ? decimals : 4);
+        }
+        return num.toLocaleString(undefined, {
+          maximumFractionDigits: decimals != null ? decimals : 6
+        });
+      }
+
+      function buildPolyString(coeffs, a, n) {
+        if (!coeffs || !coeffs.length) return '—';
+        const terms = [];
+        for (let k = 0; k < coeffs.length; k++) {
+          const c = coeffs[k];
+          if (!Number.isFinite(c) || c === 0) continue;
+          let term = '';
+          const sign = c < 0 ? ' - ' : (terms.length ? ' + ' : '');
+          const absC = Math.abs(c);
+
+          if (k === 0) {
+            term = sign + formatNumber(c, 6);
+          } else {
+            const isOne = Math.abs(absC - 1) < 1e-12;
+            term = sign + (isOne ? '' : formatNumber(absC, 6));
+            term += (a === 0 ? 'x' : '(x - ' + a + ')');
+            if (k > 1) term += '^' + k;
+          }
+          terms.push(term);
+        }
+        if (!terms.length) return 'P_' + n + '(x) = 0';
+        return 'P_' + n + '(x) ≈ ' + terms.join('');
+      }
+
+      function updatePlot(f, polyFn, a, n, xEval) {
+        if (!plotSvg || !f || !polyFn) return;
+        plotSvg.innerHTML = '';
+
+        const width = 400;
+        const height = 260;
+        const pad = 30;
+
+        let xMin = a - 2;
+        let xMax = a + 2;
+        if (Number.isFinite(xEval)) {
+          const spread = Math.max(2, Math.abs(xEval - a) * 1.2);
+          xMin = a - spread;
+          xMax = a + spread;
+        }
+        if (xMin === xMax) {
+          xMin -= 1;
+          xMax += 1;
+        }
+
+        const samples = 200;
+        const xs = [];
+        const ysF = [];
+        const ysP = [];
+
+        for (let i = 0; i <= samples; i++) {
+          const x = xMin + (xMax - xMin) * i / samples;
+          let yF = f(x);
+          let yP = polyFn(x);
+          if (!Number.isFinite(yF) || Math.abs(yF) > 1e8) yF = NaN;
+          if (!Number.isFinite(yP) || Math.abs(yP) > 1e8) yP = NaN;
+          xs.push(x);
+          ysF.push(yF);
+          ysP.push(yP);
+        }
+
+        const ysAll = ysF.concat(ysP).filter(v => Number.isFinite(v));
+        if (!ysAll.length) return;
+
+        let yMin = Math.min.apply(null, ysAll);
+        let yMax = Math.max.apply(null, ysAll);
+        if (yMin === yMax) {
+          yMin -= 1;
+          yMax += 1;
+        }
+
+        function mapX(x) {
+          return pad + (x - xMin) / (xMax - xMin) * (width - 2 * pad);
+        }
+        function mapY(y) {
+          return height - pad - (y - yMin) / (yMax - yMin) * (height - 2 * pad);
+        }
+
+        const axes = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const xAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        xAxis.setAttribute('x1', String(pad));
+        xAxis.setAttribute('y1', String(height - pad));
+        xAxis.setAttribute('x2', String(width - pad));
+        xAxis.setAttribute('y2', String(height - pad));
+        xAxis.setAttribute('stroke', '#d1d5db');
+        xAxis.setAttribute('stroke-width', '1');
+
+        const yAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        yAxis.setAttribute('x1', String(pad));
+        yAxis.setAttribute('y1', String(pad));
+        yAxis.setAttribute('x2', String(pad));
+        yAxis.setAttribute('y2', String(height - pad));
+        yAxis.setAttribute('stroke', '#d1d5db');
+        yAxis.setAttribute('stroke-width', '1');
+
+        axes.appendChild(xAxis);
+        axes.appendChild(yAxis);
+        plotSvg.appendChild(axes);
+
+        function addPath(ys, color) {
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          let d = '';
+          let started = false;
+          for (let i = 0; i <= samples; i++) {
+            const y = ys[i];
+            const x = xs[i];
+            if (!Number.isFinite(y)) {
+              started = false;
+              continue;
+            }
+            const X = mapX(x);
+            const Y = mapY(y);
+            if (!started) {
+              d += 'M ' + X + ' ' + Y;
+              started = true;
+            } else {
+              d += ' L ' + X + ' ' + Y;
+            }
+          }
+          path.setAttribute('d', d);
+          path.setAttribute('fill', 'none');
+          path.setAttribute('stroke', color);
+          path.setAttribute('stroke-width', '1.5');
+          plotSvg.appendChild(path);
+        }
+
+        addPath(ysF, '#1d4ed8');
+        addPath(ysP, '#16a34a');
+      }
+
+      function computeTaylor() {
+        clearResults();
+
+        const fxExpr = (fxInput.value || '').trim();
+        const a = Number(aInput.value);
+        let n = Number(nInput.value);
+        let xEval = xInput.value.trim() === '' ? null : Number(xInput.value);
+
+        if (!fxExpr) {
+          errorEl.textContent = 'Please enter a function f(x).';
+          return;
+        }
+        if (!Number.isFinite(a)) {
+          errorEl.textContent = 'Expansion point a must be a number.';
+          return;
+        }
+        if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) {
+          errorEl.textContent = 'Degree n must be a non-negative integer.';
+          return;
+        }
+        if (n > 10) {
+          errorEl.textContent = 'Degree n is limited to 10 for numerical stability.';
+          return;
+        }
+        if (xEval !== null && !Number.isFinite(xEval)) {
+          errorEl.textContent = 'Evaluation point x must be a number (or left blank).';
+          return;
+        }
+
+        const f = buildFunction(fxExpr, ['x']);
+        if (!f) {
+          errorEl.textContent = 'Could not parse f(x). Check the expression syntax.';
+          return;
+        }
+
+        const h = 1e-4;
+        const derivs = [];
+        const coeffs = [];
+
+        try {
+          for (let k = 0; k <= n; k++) {
+            const fk = nthDerivativeAt(f, a, k, h);
+            if (!Number.isFinite(fk)) {
+              throw new Error('Non-finite derivative f^{(' + k + ')}(a) encountered.');
+            }
+            const kFact = factorial(k);
+            const ak = fk / kFact;
+            derivs.push(fk);
+            coeffs.push(ak);
+          }
+        } catch (e) {
+          errorEl.textContent = e.message || 'Error while computing derivatives. Try a lower degree.';
+          return;
+        }
+
+        if (polyEl) {
+          polyEl.textContent = buildPolyString(coeffs, a, n);
+        }
+
+        let fAtX = null;
+        let pAtX = null;
+        let errAtX = null;
+        if (xEval !== null) {
+          try {
+            fAtX = f(xEval);
+            const polyFn = function (x) {
+              let sum = 0;
+              const dx = x - a;
+              let pow = 1;
+              for (let k = 0; k <= n; k++) {
+                if (k > 0) pow *= dx;
+                sum += coeffs[k] * pow;
+              }
+              return sum;
+            };
+            pAtX = polyFn(xEval);
+            if (Number.isFinite(fAtX) && Number.isFinite(pAtX)) {
+              errAtX = Math.abs(fAtX - pAtX);
+            }
+          } catch (e) {
+            // ignore, will show dashes
+          }
+        }
+
+        if (xEval === null) {
+          setBoxValue(fxResBox, '— (no x provided)');
+          setBoxValue(pnResBox, '— (no x provided)');
+        } else {
+          if (Number.isFinite(fAtX)) {
+            setBoxValue(fxResBox, 'f(' + xEval + ') ≈ ' + formatNumber(fAtX, 8));
+          } else {
+            setBoxValue(fxResBox, 'f(' + xEval + ') could not be evaluated.');
+          }
+          if (Number.isFinite(pAtX)) {
+            let text = 'P_' + n + '(' + xEval + ') ≈ ' + formatNumber(pAtX, 8);
+            if (Number.isFinite(errAtX)) {
+              text += ' ; |error| ≈ ' + formatNumber(errAtX, 4);
+            } else {
+              text += ' ; |error| not available.';
+            }
+            setBoxValue(pnResBox, text);
+          } else {
+            setBoxValue(pnResBox, 'Taylor polynomial could not be evaluated at x = ' + xEval + '.');
+          }
+        }
+
+        if (tableBody) {
+          tableBody.innerHTML = '';
+          for (let k = 0; k <= n; k++) {
+            const fk = derivs[k];
+            const ak = coeffs[k];
+            const kFact = factorial(k);
+
+            const tr = document.createElement('tr');
+            tr.className = 'border-b';
+
+            const tdK = document.createElement('td');
+            tdK.className = 'px-3 py-1.5 text-gray-700';
+            tdK.textContent = String(k);
+
+            const tdDeriv = document.createElement('td');
+            tdDeriv.className = 'px-3 py-1.5 text-gray-700';
+            tdDeriv.textContent = formatNumber(fk, 8);
+
+            const tdFact = document.createElement('td');
+            tdFact.className = 'px-3 py-1.5 text-gray-700';
+            tdFact.textContent = String(kFact);
+
+            const tdCoeff = document.createElement('td');
+            tdCoeff.className = 'px-3 py-1.5 text-gray-700';
+            tdCoeff.textContent = formatNumber(ak, 8);
+
+            const tdTerm = document.createElement('td');
+            tdTerm.className = 'px-3 py-1.5 text-gray-700 small-code';
+            let termStr;
+            if (k === 0) {
+              termStr = formatNumber(ak, 8);
+            } else {
+              const absAk = Math.abs(ak);
+              const signStr = ak < 0 ? '-' : '';
+              const coeffStr = Math.abs(absAk - 1) < 1e-12 ? '' : formatNumber(absAk, 8);
+              let base = (a === 0 ? 'x' : '(x - ' + a + ')');
+              if (k > 1) base += '^' + k;
+              termStr = signStr + (coeffStr ? coeffStr + '·' : '') + base;
+            }
+            tdTerm.textContent = termStr;
+
+            tr.appendChild(tdK);
+            tr.appendChild(tdDeriv);
+            tr.appendChild(tdFact);
+            tr.appendChild(tdCoeff);
+            tr.appendChild(tdTerm);
+            tableBody.appendChild(tr);
+          }
+        }
+
+        const polyFnGlobal = function (x) {
+          let sum = 0;
+          const dx = x - a;
+          let pow = 1;
+          for (let k = 0; k <= n; k++) {
+            if (k > 0) pow *= dx;
+            sum += coeffs[k] * pow;
+          }
+          return sum;
+        };
+        updatePlot(f, polyFnGlobal, a, n, xEval);
+      }
+
+      function resetTaylor() {
+        fxInput.value = 'exp(x)';
+        aInput.value = '0';
+        nInput.value = '5';
+        xInput.value = '';
+        clearResults();
+      }
+
+      if (btnCalc) btnCalc.addEventListener('click', computeTaylor);
+      if (btnReset) btnReset.addEventListener('click', resetTaylor);
+
+      exampleButtons.forEach(btn => {
+        btn.addEventListener('click', function () {
+          const payload = btn.getAttribute('data-example') || '';
+          const parts = payload.split(',');
+          if (parts.length >= 4) {
+            fxInput.value = parts[0];
+            aInput.value = parts[1];
+            nInput.value = parts[2];
+            xInput.value = parts[3];
+          }
+          clearResults();
+        });
+      });
+    });
+  </script>
+
+
+</body></html>
+]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
       svg: { fontCache: 'global' }
     };
   </script>

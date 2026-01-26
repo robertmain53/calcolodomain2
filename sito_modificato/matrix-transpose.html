@@ -50,10 +50,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -221,8 +217,6 @@
 </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
-
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
 
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
@@ -641,7 +635,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -708,14 +702,612 @@
 
 
 
+
     
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
     
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      (function() {
+        const rowsInput = document.getElementById('mt-rows');
+        const colsInput = document.getElementById('mt-cols');
+        const updateSizeBtn = document.getElementById('mt-update-size');
+        const fillIdentityBtn = document.getElementById('mt-fill-identity');
+        const fillZerosBtn = document.getElementById('mt-fill-zeros');
+        const fillRandomBtn = document.getElementById('mt-fill-random');
+        const transposeBtn = document.getElementById('mt-transpose');
+        const copyBackBtn = document.getElementById('mt-copy-back');
+        const resetBtn = document.getElementById('mt-reset');
+
+        const inputGrid = document.getElementById('mt-input-grid');
+        const errorEl = document.getElementById('mt-error');
+        const resultsSection = document.getElementById('mt-results');
+        const dimSummary = document.getElementById('mt-dimension-summary');
+        const outputGrid = document.getElementById('mt-output-grid');
+        const latexCodeEl = document.getElementById('mt-latex-code');
+
+        let lastTranspose = null; // store last transposed matrix
+
+        function clampSize(value) {
+          const n = Number(value);
+          if (!Number.isFinite(n)) return 1;
+          if (n < 1) return 1;
+          if (n > 10) return 10;
+          return Math.round(n);
+        }
+
+        function buildInputGrid(m, n) {
+          inputGrid.innerHTML = '';
+          const table = document.createElement('table');
+          table.className = 'matrix-table border-collapse';
+          const tbody = document.createElement('tbody');
+          for (let i = 0; i < m; i++) {
+            const tr = document.createElement('tr');
+            for (let j = 0; j < n; j++) {
+              const td = document.createElement('td');
+              const inp = document.createElement('input');
+              inp.type = 'number';
+              inp.step = 'any';
+              inp.inputMode = 'decimal';
+              inp.className = 'w-16 sm:w-14 border border-gray-300 rounded px-1 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500';
+              inp.dataset.row = String(i);
+              inp.dataset.col = String(j);
+              inp.placeholder = '0';
+              td.appendChild(inp);
+              tr.appendChild(td);
+            }
+            tbody.appendChild(tr);
+          }
+          table.appendChild(tbody);
+          inputGrid.appendChild(table);
+        }
+
+        function getCurrentSize() {
+          const m = clampSize(rowsInput.value);
+          const n = clampSize(colsInput.value);
+          rowsInput.value = m;
+          colsInput.value = n;
+          return { m, n };
+        }
+
+        function readMatrixFromInputs() {
+          const { m, n } = getCurrentSize();
+          const matrix = [];
+          let hasNonEmpty = false;
+
+          for (let i = 0; i < m; i++) {
+            const row = [];
+            for (let j = 0; j < n; j++) {
+              const selector = 'input[data-row="' + i + '"][data-col="' + j + '"]';
+              const inp = inputGrid.querySelector(selector);
+              let v = 0;
+              if (inp && inp.value.trim() !== '') {
+                const parsed = Number(inp.value);
+                if (!Number.isFinite(parsed)) {
+                  throw new Error('Entry at position (' + (i+1) + ',' + (j+1) + ') is not a valid number.');
+                }
+                v = parsed;
+                hasNonEmpty = true;
+              }
+              row.push(v);
+            }
+            matrix.push(row);
+          }
+
+          return { matrix, m, n, hasNonEmpty };
+        }
+
+        function renderMatrixToGrid(matrix, container) {
+          container.innerHTML = '';
+          const m = matrix.length;
+          const n = m > 0 ? matrix[0].length : 0;
+
+          const table = document.createElement('table');
+          table.className = 'matrix-table border-collapse';
+
+          const tbody = document.createElement('tbody');
+          for (let i = 0; i < m; i++) {
+            const tr = document.createElement('tr');
+            for (let j = 0; j < n; j++) {
+              const td = document.createElement('td');
+              td.className = 'border border-gray-300 bg-white';
+              const span = document.createElement('span');
+              span.className = 'inline-block min-w-[2.5rem] px-1 py-1 text-xs text-center';
+              span.textContent = String(matrix[i][j]);
+              td.appendChild(span);
+              tr.appendChild(td);
+            }
+            tbody.appendChild(tr);
+          }
+          table.appendChild(tbody);
+          container.appendChild(table);
+        }
+
+        function transposeMatrix(matrix) {
+          const m = matrix.length;
+          const n = m > 0 ? matrix[0].length : 0;
+          const result = [];
+          for (let j = 0; j < n; j++) {
+            const row = [];
+            for (let i = 0; i < m; i++) {
+              row.push(matrix[i][j]);
+            }
+            result.push(row);
+          }
+          return result;
+        }
+
+        function generateLatex(matrix, label) {
+          const m = matrix.length;
+          const n = m > 0 ? matrix[0].length : 0;
+          let rows = [];
+          for (let i = 0; i < m; i++) {
+            const entries = matrix[i].map(v => String(v).replace(/,/g, '.'));
+            rows.push(entries.join(' & '));
+          }
+          const body = rows.join(' \\\\ ');
+          if (label) {
+            return label + ' = ' + '\\begin{bmatrix} ' + body + ' \\end{bmatrix}';
+          }
+          return '\\begin{bmatrix} ' + body + ' \\end{bmatrix}';
+        }
+
+        function fillIdentity() {
+          const { m, n } = getCurrentSize();
+          const minDim = Math.min(m, n);
+          inputGrid.querySelectorAll('input[type="number"]').forEach(inp => { inp.value = ''; });
+          for (let k = 0; k < minDim; k++) {
+            const selector = 'input[data-row="' + k + '"][data-col="' + k + '"]';
+            const inp = inputGrid.querySelector(selector);
+            if (inp) inp.value = '1';
+          }
+        }
+
+        function fillZeros() {
+          inputGrid.querySelectorAll('input[type="number"]').forEach(inp => { inp.value = ''; });
+        }
+
+        function fillRandom() {
+          const { m, n } = getCurrentSize();
+          for (let i = 0; i < m; i++) {
+            for (let j = 0; j < n; j++) {
+              const selector = 'input[data-row="' + i + '"][data-col="' + j + '"]';
+              const inp = inputGrid.querySelector(selector);
+              if (inp) {
+                const val = Math.floor(Math.random() * 11) - 5; // -5..5
+                inp.value = String(val);
+              }
+            }
+          }
+        }
+
+        function showError(msg) {
+          errorEl.textContent = msg;
+          errorEl.classList.remove('hidden');
+        }
+
+        function clearError() {
+          errorEl.textContent = '';
+          errorEl.classList.add('hidden');
+        }
+
+        function updateSize() {
+          const { m, n } = getCurrentSize();
+          buildInputGrid(m, n);
+        }
+
+        function resetAll() {
+          rowsInput.value = 3;
+          colsInput.value = 3;
+          buildInputGrid(3, 3);
+          fillIdentity();
+          lastTranspose = null;
+          clearError();
+          resultsSection.classList.add('hidden');
+          outputGrid.innerHTML = '';
+          dimSummary.textContent = '';
+          latexCodeEl.textContent = '';
+        }
+
+        updateSizeBtn.addEventListener('click', function() {
+          updateSize();
+          clearError();
+        });
+
+        fillIdentityBtn.addEventListener('click', function() {
+          clearError();
+          fillIdentity();
+        });
+
+        fillZerosBtn.addEventListener('click', function() {
+          clearError();
+          fillZeros();
+        });
+
+        fillRandomBtn.addEventListener('click', function() {
+          clearError();
+          fillRandom();
+        });
+
+        transposeBtn.addEventListener('click', function() {
+          clearError();
+          resultsSection.classList.add('hidden');
+          outputGrid.innerHTML = '';
+          latexCodeEl.textContent = '';
+          dimSummary.textContent = '';
+
+          let parsed;
+          try {
+            parsed = readMatrixFromInputs();
+          } catch (err) {
+            showError(err.message || 'One or more entries are invalid.');
+            return;
+          }
+
+          const { matrix, m, n, hasNonEmpty } = parsed;
+          if (!hasNonEmpty) {
+            showError('Please enter at least one non-zero entry before computing the transpose.');
+            return;
+          }
+
+          const transposed = transposeMatrix(matrix);
+          lastTranspose = transposed;
+
+          renderMatrixToGrid(transposed, outputGrid);
+          dimSummary.textContent = 'Original matrix A is ' + m + '×' + n + '; its transpose Aᵀ is ' + n + '×' + m + '.';
+
+          const latex = generateLatex(transposed, 'A^{T}');
+          latexCodeEl.textContent = latex;
+
+          resultsSection.classList.remove('hidden');
+
+          if (window.MathJax && window.MathJax.typeset) {
+            window.MathJax.typeset();
+          }
+        });
+
+        copyBackBtn.addEventListener('click', function() {
+          clearError();
+          if (!lastTranspose) {
+            showError('Compute the transpose first, then you can copy it back into the input grid.');
+            return;
+          }
+          const mNew = lastTranspose.length;
+          const nNew = mNew > 0 ? lastTranspose[0].length : 0;
+          rowsInput.value = mNew;
+          colsInput.value = nNew;
+          buildInputGrid(mNew, nNew);
+
+          for (let i = 0; i < mNew; i++) {
+            for (let j = 0; j < nNew; j++) {
+              const selector = 'input[data-row="' + i + '"][data-col="' + j + '"]';
+              const inp = inputGrid.querySelector(selector);
+              if (inp) {
+                inp.value = String(lastTranspose[i][j]);
+              }
+            }
+          }
+        });
+
+        resetBtn.addEventListener('click', function() {
+          resetAll();
+        });
+
+        // Initialize
+        buildInputGrid(3, 3);
+        fillIdentity();
+      })();
+    </script>
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      (function() {
+        const rowsInput = document.getElementById('mt-rows');
+        const colsInput = document.getElementById('mt-cols');
+        const updateSizeBtn = document.getElementById('mt-update-size');
+        const fillIdentityBtn = document.getElementById('mt-fill-identity');
+        const fillZerosBtn = document.getElementById('mt-fill-zeros');
+        const fillRandomBtn = document.getElementById('mt-fill-random');
+        const transposeBtn = document.getElementById('mt-transpose');
+        const copyBackBtn = document.getElementById('mt-copy-back');
+        const resetBtn = document.getElementById('mt-reset');
+
+        const inputGrid = document.getElementById('mt-input-grid');
+        const errorEl = document.getElementById('mt-error');
+        const resultsSection = document.getElementById('mt-results');
+        const dimSummary = document.getElementById('mt-dimension-summary');
+        const outputGrid = document.getElementById('mt-output-grid');
+        const latexCodeEl = document.getElementById('mt-latex-code');
+
+        let lastTranspose = null; // store last transposed matrix
+
+        function clampSize(value) {
+          const n = Number(value);
+          if (!Number.isFinite(n)) return 1;
+          if (n < 1) return 1;
+          if (n > 10) return 10;
+          return Math.round(n);
+        }
+
+        function buildInputGrid(m, n) {
+          inputGrid.innerHTML = '';
+          const table = document.createElement('table');
+          table.className = 'matrix-table border-collapse';
+          const tbody = document.createElement('tbody');
+          for (let i = 0; i < m; i++) {
+            const tr = document.createElement('tr');
+            for (let j = 0; j < n; j++) {
+              const td = document.createElement('td');
+              const inp = document.createElement('input');
+              inp.type = 'number';
+              inp.step = 'any';
+              inp.inputMode = 'decimal';
+              inp.className = 'w-16 sm:w-14 border border-gray-300 rounded px-1 py-1 text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500';
+              inp.dataset.row = String(i);
+              inp.dataset.col = String(j);
+              inp.placeholder = '0';
+              td.appendChild(inp);
+              tr.appendChild(td);
+            }
+            tbody.appendChild(tr);
+          }
+          table.appendChild(tbody);
+          inputGrid.appendChild(table);
+        }
+
+        function getCurrentSize() {
+          const m = clampSize(rowsInput.value);
+          const n = clampSize(colsInput.value);
+          rowsInput.value = m;
+          colsInput.value = n;
+          return { m, n };
+        }
+
+        function readMatrixFromInputs() {
+          const { m, n } = getCurrentSize();
+          const matrix = [];
+          let hasNonEmpty = false;
+
+          for (let i = 0; i < m; i++) {
+            const row = [];
+            for (let j = 0; j < n; j++) {
+              const selector = 'input[data-row="' + i + '"][data-col="' + j + '"]';
+              const inp = inputGrid.querySelector(selector);
+              let v = 0;
+              if (inp && inp.value.trim() !== '') {
+                const parsed = Number(inp.value);
+                if (!Number.isFinite(parsed)) {
+                  throw new Error('Entry at position (' + (i+1) + ',' + (j+1) + ') is not a valid number.');
+                }
+                v = parsed;
+                hasNonEmpty = true;
+              }
+              row.push(v);
+            }
+            matrix.push(row);
+          }
+
+          return { matrix, m, n, hasNonEmpty };
+        }
+
+        function renderMatrixToGrid(matrix, container) {
+          container.innerHTML = '';
+          const m = matrix.length;
+          const n = m > 0 ? matrix[0].length : 0;
+
+          const table = document.createElement('table');
+          table.className = 'matrix-table border-collapse';
+
+          const tbody = document.createElement('tbody');
+          for (let i = 0; i < m; i++) {
+            const tr = document.createElement('tr');
+            for (let j = 0; j < n; j++) {
+              const td = document.createElement('td');
+              td.className = 'border border-gray-300 bg-white';
+              const span = document.createElement('span');
+              span.className = 'inline-block min-w-[2.5rem] px-1 py-1 text-xs text-center';
+              span.textContent = String(matrix[i][j]);
+              td.appendChild(span);
+              tr.appendChild(td);
+            }
+            tbody.appendChild(tr);
+          }
+          table.appendChild(tbody);
+          container.appendChild(table);
+        }
+
+        function transposeMatrix(matrix) {
+          const m = matrix.length;
+          const n = m > 0 ? matrix[0].length : 0;
+          const result = [];
+          for (let j = 0; j < n; j++) {
+            const row = [];
+            for (let i = 0; i < m; i++) {
+              row.push(matrix[i][j]);
+            }
+            result.push(row);
+          }
+          return result;
+        }
+
+        function generateLatex(matrix, label) {
+          const m = matrix.length;
+          const n = m > 0 ? matrix[0].length : 0;
+          let rows = [];
+          for (let i = 0; i < m; i++) {
+            const entries = matrix[i].map(v => String(v).replace(/,/g, '.'));
+            rows.push(entries.join(' & '));
+          }
+          const body = rows.join(' \\\\ ');
+          if (label) {
+            return label + ' = ' + '\\begin{bmatrix} ' + body + ' \\end{bmatrix}';
+          }
+          return '\\begin{bmatrix} ' + body + ' \\end{bmatrix}';
+        }
+
+        function fillIdentity() {
+          const { m, n } = getCurrentSize();
+          const minDim = Math.min(m, n);
+          inputGrid.querySelectorAll('input[type="number"]').forEach(inp => { inp.value = ''; });
+          for (let k = 0; k < minDim; k++) {
+            const selector = 'input[data-row="' + k + '"][data-col="' + k + '"]';
+            const inp = inputGrid.querySelector(selector);
+            if (inp) inp.value = '1';
+          }
+        }
+
+        function fillZeros() {
+          inputGrid.querySelectorAll('input[type="number"]').forEach(inp => { inp.value = ''; });
+        }
+
+        function fillRandom() {
+          const { m, n } = getCurrentSize();
+          for (let i = 0; i < m; i++) {
+            for (let j = 0; j < n; j++) {
+              const selector = 'input[data-row="' + i + '"][data-col="' + j + '"]';
+              const inp = inputGrid.querySelector(selector);
+              if (inp) {
+                const val = Math.floor(Math.random() * 11) - 5; // -5..5
+                inp.value = String(val);
+              }
+            }
+          }
+        }
+
+        function showError(msg) {
+          errorEl.textContent = msg;
+          errorEl.classList.remove('hidden');
+        }
+
+        function clearError() {
+          errorEl.textContent = '';
+          errorEl.classList.add('hidden');
+        }
+
+        function updateSize() {
+          const { m, n } = getCurrentSize();
+          buildInputGrid(m, n);
+        }
+
+        function resetAll() {
+          rowsInput.value = 3;
+          colsInput.value = 3;
+          buildInputGrid(3, 3);
+          fillIdentity();
+          lastTranspose = null;
+          clearError();
+          resultsSection.classList.add('hidden');
+          outputGrid.innerHTML = '';
+          dimSummary.textContent = '';
+          latexCodeEl.textContent = '';
+        }
+
+        updateSizeBtn.addEventListener('click', function() {
+          updateSize();
+          clearError();
+        });
+
+        fillIdentityBtn.addEventListener('click', function() {
+          clearError();
+          fillIdentity();
+        });
+
+        fillZerosBtn.addEventListener('click', function() {
+          clearError();
+          fillZeros();
+        });
+
+        fillRandomBtn.addEventListener('click', function() {
+          clearError();
+          fillRandom();
+        });
+
+        transposeBtn.addEventListener('click', function() {
+          clearError();
+          resultsSection.classList.add('hidden');
+          outputGrid.innerHTML = '';
+          latexCodeEl.textContent = '';
+          dimSummary.textContent = '';
+
+          let parsed;
+          try {
+            parsed = readMatrixFromInputs();
+          } catch (err) {
+            showError(err.message || 'One or more entries are invalid.');
+            return;
+          }
+
+          const { matrix, m, n, hasNonEmpty } = parsed;
+          if (!hasNonEmpty) {
+            showError('Please enter at least one non-zero entry before computing the transpose.');
+            return;
+          }
+
+          const transposed = transposeMatrix(matrix);
+          lastTranspose = transposed;
+
+          renderMatrixToGrid(transposed, outputGrid);
+          dimSummary.textContent = 'Original matrix A is ' + m + '×' + n + '; its transpose Aᵀ is ' + n + '×' + m + '.';
+
+          const latex = generateLatex(transposed, 'A^{T}');
+          latexCodeEl.textContent = latex;
+
+          resultsSection.classList.remove('hidden');
+
+          if (window.MathJax && window.MathJax.typeset) {
+            window.MathJax.typeset();
+          }
+        });
+
+        copyBackBtn.addEventListener('click', function() {
+          clearError();
+          if (!lastTranspose) {
+            showError('Compute the transpose first, then you can copy it back into the input grid.');
+            return;
+          }
+          const mNew = lastTranspose.length;
+          const nNew = mNew > 0 ? lastTranspose[0].length : 0;
+          rowsInput.value = mNew;
+          colsInput.value = nNew;
+          buildInputGrid(mNew, nNew);
+
+          for (let i = 0; i < mNew; i++) {
+            for (let j = 0; j < nNew; j++) {
+              const selector = 'input[data-row="' + i + '"][data-col="' + j + '"]';
+              const inp = inputGrid.querySelector(selector);
+              if (inp) {
+                inp.value = String(lastTranspose[i][j]);
+              }
+            }
+          }
+        });
+
+        resetBtn.addEventListener('click', function() {
+          resetAll();
+        });
+
+        // Initialize
+        buildInputGrid(3, 3);
+        fillIdentity();
+      })();
+    </script>
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

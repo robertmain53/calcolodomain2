@@ -43,10 +43,6 @@
     
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
     
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-    
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -213,8 +209,6 @@
 <body class="bg-gray-50 text-gray-800">
 
     <!-- BODY SCRIPTS (substitution of %%BODY_SCRIPTS_INIZIO%%) -->
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
         <div class="flex justify-between items-center">
@@ -762,7 +756,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -829,14 +823,484 @@
 
 
 
+
     
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
     
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Bayesian inference calculator logic -->
+    <script>
+      (function() {
+        const priorType = document.getElementById('prior-type');
+        const customPriorFields = document.getElementById('custom-prior-fields');
+        const alphaPriorInput = document.getElementById('alpha-prior');
+        const betaPriorInput = document.getElementById('beta-prior');
+        const nInput = document.getElementById('n-trials');
+        const xInput = document.getElementById('x-successes');
+        const credInput = document.getElementById('credible-level');
+        const calcBtn = document.getElementById('bayes-calc-btn');
+        const clearBtn = document.getElementById('bayes-clear-btn');
+        const errBox = document.getElementById('bayes-error-box');
+        const resultsBox = document.getElementById('bayes-results');
+
+        const outAlphaPrior = document.getElementById('out-alpha-prior');
+        const outBetaPrior = document.getElementById('out-beta-prior');
+        const outPriorMean = document.getElementById('out-prior-mean');
+        const outPriorSd = document.getElementById('out-prior-sd');
+
+        const outAlphaPost = document.getElementById('out-alpha-post');
+        const outBetaPost = document.getElementById('out-beta-post');
+        const outPostMean = document.getElementById('out-post-mean');
+        const outPostMode = document.getElementById('out-post-mode');
+        const outPostSd = document.getElementById('out-post-sd');
+
+        const outCredLevel = document.getElementById('out-cred-level');
+        const outCredInterval = document.getElementById('out-cred-interval');
+        const outPredictive = document.getElementById('out-predictive');
+
+        function fmt(val, decimals) {
+          if (!isFinite(val)) return String(val);
+          const d = typeof decimals === 'number' ? decimals : 6;
+          const abs = Math.abs(val);
+          if (abs !== 0 && (abs < 1e-4 || abs >= 1e6)) {
+            return val.toExponential(6);
+          }
+          return val.toFixed(d).replace(/0+$/,'').replace(/\.$/,'');
+        }
+
+        function showError(msg) {
+          errBox.textContent = msg;
+          errBox.classList.remove('hidden');
+          resultsBox.classList.add('hidden');
+        }
+
+        function clearError() {
+          errBox.textContent = '';
+          errBox.classList.add('hidden');
+        }
+
+        priorType.addEventListener('change', function() {
+          if (priorType.value === 'custom') {
+            customPriorFields.classList.remove('hidden');
+          } else {
+            customPriorFields.classList.add('hidden');
+          }
+        });
+
+        function zFromLevel(level) {
+          // approximate z for central level (e.g. 95 -> 1.96, 90 -> 1.645)
+          const pUpper = 0.5 + (level / 100) / 2; // e.g. 0.975 for 95%
+          // Inverse error function approximation to get z
+          // Abramowitz & Stegun 7.1.26 approximation
+          const a1 = -39.6968302866538;
+          const a2 = 220.946098424521;
+          const a3 = -275.928510446969;
+          const a4 = 138.357751867269;
+          const a5 = -30.6647980661472;
+          const a6 = 2.50662827745924;
+
+          const b1 = -54.4760987982241;
+          const b2 = 161.585836858041;
+          const b3 = -155.698979859887;
+          const b4 = 66.8013118877197;
+          const b5 = -13.2806815528857;
+
+          const c1 = -0.00778489400243029;
+          const c2 = -0.322396458041136;
+          const c3 = -2.40075827716184;
+          const c4 = -2.54973253934373;
+          const c5 = 4.37466414146497;
+          const c6 = 2.93816398269878;
+
+          const d1 = 0.00778469570904146;
+          const d2 = 0.32246712907004;
+          const d3 = 2.44513413714299;
+          const d4 = 3.75440866190742;
+
+          const p = pUpper;
+          if (p <= 0 || p >= 1) return NaN;
+
+          let q, r, z;
+          if (p < 0.02425) {
+            // lower region
+            q = Math.sqrt(-2 * Math.log(p));
+            z = (((((c1 * q + c2) * q + c3) * q + c4) * q + c5) * q + c6) /
+                ((((d1 * q + d2) * q + d3) * q + d4) * q + 1);
+          } else if (p > 1 - 0.02425) {
+            // upper region
+            q = Math.sqrt(-2 * Math.log(1 - p));
+            z = -(((((c1 * q + c2) * q + c3) * q + c4) * q + c5) * q + c6) /
+                 ((((d1 * q + d2) * q + d3) * q + d4) * q + 1);
+          } else {
+            // central region
+            q = p - 0.5;
+            r = q * q;
+            z = (((((a1 * r + a2) * r + a3) * r + a4) * r + a5) * r + a6) * q /
+                (((((b1 * r + b2) * r + b3) * r + b4) * r + b5) * r + 1);
+          }
+          return z;
+        }
+
+        function calc() {
+          clearError();
+          resultsBox.classList.add('hidden');
+
+          // Prior
+          let alphaPrior, betaPrior;
+          const pType = priorType.value;
+          if (pType === 'uniform') {
+            alphaPrior = 1;
+            betaPrior = 1;
+          } else if (pType === 'jeffreys') {
+            alphaPrior = 0.5;
+            betaPrior = 0.5;
+          } else {
+            alphaPrior = parseFloat(alphaPriorInput.value);
+            betaPrior = parseFloat(betaPriorInput.value);
+            if (!isFinite(alphaPrior) || !isFinite(betaPrior) || alphaPrior <= 0 || betaPrior <= 0) {
+              showError('For a custom prior, please enter positive values for \u03b1 and \u03b2.');
+              return;
+            }
+          }
+
+          // Data
+          const n = parseInt(nInput.value, 10);
+          const x = parseInt(xInput.value, 10);
+          if (!isFinite(n) || n <= 0) {
+            showError('Please enter a valid number of trials n \u2265 1.');
+            return;
+          }
+          if (!isFinite(x) || x < 0 || x > n) {
+            showError('Please enter a valid number of successes with 0 \u2264 x \u2264 n.');
+            return;
+          }
+
+          let credLevel = parseFloat(credInput.value);
+          if (!isFinite(credLevel) || credLevel <= 0 || credLevel >= 100) {
+            credLevel = 95;
+          }
+
+          // Posterior
+          const alphaPost = alphaPrior + x;
+          const betaPost = betaPrior + (n - x);
+
+          // Prior stats
+          const priorMean = alphaPrior / (alphaPrior + betaPrior);
+          const priorVar =
+            (alphaPrior * betaPrior) /
+            (Math.pow(alphaPrior + betaPrior, 2) * (alphaPrior + betaPrior + 1));
+          const priorSd = Math.sqrt(priorVar);
+
+          // Posterior stats
+          const postMean = alphaPost / (alphaPost + betaPost);
+          const postVar =
+            (alphaPost * betaPost) /
+            (Math.pow(alphaPost + betaPost, 2) * (alphaPost + betaPost + 1));
+          const postSd = Math.sqrt(postVar);
+
+          let postMode;
+          if (alphaPost > 1 && betaPost > 1) {
+            postMode = (alphaPost - 1) / (alphaPost + betaPost - 2);
+          } else {
+            postMode = NaN;
+          }
+
+          // Approximate credible interval using normal approximation
+          const z = zFromLevel(credLevel);
+          const lower = postMean - z * postSd;
+          const upper = postMean + z * postSd;
+
+          // Posterior predictive
+          const predictive = postMean; // equal to mean for Beta-Binomial
+
+          // Populate outputs
+          outAlphaPrior.textContent = fmt(alphaPrior, 6);
+          outBetaPrior.textContent = fmt(betaPrior, 6);
+          outPriorMean.textContent = fmt(priorMean, 6);
+          outPriorSd.textContent = fmt(priorSd, 6);
+
+          outAlphaPost.textContent = fmt(alphaPost, 6);
+          outBetaPost.textContent = fmt(betaPost, 6);
+          outPostMean.textContent = fmt(postMean, 6);
+          outPostSd.textContent = fmt(postSd, 6);
+          outPostMode.textContent = isNaN(postMode)
+            ? 'Undefined (mode on boundary)'
+            : fmt(postMode, 6);
+
+          outCredLevel.textContent = fmt(credLevel, 2);
+          let lowerClamped = Math.max(0, Math.min(1, lower));
+          let upperClamped = Math.max(0, Math.min(1, upper));
+          outCredInterval.textContent =
+            '[' + fmt(lowerClamped, 6) + ', ' + fmt(upperClamped, 6) + ']';
+          outPredictive.textContent = fmt(predictive, 6);
+
+          resultsBox.classList.remove('hidden');
+        }
+
+        function clearAll() {
+          priorType.value = 'uniform';
+          customPriorFields.classList.add('hidden');
+          alphaPriorInput.value = '';
+          betaPriorInput.value = '';
+          nInput.value = '';
+          xInput.value = '';
+          credInput.value = '95';
+          clearError();
+          resultsBox.classList.add('hidden');
+        }
+
+        calcBtn.addEventListener('click', calc);
+        clearBtn.addEventListener('click', clearAll);
+      })();
+    </script>
+
+
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Bayesian inference calculator logic -->
+    <script>
+      (function() {
+        const priorType = document.getElementById('prior-type');
+        const customPriorFields = document.getElementById('custom-prior-fields');
+        const alphaPriorInput = document.getElementById('alpha-prior');
+        const betaPriorInput = document.getElementById('beta-prior');
+        const nInput = document.getElementById('n-trials');
+        const xInput = document.getElementById('x-successes');
+        const credInput = document.getElementById('credible-level');
+        const calcBtn = document.getElementById('bayes-calc-btn');
+        const clearBtn = document.getElementById('bayes-clear-btn');
+        const errBox = document.getElementById('bayes-error-box');
+        const resultsBox = document.getElementById('bayes-results');
+
+        const outAlphaPrior = document.getElementById('out-alpha-prior');
+        const outBetaPrior = document.getElementById('out-beta-prior');
+        const outPriorMean = document.getElementById('out-prior-mean');
+        const outPriorSd = document.getElementById('out-prior-sd');
+
+        const outAlphaPost = document.getElementById('out-alpha-post');
+        const outBetaPost = document.getElementById('out-beta-post');
+        const outPostMean = document.getElementById('out-post-mean');
+        const outPostMode = document.getElementById('out-post-mode');
+        const outPostSd = document.getElementById('out-post-sd');
+
+        const outCredLevel = document.getElementById('out-cred-level');
+        const outCredInterval = document.getElementById('out-cred-interval');
+        const outPredictive = document.getElementById('out-predictive');
+
+        function fmt(val, decimals) {
+          if (!isFinite(val)) return String(val);
+          const d = typeof decimals === 'number' ? decimals : 6;
+          const abs = Math.abs(val);
+          if (abs !== 0 && (abs < 1e-4 || abs >= 1e6)) {
+            return val.toExponential(6);
+          }
+          return val.toFixed(d).replace(/0+$/,'').replace(/\.$/,'');
+        }
+
+        function showError(msg) {
+          errBox.textContent = msg;
+          errBox.classList.remove('hidden');
+          resultsBox.classList.add('hidden');
+        }
+
+        function clearError() {
+          errBox.textContent = '';
+          errBox.classList.add('hidden');
+        }
+
+        priorType.addEventListener('change', function() {
+          if (priorType.value === 'custom') {
+            customPriorFields.classList.remove('hidden');
+          } else {
+            customPriorFields.classList.add('hidden');
+          }
+        });
+
+        function zFromLevel(level) {
+          // approximate z for central level (e.g. 95 -> 1.96, 90 -> 1.645)
+          const pUpper = 0.5 + (level / 100) / 2; // e.g. 0.975 for 95%
+          // Inverse error function approximation to get z
+          // Abramowitz & Stegun 7.1.26 approximation
+          const a1 = -39.6968302866538;
+          const a2 = 220.946098424521;
+          const a3 = -275.928510446969;
+          const a4 = 138.357751867269;
+          const a5 = -30.6647980661472;
+          const a6 = 2.50662827745924;
+
+          const b1 = -54.4760987982241;
+          const b2 = 161.585836858041;
+          const b3 = -155.698979859887;
+          const b4 = 66.8013118877197;
+          const b5 = -13.2806815528857;
+
+          const c1 = -0.00778489400243029;
+          const c2 = -0.322396458041136;
+          const c3 = -2.40075827716184;
+          const c4 = -2.54973253934373;
+          const c5 = 4.37466414146497;
+          const c6 = 2.93816398269878;
+
+          const d1 = 0.00778469570904146;
+          const d2 = 0.32246712907004;
+          const d3 = 2.44513413714299;
+          const d4 = 3.75440866190742;
+
+          const p = pUpper;
+          if (p <= 0 || p >= 1) return NaN;
+
+          let q, r, z;
+          if (p < 0.02425) {
+            // lower region
+            q = Math.sqrt(-2 * Math.log(p));
+            z = (((((c1 * q + c2) * q + c3) * q + c4) * q + c5) * q + c6) /
+                ((((d1 * q + d2) * q + d3) * q + d4) * q + 1);
+          } else if (p > 1 - 0.02425) {
+            // upper region
+            q = Math.sqrt(-2 * Math.log(1 - p));
+            z = -(((((c1 * q + c2) * q + c3) * q + c4) * q + c5) * q + c6) /
+                 ((((d1 * q + d2) * q + d3) * q + d4) * q + 1);
+          } else {
+            // central region
+            q = p - 0.5;
+            r = q * q;
+            z = (((((a1 * r + a2) * r + a3) * r + a4) * r + a5) * r + a6) * q /
+                (((((b1 * r + b2) * r + b3) * r + b4) * r + b5) * r + 1);
+          }
+          return z;
+        }
+
+        function calc() {
+          clearError();
+          resultsBox.classList.add('hidden');
+
+          // Prior
+          let alphaPrior, betaPrior;
+          const pType = priorType.value;
+          if (pType === 'uniform') {
+            alphaPrior = 1;
+            betaPrior = 1;
+          } else if (pType === 'jeffreys') {
+            alphaPrior = 0.5;
+            betaPrior = 0.5;
+          } else {
+            alphaPrior = parseFloat(alphaPriorInput.value);
+            betaPrior = parseFloat(betaPriorInput.value);
+            if (!isFinite(alphaPrior) || !isFinite(betaPrior) || alphaPrior <= 0 || betaPrior <= 0) {
+              showError('For a custom prior, please enter positive values for \u03b1 and \u03b2.');
+              return;
+            }
+          }
+
+          // Data
+          const n = parseInt(nInput.value, 10);
+          const x = parseInt(xInput.value, 10);
+          if (!isFinite(n) || n <= 0) {
+            showError('Please enter a valid number of trials n \u2265 1.');
+            return;
+          }
+          if (!isFinite(x) || x < 0 || x > n) {
+            showError('Please enter a valid number of successes with 0 \u2264 x \u2264 n.');
+            return;
+          }
+
+          let credLevel = parseFloat(credInput.value);
+          if (!isFinite(credLevel) || credLevel <= 0 || credLevel >= 100) {
+            credLevel = 95;
+          }
+
+          // Posterior
+          const alphaPost = alphaPrior + x;
+          const betaPost = betaPrior + (n - x);
+
+          // Prior stats
+          const priorMean = alphaPrior / (alphaPrior + betaPrior);
+          const priorVar =
+            (alphaPrior * betaPrior) /
+            (Math.pow(alphaPrior + betaPrior, 2) * (alphaPrior + betaPrior + 1));
+          const priorSd = Math.sqrt(priorVar);
+
+          // Posterior stats
+          const postMean = alphaPost / (alphaPost + betaPost);
+          const postVar =
+            (alphaPost * betaPost) /
+            (Math.pow(alphaPost + betaPost, 2) * (alphaPost + betaPost + 1));
+          const postSd = Math.sqrt(postVar);
+
+          let postMode;
+          if (alphaPost > 1 && betaPost > 1) {
+            postMode = (alphaPost - 1) / (alphaPost + betaPost - 2);
+          } else {
+            postMode = NaN;
+          }
+
+          // Approximate credible interval using normal approximation
+          const z = zFromLevel(credLevel);
+          const lower = postMean - z * postSd;
+          const upper = postMean + z * postSd;
+
+          // Posterior predictive
+          const predictive = postMean; // equal to mean for Beta-Binomial
+
+          // Populate outputs
+          outAlphaPrior.textContent = fmt(alphaPrior, 6);
+          outBetaPrior.textContent = fmt(betaPrior, 6);
+          outPriorMean.textContent = fmt(priorMean, 6);
+          outPriorSd.textContent = fmt(priorSd, 6);
+
+          outAlphaPost.textContent = fmt(alphaPost, 6);
+          outBetaPost.textContent = fmt(betaPost, 6);
+          outPostMean.textContent = fmt(postMean, 6);
+          outPostSd.textContent = fmt(postSd, 6);
+          outPostMode.textContent = isNaN(postMode)
+            ? 'Undefined (mode on boundary)'
+            : fmt(postMode, 6);
+
+          outCredLevel.textContent = fmt(credLevel, 2);
+          let lowerClamped = Math.max(0, Math.min(1, lower));
+          let upperClamped = Math.max(0, Math.min(1, upper));
+          outCredInterval.textContent =
+            '[' + fmt(lowerClamped, 6) + ', ' + fmt(upperClamped, 6) + ']';
+          outPredictive.textContent = fmt(predictive, 6);
+
+          resultsBox.classList.remove('hidden');
+        }
+
+        function clearAll() {
+          priorType.value = 'uniform';
+          customPriorFields.classList.add('hidden');
+          alphaPriorInput.value = '';
+          betaPriorInput.value = '';
+          nInput.value = '';
+          xInput.value = '';
+          credInput.value = '95';
+          clearError();
+          resultsBox.classList.add('hidden');
+        }
+
+        calcBtn.addEventListener('click', calc);
+        clearBtn.addEventListener('click', clearAll);
+      })();
+    </script>
+
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

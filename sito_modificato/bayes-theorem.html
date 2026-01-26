@@ -47,10 +47,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -217,8 +213,6 @@
 <body class="bg-gray-50 text-gray-800">
 
     <!-- BODY SCRIPTS (replacement for %%BODY_SCRIPTS_INIZIO%%) -->
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
         <div class="flex justify-between items-center">
@@ -762,7 +756,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -830,13 +824,535 @@
 
 
 
+
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
 
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Bayes' theorem calculator logic -->
+    <script>
+      (function() {
+        // Tab logic
+        const tabGeneral = document.getElementById('tab-general');
+        const tabDiagnostic = document.getElementById('tab-diagnostic');
+        const panelGeneral = document.getElementById('panel-general');
+        const panelDiagnostic = document.getElementById('panel-diagnostic');
+
+        function activateTab(which) {
+          if (which === 'general') {
+            tabGeneral.classList.add('tab-btn-active', 'text-blue-600');
+            tabGeneral.classList.remove('text-gray-500');
+            tabDiagnostic.classList.remove('tab-btn-active');
+            tabDiagnostic.classList.add('text-gray-500');
+            panelGeneral.classList.remove('hidden');
+            panelDiagnostic.classList.add('hidden');
+          } else {
+            tabDiagnostic.classList.add('tab-btn-active', 'text-blue-600');
+            tabDiagnostic.classList.remove('text-gray-500');
+            tabGeneral.classList.remove('tab-btn-active');
+            tabGeneral.classList.add('text-gray-500');
+            panelDiagnostic.classList.remove('hidden');
+            panelGeneral.classList.add('hidden');
+          }
+        }
+
+        tabGeneral.addEventListener('click', function() { activateTab('general'); });
+        tabDiagnostic.addEventListener('click', function() { activateTab('diagnostic'); });
+
+        // Utility helpers
+        function fmtProb(p, decimals) {
+          if (!isFinite(p)) return String(p);
+          const d = typeof decimals === 'number' ? decimals : 6;
+          const clipped = Math.max(0, Math.min(1, p));
+          return clipped.toFixed(d).replace(/0+$/,'').replace(/\.$/,'');
+        }
+
+        function fmtPct(p, decimals) {
+          if (!isFinite(p)) return String(p);
+          const d = typeof decimals === 'number' ? decimals : 2;
+          const clipped = Math.max(0, Math.min(1, p));
+          const pct = clipped * 100;
+          return pct.toFixed(d).replace(/0+$/,'').replace(/\.$/,'') + '%';
+        }
+
+        function parseProb(valueRaw, fieldName) {
+          const v = String(valueRaw || '').trim();
+          if (v === '') {
+            throw new Error('Please enter a value for ' + fieldName + '.');
+          }
+          let x = parseFloat(v.replace('%',''));
+          if (!isFinite(x)) {
+            throw new Error('Value for ' + fieldName + ' must be a number.');
+          }
+          if (x < 0) {
+            throw new Error('Value for ' + fieldName + ' cannot be negative.');
+          }
+          if (x > 1) {
+            // Treat as percentage
+            x = x / 100;
+          }
+          if (x < 0 || x > 1) {
+            throw new Error('Value for ' + fieldName + ' must be between 0 and 1 (or 0 and 100 if using percentages).');
+          }
+          return x;
+        }
+
+        // --- General probability mode ---
+        const genPaInput = document.getElementById('gen-pa');
+        const genPbGivenAInput = document.getElementById('gen-pb_given_a');
+        const genPbGivenNotAInput = document.getElementById('gen-pb_given_not_a');
+        const genCalcBtn = document.getElementById('gen-calc-btn');
+        const genClearBtn = document.getElementById('gen-clear-btn');
+        const genErrorBox = document.getElementById('gen-error-box');
+        const genResults = document.getElementById('gen-results');
+
+        const genOutPa = document.getElementById('gen-out-pa');
+        const genOutNotPa = document.getElementById('gen-out-not_pa');
+        const genOutPb = document.getElementById('gen-out-pb');
+        const genOutPaGivenB = document.getElementById('gen-out-pa_given_b');
+        const genOutNotPaGivenB = document.getElementById('gen-out-not_pa_given_b');
+        const genOutNotPb = document.getElementById('gen-out-not_pb');
+
+        function genShowError(msg) {
+          genErrorBox.textContent = msg;
+          genErrorBox.classList.remove('hidden');
+          genResults.classList.add('hidden');
+        }
+
+        function genClearError() {
+          genErrorBox.textContent = '';
+          genErrorBox.classList.add('hidden');
+        }
+
+        function genClear() {
+          genPaInput.value = '';
+          genPbGivenAInput.value = '';
+          genPbGivenNotAInput.value = '';
+          genClearError();
+          genResults.classList.add('hidden');
+        }
+
+        genClearBtn.addEventListener('click', genClear);
+
+        function genCalc() {
+          genClearError();
+          genResults.classList.add('hidden');
+
+          try {
+            const pA = parseProb(genPaInput.value, 'P(A)');
+            const pBgivenA = parseProb(genPbGivenAInput.value, 'P(B|A)');
+            const pBgivenNotA = parseProb(genPbGivenNotAInput.value, 'P(B|¬A)');
+
+            const pNotA = 1 - pA;
+            const pB = pBgivenA * pA + pBgivenNotA * pNotA;
+
+            if (pB <= 0) {
+              throw new Error('The computed P(B) is zero. Please adjust the inputs.');
+            }
+
+            const pAgivenB = (pBgivenA * pA) / pB;
+            const pNotAgivenB = 1 - pAgivenB;
+            const pNotB = 1 - pB;
+
+            genOutPa.textContent = fmtProb(pA, 6) + ' (' + fmtPct(pA, 2) + ')';
+            genOutNotPa.textContent = fmtProb(pNotA, 6) + ' (' + fmtPct(pNotA, 2) + ')';
+            genOutPb.textContent = fmtProb(pB, 6) + ' (' + fmtPct(pB, 2) + ')';
+            genOutPaGivenB.textContent = fmtProb(pAgivenB, 6) + ' (' + fmtPct(pAgivenB, 2) + ')';
+            genOutNotPaGivenB.textContent = fmtProb(pNotAgivenB, 6) + ' (' + fmtPct(pNotAgivenB, 2) + ')';
+            genOutNotPb.textContent = fmtProb(pNotB, 6) + ' (' + fmtPct(pNotB, 2) + ')';
+
+            genResults.classList.remove('hidden');
+          } catch (err) {
+            genShowError(err.message || String(err));
+          }
+        }
+
+        genCalcBtn.addEventListener('click', genCalc);
+
+        // --- Diagnostic test mode ---
+        const diagPrevInput = document.getElementById('diag-prev');
+        const diagSensInput = document.getElementById('diag-sens');
+        const diagSpecInput = document.getElementById('diag-spec');
+        const diagCalcBtn = document.getElementById('diag-calc-btn');
+        const diagClearBtn = document.getElementById('diag-clear-btn');
+        const diagErrorBox = document.getElementById('diag-error-box');
+        const diagResults = document.getElementById('diag-results');
+
+        const diagOutPrev = document.getElementById('diag-out-prev');
+        const diagOutNotPrev = document.getElementById('diag-out-not_prev');
+        const diagOutPPV = document.getElementById('diag-out-ppv');
+        const diagOutNPV = document.getElementById('diag-out-npv');
+        const diagOutPpos = document.getElementById('diag-out-p_pos');
+        const diagOutPneg = document.getElementById('diag-out-p_neg');
+
+        const diagOutTruePos = document.getElementById('diag-out-true-pos');
+        const diagOutFalsePos = document.getElementById('diag-out-false-pos');
+        const diagOutTrueNeg = document.getElementById('diag-out-true-neg');
+        const diagOutFalseNeg = document.getElementById('diag-out-false-neg');
+        const diagOutTotalPos = document.getElementById('diag-out-total-pos');
+        const diagOutTotalNeg = document.getElementById('diag-out-total-neg');
+        const diagOutTotalCond = document.getElementById('diag-out-total-cond');
+        const diagOutTotalNoCond = document.getElementById('diag-out-total-no-cond');
+
+        function diagShowError(msg) {
+          diagErrorBox.textContent = msg;
+          diagErrorBox.classList.remove('hidden');
+          diagResults.classList.add('hidden');
+        }
+
+        function diagClearError() {
+          diagErrorBox.textContent = '';
+          diagErrorBox.classList.add('hidden');
+        }
+
+        function diagClear() {
+          diagPrevInput.value = '';
+          diagSensInput.value = '';
+          diagSpecInput.value = '';
+          diagClearError();
+          diagResults.classList.add('hidden');
+        }
+
+        diagClearBtn.addEventListener('click', diagClear);
+
+        function diagCalc() {
+          diagClearError();
+          diagResults.classList.add('hidden');
+
+          try {
+            const prev = parseProb(diagPrevInput.value, 'Prevalence P(D)');
+            const sens = parseProb(diagSensInput.value, 'Sensitivity P(+|D)');
+            const spec = parseProb(diagSpecInput.value, 'Specificity P(-|¬D)');
+
+            const notPrev = 1 - prev;
+            const pPosGivenNoD = 1 - spec;
+            const pNegGivenD = 1 - sens;
+
+            const pPos = sens * prev + pPosGivenNoD * notPrev;
+            const pNeg = 1 - pPos;
+
+            if (pPos <= 0 || pNeg <= 0) {
+              throw new Error('Computed P(+) or P(-) is zero. Check that sensitivity, specificity, and prevalence are consistent.');
+            }
+
+            const ppv = (sens * prev) / pPos;
+            const npv = (spec * notPrev) / pNeg;
+
+            diagOutPrev.textContent = fmtProb(prev, 6) + ' (' + fmtPct(prev, 2) + ')';
+            diagOutNotPrev.textContent = fmtProb(notPrev, 6) + ' (' + fmtPct(notPrev, 2) + ')';
+            diagOutPpos.textContent = fmtProb(pPos, 6) + ' (' + fmtPct(pPos, 2) + ')';
+            diagOutPneg.textContent = fmtProb(pNeg, 6) + ' (' + fmtPct(pNeg, 2) + ')';
+            diagOutPPV.textContent = fmtProb(ppv, 6) + ' (' + fmtPct(ppv, 2) + ')';
+            diagOutNPV.textContent = fmtProb(npv, 6) + ' (' + fmtPct(npv, 2) + ')';
+
+            // Frequency table for N = 10,000
+            const N = 10000;
+            const cond = prev * N;
+            const noCond = N - cond;
+
+            const truePos = sens * cond;
+            const falseNeg = pNegGivenD * cond;
+            const trueNeg = spec * noCond;
+            const falsePos = pPosGivenNoD * noCond;
+
+            const totalPos = truePos + falsePos;
+            const totalNeg = trueNeg + falseNeg;
+
+            function fmtCount(x) {
+              return Math.round(x).toLocaleString('en-US');
+            }
+
+            diagOutTruePos.textContent = fmtCount(truePos);
+            diagOutFalsePos.textContent = fmtCount(falsePos);
+            diagOutTrueNeg.textContent = fmtCount(trueNeg);
+            diagOutFalseNeg.textContent = fmtCount(falseNeg);
+            diagOutTotalPos.textContent = fmtCount(totalPos);
+            diagOutTotalNeg.textContent = fmtCount(totalNeg);
+            diagOutTotalCond.textContent = fmtCount(cond);
+            diagOutTotalNoCond.textContent = fmtCount(noCond);
+
+            diagResults.classList.remove('hidden');
+          } catch (err) {
+            diagShowError(err.message || String(err));
+          }
+        }
+
+        diagCalcBtn.addEventListener('click', diagCalc);
+      })();
+    </script>
+
+
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Bayes' theorem calculator logic -->
+    <script>
+      (function() {
+        // Tab logic
+        const tabGeneral = document.getElementById('tab-general');
+        const tabDiagnostic = document.getElementById('tab-diagnostic');
+        const panelGeneral = document.getElementById('panel-general');
+        const panelDiagnostic = document.getElementById('panel-diagnostic');
+
+        function activateTab(which) {
+          if (which === 'general') {
+            tabGeneral.classList.add('tab-btn-active', 'text-blue-600');
+            tabGeneral.classList.remove('text-gray-500');
+            tabDiagnostic.classList.remove('tab-btn-active');
+            tabDiagnostic.classList.add('text-gray-500');
+            panelGeneral.classList.remove('hidden');
+            panelDiagnostic.classList.add('hidden');
+          } else {
+            tabDiagnostic.classList.add('tab-btn-active', 'text-blue-600');
+            tabDiagnostic.classList.remove('text-gray-500');
+            tabGeneral.classList.remove('tab-btn-active');
+            tabGeneral.classList.add('text-gray-500');
+            panelDiagnostic.classList.remove('hidden');
+            panelGeneral.classList.add('hidden');
+          }
+        }
+
+        tabGeneral.addEventListener('click', function() { activateTab('general'); });
+        tabDiagnostic.addEventListener('click', function() { activateTab('diagnostic'); });
+
+        // Utility helpers
+        function fmtProb(p, decimals) {
+          if (!isFinite(p)) return String(p);
+          const d = typeof decimals === 'number' ? decimals : 6;
+          const clipped = Math.max(0, Math.min(1, p));
+          return clipped.toFixed(d).replace(/0+$/,'').replace(/\.$/,'');
+        }
+
+        function fmtPct(p, decimals) {
+          if (!isFinite(p)) return String(p);
+          const d = typeof decimals === 'number' ? decimals : 2;
+          const clipped = Math.max(0, Math.min(1, p));
+          const pct = clipped * 100;
+          return pct.toFixed(d).replace(/0+$/,'').replace(/\.$/,'') + '%';
+        }
+
+        function parseProb(valueRaw, fieldName) {
+          const v = String(valueRaw || '').trim();
+          if (v === '') {
+            throw new Error('Please enter a value for ' + fieldName + '.');
+          }
+          let x = parseFloat(v.replace('%',''));
+          if (!isFinite(x)) {
+            throw new Error('Value for ' + fieldName + ' must be a number.');
+          }
+          if (x < 0) {
+            throw new Error('Value for ' + fieldName + ' cannot be negative.');
+          }
+          if (x > 1) {
+            // Treat as percentage
+            x = x / 100;
+          }
+          if (x < 0 || x > 1) {
+            throw new Error('Value for ' + fieldName + ' must be between 0 and 1 (or 0 and 100 if using percentages).');
+          }
+          return x;
+        }
+
+        // --- General probability mode ---
+        const genPaInput = document.getElementById('gen-pa');
+        const genPbGivenAInput = document.getElementById('gen-pb_given_a');
+        const genPbGivenNotAInput = document.getElementById('gen-pb_given_not_a');
+        const genCalcBtn = document.getElementById('gen-calc-btn');
+        const genClearBtn = document.getElementById('gen-clear-btn');
+        const genErrorBox = document.getElementById('gen-error-box');
+        const genResults = document.getElementById('gen-results');
+
+        const genOutPa = document.getElementById('gen-out-pa');
+        const genOutNotPa = document.getElementById('gen-out-not_pa');
+        const genOutPb = document.getElementById('gen-out-pb');
+        const genOutPaGivenB = document.getElementById('gen-out-pa_given_b');
+        const genOutNotPaGivenB = document.getElementById('gen-out-not_pa_given_b');
+        const genOutNotPb = document.getElementById('gen-out-not_pb');
+
+        function genShowError(msg) {
+          genErrorBox.textContent = msg;
+          genErrorBox.classList.remove('hidden');
+          genResults.classList.add('hidden');
+        }
+
+        function genClearError() {
+          genErrorBox.textContent = '';
+          genErrorBox.classList.add('hidden');
+        }
+
+        function genClear() {
+          genPaInput.value = '';
+          genPbGivenAInput.value = '';
+          genPbGivenNotAInput.value = '';
+          genClearError();
+          genResults.classList.add('hidden');
+        }
+
+        genClearBtn.addEventListener('click', genClear);
+
+        function genCalc() {
+          genClearError();
+          genResults.classList.add('hidden');
+
+          try {
+            const pA = parseProb(genPaInput.value, 'P(A)');
+            const pBgivenA = parseProb(genPbGivenAInput.value, 'P(B|A)');
+            const pBgivenNotA = parseProb(genPbGivenNotAInput.value, 'P(B|¬A)');
+
+            const pNotA = 1 - pA;
+            const pB = pBgivenA * pA + pBgivenNotA * pNotA;
+
+            if (pB <= 0) {
+              throw new Error('The computed P(B) is zero. Please adjust the inputs.');
+            }
+
+            const pAgivenB = (pBgivenA * pA) / pB;
+            const pNotAgivenB = 1 - pAgivenB;
+            const pNotB = 1 - pB;
+
+            genOutPa.textContent = fmtProb(pA, 6) + ' (' + fmtPct(pA, 2) + ')';
+            genOutNotPa.textContent = fmtProb(pNotA, 6) + ' (' + fmtPct(pNotA, 2) + ')';
+            genOutPb.textContent = fmtProb(pB, 6) + ' (' + fmtPct(pB, 2) + ')';
+            genOutPaGivenB.textContent = fmtProb(pAgivenB, 6) + ' (' + fmtPct(pAgivenB, 2) + ')';
+            genOutNotPaGivenB.textContent = fmtProb(pNotAgivenB, 6) + ' (' + fmtPct(pNotAgivenB, 2) + ')';
+            genOutNotPb.textContent = fmtProb(pNotB, 6) + ' (' + fmtPct(pNotB, 2) + ')';
+
+            genResults.classList.remove('hidden');
+          } catch (err) {
+            genShowError(err.message || String(err));
+          }
+        }
+
+        genCalcBtn.addEventListener('click', genCalc);
+
+        // --- Diagnostic test mode ---
+        const diagPrevInput = document.getElementById('diag-prev');
+        const diagSensInput = document.getElementById('diag-sens');
+        const diagSpecInput = document.getElementById('diag-spec');
+        const diagCalcBtn = document.getElementById('diag-calc-btn');
+        const diagClearBtn = document.getElementById('diag-clear-btn');
+        const diagErrorBox = document.getElementById('diag-error-box');
+        const diagResults = document.getElementById('diag-results');
+
+        const diagOutPrev = document.getElementById('diag-out-prev');
+        const diagOutNotPrev = document.getElementById('diag-out-not_prev');
+        const diagOutPPV = document.getElementById('diag-out-ppv');
+        const diagOutNPV = document.getElementById('diag-out-npv');
+        const diagOutPpos = document.getElementById('diag-out-p_pos');
+        const diagOutPneg = document.getElementById('diag-out-p_neg');
+
+        const diagOutTruePos = document.getElementById('diag-out-true-pos');
+        const diagOutFalsePos = document.getElementById('diag-out-false-pos');
+        const diagOutTrueNeg = document.getElementById('diag-out-true-neg');
+        const diagOutFalseNeg = document.getElementById('diag-out-false-neg');
+        const diagOutTotalPos = document.getElementById('diag-out-total-pos');
+        const diagOutTotalNeg = document.getElementById('diag-out-total-neg');
+        const diagOutTotalCond = document.getElementById('diag-out-total-cond');
+        const diagOutTotalNoCond = document.getElementById('diag-out-total-no-cond');
+
+        function diagShowError(msg) {
+          diagErrorBox.textContent = msg;
+          diagErrorBox.classList.remove('hidden');
+          diagResults.classList.add('hidden');
+        }
+
+        function diagClearError() {
+          diagErrorBox.textContent = '';
+          diagErrorBox.classList.add('hidden');
+        }
+
+        function diagClear() {
+          diagPrevInput.value = '';
+          diagSensInput.value = '';
+          diagSpecInput.value = '';
+          diagClearError();
+          diagResults.classList.add('hidden');
+        }
+
+        diagClearBtn.addEventListener('click', diagClear);
+
+        function diagCalc() {
+          diagClearError();
+          diagResults.classList.add('hidden');
+
+          try {
+            const prev = parseProb(diagPrevInput.value, 'Prevalence P(D)');
+            const sens = parseProb(diagSensInput.value, 'Sensitivity P(+|D)');
+            const spec = parseProb(diagSpecInput.value, 'Specificity P(-|¬D)');
+
+            const notPrev = 1 - prev;
+            const pPosGivenNoD = 1 - spec;
+            const pNegGivenD = 1 - sens;
+
+            const pPos = sens * prev + pPosGivenNoD * notPrev;
+            const pNeg = 1 - pPos;
+
+            if (pPos <= 0 || pNeg <= 0) {
+              throw new Error('Computed P(+) or P(-) is zero. Check that sensitivity, specificity, and prevalence are consistent.');
+            }
+
+            const ppv = (sens * prev) / pPos;
+            const npv = (spec * notPrev) / pNeg;
+
+            diagOutPrev.textContent = fmtProb(prev, 6) + ' (' + fmtPct(prev, 2) + ')';
+            diagOutNotPrev.textContent = fmtProb(notPrev, 6) + ' (' + fmtPct(notPrev, 2) + ')';
+            diagOutPpos.textContent = fmtProb(pPos, 6) + ' (' + fmtPct(pPos, 2) + ')';
+            diagOutPneg.textContent = fmtProb(pNeg, 6) + ' (' + fmtPct(pNeg, 2) + ')';
+            diagOutPPV.textContent = fmtProb(ppv, 6) + ' (' + fmtPct(ppv, 2) + ')';
+            diagOutNPV.textContent = fmtProb(npv, 6) + ' (' + fmtPct(npv, 2) + ')';
+
+            // Frequency table for N = 10,000
+            const N = 10000;
+            const cond = prev * N;
+            const noCond = N - cond;
+
+            const truePos = sens * cond;
+            const falseNeg = pNegGivenD * cond;
+            const trueNeg = spec * noCond;
+            const falsePos = pPosGivenNoD * noCond;
+
+            const totalPos = truePos + falsePos;
+            const totalNeg = trueNeg + falseNeg;
+
+            function fmtCount(x) {
+              return Math.round(x).toLocaleString('en-US');
+            }
+
+            diagOutTruePos.textContent = fmtCount(truePos);
+            diagOutFalsePos.textContent = fmtCount(falsePos);
+            diagOutTrueNeg.textContent = fmtCount(trueNeg);
+            diagOutFalseNeg.textContent = fmtCount(falseNeg);
+            diagOutTotalPos.textContent = fmtCount(totalPos);
+            diagOutTotalNeg.textContent = fmtCount(totalNeg);
+            diagOutTotalCond.textContent = fmtCount(cond);
+            diagOutTotalNoCond.textContent = fmtCount(noCond);
+
+            diagResults.classList.remove('hidden');
+          } catch (err) {
+            diagShowError(err.message || String(err));
+          }
+        }
+
+        diagCalcBtn.addEventListener('click', diagCalc);
+      })();
+    </script>
+
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

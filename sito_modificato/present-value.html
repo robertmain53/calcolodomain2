@@ -672,7 +672,764 @@ CalcDomain
 </main>
 <!-- Standard Footer --> 
 <!-- MathJax for LaTeX rendering of formulas -->
-<script crossorigin="anonymous" defer="" id="MathJax-script" integrity="sha384-+38Tphc6RzYlC5g5Y2gYh2lNwUMqV07f0g9zvKUGUuYndpT3iKRX71qJf6oPcy7t" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)'], ['</script>
+<script defer="">
+    (function(){
+      'use strict';
+
+      // Elements
+      const els = {
+        calcType: document.getElementsByName('calcType'),
+        groupLump: document.getElementById('groupLump'),
+        groupAnnuity: document.getElementById('groupAnnuity'),
+        currency: document.getElementById('currency'),
+        compounding: document.getElementById('compounding'),
+
+        // Lump inputs
+        fv: document.getElementById('fv'),
+        rate: document.getElementById('rate'),
+        years: document.getElementById('years'),
+        fvError: document.getElementById('fvError'),
+        rateError: document.getElementById('rateError'),
+        yearsError: document.getElementById('yearsError'),
+
+        // Annuity inputs
+        payment: document.getElementById('payment'),
+        rateA: document.getElementById('rateA'),
+        yearsA: document.getElementById('yearsA'),
+        paymentError: document.getElementById('paymentError'),
+        rateAError: document.getElementById('rateAError'),
+        yearsAError: document.getElementById('yearsAError'),
+        timing: document.getElementsByName('timing'),
+
+        // Inflation
+        useInfl: document.getElementById('useInfl'),
+        inflRate: document.getElementById('inflRate'),
+        inflBlock: document.getElementById('inflBlock'),
+        inflError: document.getElementById('inflError'),
+        inflTipBtn: document.getElementById('inflTipBtn'),
+        inflTip: document.getElementById('inflTip'),
+
+        // Tips
+        rateTipBtn: document.getElementById('rateTipBtn'),
+        rateTip: document.getElementById('rateTip'),
+
+        // Buttons
+        calcBtn: document.getElementById('calcBtn'),
+        resetBtn: document.getElementById('resetBtn'),
+
+        // Results
+        pvOut: document.getElementById('pvOut'),
+        dfOut: document.getElementById('dfOut'),
+        nOut: document.getElementById('nOut'),
+        rpOut: document.getElementById('rpOut'),
+        realRow: document.getElementById('realRow'),
+        realPvOut: document.getElementById('realPvOut'),
+        notesOut: document.getElementById('notesOut')
+      };
+
+      // Defaults
+      function setDefaults(){
+        document.getElementById('typeLump').checked = true;
+        els.currency.value = 'USD';
+        els.compounding.value = '12';
+        els.fv.value = '10000';
+        els.rate.value = '5';
+        els.years.value = '5';
+
+        els.payment.value = '500';
+        els.rateA.value = '6';
+        els.yearsA.value = '10';
+        document.getElementById('timingEnd').checked = true;
+
+        els.useInfl.checked = false;
+        els.inflBlock.hidden = true;
+        els.inflRate.value = '';
+        clearErrors();
+      }
+
+      function clearErrors(){
+        [els.fvError, els.rateError, els.yearsError, els.paymentError, els.rateAError, els.yearsAError, els.inflError].forEach(e=>e.textContent='');
+        [els.fv, els.rate, els.years, els.payment, els.rateA, els.yearsA, els.inflRate].forEach(i=>{ if(i) i.setAttribute('aria-invalid','false'); });
+      }
+
+      // Tooltip toggles (keyboard accessible)
+      function setupTooltip(btn, panel){
+        if(!btn || !panel) return;
+        btn.addEventListener('click', ()=>{
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          panel.hidden = expanded;
+        });
+        btn.addEventListener('keydown', (e)=>{
+          if(e.key === 'Escape'){
+            btn.setAttribute('aria-expanded', 'false');
+            panel.hidden = true;
+            btn.focus();
+          }
+        });
+      }
+      setupTooltip(els.rateTipBtn, els.rateTip);
+      setupTooltip(els.inflTipBtn, els.inflTip);
+
+      // Toggle calculation type
+      function updateType(){
+        const isLump = document.getElementById('typeLump').checked;
+        els.groupLump.hidden = !isLump;
+        els.groupAnnuity.hidden = isLump;
+      }
+      Array.from(els.calcType).forEach(r => r.addEventListener('change', ()=>{ updateType(); compute(); }));
+
+      // Inflation toggle
+      els.useInfl.addEventListener('change', ()=>{
+        const on = !!els.useInfl.checked;
+        els.inflBlock.hidden = !on;
+        els.useInfl.setAttribute('aria-checked', on ? 'true' : 'false');
+        if(!on){
+          els.inflRate.value = '';
+          els.inflError.textContent = '';
+          els.inflRate.setAttribute('aria-invalid', 'false');
+        }
+        compute();
+      });
+
+      // Validation helpers
+      function err(el, msgEl, msg){
+        if(!el || !msgEl) return false;
+        el.setAttribute('aria-invalid','true');
+        msgEl.textContent = msg;
+        return false;
+      }
+      function ok(el, msgEl){
+        if(!el || !msgEl) return true;
+        el.setAttribute('aria-invalid','false');
+        msgEl.textContent = '';
+        return true;
+      }
+      function parsePct(input){
+        const v = Number(input.value);
+        return isFinite(v) ? v / 100 : NaN;
+      }
+      function parseNum(input){
+        const v = Number(input.value);
+        return isFinite(v) ? v : NaN;
+      }
+
+      // Field validations (on blur)
+      function validateLump(){
+        let valid = true;
+        const fv = parseNum(els.fv);
+        if(!(fv >= 0)) valid = err(els.fv, els.fvError, 'Enter a valid future value (zero or positive).'); else ok(els.fv, els.fvError);
+
+        const r = parsePct(els.rate);
+        if(!isFinite(r) || r <= -0.9999 || r > 10) valid = err(els.rate, els.rateError, 'Enter a rate between -99.99% and 1000%.'); else ok(els.rate, els.rateError);
+
+        const t = parseNum(els.years);
+        if(!(t >= 0)) valid = err(els.years, els.yearsError, 'Enter a valid number of years (zero or more).'); else ok(els.years, els.yearsError);
+
+        return valid;
+      }
+      function validateAnnuity(){
+        let valid = true;
+        const p = parseNum(els.payment);
+        if(!(p >= 0)) valid = err(els.payment, els.paymentError, 'Enter a valid payment (zero or positive).'); else ok(els.payment, els.paymentError);
+
+        const r = parsePct(els.rateA);
+        if(!isFinite(r) || r <= -0.9999 || r > 10) valid = err(els.rateA, els.rateAError, 'Enter a rate between -99.99% and 1000%.'); else ok(els.rateA, els.rateAError);
+
+        const t = parseNum(els.yearsA);
+        if(!(t >= 0)) valid = err(els.yearsA, els.yearsAError, 'Enter a valid number of years (zero or more).'); else ok(els.yearsA, els.yearsAError);
+
+        return valid;
+      }
+      function validateInflation(){
+        if(!els.useInfl.checked) return true;
+        const i = parsePct(els.inflRate);
+        if(!isFinite(i) || i <= -0.9999 || i > 10) return err(els.inflRate, els.inflError, 'Enter inflation between -99.99% and 1000%.');
+        return ok(els.inflRate, els.inflError);
+      }
+
+      // Attach blur validators
+      ['fv','rate','years','payment','rateA','yearsA','inflRate'].forEach(id=>{
+        const node = document.getElementById(id);
+        if(!node) return;
+        node.addEventListener('blur', ()=>{ compute(); });
+      });
+
+      // Compute
+      function currencyFormatter(code){
+        try{
+          return new Intl.NumberFormat(undefined, {style:'currency',currency:code,maximumFractionDigits:2});
+        }catch(e){
+          return new Intl.NumberFormat(undefined, {style:'currency',currency:'USD',maximumFractionDigits:2});
+        }
+      }
+
+      function formatPct(x){
+        if(!isFinite(x)) return '—';
+        return (x*100).toFixed(4) + '%';
+      }
+      function formatNum(x, digits=6){
+        if(!isFinite(x)) return '—';
+        return Number(x).toFixed(digits);
+      }
+
+      function getTiming(){
+        return Array.from(els.timing).find(r=>r.checked)?.value || 'end';
+      }
+
+      function compute(){
+        clearNote();
+        const code = els.currency.value;
+        const fmt = currencyFormatter(code);
+        const comp = els.compounding.value;
+        const isCont = comp === 'cont';
+        const m = isCont ? null : Number(comp);
+
+        const type = document.getElementById('typeLump').checked ? 'lump' : 'annuity';
+
+        // Validate inputs
+        let valid = true;
+        if(type === 'lump') valid = validateLump() && valid;
+        else valid = validateAnnuity() && valid;
+        valid = validateInflation() && valid;
+
+        if(!valid){
+          showOutputs('—','—','—','—',null, 'Fix highlighted fields to see results.');
+          return;
+        }
+
+        // Shared helpers
+        const inflationOn = els.useInfl.checked;
+        const i = inflationOn ? parsePct(els.inflRate) : 0;
+
+        if(type === 'lump'){
+          const FV = parseNum(els.fv);
+          const r = parsePct(els.rate);
+          const t = parseNum(els.years);
+
+          let PV, df, rp, n;
+          if(isCont){
+            PV = FV * Math.exp(-r * t);
+            df = PV / FV;
+            rp = r; // for display treat as continuous rate per year
+            n = t;  // display years for continuous
+          }else{
+            const r_p = r / m;
+            const n_per = m * t;
+            PV = FV / Math.pow(1 + r_p, n_per);
+            df = PV / FV;
+            rp = r_p;
+            n = n_per;
+          }
+
+          // Real PV
+          let realPV = null;
+          if(inflationOn){
+            const rReal = (1 + r) / (1 + i) - 1;
+            if(isCont){
+              realPV = FV * Math.exp(-rReal * t);
+            }else{
+              const r_p_real = rReal / m;
+              realPV = FV / Math.pow(1 + r_p_real, m * t);
+            }
+          }
+
+          showOutputs(fmt.format(PV), df, n, isCont ? (formatPct(r) + ' (cont)') : formatPct(rp), realPV ? fmt.format(realPV) : null);
+          addNote(isCont ? 'Continuous compounding.' : `Compounding: ${m}×/year.`);
+        } else {
+          const P = parseNum(els.payment);
+          const r = parsePct(els.rateA);
+          const t = parseNum(els.yearsA);
+          const timing = getTiming();
+
+          let PV, rp, n;
+          if(isCont){
+            // For annuities, continuous compounding isn't standard for discrete payments.
+            // We approximate by discounting each payment continuously at times k/m.
+            const mDisc = 12; // use 12 as a practical discrete payment count unless user changes compounding; but comp is 'cont' -> we'll approximate monthly payments if time*12 is integer, else integrate
+            const periods = Math.max(1, Math.round(t * mDisc));
+            n = periods;
+            const dt = t / periods;
+            let sum = 0;
+            for(let k=1;k<=periods;k++){
+              const time = (timing === 'begin') ? (k-1)*dt : k*dt;
+              sum += P * Math.exp(-r * time);
+            }
+            PV = sum;
+            rp = r; // display
+            addNote('Approximation: discrete payments discounted with continuous rate.');
+          }else{
+            rp = r / m;
+            n = m * t;
+            if (Math.abs(rp) < 1e-12){
+              PV = P * n;
+            }else{
+              let factor = (1 - Math.pow(1 + rp, -n)) / rp;
+              if(timing === 'begin') factor *= (1 + rp);
+              PV = P * factor;
+            }
+          }
+
+          // Real PV for annuity
+          let realPV = null;
+          if(inflationOn){
+            const rReal = (1 + r) / (1 + i) - 1;
+            if(isCont){
+              // same approximation as above with real rate
+              const mDisc = 12;
+              const periods = Math.max(1, Math.round(t * mDisc));
+              const dt = t / periods;
+              let sum = 0;
+              for(let k=1;k<=periods;k++){
+                const time = (timing === 'begin') ? (k-1)*dt : k*dt;
+                sum += P * Math.exp(-rReal * time);
+              }
+              realPV = sum;
+            }else{
+              const rpReal = rReal / m;
+              if (Math.abs(rpReal) < 1e-12){
+                realPV = P * n;
+              }else{
+                let factor = (1 - Math.pow(1 + rpReal, -n)) / rpReal;
+                if(timing === 'begin') factor *= (1 + rpReal);
+                realPV = P * factor;
+              }
+            }
+          }
+
+          const fmt = currencyFormatter(els.currency.value);
+          showOutputs(fmt.format(PV), '—', n, isCont ? (formatPct(r) + ' (cont)') : formatPct(rp), realPV ? fmt.format(realPV) : null);
+          if(!isCont) addNote(`Compounding: ${m}×/year; timing: ${timing}.`);
+        }
+      }
+
+      function showOutputs(pv, df, n, rp, realPv=null, note=null){
+        els.pvOut.textContent = pv;
+        els.dfOut.textContent = (typeof df === 'number') ? formatNum(df, 6) : df;
+        els.nOut.textContent = (typeof n === 'number') ? (Number.isInteger(n) ? String(n) : formatNum(n, 2)) : n;
+        els.rpOut.textContent = rp;
+        if(realPv !== null){
+          els.realRow.hidden = false;
+          els.realPvOut.textContent = realPv;
+        } else {
+          els.realRow.hidden = true;
+          els.realPvOut.textContent = '—';
+        }
+        if(note) els.notesOut.textContent = note;
+      }
+      function clearNote(){ els.notesOut.textContent = '—'; }
+      function addNote(msg){ els.notesOut.textContent = msg; }
+
+      // Events
+      document.getElementById('compounding').addEventListener('change', ()=>compute());
+      document.getElementById('currency').addEventListener('change', ()=>compute());
+      ['fv','rate','years','payment','rateA','yearsA','inflRate'].forEach(id=>{
+        const node = document.getElementById(id);
+        if(node) node.addEventListener('input', ()=>compute());
+      });
+      Array.from(els.timing).forEach(r=>r.addEventListener('change', ()=>compute()));
+      els.calcBtn.addEventListener('click', compute);
+
+      els.resetBtn.addEventListener('click', ()=>{
+        setDefaults();
+        updateType();
+        compute();
+        // Move focus to first field for better UX
+        (document.getElementById('typeLump').checked ? els.fv : els.payment).focus();
+      });
+
+      // Initialize
+      setDefaults();
+      updateType();
+      compute();
+    })();
+  </script>
+
+<script defer="" src="/assets/js/mobile-menu.js"></script>
+<script defer="" src="/assets/js/page-enhancements.js"></script>
+
+</body></html>, '</script>
+<script defer="">
+    (function(){
+      'use strict';
+
+      // Elements
+      const els = {
+        calcType: document.getElementsByName('calcType'),
+        groupLump: document.getElementById('groupLump'),
+        groupAnnuity: document.getElementById('groupAnnuity'),
+        currency: document.getElementById('currency'),
+        compounding: document.getElementById('compounding'),
+
+        // Lump inputs
+        fv: document.getElementById('fv'),
+        rate: document.getElementById('rate'),
+        years: document.getElementById('years'),
+        fvError: document.getElementById('fvError'),
+        rateError: document.getElementById('rateError'),
+        yearsError: document.getElementById('yearsError'),
+
+        // Annuity inputs
+        payment: document.getElementById('payment'),
+        rateA: document.getElementById('rateA'),
+        yearsA: document.getElementById('yearsA'),
+        paymentError: document.getElementById('paymentError'),
+        rateAError: document.getElementById('rateAError'),
+        yearsAError: document.getElementById('yearsAError'),
+        timing: document.getElementsByName('timing'),
+
+        // Inflation
+        useInfl: document.getElementById('useInfl'),
+        inflRate: document.getElementById('inflRate'),
+        inflBlock: document.getElementById('inflBlock'),
+        inflError: document.getElementById('inflError'),
+        inflTipBtn: document.getElementById('inflTipBtn'),
+        inflTip: document.getElementById('inflTip'),
+
+        // Tips
+        rateTipBtn: document.getElementById('rateTipBtn'),
+        rateTip: document.getElementById('rateTip'),
+
+        // Buttons
+        calcBtn: document.getElementById('calcBtn'),
+        resetBtn: document.getElementById('resetBtn'),
+
+        // Results
+        pvOut: document.getElementById('pvOut'),
+        dfOut: document.getElementById('dfOut'),
+        nOut: document.getElementById('nOut'),
+        rpOut: document.getElementById('rpOut'),
+        realRow: document.getElementById('realRow'),
+        realPvOut: document.getElementById('realPvOut'),
+        notesOut: document.getElementById('notesOut')
+      };
+
+      // Defaults
+      function setDefaults(){
+        document.getElementById('typeLump').checked = true;
+        els.currency.value = 'USD';
+        els.compounding.value = '12';
+        els.fv.value = '10000';
+        els.rate.value = '5';
+        els.years.value = '5';
+
+        els.payment.value = '500';
+        els.rateA.value = '6';
+        els.yearsA.value = '10';
+        document.getElementById('timingEnd').checked = true;
+
+        els.useInfl.checked = false;
+        els.inflBlock.hidden = true;
+        els.inflRate.value = '';
+        clearErrors();
+      }
+
+      function clearErrors(){
+        [els.fvError, els.rateError, els.yearsError, els.paymentError, els.rateAError, els.yearsAError, els.inflError].forEach(e=>e.textContent='');
+        [els.fv, els.rate, els.years, els.payment, els.rateA, els.yearsA, els.inflRate].forEach(i=>{ if(i) i.setAttribute('aria-invalid','false'); });
+      }
+
+      // Tooltip toggles (keyboard accessible)
+      function setupTooltip(btn, panel){
+        if(!btn || !panel) return;
+        btn.addEventListener('click', ()=>{
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          panel.hidden = expanded;
+        });
+        btn.addEventListener('keydown', (e)=>{
+          if(e.key === 'Escape'){
+            btn.setAttribute('aria-expanded', 'false');
+            panel.hidden = true;
+            btn.focus();
+          }
+        });
+      }
+      setupTooltip(els.rateTipBtn, els.rateTip);
+      setupTooltip(els.inflTipBtn, els.inflTip);
+
+      // Toggle calculation type
+      function updateType(){
+        const isLump = document.getElementById('typeLump').checked;
+        els.groupLump.hidden = !isLump;
+        els.groupAnnuity.hidden = isLump;
+      }
+      Array.from(els.calcType).forEach(r => r.addEventListener('change', ()=>{ updateType(); compute(); }));
+
+      // Inflation toggle
+      els.useInfl.addEventListener('change', ()=>{
+        const on = !!els.useInfl.checked;
+        els.inflBlock.hidden = !on;
+        els.useInfl.setAttribute('aria-checked', on ? 'true' : 'false');
+        if(!on){
+          els.inflRate.value = '';
+          els.inflError.textContent = '';
+          els.inflRate.setAttribute('aria-invalid', 'false');
+        }
+        compute();
+      });
+
+      // Validation helpers
+      function err(el, msgEl, msg){
+        if(!el || !msgEl) return false;
+        el.setAttribute('aria-invalid','true');
+        msgEl.textContent = msg;
+        return false;
+      }
+      function ok(el, msgEl){
+        if(!el || !msgEl) return true;
+        el.setAttribute('aria-invalid','false');
+        msgEl.textContent = '';
+        return true;
+      }
+      function parsePct(input){
+        const v = Number(input.value);
+        return isFinite(v) ? v / 100 : NaN;
+      }
+      function parseNum(input){
+        const v = Number(input.value);
+        return isFinite(v) ? v : NaN;
+      }
+
+      // Field validations (on blur)
+      function validateLump(){
+        let valid = true;
+        const fv = parseNum(els.fv);
+        if(!(fv >= 0)) valid = err(els.fv, els.fvError, 'Enter a valid future value (zero or positive).'); else ok(els.fv, els.fvError);
+
+        const r = parsePct(els.rate);
+        if(!isFinite(r) || r <= -0.9999 || r > 10) valid = err(els.rate, els.rateError, 'Enter a rate between -99.99% and 1000%.'); else ok(els.rate, els.rateError);
+
+        const t = parseNum(els.years);
+        if(!(t >= 0)) valid = err(els.years, els.yearsError, 'Enter a valid number of years (zero or more).'); else ok(els.years, els.yearsError);
+
+        return valid;
+      }
+      function validateAnnuity(){
+        let valid = true;
+        const p = parseNum(els.payment);
+        if(!(p >= 0)) valid = err(els.payment, els.paymentError, 'Enter a valid payment (zero or positive).'); else ok(els.payment, els.paymentError);
+
+        const r = parsePct(els.rateA);
+        if(!isFinite(r) || r <= -0.9999 || r > 10) valid = err(els.rateA, els.rateAError, 'Enter a rate between -99.99% and 1000%.'); else ok(els.rateA, els.rateAError);
+
+        const t = parseNum(els.yearsA);
+        if(!(t >= 0)) valid = err(els.yearsA, els.yearsAError, 'Enter a valid number of years (zero or more).'); else ok(els.yearsA, els.yearsAError);
+
+        return valid;
+      }
+      function validateInflation(){
+        if(!els.useInfl.checked) return true;
+        const i = parsePct(els.inflRate);
+        if(!isFinite(i) || i <= -0.9999 || i > 10) return err(els.inflRate, els.inflError, 'Enter inflation between -99.99% and 1000%.');
+        return ok(els.inflRate, els.inflError);
+      }
+
+      // Attach blur validators
+      ['fv','rate','years','payment','rateA','yearsA','inflRate'].forEach(id=>{
+        const node = document.getElementById(id);
+        if(!node) return;
+        node.addEventListener('blur', ()=>{ compute(); });
+      });
+
+      // Compute
+      function currencyFormatter(code){
+        try{
+          return new Intl.NumberFormat(undefined, {style:'currency',currency:code,maximumFractionDigits:2});
+        }catch(e){
+          return new Intl.NumberFormat(undefined, {style:'currency',currency:'USD',maximumFractionDigits:2});
+        }
+      }
+
+      function formatPct(x){
+        if(!isFinite(x)) return '—';
+        return (x*100).toFixed(4) + '%';
+      }
+      function formatNum(x, digits=6){
+        if(!isFinite(x)) return '—';
+        return Number(x).toFixed(digits);
+      }
+
+      function getTiming(){
+        return Array.from(els.timing).find(r=>r.checked)?.value || 'end';
+      }
+
+      function compute(){
+        clearNote();
+        const code = els.currency.value;
+        const fmt = currencyFormatter(code);
+        const comp = els.compounding.value;
+        const isCont = comp === 'cont';
+        const m = isCont ? null : Number(comp);
+
+        const type = document.getElementById('typeLump').checked ? 'lump' : 'annuity';
+
+        // Validate inputs
+        let valid = true;
+        if(type === 'lump') valid = validateLump() && valid;
+        else valid = validateAnnuity() && valid;
+        valid = validateInflation() && valid;
+
+        if(!valid){
+          showOutputs('—','—','—','—',null, 'Fix highlighted fields to see results.');
+          return;
+        }
+
+        // Shared helpers
+        const inflationOn = els.useInfl.checked;
+        const i = inflationOn ? parsePct(els.inflRate) : 0;
+
+        if(type === 'lump'){
+          const FV = parseNum(els.fv);
+          const r = parsePct(els.rate);
+          const t = parseNum(els.years);
+
+          let PV, df, rp, n;
+          if(isCont){
+            PV = FV * Math.exp(-r * t);
+            df = PV / FV;
+            rp = r; // for display treat as continuous rate per year
+            n = t;  // display years for continuous
+          }else{
+            const r_p = r / m;
+            const n_per = m * t;
+            PV = FV / Math.pow(1 + r_p, n_per);
+            df = PV / FV;
+            rp = r_p;
+            n = n_per;
+          }
+
+          // Real PV
+          let realPV = null;
+          if(inflationOn){
+            const rReal = (1 + r) / (1 + i) - 1;
+            if(isCont){
+              realPV = FV * Math.exp(-rReal * t);
+            }else{
+              const r_p_real = rReal / m;
+              realPV = FV / Math.pow(1 + r_p_real, m * t);
+            }
+          }
+
+          showOutputs(fmt.format(PV), df, n, isCont ? (formatPct(r) + ' (cont)') : formatPct(rp), realPV ? fmt.format(realPV) : null);
+          addNote(isCont ? 'Continuous compounding.' : `Compounding: ${m}×/year.`);
+        } else {
+          const P = parseNum(els.payment);
+          const r = parsePct(els.rateA);
+          const t = parseNum(els.yearsA);
+          const timing = getTiming();
+
+          let PV, rp, n;
+          if(isCont){
+            // For annuities, continuous compounding isn't standard for discrete payments.
+            // We approximate by discounting each payment continuously at times k/m.
+            const mDisc = 12; // use 12 as a practical discrete payment count unless user changes compounding; but comp is 'cont' -> we'll approximate monthly payments if time*12 is integer, else integrate
+            const periods = Math.max(1, Math.round(t * mDisc));
+            n = periods;
+            const dt = t / periods;
+            let sum = 0;
+            for(let k=1;k<=periods;k++){
+              const time = (timing === 'begin') ? (k-1)*dt : k*dt;
+              sum += P * Math.exp(-r * time);
+            }
+            PV = sum;
+            rp = r; // display
+            addNote('Approximation: discrete payments discounted with continuous rate.');
+          }else{
+            rp = r / m;
+            n = m * t;
+            if (Math.abs(rp) < 1e-12){
+              PV = P * n;
+            }else{
+              let factor = (1 - Math.pow(1 + rp, -n)) / rp;
+              if(timing === 'begin') factor *= (1 + rp);
+              PV = P * factor;
+            }
+          }
+
+          // Real PV for annuity
+          let realPV = null;
+          if(inflationOn){
+            const rReal = (1 + r) / (1 + i) - 1;
+            if(isCont){
+              // same approximation as above with real rate
+              const mDisc = 12;
+              const periods = Math.max(1, Math.round(t * mDisc));
+              const dt = t / periods;
+              let sum = 0;
+              for(let k=1;k<=periods;k++){
+                const time = (timing === 'begin') ? (k-1)*dt : k*dt;
+                sum += P * Math.exp(-rReal * time);
+              }
+              realPV = sum;
+            }else{
+              const rpReal = rReal / m;
+              if (Math.abs(rpReal) < 1e-12){
+                realPV = P * n;
+              }else{
+                let factor = (1 - Math.pow(1 + rpReal, -n)) / rpReal;
+                if(timing === 'begin') factor *= (1 + rpReal);
+                realPV = P * factor;
+              }
+            }
+          }
+
+          const fmt = currencyFormatter(els.currency.value);
+          showOutputs(fmt.format(PV), '—', n, isCont ? (formatPct(r) + ' (cont)') : formatPct(rp), realPV ? fmt.format(realPV) : null);
+          if(!isCont) addNote(`Compounding: ${m}×/year; timing: ${timing}.`);
+        }
+      }
+
+      function showOutputs(pv, df, n, rp, realPv=null, note=null){
+        els.pvOut.textContent = pv;
+        els.dfOut.textContent = (typeof df === 'number') ? formatNum(df, 6) : df;
+        els.nOut.textContent = (typeof n === 'number') ? (Number.isInteger(n) ? String(n) : formatNum(n, 2)) : n;
+        els.rpOut.textContent = rp;
+        if(realPv !== null){
+          els.realRow.hidden = false;
+          els.realPvOut.textContent = realPv;
+        } else {
+          els.realRow.hidden = true;
+          els.realPvOut.textContent = '—';
+        }
+        if(note) els.notesOut.textContent = note;
+      }
+      function clearNote(){ els.notesOut.textContent = '—'; }
+      function addNote(msg){ els.notesOut.textContent = msg; }
+
+      // Events
+      document.getElementById('compounding').addEventListener('change', ()=>compute());
+      document.getElementById('currency').addEventListener('change', ()=>compute());
+      ['fv','rate','years','payment','rateA','yearsA','inflRate'].forEach(id=>{
+        const node = document.getElementById(id);
+        if(node) node.addEventListener('input', ()=>compute());
+      });
+      Array.from(els.timing).forEach(r=>r.addEventListener('change', ()=>compute()));
+      els.calcBtn.addEventListener('click', compute);
+
+      els.resetBtn.addEventListener('click', ()=>{
+        setDefaults();
+        updateType();
+        compute();
+        // Move focus to first field for better UX
+        (document.getElementById('typeLump').checked ? els.fv : els.payment).focus();
+      });
+
+      // Initialize
+      setDefaults();
+      updateType();
+      compute();
+    })();
+  </script>
+
+<script defer="" src="/assets/js/mobile-menu.js"></script>
+<script defer="" src="/assets/js/page-enhancements.js"></script>
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };
+</script>
+<script crossorigin="anonymous" defer="" id="MathJax-script" integrity="sha384-+38Tphc6RzYlC5g5Y2gYh2lNwUMqV07f0g9zvKUGUuYndpT3iKRX71qJf6oPcy7t" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <script defer="">
     (function(){
       'use strict';

@@ -40,10 +40,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -202,8 +198,6 @@
 </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
-
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
 
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
@@ -609,7 +603,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -676,14 +670,334 @@
 
 
 
+
     
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
     
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      // Mobile menu toggle
+      document.getElementById('mobile-menu-toggle')?.addEventListener('click', function () {
+        const menu = document.getElementById('mobile-menu');
+        if (!menu) return;
+        const isHidden = menu.classList.contains('hidden');
+        menu.classList.toggle('hidden', !isHidden);
+        this.setAttribute('aria-expanded', String(isHidden));
+      });
+
+      document.addEventListener('DOMContentLoaded', function () {
+        const valueInput = document.getElementById('value-input');
+        const fromUnit = document.getElementById('from-unit');
+        const toUnit = document.getElementById('to-unit');
+        const resultOutput = document.getElementById('result-output');
+        const statusOutput = document.getElementById('status-output');
+        const swapBtn = document.getElementById('swap-units');
+        const clearMainBtn = document.getElementById('clear-main');
+        const presetMainButtons = document.querySelectorAll('.preset-main-btn');
+
+        const syncG = document.getElementById('sync-g');
+        const syncDrAv = document.getElementById('sync-dr-av');
+        const syncDrAp = document.getElementById('sync-dr-ap');
+
+        const DRAM_AV_G = 1.7718451953125;
+        const DRAM_AP_G = 3.8879346;
+
+        function parseNumber(input) {
+          const raw = input.value;
+          if (raw === '' || isNaN(Number(raw))) return null;
+          return Number(raw);
+        }
+
+        function formatNumber(value) {
+          if (!isFinite(value)) return '';
+          const absVal = Math.abs(value);
+          if (absVal !== 0 && (absVal < 1e-4 || absVal >= 1e7)) {
+            return value.toExponential(6);
+          }
+          return Number(value.toFixed(6)).toString();
+        }
+
+        function toGrams(value, unit) {
+          switch (unit) {
+            case 'g':
+              return value;
+            case 'dr_av':
+              return value * DRAM_AV_G;
+            case 'dr_ap':
+              return value * DRAM_AP_G;
+            default:
+              return value;
+          }
+        }
+
+        function fromGrams(grams, unit) {
+          switch (unit) {
+            case 'g':
+              return grams;
+            case 'dr_av':
+              return grams / DRAM_AV_G;
+            case 'dr_ap':
+              return grams / DRAM_AP_G;
+            default:
+              return grams;
+          }
+        }
+
+        function updateSync(grams) {
+          if (grams === null || !isFinite(grams)) {
+            if (syncG) syncG.value = '';
+            if (syncDrAv) syncDrAv.value = '';
+            if (syncDrAp) syncDrAp.value = '';
+            return;
+          }
+          if (syncG) syncG.value = formatNumber(grams);
+          if (syncDrAv) syncDrAv.value = formatNumber(fromGrams(grams, 'dr_av'));
+          if (syncDrAp) syncDrAp.value = formatNumber(fromGrams(grams, 'dr_ap'));
+        }
+
+        function getUnitLabel(unit) {
+          if (unit === 'g') return 'g';
+          if (unit === 'dr_av') return 'dr (avoirdupois)';
+          if (unit === 'dr_ap') return 'dr (apothecaries)';
+          return unit;
+        }
+
+        function updateConversion() {
+          const val = parseNumber(valueInput);
+          if (val === null) {
+            resultOutput.value = '';
+            statusOutput.value = '';
+            updateSync(null);
+            return;
+          }
+
+          const from = fromUnit.value;
+          const to = toUnit.value;
+
+          // Convert input to grams as pivot
+          const grams = toGrams(val, from);
+          const resultVal = fromGrams(grams, to);
+
+          resultOutput.value = formatNumber(resultVal);
+
+          const fromLabel = getUnitLabel(from);
+          const toLabel = getUnitLabel(to);
+          statusOutput.value =
+            val + ' ' + fromLabel + ' = ' + formatNumber(resultVal) + ' ' + toLabel +
+            ' (via ' + formatNumber(grams) + ' g as pivot).';
+
+          updateSync(grams);
+        }
+
+        if (valueInput && fromUnit && toUnit) {
+          valueInput.addEventListener('input', updateConversion);
+          fromUnit.addEventListener('change', updateConversion);
+          toUnit.addEventListener('change', updateConversion);
+        }
+
+        if (swapBtn) {
+          swapBtn.addEventListener('click', function () {
+            const oldFrom = fromUnit.value;
+            fromUnit.value = toUnit.value;
+            toUnit.value = oldFrom;
+            updateConversion();
+          });
+        }
+
+        if (clearMainBtn) {
+          clearMainBtn.addEventListener('click', function () {
+            valueInput.value = '';
+            resultOutput.value = '';
+            statusOutput.value = '';
+            updateSync(null);
+          });
+        }
+
+        presetMainButtons.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const val = this.getAttribute('data-value');
+            const from = this.getAttribute('data-from');
+            const to = this.getAttribute('data-to');
+            if (!val || !from || !to) return;
+            valueInput.value = val;
+            fromUnit.value = from;
+            toUnit.value = to;
+            updateConversion();
+          });
+        });
+      });
+    </script>
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      // Mobile menu toggle
+      document.getElementById('mobile-menu-toggle')?.addEventListener('click', function () {
+        const menu = document.getElementById('mobile-menu');
+        if (!menu) return;
+        const isHidden = menu.classList.contains('hidden');
+        menu.classList.toggle('hidden', !isHidden);
+        this.setAttribute('aria-expanded', String(isHidden));
+      });
+
+      document.addEventListener('DOMContentLoaded', function () {
+        const valueInput = document.getElementById('value-input');
+        const fromUnit = document.getElementById('from-unit');
+        const toUnit = document.getElementById('to-unit');
+        const resultOutput = document.getElementById('result-output');
+        const statusOutput = document.getElementById('status-output');
+        const swapBtn = document.getElementById('swap-units');
+        const clearMainBtn = document.getElementById('clear-main');
+        const presetMainButtons = document.querySelectorAll('.preset-main-btn');
+
+        const syncG = document.getElementById('sync-g');
+        const syncDrAv = document.getElementById('sync-dr-av');
+        const syncDrAp = document.getElementById('sync-dr-ap');
+
+        const DRAM_AV_G = 1.7718451953125;
+        const DRAM_AP_G = 3.8879346;
+
+        function parseNumber(input) {
+          const raw = input.value;
+          if (raw === '' || isNaN(Number(raw))) return null;
+          return Number(raw);
+        }
+
+        function formatNumber(value) {
+          if (!isFinite(value)) return '';
+          const absVal = Math.abs(value);
+          if (absVal !== 0 && (absVal < 1e-4 || absVal >= 1e7)) {
+            return value.toExponential(6);
+          }
+          return Number(value.toFixed(6)).toString();
+        }
+
+        function toGrams(value, unit) {
+          switch (unit) {
+            case 'g':
+              return value;
+            case 'dr_av':
+              return value * DRAM_AV_G;
+            case 'dr_ap':
+              return value * DRAM_AP_G;
+            default:
+              return value;
+          }
+        }
+
+        function fromGrams(grams, unit) {
+          switch (unit) {
+            case 'g':
+              return grams;
+            case 'dr_av':
+              return grams / DRAM_AV_G;
+            case 'dr_ap':
+              return grams / DRAM_AP_G;
+            default:
+              return grams;
+          }
+        }
+
+        function updateSync(grams) {
+          if (grams === null || !isFinite(grams)) {
+            if (syncG) syncG.value = '';
+            if (syncDrAv) syncDrAv.value = '';
+            if (syncDrAp) syncDrAp.value = '';
+            return;
+          }
+          if (syncG) syncG.value = formatNumber(grams);
+          if (syncDrAv) syncDrAv.value = formatNumber(fromGrams(grams, 'dr_av'));
+          if (syncDrAp) syncDrAp.value = formatNumber(fromGrams(grams, 'dr_ap'));
+        }
+
+        function getUnitLabel(unit) {
+          if (unit === 'g') return 'g';
+          if (unit === 'dr_av') return 'dr (avoirdupois)';
+          if (unit === 'dr_ap') return 'dr (apothecaries)';
+          return unit;
+        }
+
+        function updateConversion() {
+          const val = parseNumber(valueInput);
+          if (val === null) {
+            resultOutput.value = '';
+            statusOutput.value = '';
+            updateSync(null);
+            return;
+          }
+
+          const from = fromUnit.value;
+          const to = toUnit.value;
+
+          // Convert input to grams as pivot
+          const grams = toGrams(val, from);
+          const resultVal = fromGrams(grams, to);
+
+          resultOutput.value = formatNumber(resultVal);
+
+          const fromLabel = getUnitLabel(from);
+          const toLabel = getUnitLabel(to);
+          statusOutput.value =
+            val + ' ' + fromLabel + ' = ' + formatNumber(resultVal) + ' ' + toLabel +
+            ' (via ' + formatNumber(grams) + ' g as pivot).';
+
+          updateSync(grams);
+        }
+
+        if (valueInput && fromUnit && toUnit) {
+          valueInput.addEventListener('input', updateConversion);
+          fromUnit.addEventListener('change', updateConversion);
+          toUnit.addEventListener('change', updateConversion);
+        }
+
+        if (swapBtn) {
+          swapBtn.addEventListener('click', function () {
+            const oldFrom = fromUnit.value;
+            fromUnit.value = toUnit.value;
+            toUnit.value = oldFrom;
+            updateConversion();
+          });
+        }
+
+        if (clearMainBtn) {
+          clearMainBtn.addEventListener('click', function () {
+            valueInput.value = '';
+            resultOutput.value = '';
+            statusOutput.value = '';
+            updateSync(null);
+          });
+        }
+
+        presetMainButtons.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const val = this.getAttribute('data-value');
+            const from = this.getAttribute('data-from');
+            const to = this.getAttribute('data-to');
+            if (!val || !from || !to) return;
+            valueInput.value = val;
+            fromUnit.value = from;
+            toUnit.value = to;
+            updateConversion();
+          });
+        });
+      });
+    </script>
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

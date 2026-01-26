@@ -39,10 +39,6 @@
 
 <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-<script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-<script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-<script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
 <script>
     window.ezstandalone = window.ezstandalone || {};
     ezstandalone.cmd = ezstandalone.cmd || [];
@@ -183,8 +179,6 @@
 </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
-
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
 
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
@@ -543,7 +537,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -611,13 +605,379 @@
 
 
 
+
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
 
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const G = 9.81; // m/s^2
+
+        const unitRadios = document.querySelectorAll('input[name="vj-units"]');
+        const standingLabel = document.getElementById('vj-standing-unit-label');
+        const jumpLabel = document.getElementById('vj-jump-unit-label');
+        const powerHeightLabel = document.getElementById('vj-power-height-unit-label');
+        const massLabel = document.getElementById('vj-mass-unit-label');
+
+        const standingInput = document.getElementById('vj-standing-reach');
+        const jumpInput = document.getElementById('vj-jump-reach');
+        const method1Output = document.getElementById('vj-method1-output');
+
+        const flightTimeInput = document.getElementById('vj-flight-time');
+        const method2Output = document.getElementById('vj-method2-output');
+
+        const powerHeightInput = document.getElementById('vj-power-height');
+        const bodyMassInput = document.getElementById('vj-body-mass');
+        const method3Output = document.getElementById('vj-method3-output');
+
+        const method1Btn = document.getElementById('vj-method1-calc');
+        const method2Btn = document.getElementById('vj-method2-calc');
+        const method3Btn = document.getElementById('vj-method3-calc');
+
+        function getUnits() {
+          const checked = document.querySelector('input[name="vj-units"]:checked');
+          return checked ? checked.value : 'metric';
+        }
+
+        function updateUnitLabels() {
+          const units = getUnits();
+          if (units === 'metric') {
+            if (standingLabel) standingLabel.textContent = '(cm)';
+            if (jumpLabel) jumpLabel.textContent = '(cm)';
+            if (powerHeightLabel) powerHeightLabel.textContent = '(cm)';
+            if (massLabel) massLabel.textContent = '(kg)';
+            if (standingInput && !standingInput.placeholder) standingInput.placeholder = 'e.g., 230';
+            if (jumpInput && !jumpInput.placeholder) jumpInput.placeholder = 'e.g., 270';
+            if (powerHeightInput && !powerHeightInput.placeholder) powerHeightInput.placeholder = 'e.g., 40';
+            if (bodyMassInput && !bodyMassInput.placeholder) bodyMassInput.placeholder = 'e.g., 75';
+          } else {
+            if (standingLabel) standingLabel.textContent = '(in)';
+            if (jumpLabel) jumpLabel.textContent = '(in)';
+            if (powerHeightLabel) powerHeightLabel.textContent = '(in)';
+            if (massLabel) massLabel.textContent = '(lb)';
+            if (standingInput && !standingInput.placeholder) standingInput.placeholder = 'e.g., 90';
+            if (jumpInput && !jumpInput.placeholder) jumpInput.placeholder = 'e.g., 106';
+            if (powerHeightInput && !powerHeightInput.placeholder) powerHeightInput.placeholder = 'e.g., 16';
+            if (bodyMassInput && !bodyMassInput.placeholder) bodyMassInput.placeholder = 'e.g., 165';
+          }
+        }
+
+        unitRadios.forEach(r => {
+          r.addEventListener('change', updateUnitLabels);
+        });
+        updateUnitLabels();
+
+        function format(num, decimals) {
+          if (!isFinite(num)) return '—';
+          return num.toFixed(decimals);
+        }
+
+        // Method 1: reach difference
+        if (method1Btn) {
+          method1Btn.addEventListener('click', function () {
+            if (!standingInput || !jumpInput || !method1Output) return;
+            const standing = parseFloat(String(standingInput.value).replace(',', '.'));
+            const jump = parseFloat(String(jumpInput.value).replace(',', '.'));
+
+            if (isNaN(standing) || isNaN(jump)) {
+              method1Output.textContent = 'Please enter both standing reach and jump reach.';
+              return;
+            }
+            if (standing <= 0 || jump <= 0) {
+              method1Output.textContent = 'Values must be greater than zero.';
+              return;
+            }
+            const diffRaw = jump - standing;
+            if (diffRaw <= 0) {
+              method1Output.textContent = 'Jump reach must be higher than standing reach to obtain a positive vertical jump height.';
+              return;
+            }
+
+            const units = getUnits();
+            let diffCm, diffIn;
+            if (units === 'metric') {
+              diffCm = diffRaw;
+              diffIn = diffCm / 2.54;
+            } else {
+              diffIn = diffRaw;
+              diffCm = diffIn * 2.54;
+            }
+
+            method1Output.innerHTML =
+              '<p><strong>Vertical jump height:</strong></p>' +
+              '<ul class="list-disc ml-4">' +
+              '<li>' + format(diffCm, 1) + ' cm</li>' +
+              '<li>' + format(diffIn, 2) + ' in</li>' +
+              '</ul>' +
+              '<p class="mt-1 text-xs text-gray-600">Tip: use your best attempt out of several jumps for more reliable tracking over time.</p>';
+          });
+        }
+
+        // Method 2: flight time
+        if (method2Btn) {
+          method2Btn.addEventListener('click', function () {
+            if (!flightTimeInput || !method2Output) return;
+            const t = parseFloat(String(flightTimeInput.value).replace(',', '.'));
+            if (isNaN(t) || t <= 0) {
+              method2Output.textContent = 'Please enter a valid positive flight time in seconds.';
+              return;
+            }
+            if (t > 1.5) {
+              method2Output.textContent = 'Flight time value seems unusually high for a single vertical jump. Please check your measurement.';
+              return;
+            }
+
+            // h in metres from h = g * t^2 / 8
+            const h_m = G * t * t / 8;
+            const h_cm = h_m * 100;
+            const h_in = h_cm / 2.54;
+
+            method2Output.innerHTML =
+              '<p><strong>Estimated vertical jump height from flight time:</strong></p>' +
+              '<ul class="list-disc ml-4">' +
+              '<li>' + format(h_cm, 1) + ' cm</li>' +
+              '<li>' + format(h_in, 2) + ' in</li>' +
+              '</ul>' +
+              '<p class="mt-1 text-xs text-gray-600">Note: this estimate assumes a simple take-off and landing with similar body posture. Measurement errors in flight time can affect accuracy.</p>';
+          });
+        }
+
+        // Method 3: peak power
+        if (method3Btn) {
+          method3Btn.addEventListener('click', function () {
+            if (!powerHeightInput || !bodyMassInput || !method3Output) return;
+            let hVal = parseFloat(String(powerHeightInput.value).replace(',', '.'));
+            let mVal = parseFloat(String(bodyMassInput.value).replace(',', '.'));
+
+            if (isNaN(hVal) || isNaN(mVal)) {
+              method3Output.textContent = 'Please enter both jump height and body mass.';
+              return;
+            }
+            if (hVal <= 0 || mVal <= 0) {
+              method3Output.textContent = 'Jump height and body mass must be greater than zero.';
+              return;
+            }
+
+            const units = getUnits();
+            let jumpHeightCm = hVal;
+            let massKg = mVal;
+
+            if (units === 'imperial') {
+              // height in inches -> cm, mass in lb -> kg
+              jumpHeightCm = hVal * 2.54;
+              massKg = mVal * 0.45359237;
+            }
+
+            const peakPower = 60.7 * jumpHeightCm + 45.3 * massKg - 2055;
+            const relPower = peakPower / massKg;
+
+            method3Output.innerHTML =
+              '<p><strong>Estimated peak power:</strong></p>' +
+              '<ul class="list-disc ml-4">' +
+              '<li>' + format(peakPower, 0) + ' W (Watts)</li>' +
+              '<li>' + format(relPower, 1) + ' W/kg</li>' +
+              '</ul>' +
+              '<p class="mt-1 text-xs text-gray-600">Use the same testing protocol each time you repeat the test so changes over time are meaningful.</p>';
+          });
+        }
+      });
+    </script>
+
+
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const G = 9.81; // m/s^2
+
+        const unitRadios = document.querySelectorAll('input[name="vj-units"]');
+        const standingLabel = document.getElementById('vj-standing-unit-label');
+        const jumpLabel = document.getElementById('vj-jump-unit-label');
+        const powerHeightLabel = document.getElementById('vj-power-height-unit-label');
+        const massLabel = document.getElementById('vj-mass-unit-label');
+
+        const standingInput = document.getElementById('vj-standing-reach');
+        const jumpInput = document.getElementById('vj-jump-reach');
+        const method1Output = document.getElementById('vj-method1-output');
+
+        const flightTimeInput = document.getElementById('vj-flight-time');
+        const method2Output = document.getElementById('vj-method2-output');
+
+        const powerHeightInput = document.getElementById('vj-power-height');
+        const bodyMassInput = document.getElementById('vj-body-mass');
+        const method3Output = document.getElementById('vj-method3-output');
+
+        const method1Btn = document.getElementById('vj-method1-calc');
+        const method2Btn = document.getElementById('vj-method2-calc');
+        const method3Btn = document.getElementById('vj-method3-calc');
+
+        function getUnits() {
+          const checked = document.querySelector('input[name="vj-units"]:checked');
+          return checked ? checked.value : 'metric';
+        }
+
+        function updateUnitLabels() {
+          const units = getUnits();
+          if (units === 'metric') {
+            if (standingLabel) standingLabel.textContent = '(cm)';
+            if (jumpLabel) jumpLabel.textContent = '(cm)';
+            if (powerHeightLabel) powerHeightLabel.textContent = '(cm)';
+            if (massLabel) massLabel.textContent = '(kg)';
+            if (standingInput && !standingInput.placeholder) standingInput.placeholder = 'e.g., 230';
+            if (jumpInput && !jumpInput.placeholder) jumpInput.placeholder = 'e.g., 270';
+            if (powerHeightInput && !powerHeightInput.placeholder) powerHeightInput.placeholder = 'e.g., 40';
+            if (bodyMassInput && !bodyMassInput.placeholder) bodyMassInput.placeholder = 'e.g., 75';
+          } else {
+            if (standingLabel) standingLabel.textContent = '(in)';
+            if (jumpLabel) jumpLabel.textContent = '(in)';
+            if (powerHeightLabel) powerHeightLabel.textContent = '(in)';
+            if (massLabel) massLabel.textContent = '(lb)';
+            if (standingInput && !standingInput.placeholder) standingInput.placeholder = 'e.g., 90';
+            if (jumpInput && !jumpInput.placeholder) jumpInput.placeholder = 'e.g., 106';
+            if (powerHeightInput && !powerHeightInput.placeholder) powerHeightInput.placeholder = 'e.g., 16';
+            if (bodyMassInput && !bodyMassInput.placeholder) bodyMassInput.placeholder = 'e.g., 165';
+          }
+        }
+
+        unitRadios.forEach(r => {
+          r.addEventListener('change', updateUnitLabels);
+        });
+        updateUnitLabels();
+
+        function format(num, decimals) {
+          if (!isFinite(num)) return '—';
+          return num.toFixed(decimals);
+        }
+
+        // Method 1: reach difference
+        if (method1Btn) {
+          method1Btn.addEventListener('click', function () {
+            if (!standingInput || !jumpInput || !method1Output) return;
+            const standing = parseFloat(String(standingInput.value).replace(',', '.'));
+            const jump = parseFloat(String(jumpInput.value).replace(',', '.'));
+
+            if (isNaN(standing) || isNaN(jump)) {
+              method1Output.textContent = 'Please enter both standing reach and jump reach.';
+              return;
+            }
+            if (standing <= 0 || jump <= 0) {
+              method1Output.textContent = 'Values must be greater than zero.';
+              return;
+            }
+            const diffRaw = jump - standing;
+            if (diffRaw <= 0) {
+              method1Output.textContent = 'Jump reach must be higher than standing reach to obtain a positive vertical jump height.';
+              return;
+            }
+
+            const units = getUnits();
+            let diffCm, diffIn;
+            if (units === 'metric') {
+              diffCm = diffRaw;
+              diffIn = diffCm / 2.54;
+            } else {
+              diffIn = diffRaw;
+              diffCm = diffIn * 2.54;
+            }
+
+            method1Output.innerHTML =
+              '<p><strong>Vertical jump height:</strong></p>' +
+              '<ul class="list-disc ml-4">' +
+              '<li>' + format(diffCm, 1) + ' cm</li>' +
+              '<li>' + format(diffIn, 2) + ' in</li>' +
+              '</ul>' +
+              '<p class="mt-1 text-xs text-gray-600">Tip: use your best attempt out of several jumps for more reliable tracking over time.</p>';
+          });
+        }
+
+        // Method 2: flight time
+        if (method2Btn) {
+          method2Btn.addEventListener('click', function () {
+            if (!flightTimeInput || !method2Output) return;
+            const t = parseFloat(String(flightTimeInput.value).replace(',', '.'));
+            if (isNaN(t) || t <= 0) {
+              method2Output.textContent = 'Please enter a valid positive flight time in seconds.';
+              return;
+            }
+            if (t > 1.5) {
+              method2Output.textContent = 'Flight time value seems unusually high for a single vertical jump. Please check your measurement.';
+              return;
+            }
+
+            // h in metres from h = g * t^2 / 8
+            const h_m = G * t * t / 8;
+            const h_cm = h_m * 100;
+            const h_in = h_cm / 2.54;
+
+            method2Output.innerHTML =
+              '<p><strong>Estimated vertical jump height from flight time:</strong></p>' +
+              '<ul class="list-disc ml-4">' +
+              '<li>' + format(h_cm, 1) + ' cm</li>' +
+              '<li>' + format(h_in, 2) + ' in</li>' +
+              '</ul>' +
+              '<p class="mt-1 text-xs text-gray-600">Note: this estimate assumes a simple take-off and landing with similar body posture. Measurement errors in flight time can affect accuracy.</p>';
+          });
+        }
+
+        // Method 3: peak power
+        if (method3Btn) {
+          method3Btn.addEventListener('click', function () {
+            if (!powerHeightInput || !bodyMassInput || !method3Output) return;
+            let hVal = parseFloat(String(powerHeightInput.value).replace(',', '.'));
+            let mVal = parseFloat(String(bodyMassInput.value).replace(',', '.'));
+
+            if (isNaN(hVal) || isNaN(mVal)) {
+              method3Output.textContent = 'Please enter both jump height and body mass.';
+              return;
+            }
+            if (hVal <= 0 || mVal <= 0) {
+              method3Output.textContent = 'Jump height and body mass must be greater than zero.';
+              return;
+            }
+
+            const units = getUnits();
+            let jumpHeightCm = hVal;
+            let massKg = mVal;
+
+            if (units === 'imperial') {
+              // height in inches -> cm, mass in lb -> kg
+              jumpHeightCm = hVal * 2.54;
+              massKg = mVal * 0.45359237;
+            }
+
+            const peakPower = 60.7 * jumpHeightCm + 45.3 * massKg - 2055;
+            const relPower = peakPower / massKg;
+
+            method3Output.innerHTML =
+              '<p><strong>Estimated peak power:</strong></p>' +
+              '<ul class="list-disc ml-4">' +
+              '<li>' + format(peakPower, 0) + ' W (Watts)</li>' +
+              '<li>' + format(relPower, 1) + ' W/kg</li>' +
+              '</ul>' +
+              '<p class="mt-1 text-xs text-gray-600">Use the same testing protocol each time you repeat the test so changes over time are meaningful.</p>';
+          });
+        }
+      });
+    </script>
+
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

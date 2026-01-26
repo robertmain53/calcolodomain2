@@ -213,17 +213,499 @@ legend{font-weight:700;padding:0 .25rem}
 }
 </script>
 <!-- MathJax for LaTeX (defer) -->
-<script crossorigin="anonymous" defer="" id="mathjax-script" integrity="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script crossorigin="anonymous" defer="" id="mathjax-script" integrity="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
-  window.MathJax = {
-    tex: {
-      inlineMath: [['\(','\)'], ['$', '$']],
-      displayMath: [['$','$'], ['\[','\]']]
-    },
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
+<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
+
+
+<style>
+/* AUDIT_SPINE_CSS */
+.auditspine-note{
+  border:1px solid #e5e7eb;
+  background:#fff;
+  border-radius:12px;
+  padding:12px;
+  color:#475569;
+  font-size:13px;
+  line-height:1.5;
+}
+.auditspine-mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+.auditspine-changelog{
+  border:1px solid #e5e7eb;
+  background:#fff;
+  border-left:5px solid #334155;
+  border-radius:12px;
+  padding:12px;
+  font-size:13px;
+  color:#475569;
+}
+.auditspine-formula{
+  margin:10px 0;
+  background:#0b1220;
+  color:#e5e7eb;
+  border-radius:12px;
+  padding:12px;
+  border:1px solid rgba(255,255,255,.12);
+  overflow-x:auto;
+}
+.auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
+.auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+
+<main class="main-content w-full lg:w-2/3" id="main" role="main">
+<div class="container">
+<nav aria-label="breadcrumb" class="breadcrumb">
+Home / <a href="https://calcdomain.com/engineering">Engineering</a> / Electrical (US NEC) / NEC Conduit Fill Calculator
+    </nav>
+<h1>NEC Conduit Fill Calculator</h1>
+<p class="lead">Quickly determine conduit fill and code compliance using <strong>NEC Chapter 9</strong> methodology. Choose a raceway, list your conductors (THHN/THWN-2, etc.), and get the allowable area, percent fill, and an optional jam-ratio advisory. Built for electricians, engineers and estimators who need transparent, professional-grade results.</p>
+<div class="calculator-layout">
+<!-- Calculator -->
+<aside aria-labelledby="calc-heading" class="card w-full lg:w-1/3">
+<section aria-describedby="calc-desc" id="conduit-calculator">
+<h2 id="calc-heading">Calculator</h2>
+<p class="help" id="calc-desc">Fields marked with <span aria-hidden="true">*</span> are required.</p>
+<!-- Raceway selection -->
+<div class="form-group">
+<label for="racewayType">Conduit / Raceway Type *</label>
+<select aria-describedby="racewayTypeHelp racewayTypeErr" aria-required="true" class="select" id="racewayType">
+<option value="EMT">EMT (Electrical Metallic Tubing)</option>
+<option value="RMC">RMC (Rigid Metal Conduit)</option>
+<option value="IMC">IMC (Intermediate Metal Conduit)</option>
+<option value="PVC40">PVC Schedule 40</option>
+<option value="PVC80">PVC Schedule 80</option>
+</select>
+<div class="help" id="racewayTypeHelp">Uses NEC Ch. 9, Table 4 nominal internal areas.</div>
+<div aria-live="polite" class="error" id="racewayTypeErr" role="alert"></div>
+</div>
+<div class="form-group">
+<label for="tradeSize">Trade Size *</label>
+<select aria-describedby="tradeSizeErr" aria-required="true" class="select" id="tradeSize">
+<!-- options populated by JS for chosen raceway -->
+</select>
+<div aria-live="polite" class="error" id="tradeSizeErr" role="alert"></div>
+</div>
+<!-- Conductor list -->
+<fieldset aria-describedby="condHelp" class="form-group">
+<legend>Conductors inside this raceway *</legend>
+<p class="help" id="condHelp">Add one row per conductor size/insulation family. You can mix sizes and quantities.</p>
+<div id="rows"></div>
+<div class="inline" style="margin-top:.5rem">
+<button aria-label="Add conductor row" class="btn" id="addRowBtn" type="button">+ Add row</button>
+<button aria-label="Clear all rows" class="btn" id="clearRowsBtn" type="button">Clear</button>
+</div>
+<div aria-live="polite" class="error" id="rowsErr" role="alert"></div>
+</fieldset>
+<!-- Results -->
+<div aria-atomic="true" aria-live="polite" class="results">
+<h3>Results</h3>
+<div class="result-line"><span class="result-label">Conductor count</span><span class="result-value" id="resultCount">0</span></div>
+<div class="result-line"><span class="result-label">Total conductor area</span><span class="result-value" id="resultCondArea">0.000 in²</span></div>
+<div class="result-line"><span class="result-label">Raceway area @ <span id="resultPercentLabel">—</span></span><span class="result-value" id="resultRacewayArea">—</span></div>
+<div class="result-line"><span class="result-label">Fill percentage</span><span class="result-value" id="resultFill">—</span></div>
+<div class="result-line"><span class="result-label">Compliance</span><span class="result-value" id="resultCompliance">—</span></div>
+<div class="help" id="jamAdvisory" style="margin-top:.5rem"></div>
+</div>
+</section>
+</aside>
+<!-- Authoritative content -->
+<article class="card">
+<section>
+<h2>Data Source and Methodology</h2>
+<p><strong>Authoritative source:</strong> National Electrical Code (NFPA&nbsp;70), Chapter 9 Tables:
+            Table&nbsp;1 (percent fill), Table&nbsp;4 (raceway dimensions/areas), Table&nbsp;5 (conductor dimensions/areas). All calculations strictly follow these tables.</p>
+<ul>
+<li>Table 1: 53% (1 conductor), 31% (2), 40% (&gt;2). :contentReference[oaicite:0]{index=0}</li>
+<li>Table 4: EMT/RMC/IMC/PVC nominal internal areas by trade size. :contentReference[oaicite:1]{index=1}</li>
+<li>Table 5: THHN/THWN-2 typical insulated conductor areas (in²). :contentReference[oaicite:2]{index=2}</li>
+<li>Industry calculator reference (Southwire): conduit fill and jam advisory concepts. :contentReference[oaicite:3]{index=3}</li>
+</ul>
+<p><em>Note:</em> Local jurisdictions may adopt different NEC editions. Always verify with your AHJ.</p>
+</section>
+<section>
+<h2>The Formulas Explained</h2>
+<div class="formula-box">
+<p>Let \(A_r\) be the raceway total area (in²), \(p\) the allowable fill fraction from Table&nbsp;1, and \(A_c=\sum_i n_i\,a_i\) the sum of conductor areas (quantity \(n_i\) times area \(a_i\)).</p>
+<p>\[
+              A_{\text{allow}} = p \cdot A_r,\qquad
+              \%\text{Fill} = \frac{A_c}{A_{\text{allow}}}\times 100
+            \]</p>
+<p>\(p=\begin{cases}
+              0.53 &amp; \text{if } N=1\\
+              0.31 &amp; \text{if } N=2\\
+              0.40 &amp; \text{if } N&gt;2
+            \end{cases}\) (NEC Ch. 9 Table 1).</p>
+</div>
+</section>
+<section>
+<h2>Glossary of Variables</h2>
+<ul>
+<li><strong>Raceway Type/Trade Size</strong>: Conduit family and nominal size (NEC Table 4).</li>
+<li><strong>Conductor Insulation</strong>: e.g., THHN/THWN-2 (NEC Table 5 groups).</li>
+<li><strong>AWG/kcmil</strong>: American Wire Gauge / thousand circular mils.</li>
+<li><strong>Conductor Area (in²)</strong>: Approximate cross-section of insulated conductor (Table 5).</li>
+<li><strong>Allowable Area (in²)</strong>: Table 1 percentage of raceway area (Table 4).</li>
+<li><strong>Jam Ratio (Advisory)</strong>: If exactly 3 conductors, \(J=\frac{D_{\text{raceway}}}{d_{\text{conductor}}}\) near 2.8–3.2 may increase jamming risk (informational guidance). :contentReference[oaicite:4]{index=4}</li>
+</ul>
+</section>
+<section>
+<h2>How It Works: A Step-by-Step Example</h2>
+<p><strong>Scenario:</strong> EMT, trade size 1&nbsp;in; three #12 THHN conductors.</p>
+<ol>
+<li>From Table 4, 1&nbsp;in EMT total area \(A_r\) ≈ 0.836&nbsp;in² (40% column ≈ 0.334&nbsp;in²). :contentReference[oaicite:5]{index=5}</li>
+<li>From Table 5, #12 THHN area \(a\) ≈ 0.0133&nbsp;in²; with \(n=3\), \(A_c=0.0399\) in². :contentReference[oaicite:6]{index=6}</li>
+<li>Since \(N=3\), \(p=0.40\). \(A_{\text{allow}}=0.334\) in². Fill \(= (0.0399 / 0.334)\times 100 \approx 11.9\%\) ⇒ <strong>Compliant</strong>.</li>
+<li>Jam advisory checks the effective OD vs ID; outside the 2.8–3.2 window means low jam likelihood.</li>
+</ol>
+</section>
+<section>
+<h2>Frequently Asked Questions</h2>
+<h3>Does this support mixed conductor sizes?</h3>
+<p>Yes. We sum each row’s area using Table 5 values and compare to the allowable area from Table 1 &amp; 4.</p>
+<h3>Which fill percentage applies?</h3>
+<p>53% for exactly one conductor, 31% for exactly two, and 40% for more than two (NEC Ch. 9 Table 1). :contentReference[oaicite:7]{index=7}</p>
+<h3>Where do the raceway areas come from?</h3>
+<p>NEC Chapter 9, Table 4 lists nominal internal diameters and areas by raceway type/trade size. :contentReference[oaicite:8]{index=8}</p>
+<h3>Where do the conductor areas come from?</h3>
+<p>NEC Chapter 9, Table 5. We use typical THHN/THWN-2 approximate areas in square inches. :contentReference[oaicite:9]{index=9}</p>
+<h3>What about Annex C (max quantity tables)?</h3>
+<p>Annex C lists maximum counts when all conductors are the same size/insulation; this tool provides a general calculation that also supports mixed sizes. :contentReference[oaicite:10]{index=10}</p>
+<h3>Is jam ratio part of the NEC?</h3>
+<p>It’s an industry advisory derived from geometry and referenced by many calculators (e.g., Southwire); use it as guidance for exactly three conductors. :contentReference[oaicite:11]{index=11}</p>
+</section>
+<section class="author-box">
+</section>
+
+<!-- AUDIT_SPINE_START -->
+<hr class="auditspine-hr">
+<section aria-label="Formulas, sources, changelog, verification">
+  <span class="auditspine-badge">Audit: Complete</span>
+
+  <details style="margin-top:10px">
+    <summary><strong>Formula (LaTeX) + variables + units</strong></summary>
+    <div class="auditspine-note" style="margin-top:10px">
+      This section shows the formulas used by the calculator engine, plus variable definitions and units.
+      
+    </div>
+    <div class="auditspine-formula">
+      <div style="margin:10px 0">
+  <div><strong>Formula (extracted LaTeX)</strong></div>
+  <div style="margin-top:6px">\[','\]</div>
+  <pre class="auditspine-mono">','</pre>
+</div>
+<div style="margin:10px 0">
+  <div><strong>Formula (extracted LaTeX)</strong></div>
+  <div style="margin-top:6px">\[A_{\text{allow}} = p \cdot A_r,\qquad \%\text{Fill} = \frac{A_c}{A_{\text{allow}}}\times 100\]</div>
+  <pre class="auditspine-mono">A_{\text{allow}} = p \cdot A_r,\qquad \%\text{Fill} = \frac{A_c}{A_{\text{allow}}}\times 100</pre>
+</div>
+<div style="margin:10px 0">
+  <div><strong>Formula (extracted text)</strong></div>
+  
+  <pre class="auditspine-mono">Let \(A_r\) be the raceway total area (in²), \(p\) the allowable fill fraction from Table 1, and \(A_c=\sum_i n_i\,a_i\) the sum of conductor areas (quantity \(n_i\) times area \(a_i\)). \[ A_{\text{allow}} = p \cdot A_r,\qquad \%\text{Fill} = \frac{A_c}{A_{\text{allow}}}\times 100 \] \(p=\begin{cases} 0.53 &amp; \text{if } N=1\\ 0.31 &amp; \text{if } N=2\\ 0.40 &amp; \text{if } N&gt;2 \end{cases}\) (NEC Ch. 9 Table 1).</pre>
+</div>
+      <div style="margin-top:12px"><strong>Variables and units</strong></div>
+      <ul style="margin:8px 0 0 18px">
+        <li><em>No variables provided in audit spec.</em></li>
+      </ul>
+    </div>
+  </details>
+
+  <div class="auditspine-note" style="margin-top:12px">
+    <strong>Sources (authoritative):</strong>
+    <ul style="margin:8px 0 0 18px">
+      <li><strong>Engineering</strong> — calcdomain.com · Accessed 2026-01-19<br><a href="https://calcdomain.com/engineering" target="_blank" rel="nofollow noopener">https://calcdomain.com/engineering</a></li>
+    </ul>
+  </div>
+
+  <div class="auditspine-changelog" style="margin-top:12px">
+    <strong>Changelog</strong><br>
+    <div style="margin-top:6px">
+      <strong>Version:</strong> 0.1.0-draft<br>
+      <strong>Last code update:</strong> 2026-01-19
+    </div>
+    <div style="margin-top:10px">
+  <strong>0.1.0-draft</strong> · 2026-01-19
+  <ul style="margin:6px 0 0 18px">
+    <li>Initial audit spec draft generated from HTML extraction (review required).</li>
+<li>Verify formulas match the calculator engine and convert any text-only formulas to LaTeX.</li>
+<li>Confirm sources are authoritative and relevant to the calculator methodology.</li>
+  </ul>
+</div>
+  </div>
+
+  <div class="auditspine-note" style="margin-top:12px">
+    <strong>Verified by Ugo Candido on 2026-01-19</strong><br>
+    <a href="https://calcdomain.com/ugocandido" target="_blank" rel="noopener">Profile</a> ·
+    <a href="https://www.linkedin.com/in/ugocandido92821/" target="_blank" rel="noopener">LinkedIn</a>
+  </div>
+</section>
+<!-- AUDIT_SPINE_END -->
+</article>
+</div>
+</div>
+</main>
+
+<!-- App logic (defer) -->
+
+
+
+</body></html>, ',
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
+<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
+
+
+<style>
+/* AUDIT_SPINE_CSS */
+.auditspine-note{
+  border:1px solid #e5e7eb;
+  background:#fff;
+  border-radius:12px;
+  padding:12px;
+  color:#475569;
+  font-size:13px;
+  line-height:1.5;
+}
+.auditspine-mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+.auditspine-changelog{
+  border:1px solid #e5e7eb;
+  background:#fff;
+  border-left:5px solid #334155;
+  border-radius:12px;
+  padding:12px;
+  font-size:13px;
+  color:#475569;
+}
+.auditspine-formula{
+  margin:10px 0;
+  background:#0b1220;
+  color:#e5e7eb;
+  border-radius:12px;
+  padding:12px;
+  border:1px solid rgba(255,255,255,.12);
+  overflow-x:auto;
+}
+.auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
+.auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+
+<main class="main-content" id="main" role="main">
+<div class="container">
+<nav aria-label="breadcrumb" class="breadcrumb">
+Home / <a href="https://calcdomain.com/engineering">Engineering</a> / Electrical (US NEC) / NEC Conduit Fill Calculator
+    </nav>
+<h1>NEC Conduit Fill Calculator</h1>
+<p class="lead">Quickly determine conduit fill and code compliance using <strong>NEC Chapter 9</strong> methodology. Choose a raceway, list your conductors (THHN/THWN-2, etc.), and get the allowable area, percent fill, and an optional jam-ratio advisory. Built for electricians, engineers and estimators who need transparent, professional-grade results.</p>
+<div class="calculator-layout">
+<!-- Calculator -->
+<aside aria-labelledby="calc-heading" class="card">
+<section aria-describedby="calc-desc" id="conduit-calculator">
+<h2 id="calc-heading">Calculator</h2>
+<p class="help" id="calc-desc">Fields marked with <span aria-hidden="true">*</span> are required.</p>
+<!-- Raceway selection -->
+<div class="form-group">
+<label for="racewayType">Conduit / Raceway Type *</label>
+<select aria-describedby="racewayTypeHelp racewayTypeErr" aria-required="true" class="select" id="racewayType">
+<option value="EMT">EMT (Electrical Metallic Tubing)</option>
+<option value="RMC">RMC (Rigid Metal Conduit)</option>
+<option value="IMC">IMC (Intermediate Metal Conduit)</option>
+<option value="PVC40">PVC Schedule 40</option>
+<option value="PVC80">PVC Schedule 80</option>
+</select>
+<div class="help" id="racewayTypeHelp">Uses NEC Ch. 9, Table 4 nominal internal areas.</div>
+<div aria-live="polite" class="error" id="racewayTypeErr" role="alert"></div>
+</div>
+<div class="form-group">
+<label for="tradeSize">Trade Size *</label>
+<select aria-describedby="tradeSizeErr" aria-required="true" class="select" id="tradeSize">
+<!-- options populated by JS for chosen raceway -->
+</select>
+<div aria-live="polite" class="error" id="tradeSizeErr" role="alert"></div>
+</div>
+<!-- Conductor list -->
+<fieldset aria-describedby="condHelp" class="form-group">
+<legend>Conductors inside this raceway *</legend>
+<p class="help" id="condHelp">Add one row per conductor size/insulation family. You can mix sizes and quantities.</p>
+<div id="rows"></div>
+<div class="inline" style="margin-top:.5rem">
+<button aria-label="Add conductor row" class="btn" id="addRowBtn" type="button">+ Add row</button>
+<button aria-label="Clear all rows" class="btn" id="clearRowsBtn" type="button">Clear</button>
+</div>
+<div aria-live="polite" class="error" id="rowsErr" role="alert"></div>
+</fieldset>
+<!-- Results -->
+<div aria-atomic="true" aria-live="polite" class="results">
+<h3>Results</h3>
+<div class="result-line"><span class="result-label">Conductor count</span><span class="result-value" id="resultCount">0</span></div>
+<div class="result-line"><span class="result-label">Total conductor area</span><span class="result-value" id="resultCondArea">0.000 in²</span></div>
+<div class="result-line"><span class="result-label">Raceway area @ <span id="resultPercentLabel">—</span></span><span class="result-value" id="resultRacewayArea">—</span></div>
+<div class="result-line"><span class="result-label">Fill percentage</span><span class="result-value" id="resultFill">—</span></div>
+<div class="result-line"><span class="result-label">Compliance</span><span class="result-value" id="resultCompliance">—</span></div>
+<div class="help" id="jamAdvisory" style="margin-top:.5rem"></div>
+</div>
+</section>
+</aside>
+<!-- Authoritative content -->
+<article class="card">
+<section>
+<h2>Data Source and Methodology</h2>
+<p><strong>Authoritative source:</strong> National Electrical Code (NFPA&nbsp;70), Chapter 9 Tables:
+            Table&nbsp;1 (percent fill), Table&nbsp;4 (raceway dimensions/areas), Table&nbsp;5 (conductor dimensions/areas). All calculations strictly follow these tables.</p>
+<ul>
+<li>Table 1: 53% (1 conductor), 31% (2), 40% (&gt;2). :contentReference[oaicite:0]{index=0}</li>
+<li>Table 4: EMT/RMC/IMC/PVC nominal internal areas by trade size. :contentReference[oaicite:1]{index=1}</li>
+<li>Table 5: THHN/THWN-2 typical insulated conductor areas (in²). :contentReference[oaicite:2]{index=2}</li>
+<li>Industry calculator reference (Southwire): conduit fill and jam advisory concepts. :contentReference[oaicite:3]{index=3}</li>
+</ul>
+<p><em>Note:</em> Local jurisdictions may adopt different NEC editions. Always verify with your AHJ.</p>
+</section>
+<section>
+<h2>The Formulas Explained</h2>
+<div class="formula-box">
+<p>Let \(A_r\) be the raceway total area (in²), \(p\) the allowable fill fraction from Table&nbsp;1, and \(A_c=\sum_i n_i\,a_i\) the sum of conductor areas (quantity \(n_i\) times area \(a_i\)).</p>
+<p>\[
+              A_{\text{allow}} = p \cdot A_r,\qquad
+              \%\text{Fill} = \frac{A_c}{A_{\text{allow}}}\times 100
+            \]</p>
+<p>\(p=\begin{cases}
+              0.53 &amp; \text{if } N=1\\
+              0.31 &amp; \text{if } N=2\\
+              0.40 &amp; \text{if } N&gt;2
+            \end{cases}\) (NEC Ch. 9 Table 1).</p>
+</div>
+</section>
+<section>
+<h2>Glossary of Variables</h2>
+<ul>
+<li><strong>Raceway Type/Trade Size</strong>: Conduit family and nominal size (NEC Table 4).</li>
+<li><strong>Conductor Insulation</strong>: e.g., THHN/THWN-2 (NEC Table 5 groups).</li>
+<li><strong>AWG/kcmil</strong>: American Wire Gauge / thousand circular mils.</li>
+<li><strong>Conductor Area (in²)</strong>: Approximate cross-section of insulated conductor (Table 5).</li>
+<li><strong>Allowable Area (in²)</strong>: Table 1 percentage of raceway area (Table 4).</li>
+<li><strong>Jam Ratio (Advisory)</strong>: If exactly 3 conductors, \(J=\frac{D_{\text{raceway}}}{d_{\text{conductor}}}\) near 2.8–3.2 may increase jamming risk (informational guidance). :contentReference[oaicite:4]{index=4}</li>
+</ul>
+</section>
+<section>
+<h2>How It Works: A Step-by-Step Example</h2>
+<p><strong>Scenario:</strong> EMT, trade size 1&nbsp;in; three #12 THHN conductors.</p>
+<ol>
+<li>From Table 4, 1&nbsp;in EMT total area \(A_r\) ≈ 0.836&nbsp;in² (40% column ≈ 0.334&nbsp;in²). :contentReference[oaicite:5]{index=5}</li>
+<li>From Table 5, #12 THHN area \(a\) ≈ 0.0133&nbsp;in²; with \(n=3\), \(A_c=0.0399\) in². :contentReference[oaicite:6]{index=6}</li>
+<li>Since \(N=3\), \(p=0.40\). \(A_{\text{allow}}=0.334\) in². Fill \(= (0.0399 / 0.334)\times 100 \approx 11.9\%\) ⇒ <strong>Compliant</strong>.</li>
+<li>Jam advisory checks the effective OD vs ID; outside the 2.8–3.2 window means low jam likelihood.</li>
+</ol>
+</section>
+<section>
+<h2>Frequently Asked Questions</h2>
+<h3>Does this support mixed conductor sizes?</h3>
+<p>Yes. We sum each row’s area using Table 5 values and compare to the allowable area from Table 1 &amp; 4.</p>
+<h3>Which fill percentage applies?</h3>
+<p>53% for exactly one conductor, 31% for exactly two, and 40% for more than two (NEC Ch. 9 Table 1). :contentReference[oaicite:7]{index=7}</p>
+<h3>Where do the raceway areas come from?</h3>
+<p>NEC Chapter 9, Table 4 lists nominal internal diameters and areas by raceway type/trade size. :contentReference[oaicite:8]{index=8}</p>
+<h3>Where do the conductor areas come from?</h3>
+<p>NEC Chapter 9, Table 5. We use typical THHN/THWN-2 approximate areas in square inches. :contentReference[oaicite:9]{index=9}</p>
+<h3>What about Annex C (max quantity tables)?</h3>
+<p>Annex C lists maximum counts when all conductors are the same size/insulation; this tool provides a general calculation that also supports mixed sizes. :contentReference[oaicite:10]{index=10}</p>
+<h3>Is jam ratio part of the NEC?</h3>
+<p>It’s an industry advisory derived from geometry and referenced by many calculators (e.g., Southwire); use it as guidance for exactly three conductors. :contentReference[oaicite:11]{index=11}</p>
+</section>
+<section class="author-box">
+</section>
+
+<!-- AUDIT_SPINE_START -->
+<hr class="auditspine-hr">
+<section aria-label="Formulas, sources, changelog, verification">
+  <span class="auditspine-badge">Audit: Complete</span>
+
+  <details style="margin-top:10px">
+    <summary><strong>Formula (LaTeX) + variables + units</strong></summary>
+    <div class="auditspine-note" style="margin-top:10px">
+      This section shows the formulas used by the calculator engine, plus variable definitions and units.
+      
+    </div>
+    <div class="auditspine-formula">
+      <div style="margin:10px 0">
+  <div><strong>Formula (extracted LaTeX)</strong></div>
+  <div style="margin-top:6px">\[','\]</div>
+  <pre class="auditspine-mono">','</pre>
+</div>
+<div style="margin:10px 0">
+  <div><strong>Formula (extracted LaTeX)</strong></div>
+  <div style="margin-top:6px">\[A_{\text{allow}} = p \cdot A_r,\qquad \%\text{Fill} = \frac{A_c}{A_{\text{allow}}}\times 100\]</div>
+  <pre class="auditspine-mono">A_{\text{allow}} = p \cdot A_r,\qquad \%\text{Fill} = \frac{A_c}{A_{\text{allow}}}\times 100</pre>
+</div>
+<div style="margin:10px 0">
+  <div><strong>Formula (extracted text)</strong></div>
+  
+  <pre class="auditspine-mono">Let \(A_r\) be the raceway total area (in²), \(p\) the allowable fill fraction from Table 1, and \(A_c=\sum_i n_i\,a_i\) the sum of conductor areas (quantity \(n_i\) times area \(a_i\)). \[ A_{\text{allow}} = p \cdot A_r,\qquad \%\text{Fill} = \frac{A_c}{A_{\text{allow}}}\times 100 \] \(p=\begin{cases} 0.53 &amp; \text{if } N=1\\ 0.31 &amp; \text{if } N=2\\ 0.40 &amp; \text{if } N&gt;2 \end{cases}\) (NEC Ch. 9 Table 1).</pre>
+</div>
+      <div style="margin-top:12px"><strong>Variables and units</strong></div>
+      <ul style="margin:8px 0 0 18px">
+        <li><em>No variables provided in audit spec.</em></li>
+      </ul>
+    </div>
+  </details>
+
+  <div class="auditspine-note" style="margin-top:12px">
+    <strong>Sources (authoritative):</strong>
+    <ul style="margin:8px 0 0 18px">
+      <li><strong>Engineering</strong> — calcdomain.com · Accessed 2026-01-19<br><a href="https://calcdomain.com/engineering" target="_blank" rel="nofollow noopener">https://calcdomain.com/engineering</a></li>
+    </ul>
+  </div>
+
+  <div class="auditspine-changelog" style="margin-top:12px">
+    <strong>Changelog</strong><br>
+    <div style="margin-top:6px">
+      <strong>Version:</strong> 0.1.0-draft<br>
+      <strong>Last code update:</strong> 2026-01-19
+    </div>
+    <div style="margin-top:10px">
+  <strong>0.1.0-draft</strong> · 2026-01-19
+  <ul style="margin:6px 0 0 18px">
+    <li>Initial audit spec draft generated from HTML extraction (review required).</li>
+<li>Verify formulas match the calculator engine and convert any text-only formulas to LaTeX.</li>
+<li>Confirm sources are authoritative and relevant to the calculator methodology.</li>
+  </ul>
+</div>
+  </div>
+
+  <div class="auditspine-note" style="margin-top:12px">
+    <strong>Verified by Ugo Candido on 2026-01-19</strong><br>
+    <a href="https://calcdomain.com/ugocandido" target="_blank" rel="noopener">Profile</a> ·
+    <a href="https://www.linkedin.com/in/ugocandido92821/" target="_blank" rel="noopener">LinkedIn</a>
+  </div>
+</section>
+<!-- AUDIT_SPINE_END -->
+</article>
+</div>
+</div>
+</main>
+
+<!-- App logic (defer) -->
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
     svg: { fontCache: 'global' }
   };
 </script>

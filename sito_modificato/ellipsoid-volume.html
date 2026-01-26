@@ -48,10 +48,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -203,8 +199,6 @@
 </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
-
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
 
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
@@ -709,7 +703,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -777,13 +771,569 @@
 
 
 
+
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
 
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      (function () {
+        const modeSelect = document.getElementById('calc-mode');
+        const unitSelect = document.getElementById('length-unit');
+        const form = document.getElementById('ellipsoid-form');
+        const resetBtn = document.getElementById('ellipsoid-reset');
+
+        const blockVolumeSemi = document.getElementById('block-volume-semi');
+        const blockVolumeDiam = document.getElementById('block-volume-diam');
+        const blockSolveAxis = document.getElementById('block-solve-axis');
+
+        const resultsBox = document.getElementById('ellipsoid-results');
+        const summaryEl = document.getElementById('result-summary');
+        const detailsEl = document.getElementById('result-details');
+        const secondaryEl = document.getElementById('result-secondary');
+        const stepsEl = document.getElementById('result-steps');
+
+        function parseNum(value) {
+          if (typeof value !== 'string') return NaN;
+          const cleaned = value.trim().replace(',', '.');
+          if (!cleaned) return NaN;
+          const n = Number(cleaned);
+          return Number.isFinite(n) ? n : NaN;
+        }
+
+        function cleanZero(x) {
+          return Math.abs(x) < 1e-12 ? 0 : x;
+        }
+
+        function fmt(val, digits = 6) {
+          if (!Number.isFinite(val)) return '—';
+          val = cleanZero(val);
+          if (val === 0) return '0';
+          const abs = Math.abs(val);
+          if (abs >= 1e6 || abs < 1e-4) {
+            return val.toExponential(4);
+          }
+          return Number(val.toPrecision(digits));
+        }
+
+        const unitToMeter = {
+          mm: 0.001,
+          cm: 0.01,
+          m: 1,
+          in: 0.0254,
+          ft: 0.3048
+        };
+
+        function clearResults() {
+          resultsBox.classList.add('hidden');
+          summaryEl.textContent = '';
+          detailsEl.innerHTML = '';
+          secondaryEl.innerHTML = '';
+          secondaryEl.classList.add('hidden');
+          stepsEl.innerHTML = '';
+        }
+
+        function setModeVisibility() {
+          const mode = modeSelect.value;
+          clearResults();
+          blockVolumeSemi.classList.add('hidden');
+          blockVolumeDiam.classList.add('hidden');
+          blockSolveAxis.classList.add('hidden');
+
+          if (mode === 'volume-semi') {
+            blockVolumeSemi.classList.remove('hidden');
+          } else if (mode === 'volume-diam') {
+            blockVolumeDiam.classList.remove('hidden');
+          } else if (mode === 'solve-axis') {
+            blockSolveAxis.classList.remove('hidden');
+          }
+        }
+
+        function handleSubmit(evt) {
+          evt.preventDefault();
+          clearResults();
+
+          const mode = modeSelect.value;
+          const lengthUnit = unitSelect.value;
+          const toMeter = unitToMeter[lengthUnit] || 1;
+
+          const steps = [];
+
+          if (mode === 'volume-semi') {
+            const a = parseNum(document.getElementById('semi-a').value);
+            const b = parseNum(document.getElementById('semi-b').value);
+            const c = parseNum(document.getElementById('semi-c').value);
+
+            if (!Number.isFinite(a) || !Number.isFinite(b) || !Number.isFinite(c)) {
+              alert('Please enter numeric values for semi-axes a, b and c.');
+              return;
+            }
+            if (a <= 0 || b <= 0 || c <= 0) {
+              alert('All semi-axes must be strictly positive.');
+              return;
+            }
+
+            steps.push('1. Inputs: semi-axes a = ' + a + ', b = ' + b + ', c = ' + c + ' (' + lengthUnit + ').');
+
+            const factor = 4 * Math.PI / 3;
+            const V_unit3 = factor * a * b * c; // in unit^3
+
+            steps.push('2. Compute product a·b·c = ' + (a * b * c) + ' ' + lengthUnit + '³.');
+            steps.push('3. Apply V = 4/3·π·a·b·c ≈ (4/3)·π·' + (a * b * c) + ' ≈ ' + V_unit3 + ' ' + lengthUnit + '³.');
+
+            const V_m3 = V_unit3 * Math.pow(toMeter, 3);
+
+            summaryEl.textContent = 'Ellipsoid volume V ≈ ' + fmt(V_unit3) + ' ' + lengthUnit + '³';
+
+            detailsEl.innerHTML = '';
+            const d1 = document.createElement('p');
+            d1.textContent = 'Volume in ' + lengthUnit + '³: V ≈ ' + fmt(V_unit3) + ' ' + lengthUnit + '³.';
+            detailsEl.appendChild(d1);
+
+            const d2 = document.createElement('p');
+            d2.textContent = 'Volume in cubic meters: V ≈ ' + fmt(V_m3) + ' m³.';
+            detailsEl.appendChild(d2);
+
+            const d3 = document.createElement('p');
+            let litres = V_m3 * 1000;
+            d3.textContent = 'Volume in liters (approx): V ≈ ' + fmt(litres) + ' L.';
+            detailsEl.appendChild(d3);
+
+          } else if (mode === 'volume-diam') {
+            const D1 = parseNum(document.getElementById('diam-d1').value);
+            const D2 = parseNum(document.getElementById('diam-d2').value);
+            const D3 = parseNum(document.getElementById('diam-d3').value);
+
+            if (!Number.isFinite(D1) || !Number.isFinite(D2) || !Number.isFinite(D3)) {
+              alert('Please enter numeric values for diameters D1, D2 and D3.');
+              return;
+            }
+            if (D1 <= 0 || D2 <= 0 || D3 <= 0) {
+              alert('All diameters must be strictly positive.');
+              return;
+            }
+
+            const a = D1 / 2;
+            const b = D2 / 2;
+            const c = D3 / 2;
+
+            steps.push('1. Inputs: diameters D1 = ' + D1 + ', D2 = ' + D2 + ', D3 = ' + D3 + ' (' + lengthUnit + ').');
+            steps.push('2. Convert to semi-axes: a = D1/2 = ' + a + ', b = D2/2 = ' + b + ', c = D3/2 = ' + c + '.');
+
+            const factor = 4 * Math.PI / 3;
+            const V_unit3 = factor * a * b * c;
+            const V_m3 = V_unit3 * Math.pow(toMeter, 3);
+
+            steps.push('3. Compute volume with V = 4/3·π·a·b·c ≈ ' + V_unit3 + ' ' + lengthUnit + '³.');
+            steps.push('   Equivalently, V = π/6·D1·D2·D3 ≈ ' + (Math.PI / 6 * D1 * D2 * D3) + ' ' + lengthUnit + '³.');
+
+            summaryEl.textContent = 'Ellipsoid volume V ≈ ' + fmt(V_unit3) + ' ' + lengthUnit + '³';
+
+            detailsEl.innerHTML = '';
+            const d1 = document.createElement('p');
+            d1.textContent = 'Volume in ' + lengthUnit + '³: V ≈ ' + fmt(V_unit3) + ' ' + lengthUnit + '³.';
+            detailsEl.appendChild(d1);
+
+            const d2 = document.createElement('p');
+            d2.textContent = 'Volume in cubic meters: V ≈ ' + fmt(V_m3) + ' m³.';
+            detailsEl.appendChild(d2);
+
+            const d3 = document.createElement('p');
+            d3.textContent = 'Volume in liters (approx): V ≈ ' + fmt(V_m3 * 1000) + ' L.';
+            detailsEl.appendChild(d3);
+
+          } else if (mode === 'solve-axis') {
+            const V = parseNum(document.getElementById('solve-V').value);
+            const unknown = document.getElementById('unknown-axis').value;
+            const aInput = parseNum(document.getElementById('solve-a').value);
+            const bInput = parseNum(document.getElementById('solve-b').value);
+            const cInput = parseNum(document.getElementById('solve-c').value);
+
+            if (!Number.isFinite(V) || V <= 0) {
+              alert('Please enter a positive numeric volume V.');
+              return;
+            }
+
+            let a = aInput;
+            let b = bInput;
+            let c = cInput;
+            let solvedValue;
+            const factor = 4 * Math.PI / 3;
+
+            steps.push('1. Input volume: V = ' + V + ' ' + lengthUnit + '³.');
+
+            if (unknown === 'a') {
+              if (!Number.isFinite(b) || !Number.isFinite(c) || b <= 0 || c <= 0) {
+                alert('To solve for a, provide positive numeric values for b and c.');
+                return;
+              }
+              solvedValue = (3 * V) / (4 * Math.PI * b * c);
+              a = solvedValue;
+              steps.push('2. Rearranged formula: a = 3V / (4π b c).');
+              steps.push('3. Substitute: a = 3·' + V + ' / (4π·' + b + '·' + c + ') ≈ ' + solvedValue + ' ' + lengthUnit + '.');
+            } else if (unknown === 'b') {
+              if (!Number.isFinite(a) || !Number.isFinite(c) || a <= 0 || c <= 0) {
+                alert('To solve for b, provide positive numeric values for a and c.');
+                return;
+              }
+              solvedValue = (3 * V) / (4 * Math.PI * a * c);
+              b = solvedValue;
+              steps.push('2. Rearranged formula: b = 3V / (4π a c).');
+              steps.push('3. Substitute: b = 3·' + V + ' / (4π·' + a + '·' + c + ') ≈ ' + solvedValue + ' ' + lengthUnit + '.');
+            } else if (unknown === 'c') {
+              if (!Number.isFinite(a) || !Number.isFinite(b) || a <= 0 || b <= 0) {
+                alert('To solve for c, provide positive numeric values for a and b.');
+                return;
+              }
+              solvedValue = (3 * V) / (4 * Math.PI * a * b);
+              c = solvedValue;
+              steps.push('2. Rearranged formula: c = 3V / (4π a b).');
+              steps.push('3. Substitute: c = 3·' + V + ' / (4π·' + a + '·' + b + ') ≈ ' + solvedValue + ' ' + lengthUnit + '.');
+            }
+
+            if (!Number.isFinite(solvedValue) || solvedValue <= 0) {
+              alert('The combination of volume and known axes does not yield a positive semi-axis. Please check the inputs.');
+              return;
+            }
+
+            // Verify by recomputing volume
+            const V_check = factor * a * b * c;
+            steps.push('4. Check: recompute volume with a = ' + a + ', b = ' + b + ', c = ' + c + '.');
+            steps.push('   V_check = 4/3·π·a·b·c ≈ ' + V_check + ' ' + lengthUnit + '³.');
+
+            summaryEl.textContent = 'Solved semi-axis ' + unknown + ' ≈ ' + fmt(solvedValue) + ' ' + lengthUnit;
+
+            detailsEl.innerHTML = '';
+            const d1 = document.createElement('p');
+            d1.textContent = 'Solved semi-axis ' + unknown + ': ' + fmt(solvedValue) + ' ' + lengthUnit + '.';
+            detailsEl.appendChild(d1);
+
+            const d2 = document.createElement('p');
+            d2.textContent = 'Consistency check volume (using all three semi-axes): V_check ≈ ' + fmt(V_check) + ' ' + lengthUnit + '³.';
+            detailsEl.appendChild(d2);
+
+            secondaryEl.classList.remove('hidden');
+            secondaryEl.innerHTML = '';
+            const s1 = document.createElement('p');
+            s1.textContent = 'Known semi-axes: a = ' + (Number.isFinite(aInput) ? fmt(aInput) : '[' + fmt(a) + ' solved]') +
+                             ', b = ' + (Number.isFinite(bInput) ? fmt(bInput) : '[' + fmt(b) + ' solved]') +
+                             ', c = ' + (Number.isFinite(cInput) ? fmt(cInput) : '[' + fmt(c) + ' solved]');
+            secondaryEl.appendChild(s1);
+          }
+
+          // Render steps
+          stepsEl.innerHTML = '';
+          steps.forEach(function (line) {
+            const p = document.createElement('p');
+            p.textContent = line;
+            stepsEl.appendChild(p);
+          });
+
+          resultsBox.classList.remove('hidden');
+        }
+
+        function handleReset() {
+          form.reset();
+          clearResults();
+          setModeVisibility();
+        }
+
+        modeSelect.addEventListener('change', setModeVisibility);
+        form.addEventListener('submit', handleSubmit);
+        resetBtn.addEventListener('click', handleReset);
+
+        setModeVisibility();
+      })();
+    </script>
+
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      (function () {
+        const modeSelect = document.getElementById('calc-mode');
+        const unitSelect = document.getElementById('length-unit');
+        const form = document.getElementById('ellipsoid-form');
+        const resetBtn = document.getElementById('ellipsoid-reset');
+
+        const blockVolumeSemi = document.getElementById('block-volume-semi');
+        const blockVolumeDiam = document.getElementById('block-volume-diam');
+        const blockSolveAxis = document.getElementById('block-solve-axis');
+
+        const resultsBox = document.getElementById('ellipsoid-results');
+        const summaryEl = document.getElementById('result-summary');
+        const detailsEl = document.getElementById('result-details');
+        const secondaryEl = document.getElementById('result-secondary');
+        const stepsEl = document.getElementById('result-steps');
+
+        function parseNum(value) {
+          if (typeof value !== 'string') return NaN;
+          const cleaned = value.trim().replace(',', '.');
+          if (!cleaned) return NaN;
+          const n = Number(cleaned);
+          return Number.isFinite(n) ? n : NaN;
+        }
+
+        function cleanZero(x) {
+          return Math.abs(x) < 1e-12 ? 0 : x;
+        }
+
+        function fmt(val, digits = 6) {
+          if (!Number.isFinite(val)) return '—';
+          val = cleanZero(val);
+          if (val === 0) return '0';
+          const abs = Math.abs(val);
+          if (abs >= 1e6 || abs < 1e-4) {
+            return val.toExponential(4);
+          }
+          return Number(val.toPrecision(digits));
+        }
+
+        const unitToMeter = {
+          mm: 0.001,
+          cm: 0.01,
+          m: 1,
+          in: 0.0254,
+          ft: 0.3048
+        };
+
+        function clearResults() {
+          resultsBox.classList.add('hidden');
+          summaryEl.textContent = '';
+          detailsEl.innerHTML = '';
+          secondaryEl.innerHTML = '';
+          secondaryEl.classList.add('hidden');
+          stepsEl.innerHTML = '';
+        }
+
+        function setModeVisibility() {
+          const mode = modeSelect.value;
+          clearResults();
+          blockVolumeSemi.classList.add('hidden');
+          blockVolumeDiam.classList.add('hidden');
+          blockSolveAxis.classList.add('hidden');
+
+          if (mode === 'volume-semi') {
+            blockVolumeSemi.classList.remove('hidden');
+          } else if (mode === 'volume-diam') {
+            blockVolumeDiam.classList.remove('hidden');
+          } else if (mode === 'solve-axis') {
+            blockSolveAxis.classList.remove('hidden');
+          }
+        }
+
+        function handleSubmit(evt) {
+          evt.preventDefault();
+          clearResults();
+
+          const mode = modeSelect.value;
+          const lengthUnit = unitSelect.value;
+          const toMeter = unitToMeter[lengthUnit] || 1;
+
+          const steps = [];
+
+          if (mode === 'volume-semi') {
+            const a = parseNum(document.getElementById('semi-a').value);
+            const b = parseNum(document.getElementById('semi-b').value);
+            const c = parseNum(document.getElementById('semi-c').value);
+
+            if (!Number.isFinite(a) || !Number.isFinite(b) || !Number.isFinite(c)) {
+              alert('Please enter numeric values for semi-axes a, b and c.');
+              return;
+            }
+            if (a <= 0 || b <= 0 || c <= 0) {
+              alert('All semi-axes must be strictly positive.');
+              return;
+            }
+
+            steps.push('1. Inputs: semi-axes a = ' + a + ', b = ' + b + ', c = ' + c + ' (' + lengthUnit + ').');
+
+            const factor = 4 * Math.PI / 3;
+            const V_unit3 = factor * a * b * c; // in unit^3
+
+            steps.push('2. Compute product a·b·c = ' + (a * b * c) + ' ' + lengthUnit + '³.');
+            steps.push('3. Apply V = 4/3·π·a·b·c ≈ (4/3)·π·' + (a * b * c) + ' ≈ ' + V_unit3 + ' ' + lengthUnit + '³.');
+
+            const V_m3 = V_unit3 * Math.pow(toMeter, 3);
+
+            summaryEl.textContent = 'Ellipsoid volume V ≈ ' + fmt(V_unit3) + ' ' + lengthUnit + '³';
+
+            detailsEl.innerHTML = '';
+            const d1 = document.createElement('p');
+            d1.textContent = 'Volume in ' + lengthUnit + '³: V ≈ ' + fmt(V_unit3) + ' ' + lengthUnit + '³.';
+            detailsEl.appendChild(d1);
+
+            const d2 = document.createElement('p');
+            d2.textContent = 'Volume in cubic meters: V ≈ ' + fmt(V_m3) + ' m³.';
+            detailsEl.appendChild(d2);
+
+            const d3 = document.createElement('p');
+            let litres = V_m3 * 1000;
+            d3.textContent = 'Volume in liters (approx): V ≈ ' + fmt(litres) + ' L.';
+            detailsEl.appendChild(d3);
+
+          } else if (mode === 'volume-diam') {
+            const D1 = parseNum(document.getElementById('diam-d1').value);
+            const D2 = parseNum(document.getElementById('diam-d2').value);
+            const D3 = parseNum(document.getElementById('diam-d3').value);
+
+            if (!Number.isFinite(D1) || !Number.isFinite(D2) || !Number.isFinite(D3)) {
+              alert('Please enter numeric values for diameters D1, D2 and D3.');
+              return;
+            }
+            if (D1 <= 0 || D2 <= 0 || D3 <= 0) {
+              alert('All diameters must be strictly positive.');
+              return;
+            }
+
+            const a = D1 / 2;
+            const b = D2 / 2;
+            const c = D3 / 2;
+
+            steps.push('1. Inputs: diameters D1 = ' + D1 + ', D2 = ' + D2 + ', D3 = ' + D3 + ' (' + lengthUnit + ').');
+            steps.push('2. Convert to semi-axes: a = D1/2 = ' + a + ', b = D2/2 = ' + b + ', c = D3/2 = ' + c + '.');
+
+            const factor = 4 * Math.PI / 3;
+            const V_unit3 = factor * a * b * c;
+            const V_m3 = V_unit3 * Math.pow(toMeter, 3);
+
+            steps.push('3. Compute volume with V = 4/3·π·a·b·c ≈ ' + V_unit3 + ' ' + lengthUnit + '³.');
+            steps.push('   Equivalently, V = π/6·D1·D2·D3 ≈ ' + (Math.PI / 6 * D1 * D2 * D3) + ' ' + lengthUnit + '³.');
+
+            summaryEl.textContent = 'Ellipsoid volume V ≈ ' + fmt(V_unit3) + ' ' + lengthUnit + '³';
+
+            detailsEl.innerHTML = '';
+            const d1 = document.createElement('p');
+            d1.textContent = 'Volume in ' + lengthUnit + '³: V ≈ ' + fmt(V_unit3) + ' ' + lengthUnit + '³.';
+            detailsEl.appendChild(d1);
+
+            const d2 = document.createElement('p');
+            d2.textContent = 'Volume in cubic meters: V ≈ ' + fmt(V_m3) + ' m³.';
+            detailsEl.appendChild(d2);
+
+            const d3 = document.createElement('p');
+            d3.textContent = 'Volume in liters (approx): V ≈ ' + fmt(V_m3 * 1000) + ' L.';
+            detailsEl.appendChild(d3);
+
+          } else if (mode === 'solve-axis') {
+            const V = parseNum(document.getElementById('solve-V').value);
+            const unknown = document.getElementById('unknown-axis').value;
+            const aInput = parseNum(document.getElementById('solve-a').value);
+            const bInput = parseNum(document.getElementById('solve-b').value);
+            const cInput = parseNum(document.getElementById('solve-c').value);
+
+            if (!Number.isFinite(V) || V <= 0) {
+              alert('Please enter a positive numeric volume V.');
+              return;
+            }
+
+            let a = aInput;
+            let b = bInput;
+            let c = cInput;
+            let solvedValue;
+            const factor = 4 * Math.PI / 3;
+
+            steps.push('1. Input volume: V = ' + V + ' ' + lengthUnit + '³.');
+
+            if (unknown === 'a') {
+              if (!Number.isFinite(b) || !Number.isFinite(c) || b <= 0 || c <= 0) {
+                alert('To solve for a, provide positive numeric values for b and c.');
+                return;
+              }
+              solvedValue = (3 * V) / (4 * Math.PI * b * c);
+              a = solvedValue;
+              steps.push('2. Rearranged formula: a = 3V / (4π b c).');
+              steps.push('3. Substitute: a = 3·' + V + ' / (4π·' + b + '·' + c + ') ≈ ' + solvedValue + ' ' + lengthUnit + '.');
+            } else if (unknown === 'b') {
+              if (!Number.isFinite(a) || !Number.isFinite(c) || a <= 0 || c <= 0) {
+                alert('To solve for b, provide positive numeric values for a and c.');
+                return;
+              }
+              solvedValue = (3 * V) / (4 * Math.PI * a * c);
+              b = solvedValue;
+              steps.push('2. Rearranged formula: b = 3V / (4π a c).');
+              steps.push('3. Substitute: b = 3·' + V + ' / (4π·' + a + '·' + c + ') ≈ ' + solvedValue + ' ' + lengthUnit + '.');
+            } else if (unknown === 'c') {
+              if (!Number.isFinite(a) || !Number.isFinite(b) || a <= 0 || b <= 0) {
+                alert('To solve for c, provide positive numeric values for a and b.');
+                return;
+              }
+              solvedValue = (3 * V) / (4 * Math.PI * a * b);
+              c = solvedValue;
+              steps.push('2. Rearranged formula: c = 3V / (4π a b).');
+              steps.push('3. Substitute: c = 3·' + V + ' / (4π·' + a + '·' + b + ') ≈ ' + solvedValue + ' ' + lengthUnit + '.');
+            }
+
+            if (!Number.isFinite(solvedValue) || solvedValue <= 0) {
+              alert('The combination of volume and known axes does not yield a positive semi-axis. Please check the inputs.');
+              return;
+            }
+
+            // Verify by recomputing volume
+            const V_check = factor * a * b * c;
+            steps.push('4. Check: recompute volume with a = ' + a + ', b = ' + b + ', c = ' + c + '.');
+            steps.push('   V_check = 4/3·π·a·b·c ≈ ' + V_check + ' ' + lengthUnit + '³.');
+
+            summaryEl.textContent = 'Solved semi-axis ' + unknown + ' ≈ ' + fmt(solvedValue) + ' ' + lengthUnit;
+
+            detailsEl.innerHTML = '';
+            const d1 = document.createElement('p');
+            d1.textContent = 'Solved semi-axis ' + unknown + ': ' + fmt(solvedValue) + ' ' + lengthUnit + '.';
+            detailsEl.appendChild(d1);
+
+            const d2 = document.createElement('p');
+            d2.textContent = 'Consistency check volume (using all three semi-axes): V_check ≈ ' + fmt(V_check) + ' ' + lengthUnit + '³.';
+            detailsEl.appendChild(d2);
+
+            secondaryEl.classList.remove('hidden');
+            secondaryEl.innerHTML = '';
+            const s1 = document.createElement('p');
+            s1.textContent = 'Known semi-axes: a = ' + (Number.isFinite(aInput) ? fmt(aInput) : '[' + fmt(a) + ' solved]') +
+                             ', b = ' + (Number.isFinite(bInput) ? fmt(bInput) : '[' + fmt(b) + ' solved]') +
+                             ', c = ' + (Number.isFinite(cInput) ? fmt(cInput) : '[' + fmt(c) + ' solved]');
+            secondaryEl.appendChild(s1);
+          }
+
+          // Render steps
+          stepsEl.innerHTML = '';
+          steps.forEach(function (line) {
+            const p = document.createElement('p');
+            p.textContent = line;
+            stepsEl.appendChild(p);
+          });
+
+          resultsBox.classList.remove('hidden');
+        }
+
+        function handleReset() {
+          form.reset();
+          clearResults();
+          setModeVisibility();
+        }
+
+        modeSelect.addEventListener('change', setModeVisibility);
+        form.addEventListener('submit', handleSubmit);
+        resetBtn.addEventListener('click', handleReset);
+
+        setModeVisibility();
+      })();
+    </script>
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

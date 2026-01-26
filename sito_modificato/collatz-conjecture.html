@@ -40,10 +40,6 @@
     
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
     
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-    
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -125,8 +121,6 @@
 </head>
 
 <body class="bg-gray-50 text-gray-800">
-
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
 
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
@@ -598,7 +592,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -665,14 +659,590 @@
 
 
 
+
     
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
     
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Chart.js for trajectory visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('collatz-form');
+        const resetBtn = document.getElementById('collatz-reset');
+        const errorEl = document.getElementById('collatz-error');
+
+        const statReachedOne = document.getElementById('stat-reached-one');
+        const statTotalStoppingTime = document.getElementById('stat-total-stopping-time');
+        const statStoppingTime = document.getElementById('stat-stopping-time');
+        const statMaxValue = document.getElementById('stat-max-value');
+
+        const sequenceBody = document.getElementById('collatz-sequence-body');
+        const chartSummary = document.getElementById('chart-summary');
+        const sequenceSummary = document.getElementById('sequence-summary');
+
+        const startingInput = document.getElementById('starting-value');
+        const maxIterationsInput = document.getElementById('max-iterations');
+        const displayModeSelect = document.getElementById('display-mode');
+
+        let chartInstance = null;
+
+        function clearStats() {
+          statReachedOne.textContent = '–';
+          statTotalStoppingTime.textContent = '–';
+          statStoppingTime.textContent = '–';
+          statMaxValue.textContent = '–';
+          chartSummary.textContent = 'Enter a starting value to see the orbit.';
+          sequenceSummary.textContent = 'Each row shows one step of the iteration.';
+        }
+
+        function clearTable() {
+          sequenceBody.innerHTML = '<tr><td class="px-3 py-2 text-gray-400 text-xs" colspan="3">Sequence data will appear here after you generate a trajectory.</td></tr>';
+        }
+
+        function resetChart() {
+          if (chartInstance) {
+            chartInstance.destroy();
+            chartInstance = null;
+          }
+        }
+
+        function validateInputs() {
+          const nRaw = startingInput.value.trim();
+          const maxIterRaw = maxIterationsInput.value.trim();
+
+          if (!nRaw) {
+            return 'Please enter a starting value.';
+          }
+          const n = Number(nRaw);
+          if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) {
+            return 'Starting value must be a positive integer (1, 2, 3, ...).';
+          }
+
+          if (!maxIterRaw) {
+            return 'Please specify a maximum number of iterations.';
+          }
+          const maxIter = Number(maxIterRaw);
+          if (!Number.isFinite(maxIter) || !Number.isInteger(maxIter) || maxIter < 10) {
+            return 'Max iterations must be an integer of at least 10.';
+          }
+          if (maxIter > 20000) {
+            return 'For safety, max iterations is limited to 20,000.';
+          }
+          return null;
+        }
+
+        function computeCollatzSequence(start, maxIterations) {
+          const values = [start];
+          const steps = [0];
+          let current = start;
+
+          let stoppingTime = null;
+          let totalStoppingTime = null;
+          let maxValue = start;
+
+          for (let i = 1; i <= maxIterations; i++) {
+            if (current % 2 === 0) {
+              current = current / 2;
+            } else {
+              current = 3 * current + 1;
+            }
+
+            values.push(current);
+            steps.push(i);
+
+            if (current > maxValue) {
+              maxValue = current;
+            }
+
+            if (stoppingTime === null && current < start) {
+              stoppingTime = i;
+            }
+
+            if (current === 1) {
+              totalStoppingTime = i;
+              break;
+            }
+          }
+
+          const reachedOne = values[values.length - 1] === 1;
+
+          return {
+            steps,
+            values,
+            reachedOne,
+            stoppingTime,
+            totalStoppingTime,
+            maxValue
+          };
+        }
+
+        function renderStats(start, result, maxIterations) {
+          if (result.reachedOne) {
+            statReachedOne.textContent = 'Yes';
+            statReachedOne.classList.remove('text-red-600');
+            statReachedOne.classList.add('text-emerald-600');
+          } else {
+            statReachedOne.textContent = 'Not within limit';
+            statReachedOne.classList.remove('text-emerald-600');
+            statReachedOne.classList.add('text-red-600');
+          }
+
+          statTotalStoppingTime.textContent = result.totalStoppingTime !== null ? result.totalStoppingTime : '–';
+          statStoppingTime.textContent = result.stoppingTime !== null ? result.stoppingTime : '–';
+          statMaxValue.textContent = result.maxValue.toString();
+
+          if (result.reachedOne) {
+            chartSummary.textContent = `Orbit from n = ${start} reaches 1 in ${result.totalStoppingTime} steps (peak value ${result.maxValue}).`;
+          } else {
+            chartSummary.textContent = `Orbit from n = ${start} did not reach 1 within ${maxIterations} steps. Peak value: ${result.maxValue}.`;
+          }
+
+          sequenceSummary.textContent = `Showing ${result.values.length} points in the Collatz orbit starting from n = ${start}.`;
+        }
+
+        function renderTable(result) {
+          if (!result || !result.values || result.values.length === 0) {
+            clearTable();
+            return;
+          }
+
+          const rows = [];
+          for (let i = 0; i < result.values.length; i++) {
+            const v = result.values[i];
+            const parity = v % 2 === 0 ? 'even' : 'odd';
+            const parityClass = parity === 'even' ? 'text-blue-700 bg-blue-50' : 'text-purple-700 bg-purple-50';
+
+            rows.push(
+              `<tr>
+                <td class="px-3 py-1.5 text-xs text-gray-700">${i}</td>
+                <td class="px-3 py-1.5 text-xs text-gray-900">${v}</td>
+                <td class="px-3 py-1.5 text-[11px]">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full ${parityClass}">
+                    ${parity}
+                  </span>
+                </td>
+              </tr>`
+            );
+          }
+
+          sequenceBody.innerHTML = rows.join('');
+        }
+
+        function renderChart(result, mode) {
+          const ctx = document.getElementById('collatz-chart');
+          if (!ctx) return;
+
+          const labels = result.steps;
+          const baseValues = result.values;
+
+          let displayedValues;
+          let yLabel;
+          if (mode === 'log') {
+            displayedValues = baseValues.map(v => (v <= 0 ? 0 : Math.log10(v)));
+            yLabel = 'log10(value)';
+          } else {
+            displayedValues = baseValues;
+            yLabel = 'value';
+          }
+
+          resetChart();
+
+          chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: 'Collatz trajectory',
+                  data: displayedValues,
+                  tension: 0.2,
+                  pointRadius: 0,
+                  borderWidth: 2
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              interaction: {
+                mode: 'index',
+                intersect: false
+              },
+              plugins: {
+                legend: {
+                  display: false
+                },
+                tooltip: {
+                  callbacks: {
+                    label: function (context) {
+                      const step = context.dataIndex;
+                      const originalValue = baseValues[step];
+                      if (mode === 'log') {
+                        return `step ${step}: n = ${originalValue} (log10 ≈ ${context.parsed.y.toFixed(3)})`;
+                      }
+                      return `step ${step}: n = ${originalValue}`;
+                    }
+                  }
+                }
+              },
+              scales: {
+                x: {
+                  title: {
+                    display: true,
+                    text: 'Step'
+                  }
+                },
+                y: {
+                  title: {
+                    display: true,
+                    text: yLabel
+                  }
+                }
+              }
+            }
+          });
+        }
+
+        function handleSubmit(event) {
+          event.preventDefault();
+          errorEl.classList.add('hidden');
+          errorEl.textContent = '';
+
+          const validationError = validateInputs();
+          if (validationError) {
+            errorEl.textContent = validationError;
+            errorEl.classList.remove('hidden');
+            clearStats();
+            clearTable();
+            resetChart();
+            return;
+          }
+
+          const start = Number(startingInput.value.trim());
+          const maxIter = Number(maxIterationsInput.value.trim());
+          const mode = displayModeSelect.value;
+
+          const result = computeCollatzSequence(start, maxIter);
+
+          renderStats(start, result, maxIter);
+          renderTable(result);
+          renderChart(result, mode);
+        }
+
+        function handleReset() {
+          form.reset();
+          errorEl.classList.add('hidden');
+          errorEl.textContent = '';
+          clearStats();
+          clearTable();
+          resetChart();
+        }
+
+        form.addEventListener('submit', handleSubmit);
+        resetBtn.addEventListener('click', handleReset);
+      });
+    </script>
+    
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Chart.js for trajectory visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('collatz-form');
+        const resetBtn = document.getElementById('collatz-reset');
+        const errorEl = document.getElementById('collatz-error');
+
+        const statReachedOne = document.getElementById('stat-reached-one');
+        const statTotalStoppingTime = document.getElementById('stat-total-stopping-time');
+        const statStoppingTime = document.getElementById('stat-stopping-time');
+        const statMaxValue = document.getElementById('stat-max-value');
+
+        const sequenceBody = document.getElementById('collatz-sequence-body');
+        const chartSummary = document.getElementById('chart-summary');
+        const sequenceSummary = document.getElementById('sequence-summary');
+
+        const startingInput = document.getElementById('starting-value');
+        const maxIterationsInput = document.getElementById('max-iterations');
+        const displayModeSelect = document.getElementById('display-mode');
+
+        let chartInstance = null;
+
+        function clearStats() {
+          statReachedOne.textContent = '–';
+          statTotalStoppingTime.textContent = '–';
+          statStoppingTime.textContent = '–';
+          statMaxValue.textContent = '–';
+          chartSummary.textContent = 'Enter a starting value to see the orbit.';
+          sequenceSummary.textContent = 'Each row shows one step of the iteration.';
+        }
+
+        function clearTable() {
+          sequenceBody.innerHTML = '<tr><td class="px-3 py-2 text-gray-400 text-xs" colspan="3">Sequence data will appear here after you generate a trajectory.</td></tr>';
+        }
+
+        function resetChart() {
+          if (chartInstance) {
+            chartInstance.destroy();
+            chartInstance = null;
+          }
+        }
+
+        function validateInputs() {
+          const nRaw = startingInput.value.trim();
+          const maxIterRaw = maxIterationsInput.value.trim();
+
+          if (!nRaw) {
+            return 'Please enter a starting value.';
+          }
+          const n = Number(nRaw);
+          if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) {
+            return 'Starting value must be a positive integer (1, 2, 3, ...).';
+          }
+
+          if (!maxIterRaw) {
+            return 'Please specify a maximum number of iterations.';
+          }
+          const maxIter = Number(maxIterRaw);
+          if (!Number.isFinite(maxIter) || !Number.isInteger(maxIter) || maxIter < 10) {
+            return 'Max iterations must be an integer of at least 10.';
+          }
+          if (maxIter > 20000) {
+            return 'For safety, max iterations is limited to 20,000.';
+          }
+          return null;
+        }
+
+        function computeCollatzSequence(start, maxIterations) {
+          const values = [start];
+          const steps = [0];
+          let current = start;
+
+          let stoppingTime = null;
+          let totalStoppingTime = null;
+          let maxValue = start;
+
+          for (let i = 1; i <= maxIterations; i++) {
+            if (current % 2 === 0) {
+              current = current / 2;
+            } else {
+              current = 3 * current + 1;
+            }
+
+            values.push(current);
+            steps.push(i);
+
+            if (current > maxValue) {
+              maxValue = current;
+            }
+
+            if (stoppingTime === null && current < start) {
+              stoppingTime = i;
+            }
+
+            if (current === 1) {
+              totalStoppingTime = i;
+              break;
+            }
+          }
+
+          const reachedOne = values[values.length - 1] === 1;
+
+          return {
+            steps,
+            values,
+            reachedOne,
+            stoppingTime,
+            totalStoppingTime,
+            maxValue
+          };
+        }
+
+        function renderStats(start, result, maxIterations) {
+          if (result.reachedOne) {
+            statReachedOne.textContent = 'Yes';
+            statReachedOne.classList.remove('text-red-600');
+            statReachedOne.classList.add('text-emerald-600');
+          } else {
+            statReachedOne.textContent = 'Not within limit';
+            statReachedOne.classList.remove('text-emerald-600');
+            statReachedOne.classList.add('text-red-600');
+          }
+
+          statTotalStoppingTime.textContent = result.totalStoppingTime !== null ? result.totalStoppingTime : '–';
+          statStoppingTime.textContent = result.stoppingTime !== null ? result.stoppingTime : '–';
+          statMaxValue.textContent = result.maxValue.toString();
+
+          if (result.reachedOne) {
+            chartSummary.textContent = `Orbit from n = ${start} reaches 1 in ${result.totalStoppingTime} steps (peak value ${result.maxValue}).`;
+          } else {
+            chartSummary.textContent = `Orbit from n = ${start} did not reach 1 within ${maxIterations} steps. Peak value: ${result.maxValue}.`;
+          }
+
+          sequenceSummary.textContent = `Showing ${result.values.length} points in the Collatz orbit starting from n = ${start}.`;
+        }
+
+        function renderTable(result) {
+          if (!result || !result.values || result.values.length === 0) {
+            clearTable();
+            return;
+          }
+
+          const rows = [];
+          for (let i = 0; i < result.values.length; i++) {
+            const v = result.values[i];
+            const parity = v % 2 === 0 ? 'even' : 'odd';
+            const parityClass = parity === 'even' ? 'text-blue-700 bg-blue-50' : 'text-purple-700 bg-purple-50';
+
+            rows.push(
+              `<tr>
+                <td class="px-3 py-1.5 text-xs text-gray-700">${i}</td>
+                <td class="px-3 py-1.5 text-xs text-gray-900">${v}</td>
+                <td class="px-3 py-1.5 text-[11px]">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full ${parityClass}">
+                    ${parity}
+                  </span>
+                </td>
+              </tr>`
+            );
+          }
+
+          sequenceBody.innerHTML = rows.join('');
+        }
+
+        function renderChart(result, mode) {
+          const ctx = document.getElementById('collatz-chart');
+          if (!ctx) return;
+
+          const labels = result.steps;
+          const baseValues = result.values;
+
+          let displayedValues;
+          let yLabel;
+          if (mode === 'log') {
+            displayedValues = baseValues.map(v => (v <= 0 ? 0 : Math.log10(v)));
+            yLabel = 'log10(value)';
+          } else {
+            displayedValues = baseValues;
+            yLabel = 'value';
+          }
+
+          resetChart();
+
+          chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: 'Collatz trajectory',
+                  data: displayedValues,
+                  tension: 0.2,
+                  pointRadius: 0,
+                  borderWidth: 2
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              interaction: {
+                mode: 'index',
+                intersect: false
+              },
+              plugins: {
+                legend: {
+                  display: false
+                },
+                tooltip: {
+                  callbacks: {
+                    label: function (context) {
+                      const step = context.dataIndex;
+                      const originalValue = baseValues[step];
+                      if (mode === 'log') {
+                        return `step ${step}: n = ${originalValue} (log10 ≈ ${context.parsed.y.toFixed(3)})`;
+                      }
+                      return `step ${step}: n = ${originalValue}`;
+                    }
+                  }
+                }
+              },
+              scales: {
+                x: {
+                  title: {
+                    display: true,
+                    text: 'Step'
+                  }
+                },
+                y: {
+                  title: {
+                    display: true,
+                    text: yLabel
+                  }
+                }
+              }
+            }
+          });
+        }
+
+        function handleSubmit(event) {
+          event.preventDefault();
+          errorEl.classList.add('hidden');
+          errorEl.textContent = '';
+
+          const validationError = validateInputs();
+          if (validationError) {
+            errorEl.textContent = validationError;
+            errorEl.classList.remove('hidden');
+            clearStats();
+            clearTable();
+            resetChart();
+            return;
+          }
+
+          const start = Number(startingInput.value.trim());
+          const maxIter = Number(maxIterationsInput.value.trim());
+          const mode = displayModeSelect.value;
+
+          const result = computeCollatzSequence(start, maxIter);
+
+          renderStats(start, result, maxIter);
+          renderTable(result);
+          renderChart(result, mode);
+        }
+
+        function handleReset() {
+          form.reset();
+          errorEl.classList.add('hidden');
+          errorEl.textContent = '';
+          clearStats();
+          clearTable();
+          resetChart();
+        }
+
+        form.addEventListener('submit', handleSubmit);
+        resetBtn.addEventListener('click', handleReset);
+      });
+    </script>
+    
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

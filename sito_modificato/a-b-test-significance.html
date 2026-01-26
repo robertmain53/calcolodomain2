@@ -88,10 +88,6 @@
 
   <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-  <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-  <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-  <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
   <script>
     window.ezstandalone = window.ezstandalone || {};
     ezstandalone.cmd = ezstandalone.cmd || [];
@@ -217,8 +213,6 @@
 
 <body class="bg-gray-50 text-gray-800">
   <!-- BODY_SCRIPTS_INIZIO -->
-  <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
   <header class="bg-white shadow-sm sticky top-0 z-50">
     <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
       <div class="flex justify-between items-center">
@@ -630,7 +624,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -698,13 +692,579 @@
 
 
 
+
   <script src="/assets/js/script_menu.js" defer=""></script>
   <script src="/assets/js/script_faq.js" defer=""></script>
   <script src="search.js" defer=""></script>
 
   <script>
-    window.MathJax = {
-      tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+    window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <script>
+    (function () {
+      function $(id) { return document.getElementById(id); }
+
+      function show(el) { el.classList.remove('hidden'); }
+      function hide(el) { el.classList.add('hidden'); }
+      function fmtPct(x) {
+        if (!isFinite(x)) return '—';
+        return (x * 100).toFixed(2) + '%';
+      }
+      function fmtNum(x, digits) {
+        if (!isFinite(x)) return '—';
+        digits = typeof digits === 'number' ? digits : 4;
+        return Number(x.toFixed(digits));
+      }
+
+      // Approximate erf and normal CDF
+      function erf(x) {
+        var sign = (x >= 0) ? 1 : -1;
+        x = Math.abs(x);
+        var a1 = 0.254829592,
+            a2 = -0.284496736,
+            a3 = 1.421413741,
+            a4 = -1.453152027,
+            a5 = 1.061405429,
+            p = 0.3275911;
+        var t = 1 / (1 + p * x);
+        var y = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+        return sign * y;
+      }
+      function normalCdf(z) {
+        return 0.5 * (1 + erf(z / Math.SQRT2));
+      }
+
+      var form = $('ab-form');
+      var resetBtn = $('ab-reset');
+      var errorBox = $('ab-error');
+      var resultsBox = $('ab-results');
+      var summaryEl = $('ab-summary');
+      var interpEl = $('ab-interpretation');
+      var metricsEl = $('ab-metrics');
+      var statsEl = $('ab-stats');
+      var ciEl = $('ab-ci');
+      var stepsEl = $('ab-steps');
+      var srmEl = $('ab-srm');
+      var decisionTag = $('ab-decision-tag');
+
+      function clearResults() {
+        hide(errorBox);
+        hide(resultsBox);
+        hide(srmEl);
+        decisionTag.textContent = '';
+        decisionTag.className = 'result-tag inconclusive hidden';
+        summaryEl.textContent = '';
+        interpEl.textContent = '';
+        metricsEl.innerHTML = '';
+        statsEl.innerHTML = '';
+        ciEl.textContent = '';
+        stepsEl.innerHTML = '';
+      }
+
+      function onSubmit(e) {
+        e.preventDefault();
+        clearResults();
+
+        var nA = Number($('visitors-a').value);
+        var cA = Number($('conversions-a').value);
+        var nB = Number($('visitors-b').value);
+        var cB = Number($('conversions-b').value);
+        var alpha = Number($('alpha').value);
+        var testType = $('test-type').value;
+        var splitMode = $('traffic-split').value;
+
+        if (!Number.isFinite(nA) || !Number.isFinite(cA) || !Number.isFinite(nB) || !Number.isFinite(cB)) {
+          errorBox.textContent = 'Please enter numeric values for visitors and conversions in both variants.';
+          show(errorBox);
+          return;
+        }
+        if (!Number.isInteger(nA) || !Number.isInteger(cA) || !Number.isInteger(nB) || !Number.isInteger(cB)) {
+          errorBox.textContent = 'Visitors and conversions must be integers (counts).';
+          show(errorBox);
+          return;
+        }
+        if (nA <= 0 || nB <= 0) {
+          errorBox.textContent = 'Each variant must have at least one visitor.';
+          show(errorBox);
+          return;
+        }
+        if (cA < 0 || cB < 0 || cA > nA || cB > nB) {
+          errorBox.textContent = 'Conversions must be between 0 and visitors for each variant.';
+          show(errorBox);
+          return;
+        }
+
+        if (!Number.isFinite(alpha) || alpha <= 0 || alpha >= 0.5) {
+          alpha = 0.05;
+        }
+
+        var pA = cA / nA;
+        var pB = cB / nB;
+        var diff = pB - pA;
+
+        var pPool = (cA + cB) / (nA + nB);
+        var seDiff = Math.sqrt(pPool * (1 - pPool) * (1 / nA + 1 / nB));
+
+        var z;
+        if (seDiff === 0) {
+          z = NaN;
+        } else {
+          z = diff / seDiff;
+        }
+
+        var pTwo = NaN, pOne_B = NaN, pOne_A = NaN;
+        if (isFinite(z)) {
+          var tail = 1 - normalCdf(Math.abs(z));
+          pTwo = 2 * tail;
+          if (z >= 0) {
+            pOne_B = 1 - normalCdf(z);
+            pOne_A = normalCdf(z); // P(Z <= z)
+          } else {
+            pOne_B = 1 - normalCdf(z); // large if z<0
+            pOne_A = normalCdf(z);
+          }
+        }
+
+        var pValue;
+        if (testType === 'two-sided') {
+          pValue = pTwo;
+        } else if (testType === 'one-sided-b-better') {
+          pValue = pOne_B;
+        } else {
+          pValue = pOne_A;
+        }
+
+        var decision, decisionLabel, tagClass;
+        if (!isFinite(pValue)) {
+          decision = 'inconclusive';
+          decisionLabel = 'Inconclusive';
+          tagClass = 'inconclusive';
+        } else if (pValue <= alpha) {
+          if (diff > 0) {
+            decision = 'b-better';
+            decisionLabel = 'B is a statistically significant winner';
+            tagClass = 'win';
+          } else if (diff < 0) {
+            decision = 'a-better';
+            decisionLabel = 'B is statistically worse than A';
+            tagClass = 'lose';
+          } else {
+            decision = 'no-diff';
+            decisionLabel = 'No measurable difference';
+            tagClass = 'inconclusive';
+          }
+        } else {
+          decision = 'not-significant';
+          decisionLabel = 'Difference not statistically significant';
+          tagClass = 'inconclusive';
+        }
+
+        // Summary & interpretation
+        summaryEl.textContent =
+          'Variant A: ' + fmtPct(pA) + ' conversion, ' +
+          'Variant B: ' + fmtPct(pB) + ' conversion. ' +
+          'Absolute uplift = ' + fmtPct(diff) + '.';
+
+        var interpText = '';
+        if (!isFinite(pValue)) {
+          interpText = 'The standard error could not be computed (likely due to zero variance). Check that both variants have at least one conversion and at least one non-conversion.';
+        } else {
+          interpText =
+            'Using a ' +
+            (testType === 'two-sided' ? 'two-sided' :
+             testType === 'one-sided-b-better' ? 'one-sided (B > A)' : 'one-sided (A > B)') +
+            ' test at α = ' + alpha.toFixed(3) + ', the p-value is ' + pValue.toExponential(3) + '. ';
+          if (pValue <= alpha) {
+            if (diff > 0) {
+              interpText += 'Under the model assumptions, this provides statistically significant evidence that variant B has a higher conversion rate than A.';
+            } else if (diff < 0) {
+              interpText += 'Under the model assumptions, this provides statistically significant evidence that variant B has a lower conversion rate than A.';
+            } else {
+              interpText += 'However, the observed difference is effectively zero in practical terms.';
+            }
+          } else {
+            interpText += 'This difference is compatible with random fluctuation; the data do not provide enough evidence to declare a clear winner.';
+          }
+        }
+        interpEl.textContent = interpText;
+
+        // Decision tag
+        if (decisionLabel) {
+          decisionTag.textContent = decisionLabel;
+          decisionTag.className = 'result-tag ' + tagClass;
+          show(decisionTag);
+        }
+
+        // Metrics list
+        metricsEl.innerHTML = '';
+        var items = [
+          'Visitors A: ' + nA + ', Conversions A: ' + cA + ' → ' + fmtPct(pA),
+          'Visitors B: ' + nB + ', Conversions B: ' + cB + ' → ' + fmtPct(pB),
+          'Absolute uplift (B − A): ' + fmtPct(diff),
+          (pA > 0 ? 'Relative uplift (B vs A): ' + (diff / pA * 100).toFixed(2) + '%' : 'Relative uplift (B vs A): not defined when A has 0 conversions')
+        ];
+        items.forEach(function (txt) {
+          var li = document.createElement('li');
+          li.textContent = txt;
+          metricsEl.appendChild(li);
+        });
+
+        // Stats list
+        statsEl.innerHTML = '';
+        var statItems = [
+          'Pooled conversion rate: ' + fmtPct(pPool),
+          'Standard error of difference: ' + (isFinite(seDiff) ? seDiff.toFixed(6) : '—'),
+          'z-score: ' + (isFinite(z) ? z.toFixed(3) : '—'),
+          'p-value (' +
+            (testType === 'two-sided' ? 'two-sided' :
+             testType === 'one-sided-b-better' ? 'one-sided, B > A' : 'one-sided, A > B') +
+            '): ' + (isFinite(pValue) ? pValue.toExponential(3) : '—')
+        ];
+        statItems.forEach(function (txt) {
+          var li = document.createElement('li');
+          li.textContent = txt;
+          statsEl.appendChild(li);
+        });
+
+        // 95% CI for absolute uplift
+        if (isFinite(diff) && isFinite(seDiff) && seDiff > 0) {
+          var z95 = 1.96;
+          var lower = diff - z95 * seDiff;
+          var upper = diff + z95 * seDiff;
+          ciEl.textContent =
+            'Approximate 95% confidence interval for absolute uplift (B − A): [' +
+            fmtPct(lower) + '; ' + fmtPct(upper) + '].';
+        }
+
+        // Steps / explanation
+        var steps = [];
+        steps.push('1. Compute observed conversion rates: pA = cA / nA, pB = cB / nB.');
+        steps.push('2. Under the null hypothesis H0: pA = pB, estimate pooled conversion rate p̂ = (cA + cB) / (nA + nB).');
+        steps.push('3. Compute standard error: SE = sqrt(p̂ (1 − p̂) (1/nA + 1/nB)).');
+        steps.push('4. Compute z-score: z = (pB − pA) / SE.');
+        steps.push('5. Derive p-value from the standard normal distribution depending on test type (two-sided or one-sided).');
+        steps.push('6. Compare p-value to α = ' + alpha.toFixed(3) + ' to determine statistical significance.');
+        steps.forEach(function (line) {
+          var p = document.createElement('p');
+          p.textContent = line;
+          stepsEl.appendChild(p);
+        });
+
+        // Simple SRM check
+        var total = nA + nB;
+        if (splitMode === '50-50' && total > 0) {
+          var shareA = nA / total;
+          var delta = Math.abs(shareA - 0.5);
+          if (delta > 0.1) {
+            srmEl.textContent =
+              'Sample ratio warning: variant A received ' + (shareA * 100).toFixed(1) +
+              '% of traffic (expected ≈ 50%). Large deviations from the planned split can indicate implementation or tracking issues (SRM). Investigate before fully trusting this result.';
+            show(srmEl);
+          }
+        }
+
+        show(resultsBox);
+      }
+
+      function onReset() {
+        form.reset();
+        clearResults();
+      }
+
+      form.addEventListener('submit', onSubmit);
+      resetBtn.addEventListener('click', onReset);
+    })();
+  </script>
+
+
+</body></html>, ',
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <script>
+    (function () {
+      function $(id) { return document.getElementById(id); }
+
+      function show(el) { el.classList.remove('hidden'); }
+      function hide(el) { el.classList.add('hidden'); }
+      function fmtPct(x) {
+        if (!isFinite(x)) return '—';
+        return (x * 100).toFixed(2) + '%';
+      }
+      function fmtNum(x, digits) {
+        if (!isFinite(x)) return '—';
+        digits = typeof digits === 'number' ? digits : 4;
+        return Number(x.toFixed(digits));
+      }
+
+      // Approximate erf and normal CDF
+      function erf(x) {
+        var sign = (x >= 0) ? 1 : -1;
+        x = Math.abs(x);
+        var a1 = 0.254829592,
+            a2 = -0.284496736,
+            a3 = 1.421413741,
+            a4 = -1.453152027,
+            a5 = 1.061405429,
+            p = 0.3275911;
+        var t = 1 / (1 + p * x);
+        var y = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+        return sign * y;
+      }
+      function normalCdf(z) {
+        return 0.5 * (1 + erf(z / Math.SQRT2));
+      }
+
+      var form = $('ab-form');
+      var resetBtn = $('ab-reset');
+      var errorBox = $('ab-error');
+      var resultsBox = $('ab-results');
+      var summaryEl = $('ab-summary');
+      var interpEl = $('ab-interpretation');
+      var metricsEl = $('ab-metrics');
+      var statsEl = $('ab-stats');
+      var ciEl = $('ab-ci');
+      var stepsEl = $('ab-steps');
+      var srmEl = $('ab-srm');
+      var decisionTag = $('ab-decision-tag');
+
+      function clearResults() {
+        hide(errorBox);
+        hide(resultsBox);
+        hide(srmEl);
+        decisionTag.textContent = '';
+        decisionTag.className = 'result-tag inconclusive hidden';
+        summaryEl.textContent = '';
+        interpEl.textContent = '';
+        metricsEl.innerHTML = '';
+        statsEl.innerHTML = '';
+        ciEl.textContent = '';
+        stepsEl.innerHTML = '';
+      }
+
+      function onSubmit(e) {
+        e.preventDefault();
+        clearResults();
+
+        var nA = Number($('visitors-a').value);
+        var cA = Number($('conversions-a').value);
+        var nB = Number($('visitors-b').value);
+        var cB = Number($('conversions-b').value);
+        var alpha = Number($('alpha').value);
+        var testType = $('test-type').value;
+        var splitMode = $('traffic-split').value;
+
+        if (!Number.isFinite(nA) || !Number.isFinite(cA) || !Number.isFinite(nB) || !Number.isFinite(cB)) {
+          errorBox.textContent = 'Please enter numeric values for visitors and conversions in both variants.';
+          show(errorBox);
+          return;
+        }
+        if (!Number.isInteger(nA) || !Number.isInteger(cA) || !Number.isInteger(nB) || !Number.isInteger(cB)) {
+          errorBox.textContent = 'Visitors and conversions must be integers (counts).';
+          show(errorBox);
+          return;
+        }
+        if (nA <= 0 || nB <= 0) {
+          errorBox.textContent = 'Each variant must have at least one visitor.';
+          show(errorBox);
+          return;
+        }
+        if (cA < 0 || cB < 0 || cA > nA || cB > nB) {
+          errorBox.textContent = 'Conversions must be between 0 and visitors for each variant.';
+          show(errorBox);
+          return;
+        }
+
+        if (!Number.isFinite(alpha) || alpha <= 0 || alpha >= 0.5) {
+          alpha = 0.05;
+        }
+
+        var pA = cA / nA;
+        var pB = cB / nB;
+        var diff = pB - pA;
+
+        var pPool = (cA + cB) / (nA + nB);
+        var seDiff = Math.sqrt(pPool * (1 - pPool) * (1 / nA + 1 / nB));
+
+        var z;
+        if (seDiff === 0) {
+          z = NaN;
+        } else {
+          z = diff / seDiff;
+        }
+
+        var pTwo = NaN, pOne_B = NaN, pOne_A = NaN;
+        if (isFinite(z)) {
+          var tail = 1 - normalCdf(Math.abs(z));
+          pTwo = 2 * tail;
+          if (z >= 0) {
+            pOne_B = 1 - normalCdf(z);
+            pOne_A = normalCdf(z); // P(Z <= z)
+          } else {
+            pOne_B = 1 - normalCdf(z); // large if z<0
+            pOne_A = normalCdf(z);
+          }
+        }
+
+        var pValue;
+        if (testType === 'two-sided') {
+          pValue = pTwo;
+        } else if (testType === 'one-sided-b-better') {
+          pValue = pOne_B;
+        } else {
+          pValue = pOne_A;
+        }
+
+        var decision, decisionLabel, tagClass;
+        if (!isFinite(pValue)) {
+          decision = 'inconclusive';
+          decisionLabel = 'Inconclusive';
+          tagClass = 'inconclusive';
+        } else if (pValue <= alpha) {
+          if (diff > 0) {
+            decision = 'b-better';
+            decisionLabel = 'B is a statistically significant winner';
+            tagClass = 'win';
+          } else if (diff < 0) {
+            decision = 'a-better';
+            decisionLabel = 'B is statistically worse than A';
+            tagClass = 'lose';
+          } else {
+            decision = 'no-diff';
+            decisionLabel = 'No measurable difference';
+            tagClass = 'inconclusive';
+          }
+        } else {
+          decision = 'not-significant';
+          decisionLabel = 'Difference not statistically significant';
+          tagClass = 'inconclusive';
+        }
+
+        // Summary & interpretation
+        summaryEl.textContent =
+          'Variant A: ' + fmtPct(pA) + ' conversion, ' +
+          'Variant B: ' + fmtPct(pB) + ' conversion. ' +
+          'Absolute uplift = ' + fmtPct(diff) + '.';
+
+        var interpText = '';
+        if (!isFinite(pValue)) {
+          interpText = 'The standard error could not be computed (likely due to zero variance). Check that both variants have at least one conversion and at least one non-conversion.';
+        } else {
+          interpText =
+            'Using a ' +
+            (testType === 'two-sided' ? 'two-sided' :
+             testType === 'one-sided-b-better' ? 'one-sided (B > A)' : 'one-sided (A > B)') +
+            ' test at α = ' + alpha.toFixed(3) + ', the p-value is ' + pValue.toExponential(3) + '. ';
+          if (pValue <= alpha) {
+            if (diff > 0) {
+              interpText += 'Under the model assumptions, this provides statistically significant evidence that variant B has a higher conversion rate than A.';
+            } else if (diff < 0) {
+              interpText += 'Under the model assumptions, this provides statistically significant evidence that variant B has a lower conversion rate than A.';
+            } else {
+              interpText += 'However, the observed difference is effectively zero in practical terms.';
+            }
+          } else {
+            interpText += 'This difference is compatible with random fluctuation; the data do not provide enough evidence to declare a clear winner.';
+          }
+        }
+        interpEl.textContent = interpText;
+
+        // Decision tag
+        if (decisionLabel) {
+          decisionTag.textContent = decisionLabel;
+          decisionTag.className = 'result-tag ' + tagClass;
+          show(decisionTag);
+        }
+
+        // Metrics list
+        metricsEl.innerHTML = '';
+        var items = [
+          'Visitors A: ' + nA + ', Conversions A: ' + cA + ' → ' + fmtPct(pA),
+          'Visitors B: ' + nB + ', Conversions B: ' + cB + ' → ' + fmtPct(pB),
+          'Absolute uplift (B − A): ' + fmtPct(diff),
+          (pA > 0 ? 'Relative uplift (B vs A): ' + (diff / pA * 100).toFixed(2) + '%' : 'Relative uplift (B vs A): not defined when A has 0 conversions')
+        ];
+        items.forEach(function (txt) {
+          var li = document.createElement('li');
+          li.textContent = txt;
+          metricsEl.appendChild(li);
+        });
+
+        // Stats list
+        statsEl.innerHTML = '';
+        var statItems = [
+          'Pooled conversion rate: ' + fmtPct(pPool),
+          'Standard error of difference: ' + (isFinite(seDiff) ? seDiff.toFixed(6) : '—'),
+          'z-score: ' + (isFinite(z) ? z.toFixed(3) : '—'),
+          'p-value (' +
+            (testType === 'two-sided' ? 'two-sided' :
+             testType === 'one-sided-b-better' ? 'one-sided, B > A' : 'one-sided, A > B') +
+            '): ' + (isFinite(pValue) ? pValue.toExponential(3) : '—')
+        ];
+        statItems.forEach(function (txt) {
+          var li = document.createElement('li');
+          li.textContent = txt;
+          statsEl.appendChild(li);
+        });
+
+        // 95% CI for absolute uplift
+        if (isFinite(diff) && isFinite(seDiff) && seDiff > 0) {
+          var z95 = 1.96;
+          var lower = diff - z95 * seDiff;
+          var upper = diff + z95 * seDiff;
+          ciEl.textContent =
+            'Approximate 95% confidence interval for absolute uplift (B − A): [' +
+            fmtPct(lower) + '; ' + fmtPct(upper) + '].';
+        }
+
+        // Steps / explanation
+        var steps = [];
+        steps.push('1. Compute observed conversion rates: pA = cA / nA, pB = cB / nB.');
+        steps.push('2. Under the null hypothesis H0: pA = pB, estimate pooled conversion rate p̂ = (cA + cB) / (nA + nB).');
+        steps.push('3. Compute standard error: SE = sqrt(p̂ (1 − p̂) (1/nA + 1/nB)).');
+        steps.push('4. Compute z-score: z = (pB − pA) / SE.');
+        steps.push('5. Derive p-value from the standard normal distribution depending on test type (two-sided or one-sided).');
+        steps.push('6. Compare p-value to α = ' + alpha.toFixed(3) + ' to determine statistical significance.');
+        steps.forEach(function (line) {
+          var p = document.createElement('p');
+          p.textContent = line;
+          stepsEl.appendChild(p);
+        });
+
+        // Simple SRM check
+        var total = nA + nB;
+        if (splitMode === '50-50' && total > 0) {
+          var shareA = nA / total;
+          var delta = Math.abs(shareA - 0.5);
+          if (delta > 0.1) {
+            srmEl.textContent =
+              'Sample ratio warning: variant A received ' + (shareA * 100).toFixed(1) +
+              '% of traffic (expected ≈ 50%). Large deviations from the planned split can indicate implementation or tracking issues (SRM). Investigate before fully trusting this result.';
+            show(srmEl);
+          }
+        }
+
+        show(resultsBox);
+      }
+
+      function onReset() {
+        form.reset();
+        clearResults();
+      }
+
+      form.addEventListener('submit', onSubmit);
+      resetBtn.addEventListener('click', onReset);
+    })();
+  </script>
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
       svg: { fontCache: 'global' }
     };
   </script>

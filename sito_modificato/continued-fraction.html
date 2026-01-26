@@ -48,10 +48,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -224,8 +220,6 @@
 <body class="bg-gray-50 text-gray-800">
 
     <!-- BODY SCRIPTS INIZIO -->
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
         <div class="flex justify-between items-center">
@@ -726,7 +720,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -794,13 +788,787 @@
 
 
 
+
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
 
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      // Mobile menu toggle (fallback if script_menu.js doesn't handle it)
+      document.addEventListener('DOMContentLoaded', function () {
+        const toggle = document.getElementById('mobile-menu-toggle');
+        const menu = document.getElementById('mobile-menu');
+        if (toggle && menu) {
+          toggle.addEventListener('click', () => {
+            const isHidden = menu.classList.contains('hidden');
+            menu.classList.toggle('hidden', !isHidden);
+            toggle.setAttribute('aria-expanded', String(isHidden));
+          });
+        }
+      });
+
+      // Continued fraction calculator logic
+      document.addEventListener('DOMContentLoaded', function () {
+        const modeDecimalBtn = document.getElementById('mode-decimal-btn');
+        const modeCfBtn = document.getElementById('mode-cf-btn');
+        const panelDecimal = document.getElementById('panel-decimal');
+        const panelCf = document.getElementById('panel-cf');
+
+        const maxDepthInput = document.getElementById('max-depth');
+        const tolInput = document.getElementById('tol');
+        const decimalsSelect = document.getElementById('cf-decimals');
+
+        const decimalInput = document.getElementById('decimal-input');
+        const fracPInput = document.getElementById('frac-p');
+        const fracQInput = document.getElementById('frac-q');
+        const cfInput = document.getElementById('cf-input');
+
+        const calcBtn = document.getElementById('cf-calc-btn');
+        const clearBtn = document.getElementById('cf-clear-btn');
+        const ex1Btn = document.getElementById('cf-example1-btn');
+        const ex2Btn = document.getElementById('cf-example2-btn');
+        const errorEl = document.getElementById('cf-error');
+
+        const resultsCard = document.getElementById('cf-results-card');
+        const mainEl = document.getElementById('cf-main');
+        const mainCompactEl = document.getElementById('cf-main-compact');
+        const bestEl = document.getElementById('cf-best');
+        const diagEl = document.getElementById('cf-diagnostics');
+        const convSection = document.getElementById('cf-conv-section');
+        const convEl = document.getElementById('cf-convergents');
+
+        let currentMode = 'decimal'; // 'decimal' or 'cf'
+
+        function setMode(mode) {
+          currentMode = mode;
+          const isDecimal = mode === 'decimal';
+
+          modeDecimalBtn.classList.toggle('pill-active', isDecimal);
+          modeDecimalBtn.classList.toggle('pill-inactive', !isDecimal);
+          modeCfBtn.classList.toggle('pill-active', !isDecimal);
+          modeCfBtn.classList.toggle('pill-inactive', isDecimal);
+
+          panelDecimal.classList.toggle('hidden', !isDecimal);
+          panelCf.classList.toggle('hidden', isDecimal);
+          resetResults();
+        }
+
+        modeDecimalBtn.addEventListener('click', () => setMode('decimal'));
+        modeCfBtn.addEventListener('click', () => setMode('cf'));
+
+        function resetResults() {
+          errorEl.textContent = '';
+          errorEl.classList.add('hidden');
+          resultsCard.classList.add('hidden');
+          mainEl.textContent = '';
+          mainCompactEl.textContent = '';
+          bestEl.textContent = '';
+          diagEl.textContent = '';
+          convEl.textContent = '';
+        }
+
+        function parseIntStrict(val, name) {
+          if (val === '' || val === null || val === undefined) {
+            throw new Error('Please provide a value for ' + name + '.');
+          }
+          const num = Number(val);
+          if (!Number.isInteger(num)) {
+            throw new Error(name + ' must be an integer.');
+          }
+          return num;
+        }
+
+        function fractionFromInputs() {
+          const pVal = fracPInput.value.trim();
+          const qVal = fracQInput.value.trim();
+          if (pVal === '' || qVal === '') return null;
+          const p = parseIntStrict(pVal, 'Numerator p');
+          const q = parseIntStrict(qVal, 'Denominator q');
+          if (q === 0) throw new Error('Denominator q cannot be zero.');
+          return { p, q };
+        }
+
+        function decimalFromInput() {
+          const txt = decimalInput.value.trim();
+          if (!txt) return null;
+          const x = Number(txt);
+          if (!Number.isFinite(x)) {
+            throw new Error('Decimal input must be a valid finite real number.');
+          }
+          return x;
+        }
+
+        function parseCfCoefficients(str) {
+          if (!str || !str.trim()) {
+            throw new Error('Please enter at least one coefficient for the continued fraction.');
+          }
+          const cleaned = str.replace(/\[/g, '').replace(/\]/g, '');
+          const parts = cleaned.split(/[;,]/).map(function (s) { return s.trim(); }).filter(Boolean);
+          if (!parts.length) {
+            throw new Error('Could not parse any coefficients. Separate them with commas or semicolons.');
+          }
+          const coeffs = parts.map(function (p, idx) {
+            const n = Number(p);
+            if (!Number.isInteger(n)) {
+              throw new Error('Coefficient at position ' + idx + ' is not an integer.');
+            }
+            return n;
+          });
+          if (coeffs.length > 30) {
+            throw new Error('Please limit continued fractions to at most 30 coefficients.');
+          }
+          return coeffs;
+        }
+
+        // Compute simple continued fraction expansion for a real number x
+        function continuedFractionFromReal(x, maxDepth, tol) {
+          const coeffs = [];
+          let value = x;
+
+          for (let k = 0; k < maxDepth; k++) {
+            const a = Math.floor(value);
+            coeffs.push(a);
+            const frac = value - a;
+            if (Math.abs(frac) < tol) {
+              break;
+            }
+            if (!Number.isFinite(1 / frac)) {
+              break;
+            }
+            value = 1 / frac;
+          }
+          return coeffs;
+        }
+
+        // Compute convergents p_k, q_k and values for given cf coefficients
+        function convergentsFromCf(coeffs) {
+          const n = coeffs.length;
+          const p = [];
+          const q = [];
+
+          // initial conditions
+          let pMinus2 = 0, pMinus1 = 1;
+          let qMinus2 = 1, qMinus1 = 0;
+
+          for (let k = 0; k < n; k++) {
+            const a = coeffs[k];
+            const pk = a * pMinus1 + pMinus2;
+            const qk = a * qMinus1 + qMinus2;
+            p.push(pk);
+            q.push(qk);
+            pMinus2 = pMinus1;
+            pMinus1 = pk;
+            qMinus2 = qMinus1;
+            qMinus1 = qk;
+          }
+
+          return { p, q };
+        }
+
+        function valueFromCf(coeffs) {
+          // Evaluate CF from end to start
+          let x = coeffs[coeffs.length - 1];
+          for (let i = coeffs.length - 2; i >= 0; i--) {
+            x = coeffs[i] + 1 / x;
+          }
+          return x;
+        }
+
+        function gcd(a, b) {
+          a = Math.abs(a);
+          b = Math.abs(b);
+          while (b !== 0) {
+            const t = b;
+            b = a % b;
+            a = t;
+          }
+          return a;
+        }
+
+        function simplifyFraction(num, den) {
+          if (!Number.isFinite(num) || !Number.isFinite(den) || den === 0) {
+            return { num: num, den: den };
+          }
+          let n = Math.round(num);
+          let d = Math.round(den);
+          const g = gcd(n, d);
+          n /= g;
+          d /= g;
+          if (d < 0) {
+            n = -n;
+            d = -d;
+          }
+          return { num: n, den: d };
+        }
+
+        function formatCoefficients(coeffs) {
+          if (!coeffs.length) return '[]';
+          const first = coeffs[0];
+          const rest = coeffs.slice(1);
+          return '[' + first + (rest.length ? '; ' + rest.join(', ') : '') + ']';
+        }
+
+        function formatConvergents(coeffs, xRef, decimals) {
+          const { p, q } = convergentsFromCf(coeffs);
+          const lines = [];
+          lines.push(' k   a_k     p_k / q_k             value(p_k/q_k)           |x − p_k/q_k|');
+          lines.push('----------------------------------------------------------------------------');
+          for (let k = 0; k < coeffs.length; k++) {
+            const ak = coeffs[k];
+            const pk = p[k];
+            const qk = q[k];
+            const val = pk / qk;
+            const err = (xRef != null && Number.isFinite(xRef)) ? Math.abs(xRef - val) : NaN;
+
+            const kStr = k.toString().padStart(2, ' ');
+            const aStr = ak.toString().padStart(4, ' ');
+            const fracStr = (pk + '/' + qk).padEnd(18, ' ');
+            const valStr = (Number.isFinite(val) ? val.toFixed(decimals) : 'nan').padEnd(22, ' ');
+            const errStr = (Number.isFinite(err) ? err.toExponential(3) : '-');
+            lines.push(' ' + kStr + '   ' + aStr + '   ' + fracStr + '   ' + valStr + '   ' + errStr);
+          }
+          return lines.join('\n');
+        }
+
+        function calculate() {
+          resetResults();
+
+          try {
+            const maxDepth = parseInt(maxDepthInput.value, 10);
+            if (!Number.isInteger(maxDepth) || maxDepth < 1 || maxDepth > 30) {
+              throw new Error('Max depth must be an integer between 1 and 30.');
+            }
+            const tol = Number(tolInput.value);
+            if (!(tol >= 0)) {
+              throw new Error('Tolerance must be a non-negative number.');
+            }
+            const decimals = parseInt(decimalsSelect.value, 10) || 10;
+
+            let coeffs, xRef = null;
+
+            if (currentMode === 'decimal') {
+              // Prefer exact fraction if provided
+              const frac = fractionFromInputs();
+              if (frac) {
+                const { p, q } = frac;
+                xRef = p / q;
+                coeffs = continuedFractionFromReal(xRef, maxDepth, tol);
+              } else {
+                const x = decimalFromInput();
+                if (x === null) {
+                  throw new Error('Please enter either a decimal value or an exact fraction p/q.');
+                }
+                xRef = x;
+                coeffs = continuedFractionFromReal(x, maxDepth, tol);
+              }
+            } else {
+              // From CF coefficients to number
+              coeffs = parseCfCoefficients(cfInput.value);
+              xRef = valueFromCf(coeffs);
+            }
+
+            if (!coeffs.length) {
+              throw new Error('No continued fraction coefficients were produced.');
+            }
+
+            const cfStr = formatCoefficients(coeffs);
+            mainEl.textContent = 'Simple continued fraction: ' + cfStr;
+
+            const compact = coeffs.join(', ');
+            mainCompactEl.textContent = 'Coefficients: [' + compact + ']';
+
+            // Convergents and best approximation
+            const { p, q } = convergentsFromCf(coeffs);
+            const kLast = coeffs.length - 1;
+            const numLast = p[kLast];
+            const denLast = q[kLast];
+            const fracSimplified = simplifyFraction(numLast, denLast);
+
+            const valLast = numLast / denLast;
+            const errLast = (xRef != null && Number.isFinite(xRef)) ? Math.abs(xRef - valLast) : NaN;
+
+            bestEl.textContent =
+              'Last convergent (k = ' + kLast + '): ' +
+              numLast + '/' + denLast +
+              ' ≈ ' + valLast.toFixed(decimals) +
+              (Number.isFinite(errLast) ? ' (|error| ≈ ' + errLast.toExponential(3) + ')' : '') +
+              '. Simplified: ' + fracSimplified.num + '/' + fracSimplified.den + '.';
+
+            let diag = 'Number of terms: ' + coeffs.length + '. ';
+            if (currentMode === 'decimal') {
+              diag += 'Input value x ≈ ' + xRef.toPrecision(15) + '. ';
+              if (tol > 0) {
+                diag += 'Expansion stopped when the fractional part was below tolerance ' + tol + ' or depth reached ' + maxDepth + '.';
+              } else {
+                diag += 'Expansion stopped at the maximum depth ' + maxDepth + '.';
+              }
+            } else {
+              diag += 'Value reconstructed from coefficients: x ≈ ' + xRef.toPrecision(15) + '.';
+            }
+            diagEl.textContent = diag;
+
+            // Convergents table
+            const table = formatConvergents(coeffs, xRef, decimals);
+            convEl.textContent = table;
+
+            resultsCard.classList.remove('hidden');
+          } catch (e) {
+            errorEl.textContent = e.message || 'An error occurred while computing the continued fraction.';
+            errorEl.classList.remove('hidden');
+          }
+        }
+
+        function clearAll() {
+          maxDepthInput.value = '12';
+          tolInput.value = '1e-12';
+          decimalsSelect.value = '10';
+          decimalInput.value = '';
+          fracPInput.value = '';
+          fracQInput.value = '';
+          cfInput.value = '';
+          setMode('decimal');
+          resetResults();
+        }
+
+        function loadExample1() {
+          // π ~ 3.14159265
+          setMode('decimal');
+          decimalInput.value = '3.14159265';
+          fracPInput.value = '';
+          fracQInput.value = '';
+          maxDepthInput.value = '10';
+          tolInput.value = '1e-10';
+          decimalsSelect.value = '10';
+          calculate();
+        }
+
+        function loadExample2() {
+          // sqrt(2) ~ 1.41421356
+          setMode('decimal');
+          decimalInput.value = '1.41421356';
+          fracPInput.value = '';
+          fracQInput.value = '';
+          maxDepthInput.value = '10';
+          tolInput.value = '1e-10';
+          decimalsSelect.value = '10';
+          calculate();
+        }
+
+        calcBtn.addEventListener('click', calculate);
+        clearBtn.addEventListener('click', clearAll);
+        ex1Btn.addEventListener('click', loadExample1);
+        ex2Btn.addEventListener('click', loadExample2);
+
+        // Ctrl+Enter on any main input triggers calculation
+        [decimalInput, fracPInput, fracQInput, cfInput].forEach(function (el) {
+          el.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+              e.preventDefault();
+              calculate();
+            }
+          });
+        });
+      });
+    </script>
+
+
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      // Mobile menu toggle (fallback if script_menu.js doesn't handle it)
+      document.addEventListener('DOMContentLoaded', function () {
+        const toggle = document.getElementById('mobile-menu-toggle');
+        const menu = document.getElementById('mobile-menu');
+        if (toggle && menu) {
+          toggle.addEventListener('click', () => {
+            const isHidden = menu.classList.contains('hidden');
+            menu.classList.toggle('hidden', !isHidden);
+            toggle.setAttribute('aria-expanded', String(isHidden));
+          });
+        }
+      });
+
+      // Continued fraction calculator logic
+      document.addEventListener('DOMContentLoaded', function () {
+        const modeDecimalBtn = document.getElementById('mode-decimal-btn');
+        const modeCfBtn = document.getElementById('mode-cf-btn');
+        const panelDecimal = document.getElementById('panel-decimal');
+        const panelCf = document.getElementById('panel-cf');
+
+        const maxDepthInput = document.getElementById('max-depth');
+        const tolInput = document.getElementById('tol');
+        const decimalsSelect = document.getElementById('cf-decimals');
+
+        const decimalInput = document.getElementById('decimal-input');
+        const fracPInput = document.getElementById('frac-p');
+        const fracQInput = document.getElementById('frac-q');
+        const cfInput = document.getElementById('cf-input');
+
+        const calcBtn = document.getElementById('cf-calc-btn');
+        const clearBtn = document.getElementById('cf-clear-btn');
+        const ex1Btn = document.getElementById('cf-example1-btn');
+        const ex2Btn = document.getElementById('cf-example2-btn');
+        const errorEl = document.getElementById('cf-error');
+
+        const resultsCard = document.getElementById('cf-results-card');
+        const mainEl = document.getElementById('cf-main');
+        const mainCompactEl = document.getElementById('cf-main-compact');
+        const bestEl = document.getElementById('cf-best');
+        const diagEl = document.getElementById('cf-diagnostics');
+        const convSection = document.getElementById('cf-conv-section');
+        const convEl = document.getElementById('cf-convergents');
+
+        let currentMode = 'decimal'; // 'decimal' or 'cf'
+
+        function setMode(mode) {
+          currentMode = mode;
+          const isDecimal = mode === 'decimal';
+
+          modeDecimalBtn.classList.toggle('pill-active', isDecimal);
+          modeDecimalBtn.classList.toggle('pill-inactive', !isDecimal);
+          modeCfBtn.classList.toggle('pill-active', !isDecimal);
+          modeCfBtn.classList.toggle('pill-inactive', isDecimal);
+
+          panelDecimal.classList.toggle('hidden', !isDecimal);
+          panelCf.classList.toggle('hidden', isDecimal);
+          resetResults();
+        }
+
+        modeDecimalBtn.addEventListener('click', () => setMode('decimal'));
+        modeCfBtn.addEventListener('click', () => setMode('cf'));
+
+        function resetResults() {
+          errorEl.textContent = '';
+          errorEl.classList.add('hidden');
+          resultsCard.classList.add('hidden');
+          mainEl.textContent = '';
+          mainCompactEl.textContent = '';
+          bestEl.textContent = '';
+          diagEl.textContent = '';
+          convEl.textContent = '';
+        }
+
+        function parseIntStrict(val, name) {
+          if (val === '' || val === null || val === undefined) {
+            throw new Error('Please provide a value for ' + name + '.');
+          }
+          const num = Number(val);
+          if (!Number.isInteger(num)) {
+            throw new Error(name + ' must be an integer.');
+          }
+          return num;
+        }
+
+        function fractionFromInputs() {
+          const pVal = fracPInput.value.trim();
+          const qVal = fracQInput.value.trim();
+          if (pVal === '' || qVal === '') return null;
+          const p = parseIntStrict(pVal, 'Numerator p');
+          const q = parseIntStrict(qVal, 'Denominator q');
+          if (q === 0) throw new Error('Denominator q cannot be zero.');
+          return { p, q };
+        }
+
+        function decimalFromInput() {
+          const txt = decimalInput.value.trim();
+          if (!txt) return null;
+          const x = Number(txt);
+          if (!Number.isFinite(x)) {
+            throw new Error('Decimal input must be a valid finite real number.');
+          }
+          return x;
+        }
+
+        function parseCfCoefficients(str) {
+          if (!str || !str.trim()) {
+            throw new Error('Please enter at least one coefficient for the continued fraction.');
+          }
+          const cleaned = str.replace(/\[/g, '').replace(/\]/g, '');
+          const parts = cleaned.split(/[;,]/).map(function (s) { return s.trim(); }).filter(Boolean);
+          if (!parts.length) {
+            throw new Error('Could not parse any coefficients. Separate them with commas or semicolons.');
+          }
+          const coeffs = parts.map(function (p, idx) {
+            const n = Number(p);
+            if (!Number.isInteger(n)) {
+              throw new Error('Coefficient at position ' + idx + ' is not an integer.');
+            }
+            return n;
+          });
+          if (coeffs.length > 30) {
+            throw new Error('Please limit continued fractions to at most 30 coefficients.');
+          }
+          return coeffs;
+        }
+
+        // Compute simple continued fraction expansion for a real number x
+        function continuedFractionFromReal(x, maxDepth, tol) {
+          const coeffs = [];
+          let value = x;
+
+          for (let k = 0; k < maxDepth; k++) {
+            const a = Math.floor(value);
+            coeffs.push(a);
+            const frac = value - a;
+            if (Math.abs(frac) < tol) {
+              break;
+            }
+            if (!Number.isFinite(1 / frac)) {
+              break;
+            }
+            value = 1 / frac;
+          }
+          return coeffs;
+        }
+
+        // Compute convergents p_k, q_k and values for given cf coefficients
+        function convergentsFromCf(coeffs) {
+          const n = coeffs.length;
+          const p = [];
+          const q = [];
+
+          // initial conditions
+          let pMinus2 = 0, pMinus1 = 1;
+          let qMinus2 = 1, qMinus1 = 0;
+
+          for (let k = 0; k < n; k++) {
+            const a = coeffs[k];
+            const pk = a * pMinus1 + pMinus2;
+            const qk = a * qMinus1 + qMinus2;
+            p.push(pk);
+            q.push(qk);
+            pMinus2 = pMinus1;
+            pMinus1 = pk;
+            qMinus2 = qMinus1;
+            qMinus1 = qk;
+          }
+
+          return { p, q };
+        }
+
+        function valueFromCf(coeffs) {
+          // Evaluate CF from end to start
+          let x = coeffs[coeffs.length - 1];
+          for (let i = coeffs.length - 2; i >= 0; i--) {
+            x = coeffs[i] + 1 / x;
+          }
+          return x;
+        }
+
+        function gcd(a, b) {
+          a = Math.abs(a);
+          b = Math.abs(b);
+          while (b !== 0) {
+            const t = b;
+            b = a % b;
+            a = t;
+          }
+          return a;
+        }
+
+        function simplifyFraction(num, den) {
+          if (!Number.isFinite(num) || !Number.isFinite(den) || den === 0) {
+            return { num: num, den: den };
+          }
+          let n = Math.round(num);
+          let d = Math.round(den);
+          const g = gcd(n, d);
+          n /= g;
+          d /= g;
+          if (d < 0) {
+            n = -n;
+            d = -d;
+          }
+          return { num: n, den: d };
+        }
+
+        function formatCoefficients(coeffs) {
+          if (!coeffs.length) return '[]';
+          const first = coeffs[0];
+          const rest = coeffs.slice(1);
+          return '[' + first + (rest.length ? '; ' + rest.join(', ') : '') + ']';
+        }
+
+        function formatConvergents(coeffs, xRef, decimals) {
+          const { p, q } = convergentsFromCf(coeffs);
+          const lines = [];
+          lines.push(' k   a_k     p_k / q_k             value(p_k/q_k)           |x − p_k/q_k|');
+          lines.push('----------------------------------------------------------------------------');
+          for (let k = 0; k < coeffs.length; k++) {
+            const ak = coeffs[k];
+            const pk = p[k];
+            const qk = q[k];
+            const val = pk / qk;
+            const err = (xRef != null && Number.isFinite(xRef)) ? Math.abs(xRef - val) : NaN;
+
+            const kStr = k.toString().padStart(2, ' ');
+            const aStr = ak.toString().padStart(4, ' ');
+            const fracStr = (pk + '/' + qk).padEnd(18, ' ');
+            const valStr = (Number.isFinite(val) ? val.toFixed(decimals) : 'nan').padEnd(22, ' ');
+            const errStr = (Number.isFinite(err) ? err.toExponential(3) : '-');
+            lines.push(' ' + kStr + '   ' + aStr + '   ' + fracStr + '   ' + valStr + '   ' + errStr);
+          }
+          return lines.join('\n');
+        }
+
+        function calculate() {
+          resetResults();
+
+          try {
+            const maxDepth = parseInt(maxDepthInput.value, 10);
+            if (!Number.isInteger(maxDepth) || maxDepth < 1 || maxDepth > 30) {
+              throw new Error('Max depth must be an integer between 1 and 30.');
+            }
+            const tol = Number(tolInput.value);
+            if (!(tol >= 0)) {
+              throw new Error('Tolerance must be a non-negative number.');
+            }
+            const decimals = parseInt(decimalsSelect.value, 10) || 10;
+
+            let coeffs, xRef = null;
+
+            if (currentMode === 'decimal') {
+              // Prefer exact fraction if provided
+              const frac = fractionFromInputs();
+              if (frac) {
+                const { p, q } = frac;
+                xRef = p / q;
+                coeffs = continuedFractionFromReal(xRef, maxDepth, tol);
+              } else {
+                const x = decimalFromInput();
+                if (x === null) {
+                  throw new Error('Please enter either a decimal value or an exact fraction p/q.');
+                }
+                xRef = x;
+                coeffs = continuedFractionFromReal(x, maxDepth, tol);
+              }
+            } else {
+              // From CF coefficients to number
+              coeffs = parseCfCoefficients(cfInput.value);
+              xRef = valueFromCf(coeffs);
+            }
+
+            if (!coeffs.length) {
+              throw new Error('No continued fraction coefficients were produced.');
+            }
+
+            const cfStr = formatCoefficients(coeffs);
+            mainEl.textContent = 'Simple continued fraction: ' + cfStr;
+
+            const compact = coeffs.join(', ');
+            mainCompactEl.textContent = 'Coefficients: [' + compact + ']';
+
+            // Convergents and best approximation
+            const { p, q } = convergentsFromCf(coeffs);
+            const kLast = coeffs.length - 1;
+            const numLast = p[kLast];
+            const denLast = q[kLast];
+            const fracSimplified = simplifyFraction(numLast, denLast);
+
+            const valLast = numLast / denLast;
+            const errLast = (xRef != null && Number.isFinite(xRef)) ? Math.abs(xRef - valLast) : NaN;
+
+            bestEl.textContent =
+              'Last convergent (k = ' + kLast + '): ' +
+              numLast + '/' + denLast +
+              ' ≈ ' + valLast.toFixed(decimals) +
+              (Number.isFinite(errLast) ? ' (|error| ≈ ' + errLast.toExponential(3) + ')' : '') +
+              '. Simplified: ' + fracSimplified.num + '/' + fracSimplified.den + '.';
+
+            let diag = 'Number of terms: ' + coeffs.length + '. ';
+            if (currentMode === 'decimal') {
+              diag += 'Input value x ≈ ' + xRef.toPrecision(15) + '. ';
+              if (tol > 0) {
+                diag += 'Expansion stopped when the fractional part was below tolerance ' + tol + ' or depth reached ' + maxDepth + '.';
+              } else {
+                diag += 'Expansion stopped at the maximum depth ' + maxDepth + '.';
+              }
+            } else {
+              diag += 'Value reconstructed from coefficients: x ≈ ' + xRef.toPrecision(15) + '.';
+            }
+            diagEl.textContent = diag;
+
+            // Convergents table
+            const table = formatConvergents(coeffs, xRef, decimals);
+            convEl.textContent = table;
+
+            resultsCard.classList.remove('hidden');
+          } catch (e) {
+            errorEl.textContent = e.message || 'An error occurred while computing the continued fraction.';
+            errorEl.classList.remove('hidden');
+          }
+        }
+
+        function clearAll() {
+          maxDepthInput.value = '12';
+          tolInput.value = '1e-12';
+          decimalsSelect.value = '10';
+          decimalInput.value = '';
+          fracPInput.value = '';
+          fracQInput.value = '';
+          cfInput.value = '';
+          setMode('decimal');
+          resetResults();
+        }
+
+        function loadExample1() {
+          // π ~ 3.14159265
+          setMode('decimal');
+          decimalInput.value = '3.14159265';
+          fracPInput.value = '';
+          fracQInput.value = '';
+          maxDepthInput.value = '10';
+          tolInput.value = '1e-10';
+          decimalsSelect.value = '10';
+          calculate();
+        }
+
+        function loadExample2() {
+          // sqrt(2) ~ 1.41421356
+          setMode('decimal');
+          decimalInput.value = '1.41421356';
+          fracPInput.value = '';
+          fracQInput.value = '';
+          maxDepthInput.value = '10';
+          tolInput.value = '1e-10';
+          decimalsSelect.value = '10';
+          calculate();
+        }
+
+        calcBtn.addEventListener('click', calculate);
+        clearBtn.addEventListener('click', clearAll);
+        ex1Btn.addEventListener('click', loadExample1);
+        ex2Btn.addEventListener('click', loadExample2);
+
+        // Ctrl+Enter on any main input triggers calculation
+        [decimalInput, fracPInput, fracQInput, cfInput].forEach(function (el) {
+          el.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+              e.preventDefault();
+              calculate();
+            }
+          });
+        });
+      });
+    </script>
+
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

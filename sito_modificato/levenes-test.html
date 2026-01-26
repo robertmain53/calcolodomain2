@@ -44,10 +44,6 @@
     
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
     
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-    
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -217,8 +213,6 @@
 <body class="bg-gray-50 text-gray-800">
 
     <!-- BODY_SCRIPTS_INIZIO -->
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
         <div class="flex justify-between items-center">
@@ -787,7 +781,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -854,14 +848,856 @@
 
 
 
+
     
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
     
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      (function() {
+        const centerSelect = document.getElementById('lt-center');
+        const alphaSelect = document.getElementById('lt-alpha');
+        const addGroupBtn = document.getElementById('lt-add-group-btn');
+        const removeGroupBtn = document.getElementById('lt-remove-group-btn');
+        const groupCountSpan = document.getElementById('lt-group-count');
+        const groupsContainer = document.getElementById('lt-groups-container');
+
+        const calcBtn = document.getElementById('lt-calc-btn');
+        const resetBtn = document.getElementById('lt-reset-btn');
+        const errorEl = document.getElementById('lt-error');
+
+        const formulaBox = document.getElementById('lt-formula-box');
+        const formulaEl = document.getElementById('lt-formula');
+
+        const resultsBox = document.getElementById('lt-results-box');
+        const resultsBody = document.getElementById('lt-results-body');
+        const summaryEl = document.getElementById('lt-summary');
+        const interpretationEl = document.getElementById('lt-interpretation');
+
+        const MIN_GROUPS = 2;
+        const MAX_GROUPS = 8;
+
+        let currentGroups = 3;
+
+        function clearError() {
+          errorEl.textContent = '';
+          errorEl.classList.add('hidden');
+        }
+
+        function showError(msg) {
+          errorEl.textContent = msg;
+          errorEl.classList.remove('hidden');
+        }
+
+        function updateGroupCountLabel() {
+          groupCountSpan.textContent = currentGroups + (currentGroups === 1 ? ' group' : ' groups');
+        }
+
+        function createGroupCard(index, presetValues) {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'bg-gray-50 border border-gray-200 rounded-md p-3';
+          wrapper.dataset.groupIndex = index;
+
+          const labelRow = document.createElement('div');
+          labelRow.className = 'flex items-center justify-between mb-1';
+
+          const label = document.createElement('label');
+          label.className = 'text-sm font-medium text-gray-800';
+          label.textContent = 'Group ' + (index + 1);
+          labelRow.appendChild(label);
+
+          const nInfo = document.createElement('span');
+          nInfo.className = 'text-xs text-gray-500';
+          nInfo.id = 'lt-group-n-' + index;
+          nInfo.textContent = '';
+          labelRow.appendChild(nInfo);
+
+          const textarea = document.createElement('textarea');
+          textarea.className = 'w-full border border-gray-300 rounded-md px-2 py-1 text-xs mono focus:outline-none focus:ring-2 focus:ring-blue-500';
+          textarea.rows = 3;
+          textarea.id = 'lt-group-' + index;
+          textarea.placeholder = 'e.g. 12.4, 11.9, 13.2, 12.8';
+
+          if (presetValues && presetValues.length) {
+            textarea.value = presetValues.join(', ');
+            nInfo.textContent = presetValues.length + ' values';
+          }
+
+          textarea.addEventListener('input', function() {
+            const values = parseNumberList(this.value);
+            nInfo.textContent = values.length ? (values.length + ' values') : '';
+          });
+
+          wrapper.appendChild(labelRow);
+          wrapper.appendChild(textarea);
+          return wrapper;
+        }
+
+        function rebuildGroupCards(presets) {
+          groupsContainer.innerHTML = '';
+          for (let i = 0; i < currentGroups; i++) {
+            const presetVals = presets && presets[i] ? presets[i] : null;
+            const card = createGroupCard(i, presetVals);
+            groupsContainer.appendChild(card);
+          }
+          updateGroupCountLabel();
+        }
+
+        function parseNumberList(str) {
+          if (!str) return [];
+          const raw = str
+            .replace(/[\n\r]+/g, ' ')
+            .split(/[,;\s]+/)
+            .map(s => s.trim())
+            .filter(Boolean);
+          const out = [];
+          for (const token of raw) {
+            const num = Number(token);
+            if (isFinite(num)) {
+              out.push(num);
+            }
+          }
+          return out;
+        }
+
+        function mean(arr) {
+          if (!arr.length) return NaN;
+          let s = 0;
+          for (let i = 0; i < arr.length; i++) s += arr[i];
+          return s / arr.length;
+        }
+
+        function median(arr) {
+          if (!arr.length) return NaN;
+          const a = arr.slice().sort((x, y) => x - y);
+          const mid = Math.floor(a.length / 2);
+          if (a.length % 2 === 0) {
+            return (a[mid - 1] + a[mid]) / 2;
+          }
+          return a[mid];
+        }
+
+        function fmt(x) {
+          if (!isFinite(x)) return '—';
+          const abs = Math.abs(x);
+          if (abs !== 0 && (abs < 1e-6 || abs >= 1e6)) {
+            return x.toExponential(6);
+          }
+          return x.toLocaleString(undefined, { maximumFractionDigits: 6 });
+        }
+
+        // Incomplete beta and F CDF (for p-values)
+        function logGamma(z) {
+          // Lanczos approximation
+          const g = 7;
+          const p = [
+            0.99999999999980993,
+            676.5203681218851,
+            -1259.1392167224028,
+            771.32342877765313,
+            -176.61502916214059,
+            12.507343278686905,
+            -0.13857109526572012,
+            9.9843695780195716e-6,
+            1.5056327351493116e-7
+          ];
+          if (z < 0.5) {
+            return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - logGamma(1 - z);
+          }
+          z -= 1;
+          let x = p[0];
+          for (let i = 1; i < p.length; i++) {
+            x += p[i] / (z + i);
+          }
+          const t = z + g + 0.5;
+          return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
+        }
+
+        function logBeta(a, b) {
+          return logGamma(a) + logGamma(b) - logGamma(a + b);
+        }
+
+        function betacf(x, a, b) {
+          const MAX_ITER = 200;
+          const EPS = 3e-7;
+          let qab = a + b;
+          let qap = a + 1.0;
+          let qam = a - 1.0;
+          let c = 1.0;
+          let d = 1.0 - qab * x / qap;
+          if (Math.abs(d) < 1e-30) d = 1e-30;
+          d = 1.0 / d;
+          let h = d;
+          for (let m = 1; m <= MAX_ITER; m++) {
+            let m2 = 2 * m;
+            let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+            d = 1.0 + aa * d;
+            if (Math.abs(d) < 1e-30) d = 1e-30;
+            c = 1.0 + aa / c;
+            if (Math.abs(c) < 1e-30) c = 1e-30;
+            d = 1.0 / d;
+            h *= d * c;
+            aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+            d = 1.0 + aa * d;
+            if (Math.abs(d) < 1e-30) d = 1e-30;
+            c = 1.0 + aa / c;
+            if (Math.abs(c) < 1e-30) c = 1e-30;
+            d = 1.0 / d;
+            let del = d * c;
+            h *= del;
+            if (Math.abs(del - 1.0) < EPS) break;
+          }
+          return h;
+        }
+
+        function regularizedBeta(x, a, b) {
+          if (x <= 0) return 0;
+          if (x >= 1) return 1;
+          const lnB = logBeta(a, b);
+          const front = Math.exp(a * Math.log(x) + b * Math.log(1 - x) - lnB) / a;
+          const cf = betacf(x, a, b);
+          return front * cf;
+        }
+
+        function fCdf(x, d1, d2) {
+          if (x <= 0) return 0;
+          const a = d1 / 2;
+          const b = d2 / 2;
+          const xx = (d1 * x) / (d1 * x + d2);
+          return regularizedBeta(xx, a, b);
+        }
+
+        function runLevene() {
+          clearError();
+          resultsBox.classList.add('hidden');
+          resultsBody.innerHTML = '';
+          summaryEl.textContent = '';
+          interpretationEl.textContent = '';
+          formulaBox.classList.add('hidden');
+          formulaEl.textContent = '';
+
+          // Collect groups
+          const groups = [];
+          for (let i = 0; i < currentGroups; i++) {
+            const ta = document.getElementById('lt-group-' + i);
+            if (!ta) continue;
+            const values = parseNumberList(ta.value);
+            if (values.length > 0) {
+              groups.push({ index: i, values });
+            }
+          }
+
+          if (groups.length < 2) {
+            showError('Please provide data for at least two groups (each with at least two numeric observations).');
+            return;
+          }
+
+          for (let g of groups) {
+            if (g.values.length < 2) {
+              showError('Each active group must contain at least two numeric observations. Group ' + (g.index + 1) + ' has only ' + g.values.length + '.');
+              return;
+            }
+          }
+
+          const k = groups.length;
+          let N = 0;
+          for (let g of groups) N += g.values.length;
+
+          if (N <= k) {
+            showError('Total sample size must exceed the number of groups.');
+            return;
+          }
+
+          const centerMode = centerSelect.value; // 'mean' or 'median'
+          const alpha = Number(alphaSelect.value);
+
+          // Compute Ti and Z_ij
+          const groupCenters = [];
+          const zGroups = [];
+          const zGroupMeans = [];
+          let allZ = [];
+
+          for (let g of groups) {
+            const vals = g.values;
+            const center = centerMode === 'mean' ? mean(vals) : median(vals);
+            groupCenters.push(center);
+            const z = vals.map(x => Math.abs(x - center));
+            zGroups.push(z);
+            const zMean = mean(z);
+            zGroupMeans.push(zMean);
+            allZ = allZ.concat(z);
+          }
+
+          const overallZMean = mean(allZ);
+
+          // ANOVA on Z
+          let ssBetween = 0;
+          let ssWithin = 0;
+          for (let i = 0; i < k; i++) {
+            const n_i = zGroups[i].length;
+            const zMean_i = zGroupMeans[i];
+            ssBetween += n_i * Math.pow(zMean_i - overallZMean, 2);
+            for (let j = 0; j < zGroups[i].length; j++) {
+              const diff = zGroups[i][j] - zMean_i;
+              ssWithin += diff * diff;
+            }
+          }
+
+          const dfBetween = k - 1;
+          const dfWithin = N - k;
+
+          const msBetween = ssBetween / dfBetween;
+          const msWithin = ssWithin / dfWithin;
+          const F = msBetween / msWithin;
+
+          let pValue = NaN;
+          try {
+            const cdf = fCdf(F, dfBetween, dfWithin);
+            pValue = 1 - cdf;
+          } catch (e) {
+            pValue = NaN;
+          }
+
+          // Fill ANOVA-like table (between and within)
+          resultsBody.innerHTML = '';
+
+          function addRow(name, df, ss, ms, fVal) {
+            const tr = document.createElement('tr');
+            const tdName = document.createElement('td');
+            const tdDf = document.createElement('td');
+            const tdSs = document.createElement('td');
+            const tdMs = document.createElement('td');
+            const tdF = document.createElement('td');
+            tdName.className = 'px-3 py-2 text-gray-800';
+            tdDf.className = 'px-3 py-2 text-gray-800';
+            tdSs.className = 'px-3 py-2 text-gray-800';
+            tdMs.className = 'px-3 py-2 text-gray-800';
+            tdF.className = 'px-3 py-2 text-gray-800';
+            tdName.textContent = name;
+            tdDf.textContent = df != null ? df : '';
+            tdSs.textContent = ss != null ? fmt(ss) : '';
+            tdMs.textContent = ms != null ? fmt(ms) : '';
+            tdF.textContent = fVal != null ? fmt(fVal) : '';
+            tr.appendChild(tdName);
+            tr.appendChild(tdDf);
+            tr.appendChild(tdSs);
+            tr.appendChild(tdMs);
+            tr.appendChild(tdF);
+            resultsBody.appendChild(tr);
+          }
+
+          addRow('Between groups (Levene)', dfBetween, ssBetween, msBetween, F);
+          addRow('Within groups', dfWithin, ssWithin, msWithin, null);
+
+          const centerLabel = centerMode === 'mean' ? 'group means (original Levene)' : 'group medians (Brown–Forsythe variant)';
+          const pText = isFinite(pValue) ? fmt(pValue) : 'not available (numerical issue)';
+
+          summaryEl.textContent =
+            'F(' + dfBetween + ', ' + dfWithin + ') = ' + fmt(F) +
+            ', p = ' + pText +
+            ' using deviations from ' + centerLabel + ' across ' + k + ' groups (N = ' + N + ').';
+
+          let decision = '';
+          if (isFinite(pValue)) {
+            if (pValue < alpha) {
+              decision =
+                'At α = ' + alpha.toString() +
+                ', the p-value is smaller than α, so you <strong>reject</strong> the null hypothesis of equal variances.';
+            } else {
+              decision =
+                'At α = ' + alpha.toString() +
+                ', the p-value is greater than or equal to α, so you <strong>do not reject</strong> the null hypothesis of equal variances.';
+            }
+          } else {
+            decision =
+              'The p-value could not be computed reliably due to numerical limitations. Interpret the F statistic with caution.';
+          }
+          interpretationEl.innerHTML = decision;
+
+          // Formula text
+          let formulaText = '';
+          if (centerMode === 'mean') {
+            formulaText =
+              'Z_ij = |X_ij − X̄_i|, where X̄_i is the mean of group i. ' +
+              'An ANOVA is computed on Z_ij, yielding F = MS_between / MS_within with df_between = k − 1 and df_within = N − k.';
+          } else {
+            formulaText =
+              'Z_ij = |X_ij − med_i|, where med_i is the median of group i (Brown–Forsythe version). ' +
+              'An ANOVA is computed on Z_ij, yielding F = MS_between / MS_within with df_between = k − 1 and df_within = N − k.';
+          }
+          formulaEl.textContent = formulaText;
+          formulaBox.classList.remove('hidden');
+
+          resultsBox.classList.remove('hidden');
+        }
+
+        function setExampleData() {
+          // Example: three groups with slightly different spreads
+          const presets = [
+            [10.2, 9.8, 10.5, 10.1, 9.9],
+            [11.0, 10.7, 11.3, 10.9, 11.1],
+            [9.5, 8.9, 9.8, 10.2, 9.3]
+          ];
+          currentGroups = 3;
+          rebuildGroupCards(presets);
+          centerSelect.value = 'median';
+          alphaSelect.value = '0.05';
+          clearError();
+          resultsBox.classList.add('hidden');
+          formulaBox.classList.add('hidden');
+        }
+
+        addGroupBtn.addEventListener('click', function() {
+          if (currentGroups >= MAX_GROUPS) return;
+          currentGroups += 1;
+          rebuildGroupCards();
+        });
+
+        removeGroupBtn.addEventListener('click', function() {
+          if (currentGroups <= MIN_GROUPS) return;
+          currentGroups -= 1;
+          rebuildGroupCards();
+        });
+
+        calcBtn.addEventListener('click', runLevene);
+        resetBtn.addEventListener('click', setExampleData);
+
+        // Initial state
+        setExampleData();
+      })();
+    </script>
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      (function() {
+        const centerSelect = document.getElementById('lt-center');
+        const alphaSelect = document.getElementById('lt-alpha');
+        const addGroupBtn = document.getElementById('lt-add-group-btn');
+        const removeGroupBtn = document.getElementById('lt-remove-group-btn');
+        const groupCountSpan = document.getElementById('lt-group-count');
+        const groupsContainer = document.getElementById('lt-groups-container');
+
+        const calcBtn = document.getElementById('lt-calc-btn');
+        const resetBtn = document.getElementById('lt-reset-btn');
+        const errorEl = document.getElementById('lt-error');
+
+        const formulaBox = document.getElementById('lt-formula-box');
+        const formulaEl = document.getElementById('lt-formula');
+
+        const resultsBox = document.getElementById('lt-results-box');
+        const resultsBody = document.getElementById('lt-results-body');
+        const summaryEl = document.getElementById('lt-summary');
+        const interpretationEl = document.getElementById('lt-interpretation');
+
+        const MIN_GROUPS = 2;
+        const MAX_GROUPS = 8;
+
+        let currentGroups = 3;
+
+        function clearError() {
+          errorEl.textContent = '';
+          errorEl.classList.add('hidden');
+        }
+
+        function showError(msg) {
+          errorEl.textContent = msg;
+          errorEl.classList.remove('hidden');
+        }
+
+        function updateGroupCountLabel() {
+          groupCountSpan.textContent = currentGroups + (currentGroups === 1 ? ' group' : ' groups');
+        }
+
+        function createGroupCard(index, presetValues) {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'bg-gray-50 border border-gray-200 rounded-md p-3';
+          wrapper.dataset.groupIndex = index;
+
+          const labelRow = document.createElement('div');
+          labelRow.className = 'flex items-center justify-between mb-1';
+
+          const label = document.createElement('label');
+          label.className = 'text-sm font-medium text-gray-800';
+          label.textContent = 'Group ' + (index + 1);
+          labelRow.appendChild(label);
+
+          const nInfo = document.createElement('span');
+          nInfo.className = 'text-xs text-gray-500';
+          nInfo.id = 'lt-group-n-' + index;
+          nInfo.textContent = '';
+          labelRow.appendChild(nInfo);
+
+          const textarea = document.createElement('textarea');
+          textarea.className = 'w-full border border-gray-300 rounded-md px-2 py-1 text-xs mono focus:outline-none focus:ring-2 focus:ring-blue-500';
+          textarea.rows = 3;
+          textarea.id = 'lt-group-' + index;
+          textarea.placeholder = 'e.g. 12.4, 11.9, 13.2, 12.8';
+
+          if (presetValues && presetValues.length) {
+            textarea.value = presetValues.join(', ');
+            nInfo.textContent = presetValues.length + ' values';
+          }
+
+          textarea.addEventListener('input', function() {
+            const values = parseNumberList(this.value);
+            nInfo.textContent = values.length ? (values.length + ' values') : '';
+          });
+
+          wrapper.appendChild(labelRow);
+          wrapper.appendChild(textarea);
+          return wrapper;
+        }
+
+        function rebuildGroupCards(presets) {
+          groupsContainer.innerHTML = '';
+          for (let i = 0; i < currentGroups; i++) {
+            const presetVals = presets && presets[i] ? presets[i] : null;
+            const card = createGroupCard(i, presetVals);
+            groupsContainer.appendChild(card);
+          }
+          updateGroupCountLabel();
+        }
+
+        function parseNumberList(str) {
+          if (!str) return [];
+          const raw = str
+            .replace(/[\n\r]+/g, ' ')
+            .split(/[,;\s]+/)
+            .map(s => s.trim())
+            .filter(Boolean);
+          const out = [];
+          for (const token of raw) {
+            const num = Number(token);
+            if (isFinite(num)) {
+              out.push(num);
+            }
+          }
+          return out;
+        }
+
+        function mean(arr) {
+          if (!arr.length) return NaN;
+          let s = 0;
+          for (let i = 0; i < arr.length; i++) s += arr[i];
+          return s / arr.length;
+        }
+
+        function median(arr) {
+          if (!arr.length) return NaN;
+          const a = arr.slice().sort((x, y) => x - y);
+          const mid = Math.floor(a.length / 2);
+          if (a.length % 2 === 0) {
+            return (a[mid - 1] + a[mid]) / 2;
+          }
+          return a[mid];
+        }
+
+        function fmt(x) {
+          if (!isFinite(x)) return '—';
+          const abs = Math.abs(x);
+          if (abs !== 0 && (abs < 1e-6 || abs >= 1e6)) {
+            return x.toExponential(6);
+          }
+          return x.toLocaleString(undefined, { maximumFractionDigits: 6 });
+        }
+
+        // Incomplete beta and F CDF (for p-values)
+        function logGamma(z) {
+          // Lanczos approximation
+          const g = 7;
+          const p = [
+            0.99999999999980993,
+            676.5203681218851,
+            -1259.1392167224028,
+            771.32342877765313,
+            -176.61502916214059,
+            12.507343278686905,
+            -0.13857109526572012,
+            9.9843695780195716e-6,
+            1.5056327351493116e-7
+          ];
+          if (z < 0.5) {
+            return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - logGamma(1 - z);
+          }
+          z -= 1;
+          let x = p[0];
+          for (let i = 1; i < p.length; i++) {
+            x += p[i] / (z + i);
+          }
+          const t = z + g + 0.5;
+          return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
+        }
+
+        function logBeta(a, b) {
+          return logGamma(a) + logGamma(b) - logGamma(a + b);
+        }
+
+        function betacf(x, a, b) {
+          const MAX_ITER = 200;
+          const EPS = 3e-7;
+          let qab = a + b;
+          let qap = a + 1.0;
+          let qam = a - 1.0;
+          let c = 1.0;
+          let d = 1.0 - qab * x / qap;
+          if (Math.abs(d) < 1e-30) d = 1e-30;
+          d = 1.0 / d;
+          let h = d;
+          for (let m = 1; m <= MAX_ITER; m++) {
+            let m2 = 2 * m;
+            let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+            d = 1.0 + aa * d;
+            if (Math.abs(d) < 1e-30) d = 1e-30;
+            c = 1.0 + aa / c;
+            if (Math.abs(c) < 1e-30) c = 1e-30;
+            d = 1.0 / d;
+            h *= d * c;
+            aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+            d = 1.0 + aa * d;
+            if (Math.abs(d) < 1e-30) d = 1e-30;
+            c = 1.0 + aa / c;
+            if (Math.abs(c) < 1e-30) c = 1e-30;
+            d = 1.0 / d;
+            let del = d * c;
+            h *= del;
+            if (Math.abs(del - 1.0) < EPS) break;
+          }
+          return h;
+        }
+
+        function regularizedBeta(x, a, b) {
+          if (x <= 0) return 0;
+          if (x >= 1) return 1;
+          const lnB = logBeta(a, b);
+          const front = Math.exp(a * Math.log(x) + b * Math.log(1 - x) - lnB) / a;
+          const cf = betacf(x, a, b);
+          return front * cf;
+        }
+
+        function fCdf(x, d1, d2) {
+          if (x <= 0) return 0;
+          const a = d1 / 2;
+          const b = d2 / 2;
+          const xx = (d1 * x) / (d1 * x + d2);
+          return regularizedBeta(xx, a, b);
+        }
+
+        function runLevene() {
+          clearError();
+          resultsBox.classList.add('hidden');
+          resultsBody.innerHTML = '';
+          summaryEl.textContent = '';
+          interpretationEl.textContent = '';
+          formulaBox.classList.add('hidden');
+          formulaEl.textContent = '';
+
+          // Collect groups
+          const groups = [];
+          for (let i = 0; i < currentGroups; i++) {
+            const ta = document.getElementById('lt-group-' + i);
+            if (!ta) continue;
+            const values = parseNumberList(ta.value);
+            if (values.length > 0) {
+              groups.push({ index: i, values });
+            }
+          }
+
+          if (groups.length < 2) {
+            showError('Please provide data for at least two groups (each with at least two numeric observations).');
+            return;
+          }
+
+          for (let g of groups) {
+            if (g.values.length < 2) {
+              showError('Each active group must contain at least two numeric observations. Group ' + (g.index + 1) + ' has only ' + g.values.length + '.');
+              return;
+            }
+          }
+
+          const k = groups.length;
+          let N = 0;
+          for (let g of groups) N += g.values.length;
+
+          if (N <= k) {
+            showError('Total sample size must exceed the number of groups.');
+            return;
+          }
+
+          const centerMode = centerSelect.value; // 'mean' or 'median'
+          const alpha = Number(alphaSelect.value);
+
+          // Compute Ti and Z_ij
+          const groupCenters = [];
+          const zGroups = [];
+          const zGroupMeans = [];
+          let allZ = [];
+
+          for (let g of groups) {
+            const vals = g.values;
+            const center = centerMode === 'mean' ? mean(vals) : median(vals);
+            groupCenters.push(center);
+            const z = vals.map(x => Math.abs(x - center));
+            zGroups.push(z);
+            const zMean = mean(z);
+            zGroupMeans.push(zMean);
+            allZ = allZ.concat(z);
+          }
+
+          const overallZMean = mean(allZ);
+
+          // ANOVA on Z
+          let ssBetween = 0;
+          let ssWithin = 0;
+          for (let i = 0; i < k; i++) {
+            const n_i = zGroups[i].length;
+            const zMean_i = zGroupMeans[i];
+            ssBetween += n_i * Math.pow(zMean_i - overallZMean, 2);
+            for (let j = 0; j < zGroups[i].length; j++) {
+              const diff = zGroups[i][j] - zMean_i;
+              ssWithin += diff * diff;
+            }
+          }
+
+          const dfBetween = k - 1;
+          const dfWithin = N - k;
+
+          const msBetween = ssBetween / dfBetween;
+          const msWithin = ssWithin / dfWithin;
+          const F = msBetween / msWithin;
+
+          let pValue = NaN;
+          try {
+            const cdf = fCdf(F, dfBetween, dfWithin);
+            pValue = 1 - cdf;
+          } catch (e) {
+            pValue = NaN;
+          }
+
+          // Fill ANOVA-like table (between and within)
+          resultsBody.innerHTML = '';
+
+          function addRow(name, df, ss, ms, fVal) {
+            const tr = document.createElement('tr');
+            const tdName = document.createElement('td');
+            const tdDf = document.createElement('td');
+            const tdSs = document.createElement('td');
+            const tdMs = document.createElement('td');
+            const tdF = document.createElement('td');
+            tdName.className = 'px-3 py-2 text-gray-800';
+            tdDf.className = 'px-3 py-2 text-gray-800';
+            tdSs.className = 'px-3 py-2 text-gray-800';
+            tdMs.className = 'px-3 py-2 text-gray-800';
+            tdF.className = 'px-3 py-2 text-gray-800';
+            tdName.textContent = name;
+            tdDf.textContent = df != null ? df : '';
+            tdSs.textContent = ss != null ? fmt(ss) : '';
+            tdMs.textContent = ms != null ? fmt(ms) : '';
+            tdF.textContent = fVal != null ? fmt(fVal) : '';
+            tr.appendChild(tdName);
+            tr.appendChild(tdDf);
+            tr.appendChild(tdSs);
+            tr.appendChild(tdMs);
+            tr.appendChild(tdF);
+            resultsBody.appendChild(tr);
+          }
+
+          addRow('Between groups (Levene)', dfBetween, ssBetween, msBetween, F);
+          addRow('Within groups', dfWithin, ssWithin, msWithin, null);
+
+          const centerLabel = centerMode === 'mean' ? 'group means (original Levene)' : 'group medians (Brown–Forsythe variant)';
+          const pText = isFinite(pValue) ? fmt(pValue) : 'not available (numerical issue)';
+
+          summaryEl.textContent =
+            'F(' + dfBetween + ', ' + dfWithin + ') = ' + fmt(F) +
+            ', p = ' + pText +
+            ' using deviations from ' + centerLabel + ' across ' + k + ' groups (N = ' + N + ').';
+
+          let decision = '';
+          if (isFinite(pValue)) {
+            if (pValue < alpha) {
+              decision =
+                'At α = ' + alpha.toString() +
+                ', the p-value is smaller than α, so you <strong>reject</strong> the null hypothesis of equal variances.';
+            } else {
+              decision =
+                'At α = ' + alpha.toString() +
+                ', the p-value is greater than or equal to α, so you <strong>do not reject</strong> the null hypothesis of equal variances.';
+            }
+          } else {
+            decision =
+              'The p-value could not be computed reliably due to numerical limitations. Interpret the F statistic with caution.';
+          }
+          interpretationEl.innerHTML = decision;
+
+          // Formula text
+          let formulaText = '';
+          if (centerMode === 'mean') {
+            formulaText =
+              'Z_ij = |X_ij − X̄_i|, where X̄_i is the mean of group i. ' +
+              'An ANOVA is computed on Z_ij, yielding F = MS_between / MS_within with df_between = k − 1 and df_within = N − k.';
+          } else {
+            formulaText =
+              'Z_ij = |X_ij − med_i|, where med_i is the median of group i (Brown–Forsythe version). ' +
+              'An ANOVA is computed on Z_ij, yielding F = MS_between / MS_within with df_between = k − 1 and df_within = N − k.';
+          }
+          formulaEl.textContent = formulaText;
+          formulaBox.classList.remove('hidden');
+
+          resultsBox.classList.remove('hidden');
+        }
+
+        function setExampleData() {
+          // Example: three groups with slightly different spreads
+          const presets = [
+            [10.2, 9.8, 10.5, 10.1, 9.9],
+            [11.0, 10.7, 11.3, 10.9, 11.1],
+            [9.5, 8.9, 9.8, 10.2, 9.3]
+          ];
+          currentGroups = 3;
+          rebuildGroupCards(presets);
+          centerSelect.value = 'median';
+          alphaSelect.value = '0.05';
+          clearError();
+          resultsBox.classList.add('hidden');
+          formulaBox.classList.add('hidden');
+        }
+
+        addGroupBtn.addEventListener('click', function() {
+          if (currentGroups >= MAX_GROUPS) return;
+          currentGroups += 1;
+          rebuildGroupCards();
+        });
+
+        removeGroupBtn.addEventListener('click', function() {
+          if (currentGroups <= MIN_GROUPS) return;
+          currentGroups -= 1;
+          rebuildGroupCards();
+        });
+
+        calcBtn.addEventListener('click', runLevene);
+        resetBtn.addEventListener('click', setExampleData);
+
+        // Initial state
+        setExampleData();
+      })();
+    </script>
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

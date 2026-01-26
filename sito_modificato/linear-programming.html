@@ -42,10 +42,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -186,8 +182,6 @@
 </head>
 
 <body class="bg-gray-50 text-gray-800">
-
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
 
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
@@ -660,7 +654,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -728,13 +722,887 @@
 
 
 
+
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
 
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Linear Programming Simplex Solver Logic -->
+    <script>
+      (function() {
+        const numVarsInput = document.getElementById('lp-num-vars');
+        const numConstraintsInput = document.getElementById('lp-num-constraints');
+        const problemTypeSelect = document.getElementById('lp-problem-type');
+        const buildBtn = document.getElementById('lp-build-btn');
+        const solveBtn = document.getElementById('lp-solve-btn');
+        const clearBtn = document.getElementById('lp-clear-btn');
+
+        const objectiveRowContainer = document.getElementById('lp-objective-row');
+        const constraintsTableWrapper = document.getElementById('lp-constraints-table-wrapper');
+
+        const errorBox = document.getElementById('lp-error-box');
+        const summaryBox = document.getElementById('lp-summary-box');
+        const iterationsWrapper = document.getElementById('lp-iterations-wrapper');
+        const iterationsBody = document.getElementById('lp-iterations-body');
+
+        function showError(msg) {
+          errorBox.textContent = msg;
+          errorBox.classList.remove('hidden');
+          summaryBox.classList.add('hidden');
+          iterationsWrapper.classList.add('hidden');
+          iterationsBody.innerHTML = '';
+        }
+
+        function clearMessages() {
+          errorBox.classList.add('hidden');
+          errorBox.textContent = '';
+          summaryBox.classList.add('hidden');
+          summaryBox.textContent = '';
+        }
+
+        function formatNumber(value) {
+          if (!isFinite(value)) return String(value);
+          const abs = Math.abs(value);
+          if (abs !== 0 && (abs < 1e-4 || abs >= 1e5)) {
+            return value.toExponential(6);
+          }
+          return value.toFixed(6).replace(/0+$/,'').replace(/\.$/,'');
+        }
+
+        function buildGrids() {
+          clearMessages();
+          const n = parseInt(numVarsInput.value, 10);
+          const m = parseInt(numConstraintsInput.value, 10);
+
+          if (!isFinite(n) || n < 2 || n > 6) {
+            showError('Number of variables must be between 2 and 6.');
+            return;
+          }
+          if (!isFinite(m) || m < 1 || m > 8) {
+            showError('Number of constraints must be between 1 and 8.');
+            return;
+          }
+
+          // Build objective row
+          let objHtml = '<table class="lp-table text-xs md:text-sm"><tbody><tr><th class="px-2 py-1 bg-gray-100 text-left">z =</th>';
+          for (let j = 0; j < n; j++) {
+            objHtml += '<td class="px-1 py-1 text-center">';
+            objHtml += '<input type="number" step="any" class="lp-input-cell rounded-md border border-gray-300 px-1 py-0.5 text-xs" ';
+            objHtml += 'data-role="obj-coeff" data-var-index="' + j + '" />';
+            objHtml += '<span class="ml-1">x' + (j + 1) + '</span>';
+            if (j < n - 1) objHtml += ' +';
+            objHtml += '</td>';
+          }
+          objHtml += '</tr></tbody></table>';
+          objectiveRowContainer.innerHTML = objHtml;
+
+          // Build constraints table
+          let cHtml = '<table class="lp-table text-xs md:text-sm min-w-full bg-white"><thead class="bg-gray-100"><tr>';
+          cHtml += '<th class="px-2 py-1 text-left">Constraint</th>';
+          for (let j = 0; j < n; j++) {
+            cHtml += '<th class="px-2 py-1 text-center">x' + (j + 1) + '</th>';
+          }
+          cHtml += '<th class="px-2 py-1 text-center">&le;</th>';
+          cHtml += '<th class="px-2 py-1 text-center">b</th>';
+          cHtml += '</tr></thead><tbody>';
+          for (let i = 0; i < m; i++) {
+            cHtml += '<tr>';
+            cHtml += '<td class="px-2 py-1 text-left">Constraint ' + (i + 1) + '</td>';
+            for (let j = 0; j < n; j++) {
+              cHtml += '<td class="px-2 py-1 text-center">';
+              cHtml += '<input type="number" step="any" class="lp-input-cell rounded-md border border-gray-300 px-1 py-0.5 text-xs" ';
+              cHtml += 'data-role="constr-coeff" data-row-index="' + i + '" data-var-index="' + j + '" />';
+              cHtml += '</td>';
+            }
+            cHtml += '<td class="px-2 py-1 text-center text-gray-500">&le;</td>';
+            cHtml += '<td class="px-2 py-1 text-center">';
+            cHtml += '<input type="number" step="any" class="lp-input-cell rounded-md border border-gray-300 px-1 py-0.5 text-xs" ';
+            cHtml += 'data-role="constr-rhs" data-row-index="' + i + '" />';
+            cHtml += '</td>';
+            cHtml += '</tr>';
+          }
+          cHtml += '</tbody></table>';
+          constraintsTableWrapper.innerHTML = cHtml;
+
+          iterationsWrapper.classList.add('hidden');
+          iterationsBody.innerHTML = '';
+        }
+
+        function readProblem() {
+          const n = parseInt(numVarsInput.value, 10);
+          const m = parseInt(numConstraintsInput.value, 10);
+
+          if (!isFinite(n) || n < 2 || n > 6) {
+            throw new Error('Number of variables must be between 2 and 6.');
+          }
+          if (!isFinite(m) || m < 1 || m > 8) {
+            throw new Error('Number of constraints must be between 1 and 8.');
+          }
+
+          const objInputs = objectiveRowContainer.querySelectorAll('input[data-role="obj-coeff"]');
+          if (objInputs.length !== n) {
+            throw new Error('Please press "Update grid" after changing dimensions.');
+          }
+
+          const c = [];
+          for (let j = 0; j < n; j++) {
+            const inp = objectiveRowContainer.querySelector('input[data-role="obj-coeff"][data-var-index="' + j + '"]');
+            const val = parseFloat(inp.value || '0');
+            if (!isFinite(val)) {
+              throw new Error('Objective coefficient for x' + (j + 1) + ' must be a valid number.');
+            }
+            c.push(val);
+          }
+
+          const A = [];
+          const b = [];
+          for (let i = 0; i < m; i++) {
+            const row = [];
+            for (let j = 0; j < n; j++) {
+              const inp = constraintsTableWrapper.querySelector('input[data-role="constr-coeff"][data-row-index="' + i + '"][data-var-index="' + j + '"]');
+              const val = parseFloat(inp.value || '0');
+              if (!isFinite(val)) {
+                throw new Error('Constraint ' + (i + 1) + ', coefficient for x' + (j + 1) + ' must be a valid number.');
+              }
+              row.push(val);
+            }
+            const rhsInp = constraintsTableWrapper.querySelector('input[data-role="constr-rhs"][data-row-index="' + i + '"]');
+            const rhsVal = parseFloat(rhsInp.value);
+            if (!isFinite(rhsVal)) {
+              throw new Error('Right-hand side b for constraint ' + (i + 1) + ' must be a valid number.');
+            }
+            if (rhsVal < 0) {
+              throw new Error('Right-hand side b for constraint ' + (i + 1) + ' must be nonnegative (b >= 0) for this standard-form simplex implementation.');
+            }
+            A.push(row);
+            b.push(rhsVal);
+          }
+
+          return { n, m, c, A, b };
+        }
+
+        function simplexSolve(n, m, c, A, b) {
+          const maxIterations = 50;
+
+          const totalVars = n + m; // original + slack
+          const rows = m + 1;      // m constraints + 1 objective
+          const cols = totalVars + 1; // variables + RHS
+
+          // Initialize tableau with zeros
+          const tableau = [];
+          for (let i = 0; i < rows; i++) {
+            const row = new Array(cols).fill(0);
+            tableau.push(row);
+          }
+
+          // Fill constraints rows
+          for (let i = 0; i < m; i++) {
+            for (let j = 0; j < n; j++) {
+              tableau[i][j] = A[i][j];
+            }
+            tableau[i][n + i] = 1; // slack variable
+            tableau[i][cols - 1] = b[i];
+          }
+
+          // Objective row: coefficients are -c_j for max problem
+          for (let j = 0; j < n; j++) {
+            tableau[rows - 1][j] = -c[j];
+          }
+          tableau[rows - 1][cols - 1] = 0;
+
+          // Basis: initially slack variables are basic
+          const basis = [];
+          for (let i = 0; i < m; i++) {
+            basis[i] = n + i;
+          }
+
+          const iterationsLog = [];
+
+          function isOptimal(lastRow) {
+            for (let j = 0; j < cols - 1; j++) {
+              if (lastRow[j] < -1e-10) return false;
+            }
+            return true;
+          }
+
+          function chooseEntering(lastRow) {
+            let minVal = 0;
+            let colIndex = -1;
+            for (let j = 0; j < cols - 1; j++) {
+              if (lastRow[j] < minVal - 1e-10) {
+                minVal = lastRow[j];
+                colIndex = j;
+              }
+            }
+            return colIndex;
+          }
+
+          function chooseLeaving(enteringCol) {
+            let minRatio = Infinity;
+            let rowIndex = -1;
+            for (let i = 0; i < m; i++) {
+              const aij = tableau[i][enteringCol];
+              if (aij > 1e-12) {
+                const ratio = tableau[i][cols - 1] / aij;
+                if (ratio >= 0 && ratio < minRatio - 1e-12) {
+                  minRatio = ratio;
+                  rowIndex = i;
+                }
+              }
+            }
+            return rowIndex;
+          }
+
+          function computeBasicSolution() {
+            const x = new Array(totalVars).fill(0);
+            for (let i = 0; i < m; i++) {
+              const varIndex = basis[i];
+              x[varIndex] = tableau[i][cols - 1];
+            }
+            return x;
+          }
+
+          // Save initial basic solution (iteration 0)
+          iterationsLog.push({
+            iteration: 0,
+            entering: null,
+            leaving: null,
+            z: tableau[rows - 1][cols - 1],
+            x: computeBasicSolution()
+          });
+
+          let status = 'optimal';
+          let message = '';
+
+          for (let k = 1; k <= maxIterations; k++) {
+            const lastRow = tableau[rows - 1];
+
+            if (isOptimal(lastRow)) {
+              status = 'optimal';
+              message = 'Optimal solution reached: no negative reduced costs remain in the objective row.';
+              break;
+            }
+
+            const enteringCol = chooseEntering(lastRow);
+            if (enteringCol === -1) {
+              status = 'optimal';
+              message = 'Optimal solution reached.';
+              break;
+            }
+
+            const leavingRow = chooseLeaving(enteringCol);
+            if (leavingRow === -1) {
+              status = 'unbounded';
+              message = 'The problem appears unbounded in the direction of improvement (no valid leaving variable for the chosen entering variable).';
+              break;
+            }
+
+            // Pivot
+            const pivot = tableau[leavingRow][enteringCol];
+            if (Math.abs(pivot) < 1e-14) {
+              status = 'numerical issue';
+              message = 'Pivot element is numerically zero; consider rescaling or reformulating the problem.';
+              break;
+            }
+
+            // Normalize pivot row
+            for (let j = 0; j < cols; j++) {
+              tableau[leavingRow][j] /= pivot;
+            }
+
+            // Eliminate other entries in entering column
+            for (let i = 0; i < rows; i++) {
+              if (i === leavingRow) continue;
+              const factor = tableau[i][enteringCol];
+              if (Math.abs(factor) > 1e-14) {
+                for (let j = 0; j < cols; j++) {
+                  tableau[i][j] -= factor * tableau[leavingRow][j];
+                }
+              }
+            }
+
+            // Update basis
+            basis[leavingRow] = enteringCol;
+
+            // Log iteration
+            const x = computeBasicSolution();
+            const z = tableau[rows - 1][cols - 1];
+            iterationsLog.push({
+              iteration: k,
+              entering: enteringCol,
+              leaving: leavingRow,
+              z: z,
+              x: x
+            });
+
+            if (k === maxIterations) {
+              status = 'iteration_limit';
+              message = 'Maximum number of simplex iterations reached. The solution may still be improvable.';
+            }
+          }
+
+          const final = iterationsLog[iterationsLog.length - 1];
+          const xOpt = final.x.slice(0, n); // only decision vars
+          const zOpt = final.z;
+
+          return {
+            status: status,
+            message: message,
+            iterations: iterationsLog,
+            xOpt: xOpt,
+            zOpt: zOpt,
+            n: n,
+            m: m
+          };
+        }
+
+        function renderIterations(result) {
+          iterationsBody.innerHTML = '';
+          const n = result.n;
+          const m = result.m;
+
+          for (let idx = 0; idx < result.iterations.length; idx++) {
+            const it = result.iterations[idx];
+            const tr = document.createElement('tr');
+
+            const enteringName = it.entering == null ? '—' :
+              (it.entering < n ? 'x' + (it.entering + 1) : 's' + (it.entering - n + 1));
+            const leavingName = it.leaving == null ? '—' :
+              (it.leaving < m ? 'row ' + (it.leaving + 1) : 'row ' + (it.leaving + 1));
+
+            const basicX = it.x.slice(0, n)
+              .map((val, j) => 'x' + (j + 1) + ' = ' + formatNumber(val))
+              .join(', ');
+
+            const cells = [
+              it.iteration,
+              enteringName,
+              leavingName,
+              formatNumber(it.z),
+              basicX
+            ];
+
+            cells.forEach((c) => {
+              const td = document.createElement('td');
+              td.className = 'px-2 py-1 text-left align-top';
+              td.textContent = c;
+              tr.appendChild(td);
+            });
+            iterationsBody.appendChild(tr);
+          }
+
+          iterationsWrapper.classList.remove('hidden');
+        }
+
+        function solve() {
+          clearMessages();
+          iterationsWrapper.classList.add('hidden');
+          iterationsBody.innerHTML = '';
+
+          try {
+            const problem = readProblem();
+            const result = simplexSolve(problem.n, problem.m, problem.c, problem.A, problem.b);
+
+            let summaryHtml = '';
+            if (result.status === 'optimal') {
+              summaryHtml += '<p class="mb-1"><strong>Status:</strong> Optimal solution found.</p>';
+            } else if (result.status === 'unbounded') {
+              summaryHtml += '<p class="mb-1"><strong>Status:</strong> Unbounded problem.</p>';
+            } else if (result.status === 'iteration_limit') {
+              summaryHtml += '<p class="mb-1"><strong>Status:</strong> Iteration limit reached.</p>';
+            } else {
+              summaryHtml += '<p class="mb-1"><strong>Status:</strong> ' + result.status + '.</p>';
+            }
+
+            summaryHtml += '<p class="mb-1"><strong>Objective value:</strong> z ≈ ' + formatNumber(result.zOpt) + '</p>';
+            summaryHtml += '<p class="mb-1"><strong>Decision variables:</strong> ';
+            summaryHtml += result.xOpt.map((v, j) => 'x' + (j + 1) + ' = ' + formatNumber(v)).join(', ');
+            summaryHtml += '</p>';
+            summaryHtml += '<p class="text-xs text-gray-700 mt-1">' +
+              (result.message || 'Review the simplex iteration table for details of each pivot step.') +
+              ' Always check that the formulation, units, and constraints reflect your real-world problem.' +
+              '</p>';
+
+            summaryBox.innerHTML = summaryHtml;
+            summaryBox.classList.remove('hidden');
+            errorBox.classList.add('hidden');
+
+            renderIterations(result);
+
+          } catch (err) {
+            showError(err.message || String(err));
+          }
+        }
+
+        function clearAll() {
+          numVarsInput.value = 3;
+          numConstraintsInput.value = 3;
+          problemTypeSelect.value = 'max';
+          objectiveRowContainer.innerHTML = '';
+          constraintsTableWrapper.innerHTML = '';
+          iterationsBody.innerHTML = '';
+          iterationsWrapper.classList.add('hidden');
+          clearMessages();
+          buildGrids();
+        }
+
+        buildBtn.addEventListener('click', buildGrids);
+        solveBtn.addEventListener('click', solve);
+        clearBtn.addEventListener('click', clearAll);
+
+        // Build initial grids on load
+        buildGrids();
+      })();
+    </script>
+
+
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Linear Programming Simplex Solver Logic -->
+    <script>
+      (function() {
+        const numVarsInput = document.getElementById('lp-num-vars');
+        const numConstraintsInput = document.getElementById('lp-num-constraints');
+        const problemTypeSelect = document.getElementById('lp-problem-type');
+        const buildBtn = document.getElementById('lp-build-btn');
+        const solveBtn = document.getElementById('lp-solve-btn');
+        const clearBtn = document.getElementById('lp-clear-btn');
+
+        const objectiveRowContainer = document.getElementById('lp-objective-row');
+        const constraintsTableWrapper = document.getElementById('lp-constraints-table-wrapper');
+
+        const errorBox = document.getElementById('lp-error-box');
+        const summaryBox = document.getElementById('lp-summary-box');
+        const iterationsWrapper = document.getElementById('lp-iterations-wrapper');
+        const iterationsBody = document.getElementById('lp-iterations-body');
+
+        function showError(msg) {
+          errorBox.textContent = msg;
+          errorBox.classList.remove('hidden');
+          summaryBox.classList.add('hidden');
+          iterationsWrapper.classList.add('hidden');
+          iterationsBody.innerHTML = '';
+        }
+
+        function clearMessages() {
+          errorBox.classList.add('hidden');
+          errorBox.textContent = '';
+          summaryBox.classList.add('hidden');
+          summaryBox.textContent = '';
+        }
+
+        function formatNumber(value) {
+          if (!isFinite(value)) return String(value);
+          const abs = Math.abs(value);
+          if (abs !== 0 && (abs < 1e-4 || abs >= 1e5)) {
+            return value.toExponential(6);
+          }
+          return value.toFixed(6).replace(/0+$/,'').replace(/\.$/,'');
+        }
+
+        function buildGrids() {
+          clearMessages();
+          const n = parseInt(numVarsInput.value, 10);
+          const m = parseInt(numConstraintsInput.value, 10);
+
+          if (!isFinite(n) || n < 2 || n > 6) {
+            showError('Number of variables must be between 2 and 6.');
+            return;
+          }
+          if (!isFinite(m) || m < 1 || m > 8) {
+            showError('Number of constraints must be between 1 and 8.');
+            return;
+          }
+
+          // Build objective row
+          let objHtml = '<table class="lp-table text-xs md:text-sm"><tbody><tr><th class="px-2 py-1 bg-gray-100 text-left">z =</th>';
+          for (let j = 0; j < n; j++) {
+            objHtml += '<td class="px-1 py-1 text-center">';
+            objHtml += '<input type="number" step="any" class="lp-input-cell rounded-md border border-gray-300 px-1 py-0.5 text-xs" ';
+            objHtml += 'data-role="obj-coeff" data-var-index="' + j + '" />';
+            objHtml += '<span class="ml-1">x' + (j + 1) + '</span>';
+            if (j < n - 1) objHtml += ' +';
+            objHtml += '</td>';
+          }
+          objHtml += '</tr></tbody></table>';
+          objectiveRowContainer.innerHTML = objHtml;
+
+          // Build constraints table
+          let cHtml = '<table class="lp-table text-xs md:text-sm min-w-full bg-white"><thead class="bg-gray-100"><tr>';
+          cHtml += '<th class="px-2 py-1 text-left">Constraint</th>';
+          for (let j = 0; j < n; j++) {
+            cHtml += '<th class="px-2 py-1 text-center">x' + (j + 1) + '</th>';
+          }
+          cHtml += '<th class="px-2 py-1 text-center">&le;</th>';
+          cHtml += '<th class="px-2 py-1 text-center">b</th>';
+          cHtml += '</tr></thead><tbody>';
+          for (let i = 0; i < m; i++) {
+            cHtml += '<tr>';
+            cHtml += '<td class="px-2 py-1 text-left">Constraint ' + (i + 1) + '</td>';
+            for (let j = 0; j < n; j++) {
+              cHtml += '<td class="px-2 py-1 text-center">';
+              cHtml += '<input type="number" step="any" class="lp-input-cell rounded-md border border-gray-300 px-1 py-0.5 text-xs" ';
+              cHtml += 'data-role="constr-coeff" data-row-index="' + i + '" data-var-index="' + j + '" />';
+              cHtml += '</td>';
+            }
+            cHtml += '<td class="px-2 py-1 text-center text-gray-500">&le;</td>';
+            cHtml += '<td class="px-2 py-1 text-center">';
+            cHtml += '<input type="number" step="any" class="lp-input-cell rounded-md border border-gray-300 px-1 py-0.5 text-xs" ';
+            cHtml += 'data-role="constr-rhs" data-row-index="' + i + '" />';
+            cHtml += '</td>';
+            cHtml += '</tr>';
+          }
+          cHtml += '</tbody></table>';
+          constraintsTableWrapper.innerHTML = cHtml;
+
+          iterationsWrapper.classList.add('hidden');
+          iterationsBody.innerHTML = '';
+        }
+
+        function readProblem() {
+          const n = parseInt(numVarsInput.value, 10);
+          const m = parseInt(numConstraintsInput.value, 10);
+
+          if (!isFinite(n) || n < 2 || n > 6) {
+            throw new Error('Number of variables must be between 2 and 6.');
+          }
+          if (!isFinite(m) || m < 1 || m > 8) {
+            throw new Error('Number of constraints must be between 1 and 8.');
+          }
+
+          const objInputs = objectiveRowContainer.querySelectorAll('input[data-role="obj-coeff"]');
+          if (objInputs.length !== n) {
+            throw new Error('Please press "Update grid" after changing dimensions.');
+          }
+
+          const c = [];
+          for (let j = 0; j < n; j++) {
+            const inp = objectiveRowContainer.querySelector('input[data-role="obj-coeff"][data-var-index="' + j + '"]');
+            const val = parseFloat(inp.value || '0');
+            if (!isFinite(val)) {
+              throw new Error('Objective coefficient for x' + (j + 1) + ' must be a valid number.');
+            }
+            c.push(val);
+          }
+
+          const A = [];
+          const b = [];
+          for (let i = 0; i < m; i++) {
+            const row = [];
+            for (let j = 0; j < n; j++) {
+              const inp = constraintsTableWrapper.querySelector('input[data-role="constr-coeff"][data-row-index="' + i + '"][data-var-index="' + j + '"]');
+              const val = parseFloat(inp.value || '0');
+              if (!isFinite(val)) {
+                throw new Error('Constraint ' + (i + 1) + ', coefficient for x' + (j + 1) + ' must be a valid number.');
+              }
+              row.push(val);
+            }
+            const rhsInp = constraintsTableWrapper.querySelector('input[data-role="constr-rhs"][data-row-index="' + i + '"]');
+            const rhsVal = parseFloat(rhsInp.value);
+            if (!isFinite(rhsVal)) {
+              throw new Error('Right-hand side b for constraint ' + (i + 1) + ' must be a valid number.');
+            }
+            if (rhsVal < 0) {
+              throw new Error('Right-hand side b for constraint ' + (i + 1) + ' must be nonnegative (b >= 0) for this standard-form simplex implementation.');
+            }
+            A.push(row);
+            b.push(rhsVal);
+          }
+
+          return { n, m, c, A, b };
+        }
+
+        function simplexSolve(n, m, c, A, b) {
+          const maxIterations = 50;
+
+          const totalVars = n + m; // original + slack
+          const rows = m + 1;      // m constraints + 1 objective
+          const cols = totalVars + 1; // variables + RHS
+
+          // Initialize tableau with zeros
+          const tableau = [];
+          for (let i = 0; i < rows; i++) {
+            const row = new Array(cols).fill(0);
+            tableau.push(row);
+          }
+
+          // Fill constraints rows
+          for (let i = 0; i < m; i++) {
+            for (let j = 0; j < n; j++) {
+              tableau[i][j] = A[i][j];
+            }
+            tableau[i][n + i] = 1; // slack variable
+            tableau[i][cols - 1] = b[i];
+          }
+
+          // Objective row: coefficients are -c_j for max problem
+          for (let j = 0; j < n; j++) {
+            tableau[rows - 1][j] = -c[j];
+          }
+          tableau[rows - 1][cols - 1] = 0;
+
+          // Basis: initially slack variables are basic
+          const basis = [];
+          for (let i = 0; i < m; i++) {
+            basis[i] = n + i;
+          }
+
+          const iterationsLog = [];
+
+          function isOptimal(lastRow) {
+            for (let j = 0; j < cols - 1; j++) {
+              if (lastRow[j] < -1e-10) return false;
+            }
+            return true;
+          }
+
+          function chooseEntering(lastRow) {
+            let minVal = 0;
+            let colIndex = -1;
+            for (let j = 0; j < cols - 1; j++) {
+              if (lastRow[j] < minVal - 1e-10) {
+                minVal = lastRow[j];
+                colIndex = j;
+              }
+            }
+            return colIndex;
+          }
+
+          function chooseLeaving(enteringCol) {
+            let minRatio = Infinity;
+            let rowIndex = -1;
+            for (let i = 0; i < m; i++) {
+              const aij = tableau[i][enteringCol];
+              if (aij > 1e-12) {
+                const ratio = tableau[i][cols - 1] / aij;
+                if (ratio >= 0 && ratio < minRatio - 1e-12) {
+                  minRatio = ratio;
+                  rowIndex = i;
+                }
+              }
+            }
+            return rowIndex;
+          }
+
+          function computeBasicSolution() {
+            const x = new Array(totalVars).fill(0);
+            for (let i = 0; i < m; i++) {
+              const varIndex = basis[i];
+              x[varIndex] = tableau[i][cols - 1];
+            }
+            return x;
+          }
+
+          // Save initial basic solution (iteration 0)
+          iterationsLog.push({
+            iteration: 0,
+            entering: null,
+            leaving: null,
+            z: tableau[rows - 1][cols - 1],
+            x: computeBasicSolution()
+          });
+
+          let status = 'optimal';
+          let message = '';
+
+          for (let k = 1; k <= maxIterations; k++) {
+            const lastRow = tableau[rows - 1];
+
+            if (isOptimal(lastRow)) {
+              status = 'optimal';
+              message = 'Optimal solution reached: no negative reduced costs remain in the objective row.';
+              break;
+            }
+
+            const enteringCol = chooseEntering(lastRow);
+            if (enteringCol === -1) {
+              status = 'optimal';
+              message = 'Optimal solution reached.';
+              break;
+            }
+
+            const leavingRow = chooseLeaving(enteringCol);
+            if (leavingRow === -1) {
+              status = 'unbounded';
+              message = 'The problem appears unbounded in the direction of improvement (no valid leaving variable for the chosen entering variable).';
+              break;
+            }
+
+            // Pivot
+            const pivot = tableau[leavingRow][enteringCol];
+            if (Math.abs(pivot) < 1e-14) {
+              status = 'numerical issue';
+              message = 'Pivot element is numerically zero; consider rescaling or reformulating the problem.';
+              break;
+            }
+
+            // Normalize pivot row
+            for (let j = 0; j < cols; j++) {
+              tableau[leavingRow][j] /= pivot;
+            }
+
+            // Eliminate other entries in entering column
+            for (let i = 0; i < rows; i++) {
+              if (i === leavingRow) continue;
+              const factor = tableau[i][enteringCol];
+              if (Math.abs(factor) > 1e-14) {
+                for (let j = 0; j < cols; j++) {
+                  tableau[i][j] -= factor * tableau[leavingRow][j];
+                }
+              }
+            }
+
+            // Update basis
+            basis[leavingRow] = enteringCol;
+
+            // Log iteration
+            const x = computeBasicSolution();
+            const z = tableau[rows - 1][cols - 1];
+            iterationsLog.push({
+              iteration: k,
+              entering: enteringCol,
+              leaving: leavingRow,
+              z: z,
+              x: x
+            });
+
+            if (k === maxIterations) {
+              status = 'iteration_limit';
+              message = 'Maximum number of simplex iterations reached. The solution may still be improvable.';
+            }
+          }
+
+          const final = iterationsLog[iterationsLog.length - 1];
+          const xOpt = final.x.slice(0, n); // only decision vars
+          const zOpt = final.z;
+
+          return {
+            status: status,
+            message: message,
+            iterations: iterationsLog,
+            xOpt: xOpt,
+            zOpt: zOpt,
+            n: n,
+            m: m
+          };
+        }
+
+        function renderIterations(result) {
+          iterationsBody.innerHTML = '';
+          const n = result.n;
+          const m = result.m;
+
+          for (let idx = 0; idx < result.iterations.length; idx++) {
+            const it = result.iterations[idx];
+            const tr = document.createElement('tr');
+
+            const enteringName = it.entering == null ? '—' :
+              (it.entering < n ? 'x' + (it.entering + 1) : 's' + (it.entering - n + 1));
+            const leavingName = it.leaving == null ? '—' :
+              (it.leaving < m ? 'row ' + (it.leaving + 1) : 'row ' + (it.leaving + 1));
+
+            const basicX = it.x.slice(0, n)
+              .map((val, j) => 'x' + (j + 1) + ' = ' + formatNumber(val))
+              .join(', ');
+
+            const cells = [
+              it.iteration,
+              enteringName,
+              leavingName,
+              formatNumber(it.z),
+              basicX
+            ];
+
+            cells.forEach((c) => {
+              const td = document.createElement('td');
+              td.className = 'px-2 py-1 text-left align-top';
+              td.textContent = c;
+              tr.appendChild(td);
+            });
+            iterationsBody.appendChild(tr);
+          }
+
+          iterationsWrapper.classList.remove('hidden');
+        }
+
+        function solve() {
+          clearMessages();
+          iterationsWrapper.classList.add('hidden');
+          iterationsBody.innerHTML = '';
+
+          try {
+            const problem = readProblem();
+            const result = simplexSolve(problem.n, problem.m, problem.c, problem.A, problem.b);
+
+            let summaryHtml = '';
+            if (result.status === 'optimal') {
+              summaryHtml += '<p class="mb-1"><strong>Status:</strong> Optimal solution found.</p>';
+            } else if (result.status === 'unbounded') {
+              summaryHtml += '<p class="mb-1"><strong>Status:</strong> Unbounded problem.</p>';
+            } else if (result.status === 'iteration_limit') {
+              summaryHtml += '<p class="mb-1"><strong>Status:</strong> Iteration limit reached.</p>';
+            } else {
+              summaryHtml += '<p class="mb-1"><strong>Status:</strong> ' + result.status + '.</p>';
+            }
+
+            summaryHtml += '<p class="mb-1"><strong>Objective value:</strong> z ≈ ' + formatNumber(result.zOpt) + '</p>';
+            summaryHtml += '<p class="mb-1"><strong>Decision variables:</strong> ';
+            summaryHtml += result.xOpt.map((v, j) => 'x' + (j + 1) + ' = ' + formatNumber(v)).join(', ');
+            summaryHtml += '</p>';
+            summaryHtml += '<p class="text-xs text-gray-700 mt-1">' +
+              (result.message || 'Review the simplex iteration table for details of each pivot step.') +
+              ' Always check that the formulation, units, and constraints reflect your real-world problem.' +
+              '</p>';
+
+            summaryBox.innerHTML = summaryHtml;
+            summaryBox.classList.remove('hidden');
+            errorBox.classList.add('hidden');
+
+            renderIterations(result);
+
+          } catch (err) {
+            showError(err.message || String(err));
+          }
+        }
+
+        function clearAll() {
+          numVarsInput.value = 3;
+          numConstraintsInput.value = 3;
+          problemTypeSelect.value = 'max';
+          objectiveRowContainer.innerHTML = '';
+          constraintsTableWrapper.innerHTML = '';
+          iterationsBody.innerHTML = '';
+          iterationsWrapper.classList.add('hidden');
+          clearMessages();
+          buildGrids();
+        }
+
+        buildBtn.addEventListener('click', buildGrids);
+        solveBtn.addEventListener('click', solve);
+        clearBtn.addEventListener('click', clearAll);
+
+        // Build initial grids on load
+        buildGrids();
+      })();
+    </script>
+
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

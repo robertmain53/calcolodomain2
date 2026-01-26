@@ -50,10 +50,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -214,8 +210,6 @@
 <body class="bg-gray-50 text-gray-800">
 
     <!-- BODY_SCRIPTS_INIZIO -->
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
         <div class="flex justify-between items-center">
@@ -756,7 +750,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -823,14 +817,832 @@
 
 
 
+
     
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
     
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      // Mobile menu toggle
+      document.getElementById('mobile-menu-toggle')?.addEventListener('click', function () {
+        const menu = document.getElementById('mobile-menu');
+        if (!menu) return;
+        const isHidden = menu.classList.contains('hidden');
+        menu.classList.toggle('hidden', !isHidden);
+        this.setAttribute('aria-expanded', String(isHidden));
+      });
+
+      document.addEventListener('DOMContentLoaded', function () {
+        const funcInput = document.getElementById('func-input');
+        const pointInput = document.getElementById('point-input');
+        const samplesInput = document.getElementById('samples-input');
+        const decimalsSelect = document.getElementById('decimals');
+        const typeRadios = document.querySelectorAll('input[name="limit-type"]');
+
+        const btnCalc = document.getElementById('btn-calc-limit');
+        const btnClear = document.getElementById('btn-clear-limit');
+        const errorEl = document.getElementById('limit-error');
+
+        const resLeft = document.getElementById('res-left');
+        const resRight = document.getElementById('res-right');
+        const resTwo = document.getElementById('res-two-sided');
+        const resTwoNote = document.getElementById('res-two-sided-note');
+        const resBehaviour = document.getElementById('res-behaviour');
+        const resAtPoint = document.getElementById('res-at-point');
+        const resRate = document.getElementById('res-rate');
+        const resWarnings = document.getElementById('res-warnings');
+
+        const tableLeftBody = document.getElementById('table-left-body');
+        const tableRightBody = document.getElementById('table-right-body');
+
+        const exampleButtons = document.querySelectorAll('[data-example]');
+
+        function setResult(container, text) {
+          if (!container) return;
+          const span = container.querySelector('.result-value');
+          if (span) span.textContent = text;
+        }
+
+        function clearAll() {
+          [resLeft, resRight, resTwo, resBehaviour, resAtPoint, resRate, resWarnings].forEach(function (el) {
+            if (!el) return;
+            const spans = el.querySelectorAll('.result-value');
+            spans.forEach(span => span.textContent = '—');
+          });
+          if (resTwoNote) resTwoNote.textContent = '';
+          if (tableLeftBody) tableLeftBody.innerHTML = '';
+          if (tableRightBody) tableRightBody.innerHTML = '';
+          if (errorEl) errorEl.textContent = '';
+        }
+
+        function getDecimals() {
+          const d = Number(decimalsSelect.value);
+          if (!Number.isInteger(d) || d < 0 || d > 16) return 6;
+          return d;
+        }
+
+        function fmt(v) {
+          if (!isFinite(v)) {
+            if (v === Infinity) return '+∞';
+            if (v === -Infinity) return '−∞';
+            return 'NaN';
+          }
+          const d = getDecimals();
+          return Number(v.toFixed(d)).toString();
+        }
+
+        function buildEvaluator(exprRaw) {
+          if (!exprRaw || !exprRaw.trim()) {
+            throw new Error('Function is empty.');
+          }
+          let expr = exprRaw.trim();
+
+          // Replace caret with exponentiation operator
+          expr = expr.replace(/\^/g, '**');
+
+          // Replace common math functions with Math. equivalents
+          const funcs = [
+            'sin','cos','tan','asin','acos','atan',
+            'sinh','cosh','tanh',
+            'log','ln','sqrt','abs','exp','floor','ceil','round','pow','max','min'
+          ];
+          funcs.forEach(fn => {
+            const re = new RegExp('\\b' + fn + '\\b', 'g');
+            if (fn === 'ln') {
+              expr = expr.replace(re, 'Math.log');
+            } else if (fn === 'log') {
+              // interpret log(x) as natural log; users can use log10(x) explicitly if needed
+              expr = expr.replace(re, 'Math.log');
+            } else {
+              expr = expr.replace(re, 'Math.' + fn);
+            }
+          });
+
+          // Replace constants pi and e (but avoid replacing in longer names)
+          expr = expr.replace(/\bpi\b/gi, 'Math.PI');
+          expr = expr.replace(/π/g, 'Math.PI');
+          expr = expr.replace(/\be\b/g, 'Math.E');
+
+          // Basic safety: only allow a limited character set
+          const allowedPattern = /^[0-9+\-*/().,^xXPIsincotahedlrgmM \t\n\r_]*$/;
+          // The pattern above is generous; we still rely on controlled replacements and a local Function.
+
+          // Build the evaluator
+          const fn = new Function('x', '"use strict"; return (' + expr + ');');
+          return function (x) {
+            const val = fn(x);
+            if (typeof val !== 'number' || !isFinite(val)) {
+              return val;
+            }
+            return val;
+          };
+        }
+
+        function sampleAroundPoint(f, a, n) {
+          const epsilons = [];
+          // Generate decreasing epsilons: 10^-1, 5*10^-2, 10^-2, ..., up to n points
+          let base = 0.1;
+          while (epsilons.length < n) {
+            epsilons.push(base);
+            if (epsilons.length >= n) break;
+            epsilons.push(base / 2);
+            base /= 10;
+          }
+          epsilons.length = n;
+
+          const left = [];
+          const right = [];
+          for (let i = 0; i < epsilons.length; i++) {
+            const h = epsilons[i];
+            const xl = a - h;
+            const xr = a + h;
+            let fl = NaN, fr = NaN;
+            try { fl = f(xl); } catch (e) { fl = NaN; }
+            try { fr = f(xr); } catch (e) { fr = NaN; }
+            if (isFinite(fl)) left.push({ x: xl, y: fl, h });
+            if (isFinite(fr)) right.push({ x: xr, y: fr, h });
+          }
+          return { left, right };
+        }
+
+        function sampleAtInfinity(f, direction, n) {
+          // direction: +1 for +∞, -1 for −∞
+          const xs = [];
+          // Sample at exponentially growing magnitudes
+          let base = 1;
+          while (xs.length < n) {
+            base *= 2;
+            xs.push(direction * base);
+          }
+          const pts = [];
+          for (let x of xs) {
+            let val = NaN;
+            try { val = f(x); } catch (e) { val = NaN; }
+            if (isFinite(val)) pts.push({ x, y: val });
+          }
+          return pts;
+        }
+
+        function estimateLimitFromSamples(samples) {
+          if (!samples || samples.length === 0) return { value: NaN, spread: NaN };
+          // Use last third of samples to estimate convergence
+          const m = samples.length;
+          const start = Math.floor(m * 2 / 3);
+          const slice = samples.slice(start);
+          if (slice.length === 0) return { value: NaN, spread: NaN };
+          const vals = slice.map(p => p.y);
+          const avg = vals.reduce((a,b)=>a+b,0) / vals.length;
+          const maxDev = Math.max.apply(null, vals.map(v => Math.abs(v - avg)));
+          return { value: avg, spread: maxDev };
+        }
+
+        function classifyBehaviour(Lleft, spreadL, Lright, spreadR, type, warnList) {
+          const tolBase = 1e-4;
+          const tolLeft = Math.max(tolBase, spreadL * 5);
+          const tolRight = Math.max(tolBase, spreadR * 5);
+
+          if (!isFinite(Lleft) && !isFinite(Lright)) {
+            return 'Insufficient valid samples to classify behaviour.';
+          }
+
+          if (type === 'plus-infinity' || type === 'minus-infinity') {
+            const L = isFinite(Lright) ? Lright : Lleft;
+            if (!isFinite(L)) {
+              return 'Limit at infinity cannot be approximated with current settings.';
+            }
+            if (Math.abs(L) > 1e6) {
+              return 'Function appears to diverge in magnitude as x → ' + (type === 'plus-infinity' ? '+∞.' : '−∞.');
+            }
+            return 'Function appears to approach ' + fmt(L) + ' as x → ' + (type === 'plus-infinity' ? '+∞.' : '−∞.');
+          }
+
+          if (isFinite(Lleft) && isFinite(Lright)) {
+            const diff = Math.abs(Lleft - Lright);
+            const tol = Math.max(tolLeft, tolRight);
+            if (diff <= tol) {
+              return 'Left-hand and right-hand limits appear to agree numerically (two-sided limit likely exists).';
+            } else {
+              warnList.push('Left and right limits differ significantly; the two-sided limit does not appear to exist.');
+              return 'Possible jump or other discontinuity (left and right limits differ).';
+            }
+          }
+
+          if (isFinite(Lleft) && !isFinite(Lright)) {
+            return 'Only the left-hand side could be approximated; right-hand behaviour is numerically unstable or undefined.';
+          }
+          if (!isFinite(Lleft) && isFinite(Lright)) {
+            return 'Only the right-hand side could be approximated; left-hand behaviour is numerically unstable or undefined.';
+          }
+          return 'Behaviour cannot be classified with the current sampling (try adjusting the function or settings).';
+        }
+
+        function populateTable(body, samples) {
+          if (!body) return;
+          body.innerHTML = '';
+          const d = getDecimals();
+          samples.forEach(p => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b';
+            const tdX = document.createElement('td');
+            tdX.className = 'px-3 py-1.5 text-gray-700';
+            tdX.textContent = Number(p.x.toFixed(d)).toString();
+            const tdY = document.createElement('td');
+            tdY.className = 'px-3 py-1.5 text-gray-700';
+            tdY.textContent = Number(p.y.toFixed(d)).toString();
+            tr.appendChild(tdX);
+            tr.appendChild(tdY);
+            body.appendChild(tr);
+          });
+        }
+
+        function computeLimit() {
+          clearAll();
+
+          let expr = funcInput.value;
+          const type = (Array.from(typeRadios).find(r => r.checked)?.value) || 'two-sided';
+          const numSamples = Number(samplesInput.value);
+
+          if (!expr || !expr.trim()) {
+            errorEl.textContent = 'Please enter a function f(x).';
+            return;
+          }
+          if (!Number.isInteger(numSamples) || numSamples < 3 || numSamples > 40) {
+            errorEl.textContent = 'Sample points must be an integer between 3 and 40.';
+            return;
+          }
+
+          let a = Number(pointInput.value);
+          if (!isFinite(a) && type !== 'plus-infinity' && type !== 'minus-infinity') {
+            errorEl.textContent = 'Point a must be a valid number.';
+            return;
+          }
+
+          let f;
+          try {
+            f = buildEvaluator(expr);
+          } catch (e) {
+            errorEl.textContent = 'Could not parse function: ' + e.message;
+            return;
+          }
+
+          const warnings = [];
+
+          // Value at point (if applicable)
+          if (type !== 'plus-infinity' && type !== 'minus-infinity') {
+            let valAt = NaN;
+            try { valAt = f(a); } catch (e) { valAt = NaN; }
+            if (isFinite(valAt)) {
+              setResult(resAtPoint, fmt(valAt));
+            } else {
+              setResult(resAtPoint, 'undefined at x = ' + a);
+            }
+          } else {
+            setResult(resAtPoint, 'Not applicable for limits at infinity');
+          }
+
+          let Lleft = NaN, Lright = NaN, spreadL = NaN, spreadR = NaN;
+          let leftSamples = [], rightSamples = [];
+
+          if (type === 'plus-infinity' || type === 'minus-infinity') {
+            const dir = type === 'plus-infinity' ? 1 : -1;
+            const pts = sampleAtInfinity(f, dir, numSamples);
+            rightSamples = pts;  // use right slots
+            const est = estimateLimitFromSamples(pts);
+            Lright = est.value;
+            spreadR = est.spread;
+            populateTable(tableLeftBody, []);
+            populateTable(tableRightBody, pts);
+            setResult(resLeft, 'Not applicable');
+            setResult(resRight, isFinite(Lright) ? fmt(Lright) : '—');
+            setResult(resTwo, isFinite(Lright) ? fmt(Lright) : '—');
+            resTwoNote.textContent = isFinite(Lright)
+              ? 'Numerical approximation of limit as x → ' + (dir === 1 ? '+∞' : '−∞') + '.'
+              : '';
+          } else {
+            const samples = sampleAroundPoint(f, a, numSamples);
+            leftSamples = samples.left;
+            rightSamples = samples.right;
+            populateTable(tableLeftBody, leftSamples.slice().reverse()); // closest last, but show from far to near
+            populateTable(tableRightBody, rightSamples);
+
+            const estL = estimateLimitFromSamples(leftSamples);
+            const estR = estimateLimitFromSamples(rightSamples);
+            Lleft = estL.value;
+            spreadL = estL.spread;
+            Lright = estR.value;
+            spreadR = estR.spread;
+
+            setResult(resLeft, isFinite(Lleft) ? fmt(Lleft) : '—');
+            setResult(resRight, isFinite(Lright) ? fmt(Lright) : '—');
+
+            if (type === 'left') {
+              setResult(resTwo, isFinite(Lleft) ? fmt(Lleft) : '—');
+              resTwoNote.textContent = 'Left-hand limit only (x → a⁻).';
+            } else if (type === 'right') {
+              setResult(resTwo, isFinite(Lright) ? fmt(Lright) : '—');
+              resTwoNote.textContent = 'Right-hand limit only (x → a⁺).';
+            } else {
+              if (isFinite(Lleft) && isFinite(Lright)) {
+                const avg = (Lleft + Lright) / 2;
+                setResult(resTwo, fmt(avg));
+                resTwoNote.textContent = 'Average of numerical left-hand and right-hand limits.';
+              } else {
+                setResult(resTwo, '—');
+                resTwoNote.textContent = '';
+              }
+            }
+          }
+
+          const behaviour = classifyBehaviour(Lleft, spreadL, Lright, spreadR, type, warnings);
+          setResult(resBehaviour, behaviour);
+
+          // Rate of approach (heuristic: compare last two values if available)
+          let rateMsg = '—';
+          if (type === 'plus-infinity' || type === 'minus-infinity') {
+            const pts = rightSamples;
+            if (pts.length >= 2 && isFinite(Lright)) {
+              const last = pts[pts.length - 1].y;
+              const prev = pts[pts.length - 2].y;
+              const diff = Math.abs(last - prev);
+              rateMsg = 'Consecutive samples near infinity differ by ≈ ' + fmt(diff) + '.';
+            }
+          } else {
+            const refSamples = rightSamples.length >= leftSamples.length ? rightSamples : leftSamples;
+            if (refSamples.length >= 2) {
+              const last = refSamples[refSamples.length - 1].y;
+              const prev = refSamples[refSamples.length - 2].y;
+              const diff = Math.abs(last - prev);
+              rateMsg = 'Consecutive samples near a differ by ≈ ' + fmt(diff) + '.';
+            }
+          }
+          setResult(resRate, rateMsg);
+
+          if (warnings.length === 0) {
+            setResult(resWarnings, 'No major numerical issues detected. Always confirm important results analytically.');
+          } else {
+            setResult(resWarnings, warnings.join(' '));
+          }
+        }
+
+        if (btnCalc) btnCalc.addEventListener('click', computeLimit);
+
+        if (btnClear) {
+          btnClear.addEventListener('click', function () {
+            if (funcInput) funcInput.value = '';
+            if (pointInput) pointInput.value = '1';
+            if (samplesInput) samplesInput.value = '10';
+            if (decimalsSelect) decimalsSelect.value = '6';
+            clearAll();
+          });
+        }
+
+        // Example buttons
+        exampleButtons.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const type = btn.getAttribute('data-example');
+            if (!type || !funcInput || !pointInput) return;
+            if (type === 'removable') {
+              funcInput.value = '(x^2 - 1) / (x - 1)';
+              pointInput.value = '1';
+              typeRadios.forEach(r => { if (r.value === 'two-sided') r.checked = true; });
+            } else if (type === 'sine') {
+              funcInput.value = 'sin(x) / x';
+              pointInput.value = '0';
+              typeRadios.forEach(r => { if (r.value === 'two-sided') r.checked = true; });
+            } else if (type === 'jump') {
+              funcInput.value = 'abs(x) / x';
+              pointInput.value = '0';
+              typeRadios.forEach(r => { if (r.value === 'two-sided') r.checked = true; });
+            } else if (type === 'infinity') {
+              funcInput.value = '(1 + 1/x)^x';
+              pointInput.value = '1';
+              typeRadios.forEach(r => { if (r.value === 'plus-infinity') r.checked = true; });
+            }
+            clearAll();
+          });
+        });
+      });
+    </script>
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      // Mobile menu toggle
+      document.getElementById('mobile-menu-toggle')?.addEventListener('click', function () {
+        const menu = document.getElementById('mobile-menu');
+        if (!menu) return;
+        const isHidden = menu.classList.contains('hidden');
+        menu.classList.toggle('hidden', !isHidden);
+        this.setAttribute('aria-expanded', String(isHidden));
+      });
+
+      document.addEventListener('DOMContentLoaded', function () {
+        const funcInput = document.getElementById('func-input');
+        const pointInput = document.getElementById('point-input');
+        const samplesInput = document.getElementById('samples-input');
+        const decimalsSelect = document.getElementById('decimals');
+        const typeRadios = document.querySelectorAll('input[name="limit-type"]');
+
+        const btnCalc = document.getElementById('btn-calc-limit');
+        const btnClear = document.getElementById('btn-clear-limit');
+        const errorEl = document.getElementById('limit-error');
+
+        const resLeft = document.getElementById('res-left');
+        const resRight = document.getElementById('res-right');
+        const resTwo = document.getElementById('res-two-sided');
+        const resTwoNote = document.getElementById('res-two-sided-note');
+        const resBehaviour = document.getElementById('res-behaviour');
+        const resAtPoint = document.getElementById('res-at-point');
+        const resRate = document.getElementById('res-rate');
+        const resWarnings = document.getElementById('res-warnings');
+
+        const tableLeftBody = document.getElementById('table-left-body');
+        const tableRightBody = document.getElementById('table-right-body');
+
+        const exampleButtons = document.querySelectorAll('[data-example]');
+
+        function setResult(container, text) {
+          if (!container) return;
+          const span = container.querySelector('.result-value');
+          if (span) span.textContent = text;
+        }
+
+        function clearAll() {
+          [resLeft, resRight, resTwo, resBehaviour, resAtPoint, resRate, resWarnings].forEach(function (el) {
+            if (!el) return;
+            const spans = el.querySelectorAll('.result-value');
+            spans.forEach(span => span.textContent = '—');
+          });
+          if (resTwoNote) resTwoNote.textContent = '';
+          if (tableLeftBody) tableLeftBody.innerHTML = '';
+          if (tableRightBody) tableRightBody.innerHTML = '';
+          if (errorEl) errorEl.textContent = '';
+        }
+
+        function getDecimals() {
+          const d = Number(decimalsSelect.value);
+          if (!Number.isInteger(d) || d < 0 || d > 16) return 6;
+          return d;
+        }
+
+        function fmt(v) {
+          if (!isFinite(v)) {
+            if (v === Infinity) return '+∞';
+            if (v === -Infinity) return '−∞';
+            return 'NaN';
+          }
+          const d = getDecimals();
+          return Number(v.toFixed(d)).toString();
+        }
+
+        function buildEvaluator(exprRaw) {
+          if (!exprRaw || !exprRaw.trim()) {
+            throw new Error('Function is empty.');
+          }
+          let expr = exprRaw.trim();
+
+          // Replace caret with exponentiation operator
+          expr = expr.replace(/\^/g, '**');
+
+          // Replace common math functions with Math. equivalents
+          const funcs = [
+            'sin','cos','tan','asin','acos','atan',
+            'sinh','cosh','tanh',
+            'log','ln','sqrt','abs','exp','floor','ceil','round','pow','max','min'
+          ];
+          funcs.forEach(fn => {
+            const re = new RegExp('\\b' + fn + '\\b', 'g');
+            if (fn === 'ln') {
+              expr = expr.replace(re, 'Math.log');
+            } else if (fn === 'log') {
+              // interpret log(x) as natural log; users can use log10(x) explicitly if needed
+              expr = expr.replace(re, 'Math.log');
+            } else {
+              expr = expr.replace(re, 'Math.' + fn);
+            }
+          });
+
+          // Replace constants pi and e (but avoid replacing in longer names)
+          expr = expr.replace(/\bpi\b/gi, 'Math.PI');
+          expr = expr.replace(/π/g, 'Math.PI');
+          expr = expr.replace(/\be\b/g, 'Math.E');
+
+          // Basic safety: only allow a limited character set
+          const allowedPattern = /^[0-9+\-*/().,^xXPIsincotahedlrgmM \t\n\r_]*$/;
+          // The pattern above is generous; we still rely on controlled replacements and a local Function.
+
+          // Build the evaluator
+          const fn = new Function('x', '"use strict"; return (' + expr + ');');
+          return function (x) {
+            const val = fn(x);
+            if (typeof val !== 'number' || !isFinite(val)) {
+              return val;
+            }
+            return val;
+          };
+        }
+
+        function sampleAroundPoint(f, a, n) {
+          const epsilons = [];
+          // Generate decreasing epsilons: 10^-1, 5*10^-2, 10^-2, ..., up to n points
+          let base = 0.1;
+          while (epsilons.length < n) {
+            epsilons.push(base);
+            if (epsilons.length >= n) break;
+            epsilons.push(base / 2);
+            base /= 10;
+          }
+          epsilons.length = n;
+
+          const left = [];
+          const right = [];
+          for (let i = 0; i < epsilons.length; i++) {
+            const h = epsilons[i];
+            const xl = a - h;
+            const xr = a + h;
+            let fl = NaN, fr = NaN;
+            try { fl = f(xl); } catch (e) { fl = NaN; }
+            try { fr = f(xr); } catch (e) { fr = NaN; }
+            if (isFinite(fl)) left.push({ x: xl, y: fl, h });
+            if (isFinite(fr)) right.push({ x: xr, y: fr, h });
+          }
+          return { left, right };
+        }
+
+        function sampleAtInfinity(f, direction, n) {
+          // direction: +1 for +∞, -1 for −∞
+          const xs = [];
+          // Sample at exponentially growing magnitudes
+          let base = 1;
+          while (xs.length < n) {
+            base *= 2;
+            xs.push(direction * base);
+          }
+          const pts = [];
+          for (let x of xs) {
+            let val = NaN;
+            try { val = f(x); } catch (e) { val = NaN; }
+            if (isFinite(val)) pts.push({ x, y: val });
+          }
+          return pts;
+        }
+
+        function estimateLimitFromSamples(samples) {
+          if (!samples || samples.length === 0) return { value: NaN, spread: NaN };
+          // Use last third of samples to estimate convergence
+          const m = samples.length;
+          const start = Math.floor(m * 2 / 3);
+          const slice = samples.slice(start);
+          if (slice.length === 0) return { value: NaN, spread: NaN };
+          const vals = slice.map(p => p.y);
+          const avg = vals.reduce((a,b)=>a+b,0) / vals.length;
+          const maxDev = Math.max.apply(null, vals.map(v => Math.abs(v - avg)));
+          return { value: avg, spread: maxDev };
+        }
+
+        function classifyBehaviour(Lleft, spreadL, Lright, spreadR, type, warnList) {
+          const tolBase = 1e-4;
+          const tolLeft = Math.max(tolBase, spreadL * 5);
+          const tolRight = Math.max(tolBase, spreadR * 5);
+
+          if (!isFinite(Lleft) && !isFinite(Lright)) {
+            return 'Insufficient valid samples to classify behaviour.';
+          }
+
+          if (type === 'plus-infinity' || type === 'minus-infinity') {
+            const L = isFinite(Lright) ? Lright : Lleft;
+            if (!isFinite(L)) {
+              return 'Limit at infinity cannot be approximated with current settings.';
+            }
+            if (Math.abs(L) > 1e6) {
+              return 'Function appears to diverge in magnitude as x → ' + (type === 'plus-infinity' ? '+∞.' : '−∞.');
+            }
+            return 'Function appears to approach ' + fmt(L) + ' as x → ' + (type === 'plus-infinity' ? '+∞.' : '−∞.');
+          }
+
+          if (isFinite(Lleft) && isFinite(Lright)) {
+            const diff = Math.abs(Lleft - Lright);
+            const tol = Math.max(tolLeft, tolRight);
+            if (diff <= tol) {
+              return 'Left-hand and right-hand limits appear to agree numerically (two-sided limit likely exists).';
+            } else {
+              warnList.push('Left and right limits differ significantly; the two-sided limit does not appear to exist.');
+              return 'Possible jump or other discontinuity (left and right limits differ).';
+            }
+          }
+
+          if (isFinite(Lleft) && !isFinite(Lright)) {
+            return 'Only the left-hand side could be approximated; right-hand behaviour is numerically unstable or undefined.';
+          }
+          if (!isFinite(Lleft) && isFinite(Lright)) {
+            return 'Only the right-hand side could be approximated; left-hand behaviour is numerically unstable or undefined.';
+          }
+          return 'Behaviour cannot be classified with the current sampling (try adjusting the function or settings).';
+        }
+
+        function populateTable(body, samples) {
+          if (!body) return;
+          body.innerHTML = '';
+          const d = getDecimals();
+          samples.forEach(p => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b';
+            const tdX = document.createElement('td');
+            tdX.className = 'px-3 py-1.5 text-gray-700';
+            tdX.textContent = Number(p.x.toFixed(d)).toString();
+            const tdY = document.createElement('td');
+            tdY.className = 'px-3 py-1.5 text-gray-700';
+            tdY.textContent = Number(p.y.toFixed(d)).toString();
+            tr.appendChild(tdX);
+            tr.appendChild(tdY);
+            body.appendChild(tr);
+          });
+        }
+
+        function computeLimit() {
+          clearAll();
+
+          let expr = funcInput.value;
+          const type = (Array.from(typeRadios).find(r => r.checked)?.value) || 'two-sided';
+          const numSamples = Number(samplesInput.value);
+
+          if (!expr || !expr.trim()) {
+            errorEl.textContent = 'Please enter a function f(x).';
+            return;
+          }
+          if (!Number.isInteger(numSamples) || numSamples < 3 || numSamples > 40) {
+            errorEl.textContent = 'Sample points must be an integer between 3 and 40.';
+            return;
+          }
+
+          let a = Number(pointInput.value);
+          if (!isFinite(a) && type !== 'plus-infinity' && type !== 'minus-infinity') {
+            errorEl.textContent = 'Point a must be a valid number.';
+            return;
+          }
+
+          let f;
+          try {
+            f = buildEvaluator(expr);
+          } catch (e) {
+            errorEl.textContent = 'Could not parse function: ' + e.message;
+            return;
+          }
+
+          const warnings = [];
+
+          // Value at point (if applicable)
+          if (type !== 'plus-infinity' && type !== 'minus-infinity') {
+            let valAt = NaN;
+            try { valAt = f(a); } catch (e) { valAt = NaN; }
+            if (isFinite(valAt)) {
+              setResult(resAtPoint, fmt(valAt));
+            } else {
+              setResult(resAtPoint, 'undefined at x = ' + a);
+            }
+          } else {
+            setResult(resAtPoint, 'Not applicable for limits at infinity');
+          }
+
+          let Lleft = NaN, Lright = NaN, spreadL = NaN, spreadR = NaN;
+          let leftSamples = [], rightSamples = [];
+
+          if (type === 'plus-infinity' || type === 'minus-infinity') {
+            const dir = type === 'plus-infinity' ? 1 : -1;
+            const pts = sampleAtInfinity(f, dir, numSamples);
+            rightSamples = pts;  // use right slots
+            const est = estimateLimitFromSamples(pts);
+            Lright = est.value;
+            spreadR = est.spread;
+            populateTable(tableLeftBody, []);
+            populateTable(tableRightBody, pts);
+            setResult(resLeft, 'Not applicable');
+            setResult(resRight, isFinite(Lright) ? fmt(Lright) : '—');
+            setResult(resTwo, isFinite(Lright) ? fmt(Lright) : '—');
+            resTwoNote.textContent = isFinite(Lright)
+              ? 'Numerical approximation of limit as x → ' + (dir === 1 ? '+∞' : '−∞') + '.'
+              : '';
+          } else {
+            const samples = sampleAroundPoint(f, a, numSamples);
+            leftSamples = samples.left;
+            rightSamples = samples.right;
+            populateTable(tableLeftBody, leftSamples.slice().reverse()); // closest last, but show from far to near
+            populateTable(tableRightBody, rightSamples);
+
+            const estL = estimateLimitFromSamples(leftSamples);
+            const estR = estimateLimitFromSamples(rightSamples);
+            Lleft = estL.value;
+            spreadL = estL.spread;
+            Lright = estR.value;
+            spreadR = estR.spread;
+
+            setResult(resLeft, isFinite(Lleft) ? fmt(Lleft) : '—');
+            setResult(resRight, isFinite(Lright) ? fmt(Lright) : '—');
+
+            if (type === 'left') {
+              setResult(resTwo, isFinite(Lleft) ? fmt(Lleft) : '—');
+              resTwoNote.textContent = 'Left-hand limit only (x → a⁻).';
+            } else if (type === 'right') {
+              setResult(resTwo, isFinite(Lright) ? fmt(Lright) : '—');
+              resTwoNote.textContent = 'Right-hand limit only (x → a⁺).';
+            } else {
+              if (isFinite(Lleft) && isFinite(Lright)) {
+                const avg = (Lleft + Lright) / 2;
+                setResult(resTwo, fmt(avg));
+                resTwoNote.textContent = 'Average of numerical left-hand and right-hand limits.';
+              } else {
+                setResult(resTwo, '—');
+                resTwoNote.textContent = '';
+              }
+            }
+          }
+
+          const behaviour = classifyBehaviour(Lleft, spreadL, Lright, spreadR, type, warnings);
+          setResult(resBehaviour, behaviour);
+
+          // Rate of approach (heuristic: compare last two values if available)
+          let rateMsg = '—';
+          if (type === 'plus-infinity' || type === 'minus-infinity') {
+            const pts = rightSamples;
+            if (pts.length >= 2 && isFinite(Lright)) {
+              const last = pts[pts.length - 1].y;
+              const prev = pts[pts.length - 2].y;
+              const diff = Math.abs(last - prev);
+              rateMsg = 'Consecutive samples near infinity differ by ≈ ' + fmt(diff) + '.';
+            }
+          } else {
+            const refSamples = rightSamples.length >= leftSamples.length ? rightSamples : leftSamples;
+            if (refSamples.length >= 2) {
+              const last = refSamples[refSamples.length - 1].y;
+              const prev = refSamples[refSamples.length - 2].y;
+              const diff = Math.abs(last - prev);
+              rateMsg = 'Consecutive samples near a differ by ≈ ' + fmt(diff) + '.';
+            }
+          }
+          setResult(resRate, rateMsg);
+
+          if (warnings.length === 0) {
+            setResult(resWarnings, 'No major numerical issues detected. Always confirm important results analytically.');
+          } else {
+            setResult(resWarnings, warnings.join(' '));
+          }
+        }
+
+        if (btnCalc) btnCalc.addEventListener('click', computeLimit);
+
+        if (btnClear) {
+          btnClear.addEventListener('click', function () {
+            if (funcInput) funcInput.value = '';
+            if (pointInput) pointInput.value = '1';
+            if (samplesInput) samplesInput.value = '10';
+            if (decimalsSelect) decimalsSelect.value = '6';
+            clearAll();
+          });
+        }
+
+        // Example buttons
+        exampleButtons.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const type = btn.getAttribute('data-example');
+            if (!type || !funcInput || !pointInput) return;
+            if (type === 'removable') {
+              funcInput.value = '(x^2 - 1) / (x - 1)';
+              pointInput.value = '1';
+              typeRadios.forEach(r => { if (r.value === 'two-sided') r.checked = true; });
+            } else if (type === 'sine') {
+              funcInput.value = 'sin(x) / x';
+              pointInput.value = '0';
+              typeRadios.forEach(r => { if (r.value === 'two-sided') r.checked = true; });
+            } else if (type === 'jump') {
+              funcInput.value = 'abs(x) / x';
+              pointInput.value = '0';
+              typeRadios.forEach(r => { if (r.value === 'two-sided') r.checked = true; });
+            } else if (type === 'infinity') {
+              funcInput.value = '(1 + 1/x)^x';
+              pointInput.value = '1';
+              typeRadios.forEach(r => { if (r.value === 'plus-infinity') r.checked = true; });
+            }
+            clearAll();
+          });
+        });
+      });
+    </script>
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

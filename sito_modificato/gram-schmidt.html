@@ -45,10 +45,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -216,8 +212,6 @@
 <body class="bg-gray-50 text-gray-800">
 
     <!-- BODY SCRIPTS (replacement for %%BODY_SCRIPTS_INIZIO%%) -->
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
         <div class="flex justify-between items-center">
@@ -698,7 +692,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -766,13 +760,645 @@
 
 
 
+
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
 
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Gram–Schmidt calculator logic -->
+    <script>
+      (function() {
+        const dimInput = document.getElementById('gs-dimension');
+        const numVecInput = document.getElementById('gs-num-vectors');
+        const updateGridBtn = document.getElementById('gs-update-grid');
+        const matrixContainer = document.getElementById('gs-matrix-container');
+        const calcBtn = document.getElementById('gs-calc-btn');
+        const clearBtn = document.getElementById('gs-clear-btn');
+        const errBox = document.getElementById('gs-error-box');
+        const resultsBox = document.getElementById('gs-results');
+        const summaryText = document.getElementById('gs-summary-text');
+        const depText = document.getElementById('gs-dependence-text');
+        const origTableDiv = document.getElementById('gs-original-table');
+        const orthTableDiv = document.getElementById('gs-orthogonal-table');
+        const orthonTableDiv = document.getElementById('gs-orthonormal-table');
+
+        function clampInt(val, min, max) {
+          const n = parseInt(val, 10);
+          if (!isFinite(n)) return min;
+          return Math.max(min, Math.min(max, n));
+        }
+
+        function fmt(x, decimals) {
+          if (!isFinite(x)) return String(x);
+          const d = typeof decimals === 'number' ? decimals : 6;
+          const abs = Math.abs(x);
+          if (abs !== 0 && (abs < 1e-4 || abs >= 1e6)) {
+            return x.toExponential(6);
+          }
+          return x.toFixed(d).replace(/0+$/,'').replace(/\.$/,'');
+        }
+
+        function clearError() {
+          errBox.textContent = '';
+          errBox.classList.add('hidden');
+        }
+
+        function showError(msg) {
+          errBox.textContent = msg;
+          errBox.classList.remove('hidden');
+          resultsBox.classList.add('hidden');
+        }
+
+        function buildGrid() {
+          clearError();
+          const n = clampInt(dimInput.value, 1, 6);
+          const k = clampInt(numVecInput.value, 1, 6);
+          dimInput.value = n;
+          numVecInput.value = k;
+
+          const table = document.createElement('table');
+          table.className = 'min-w-full text-xs border-collapse';
+          const thead = document.createElement('thead');
+          const headRow = document.createElement('tr');
+
+          const th0 = document.createElement('th');
+          th0.className = 'border border-gray-200 px-2 py-1 text-left bg-gray-100';
+          th0.textContent = 'coord';
+          headRow.appendChild(th0);
+
+          for (let j = 0; j < k; j++) {
+            const th = document.createElement('th');
+            th.className = 'border border-gray-200 px-2 py-1 bg-gray-100';
+            th.textContent = 'v' + (j + 1);
+            headRow.appendChild(th);
+          }
+          thead.appendChild(headRow);
+          table.appendChild(thead);
+
+          const tbody = document.createElement('tbody');
+          for (let i = 0; i < n; i++) {
+            const tr = document.createElement('tr');
+
+            const labelCell = document.createElement('td');
+            labelCell.className = 'border border-gray-200 px-2 py-1 bg-gray-50 text-gray-700';
+            labelCell.textContent = 'row ' + (i + 1);
+            tr.appendChild(labelCell);
+
+            for (let j = 0; j < k; j++) {
+              const td = document.createElement('td');
+              td.className = 'border border-gray-200 px-1 py-1';
+              const inp = document.createElement('input');
+              inp.type = 'number';
+              inp.step = 'any';
+              inp.className = 'w-20 rounded border border-gray-300 px-1 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500';
+              inp.id = 'gs-c-r' + i + '-c' + j;
+              td.appendChild(inp);
+              tr.appendChild(td);
+            }
+
+            tbody.appendChild(tr);
+          }
+          table.appendChild(tbody);
+
+          matrixContainer.innerHTML = '';
+          matrixContainer.appendChild(table);
+        }
+
+        function getVectors() {
+          const n = clampInt(dimInput.value, 1, 6);
+          const k = clampInt(numVecInput.value, 1, 6);
+          const vectors = [];
+          for (let j = 0; j < k; j++) {
+            const v = [];
+            for (let i = 0; i < n; i++) {
+              const id = 'gs-c-r' + i + '-c' + j;
+              const inp = document.getElementById(id);
+              let val = 0;
+              if (inp && inp.value.trim() !== '') {
+                const parsed = parseFloat(inp.value);
+                val = isFinite(parsed) ? parsed : 0;
+              }
+              v.push(val);
+            }
+            vectors.push(v);
+          }
+          return { n, k, vectors };
+        }
+
+        function dot(a, b) {
+          let s = 0;
+          for (let i = 0; i < a.length; i++) s += a[i] * b[i];
+          return s;
+        }
+
+        function add(a, b) {
+          const out = [];
+          for (let i = 0; i < a.length; i++) out.push(a[i] + b[i]);
+          return out;
+        }
+
+        function sub(a, b) {
+          const out = [];
+          for (let i = 0; i < a.length; i++) out.push(a[i] - b[i]);
+          return out;
+        }
+
+        function scale(a, s) {
+          const out = [];
+          for (let i = 0; i < a.length; i++) out.push(a[i] * s);
+          return out;
+        }
+
+        function normSq(a) {
+          return dot(a, a);
+        }
+
+        function buildVectorTable(title, labelPrefix, vectors, decimals) {
+          const n = vectors.length > 0 ? vectors[0].length : 0;
+          const k = vectors.length;
+
+          const table = document.createElement('table');
+          table.className = 'table-mini bg-white text-gray-800';
+
+          const thead = document.createElement('thead');
+          const hrow = document.createElement('tr');
+
+          const th0 = document.createElement('th');
+          th0.textContent = '';
+          hrow.appendChild(th0);
+
+          for (let j = 0; j < k; j++) {
+            const th = document.createElement('th');
+            th.textContent = labelPrefix + (j + 1);
+            hrow.appendChild(th);
+          }
+          thead.appendChild(hrow);
+          table.appendChild(thead);
+
+          const tbody = document.createElement('tbody');
+          for (let i = 0; i < n; i++) {
+            const tr = document.createElement('tr');
+            const c0 = document.createElement('th');
+            c0.textContent = 'row ' + (i + 1);
+            tr.appendChild(c0);
+
+            for (let j = 0; j < k; j++) {
+              const td = document.createElement('td');
+              const vec = vectors[j];
+              if (!vec) {
+                td.textContent = '–';
+              } else {
+                td.textContent = fmt(vec[i], decimals);
+              }
+              tr.appendChild(td);
+            }
+
+            tbody.appendChild(tr);
+          }
+          table.appendChild(tbody);
+
+          return table;
+        }
+
+        function runGS() {
+          clearError();
+          resultsBox.classList.add('hidden');
+
+          const n = clampInt(dimInput.value, 1, 6);
+          const k = clampInt(numVecInput.value, 1, 6);
+
+          if (n <= 0 || k <= 0) {
+            showError('Please choose a positive dimension and at least one vector.');
+            return;
+          }
+
+          const data = getVectors();
+          const V = data.vectors;
+
+          // Check that not all vectors are zero
+          let allZero = true;
+          outer: for (let j = 0; j < k; j++) {
+            for (let i = 0; i < n; i++) {
+              if (Math.abs(V[j][i]) > 0) {
+                allZero = false;
+                break outer;
+              }
+            }
+          }
+          if (allZero) {
+            showError('All input vectors are zero. Please enter at least one non-zero vector.');
+            return;
+          }
+
+          const U = [];
+          const E = [];
+          const dependentIdx = [];
+          const tol = 1e-10;
+
+          for (let j = 0; j < k; j++) {
+            let uj = V[j].slice(); // copy v_j
+
+            for (let i = 0; i < j; i++) {
+              const ui = U[i];
+              if (!ui) continue; // skip dependent
+              const uiNormSq = normSq(ui);
+              if (uiNormSq < tol) continue;
+              const coeff = dot(V[j], ui) / uiNormSq;
+              const proj = scale(ui, coeff);
+              uj = sub(uj, proj);
+            }
+
+            const nsq = normSq(uj);
+            if (nsq < tol) {
+              U.push(null);
+              E.push(null);
+              dependentIdx.push(j + 1);
+            } else {
+              U.push(uj);
+              const norm = Math.sqrt(nsq);
+              E.push(scale(uj, 1 / norm));
+            }
+          }
+
+          // Build outputs
+          origTableDiv.innerHTML = '';
+          orthTableDiv.innerHTML = '';
+          orthonTableDiv.innerHTML = '';
+
+          origTableDiv.appendChild(buildVectorTable('Original', 'v', V, 6));
+          orthTableDiv.appendChild(buildVectorTable('Orthogonal', 'u', U, 6));
+          // Filter only non-null orthonormal vectors for the basis table
+          const E_nonNull = E.filter(function(vec) { return !!vec; });
+          orthonTableDiv.appendChild(buildVectorTable('Orthonormal', 'e', E_nonNull, 6));
+
+          const numIndependent = E_nonNull.length;
+          summaryText.textContent =
+            'Working in \\( \\mathbb{R}^{' + n + '} \\), starting from ' + k +
+            ' input vector' + (k === 1 ? '' : 's') +
+            ', the Gram\u2013Schmidt process produced ' + numIndependent +
+            ' linearly independent orthonormal vector' + (numIndependent === 1 ? '' : 's') + '.';
+
+          if (dependentIdx.length > 0) {
+            depText.textContent =
+              'Vectors v' + dependentIdx.join(', v') +
+              ' were detected as (numerically) linearly dependent on the previous ones and therefore ' +
+              'do not appear in the orthonormal basis.';
+          } else {
+            depText.textContent = 'No linear dependence was detected at the chosen numerical tolerance.';
+          }
+
+          resultsBox.classList.remove('hidden');
+
+          // Ask MathJax to typeset new math if available
+          if (window.MathJax && window.MathJax.typesetPromise) {
+            window.MathJax.typesetPromise();
+          }
+        }
+
+        function clearAll() {
+          dimInput.value = 3;
+          numVecInput.value = 3;
+          buildGrid();
+          clearError();
+          resultsBox.classList.add('hidden');
+        }
+
+        updateGridBtn.addEventListener('click', buildGrid);
+        calcBtn.addEventListener('click', runGS);
+        clearBtn.addEventListener('click', clearAll);
+
+        // initialise grid on load
+        buildGrid();
+      })();
+    </script>
+
+
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Gram–Schmidt calculator logic -->
+    <script>
+      (function() {
+        const dimInput = document.getElementById('gs-dimension');
+        const numVecInput = document.getElementById('gs-num-vectors');
+        const updateGridBtn = document.getElementById('gs-update-grid');
+        const matrixContainer = document.getElementById('gs-matrix-container');
+        const calcBtn = document.getElementById('gs-calc-btn');
+        const clearBtn = document.getElementById('gs-clear-btn');
+        const errBox = document.getElementById('gs-error-box');
+        const resultsBox = document.getElementById('gs-results');
+        const summaryText = document.getElementById('gs-summary-text');
+        const depText = document.getElementById('gs-dependence-text');
+        const origTableDiv = document.getElementById('gs-original-table');
+        const orthTableDiv = document.getElementById('gs-orthogonal-table');
+        const orthonTableDiv = document.getElementById('gs-orthonormal-table');
+
+        function clampInt(val, min, max) {
+          const n = parseInt(val, 10);
+          if (!isFinite(n)) return min;
+          return Math.max(min, Math.min(max, n));
+        }
+
+        function fmt(x, decimals) {
+          if (!isFinite(x)) return String(x);
+          const d = typeof decimals === 'number' ? decimals : 6;
+          const abs = Math.abs(x);
+          if (abs !== 0 && (abs < 1e-4 || abs >= 1e6)) {
+            return x.toExponential(6);
+          }
+          return x.toFixed(d).replace(/0+$/,'').replace(/\.$/,'');
+        }
+
+        function clearError() {
+          errBox.textContent = '';
+          errBox.classList.add('hidden');
+        }
+
+        function showError(msg) {
+          errBox.textContent = msg;
+          errBox.classList.remove('hidden');
+          resultsBox.classList.add('hidden');
+        }
+
+        function buildGrid() {
+          clearError();
+          const n = clampInt(dimInput.value, 1, 6);
+          const k = clampInt(numVecInput.value, 1, 6);
+          dimInput.value = n;
+          numVecInput.value = k;
+
+          const table = document.createElement('table');
+          table.className = 'min-w-full text-xs border-collapse';
+          const thead = document.createElement('thead');
+          const headRow = document.createElement('tr');
+
+          const th0 = document.createElement('th');
+          th0.className = 'border border-gray-200 px-2 py-1 text-left bg-gray-100';
+          th0.textContent = 'coord';
+          headRow.appendChild(th0);
+
+          for (let j = 0; j < k; j++) {
+            const th = document.createElement('th');
+            th.className = 'border border-gray-200 px-2 py-1 bg-gray-100';
+            th.textContent = 'v' + (j + 1);
+            headRow.appendChild(th);
+          }
+          thead.appendChild(headRow);
+          table.appendChild(thead);
+
+          const tbody = document.createElement('tbody');
+          for (let i = 0; i < n; i++) {
+            const tr = document.createElement('tr');
+
+            const labelCell = document.createElement('td');
+            labelCell.className = 'border border-gray-200 px-2 py-1 bg-gray-50 text-gray-700';
+            labelCell.textContent = 'row ' + (i + 1);
+            tr.appendChild(labelCell);
+
+            for (let j = 0; j < k; j++) {
+              const td = document.createElement('td');
+              td.className = 'border border-gray-200 px-1 py-1';
+              const inp = document.createElement('input');
+              inp.type = 'number';
+              inp.step = 'any';
+              inp.className = 'w-20 rounded border border-gray-300 px-1 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500';
+              inp.id = 'gs-c-r' + i + '-c' + j;
+              td.appendChild(inp);
+              tr.appendChild(td);
+            }
+
+            tbody.appendChild(tr);
+          }
+          table.appendChild(tbody);
+
+          matrixContainer.innerHTML = '';
+          matrixContainer.appendChild(table);
+        }
+
+        function getVectors() {
+          const n = clampInt(dimInput.value, 1, 6);
+          const k = clampInt(numVecInput.value, 1, 6);
+          const vectors = [];
+          for (let j = 0; j < k; j++) {
+            const v = [];
+            for (let i = 0; i < n; i++) {
+              const id = 'gs-c-r' + i + '-c' + j;
+              const inp = document.getElementById(id);
+              let val = 0;
+              if (inp && inp.value.trim() !== '') {
+                const parsed = parseFloat(inp.value);
+                val = isFinite(parsed) ? parsed : 0;
+              }
+              v.push(val);
+            }
+            vectors.push(v);
+          }
+          return { n, k, vectors };
+        }
+
+        function dot(a, b) {
+          let s = 0;
+          for (let i = 0; i < a.length; i++) s += a[i] * b[i];
+          return s;
+        }
+
+        function add(a, b) {
+          const out = [];
+          for (let i = 0; i < a.length; i++) out.push(a[i] + b[i]);
+          return out;
+        }
+
+        function sub(a, b) {
+          const out = [];
+          for (let i = 0; i < a.length; i++) out.push(a[i] - b[i]);
+          return out;
+        }
+
+        function scale(a, s) {
+          const out = [];
+          for (let i = 0; i < a.length; i++) out.push(a[i] * s);
+          return out;
+        }
+
+        function normSq(a) {
+          return dot(a, a);
+        }
+
+        function buildVectorTable(title, labelPrefix, vectors, decimals) {
+          const n = vectors.length > 0 ? vectors[0].length : 0;
+          const k = vectors.length;
+
+          const table = document.createElement('table');
+          table.className = 'table-mini bg-white text-gray-800';
+
+          const thead = document.createElement('thead');
+          const hrow = document.createElement('tr');
+
+          const th0 = document.createElement('th');
+          th0.textContent = '';
+          hrow.appendChild(th0);
+
+          for (let j = 0; j < k; j++) {
+            const th = document.createElement('th');
+            th.textContent = labelPrefix + (j + 1);
+            hrow.appendChild(th);
+          }
+          thead.appendChild(hrow);
+          table.appendChild(thead);
+
+          const tbody = document.createElement('tbody');
+          for (let i = 0; i < n; i++) {
+            const tr = document.createElement('tr');
+            const c0 = document.createElement('th');
+            c0.textContent = 'row ' + (i + 1);
+            tr.appendChild(c0);
+
+            for (let j = 0; j < k; j++) {
+              const td = document.createElement('td');
+              const vec = vectors[j];
+              if (!vec) {
+                td.textContent = '–';
+              } else {
+                td.textContent = fmt(vec[i], decimals);
+              }
+              tr.appendChild(td);
+            }
+
+            tbody.appendChild(tr);
+          }
+          table.appendChild(tbody);
+
+          return table;
+        }
+
+        function runGS() {
+          clearError();
+          resultsBox.classList.add('hidden');
+
+          const n = clampInt(dimInput.value, 1, 6);
+          const k = clampInt(numVecInput.value, 1, 6);
+
+          if (n <= 0 || k <= 0) {
+            showError('Please choose a positive dimension and at least one vector.');
+            return;
+          }
+
+          const data = getVectors();
+          const V = data.vectors;
+
+          // Check that not all vectors are zero
+          let allZero = true;
+          outer: for (let j = 0; j < k; j++) {
+            for (let i = 0; i < n; i++) {
+              if (Math.abs(V[j][i]) > 0) {
+                allZero = false;
+                break outer;
+              }
+            }
+          }
+          if (allZero) {
+            showError('All input vectors are zero. Please enter at least one non-zero vector.');
+            return;
+          }
+
+          const U = [];
+          const E = [];
+          const dependentIdx = [];
+          const tol = 1e-10;
+
+          for (let j = 0; j < k; j++) {
+            let uj = V[j].slice(); // copy v_j
+
+            for (let i = 0; i < j; i++) {
+              const ui = U[i];
+              if (!ui) continue; // skip dependent
+              const uiNormSq = normSq(ui);
+              if (uiNormSq < tol) continue;
+              const coeff = dot(V[j], ui) / uiNormSq;
+              const proj = scale(ui, coeff);
+              uj = sub(uj, proj);
+            }
+
+            const nsq = normSq(uj);
+            if (nsq < tol) {
+              U.push(null);
+              E.push(null);
+              dependentIdx.push(j + 1);
+            } else {
+              U.push(uj);
+              const norm = Math.sqrt(nsq);
+              E.push(scale(uj, 1 / norm));
+            }
+          }
+
+          // Build outputs
+          origTableDiv.innerHTML = '';
+          orthTableDiv.innerHTML = '';
+          orthonTableDiv.innerHTML = '';
+
+          origTableDiv.appendChild(buildVectorTable('Original', 'v', V, 6));
+          orthTableDiv.appendChild(buildVectorTable('Orthogonal', 'u', U, 6));
+          // Filter only non-null orthonormal vectors for the basis table
+          const E_nonNull = E.filter(function(vec) { return !!vec; });
+          orthonTableDiv.appendChild(buildVectorTable('Orthonormal', 'e', E_nonNull, 6));
+
+          const numIndependent = E_nonNull.length;
+          summaryText.textContent =
+            'Working in \\( \\mathbb{R}^{' + n + '} \\), starting from ' + k +
+            ' input vector' + (k === 1 ? '' : 's') +
+            ', the Gram\u2013Schmidt process produced ' + numIndependent +
+            ' linearly independent orthonormal vector' + (numIndependent === 1 ? '' : 's') + '.';
+
+          if (dependentIdx.length > 0) {
+            depText.textContent =
+              'Vectors v' + dependentIdx.join(', v') +
+              ' were detected as (numerically) linearly dependent on the previous ones and therefore ' +
+              'do not appear in the orthonormal basis.';
+          } else {
+            depText.textContent = 'No linear dependence was detected at the chosen numerical tolerance.';
+          }
+
+          resultsBox.classList.remove('hidden');
+
+          // Ask MathJax to typeset new math if available
+          if (window.MathJax && window.MathJax.typesetPromise) {
+            window.MathJax.typesetPromise();
+          }
+        }
+
+        function clearAll() {
+          dimInput.value = 3;
+          numVecInput.value = 3;
+          buildGrid();
+          clearError();
+          resultsBox.classList.add('hidden');
+        }
+
+        updateGridBtn.addEventListener('click', buildGrid);
+        calcBtn.addEventListener('click', runGS);
+        clearBtn.addEventListener('click', clearAll);
+
+        // initialise grid on load
+        buildGrid();
+      })();
+    </script>
+
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

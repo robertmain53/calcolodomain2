@@ -52,10 +52,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -216,8 +212,6 @@
 <body class="bg-gray-50 text-gray-800">
 
     <!-- BODY_SCRIPTS_INIZIO -->
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
         <div class="flex justify-between items-center">
@@ -731,7 +725,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -798,14 +792,996 @@
 
 
 
+
     
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
     
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      // Mobile menu toggle
+      document.getElementById('mobile-menu-toggle')?.addEventListener('click', function () {
+        const menu = document.getElementById('mobile-menu');
+        if (!menu) return;
+        const isHidden = menu.classList.contains('hidden');
+        menu.classList.toggle('hidden', !isHidden);
+        this.setAttribute('aria-expanded', String(isHidden));
+      });
+
+      document.addEventListener('DOMContentLoaded', function () {
+        const eqInput = document.getElementById('eq-input');
+        const x0Input = document.getElementById('x0-input');
+        const y0Input = document.getElementById('y0-input');
+        const hInput = document.getElementById('h-input');
+        const nstepsInput = document.getElementById('nsteps-input');
+        const methodSelect = document.getElementById('method-select');
+        const exactInput = document.getElementById('exact-input');
+        const exampleButtons = document.querySelectorAll('[data-example]');
+
+        const btnCompute = document.getElementById('btn-euler-compute');
+        const btnClear = document.getElementById('btn-euler-clear');
+        const errorEl = document.getElementById('euler-error');
+
+        const resGrid = document.getElementById('res-grid');
+        const resFinalX = document.getElementById('res-final-x');
+        const resFinalEuler = document.getElementById('res-final-euler');
+        const resFinalHeun = document.getElementById('res-final-heun');
+        const resFinalExact = document.getElementById('res-final-exact');
+        const resGlobalError = document.getElementById('res-global-error');
+        const tableBody = document.getElementById('euler-table-body');
+        const plotSvg = document.getElementById('euler-plot');
+
+        function setResult(container, text) {
+          if (!container) return;
+          const span = container.querySelector('.result-value');
+          if (span) span.textContent = text;
+        }
+
+        function clearResults() {
+          [resGrid, resFinalX, resFinalEuler, resFinalHeun, resFinalExact, resGlobalError].forEach(el => {
+            if (!el) return;
+            const spans = el.querySelectorAll('.result-value');
+            spans.forEach(span => span.textContent = '—');
+          });
+          if (tableBody) tableBody.innerHTML = '';
+          if (plotSvg) plotSvg.innerHTML = '';
+          if (errorEl) errorEl.textContent = '';
+        }
+
+        function buildFunction(expr, variableNames) {
+          const trimmed = (expr || '').trim();
+          if (!trimmed) return null;
+
+          let safeExpr = trimmed.replace(/\^/g, '**');
+
+          const globals = [
+            'sin','cos','tan','asin','acos','atan','sinh','cosh','tanh',
+            'exp','log','sqrt','abs','pow','floor','ceil','round','max','min'
+          ];
+
+          const args = variableNames.concat(globals.map(name => name));
+          const argList = args.join(',');
+
+          const body = 'return (' + safeExpr + ');';
+
+          try {
+            /* eslint no-new-func: "off" */
+            const fn = new Function(argList, body);
+            const bound = function () {
+              const vars = Array.prototype.slice.call(arguments);
+              const mathArgs = globals.map(name => Math[name] || Math[name.toLowerCase()]);
+              return fn.apply(null, vars.concat(mathArgs));
+            };
+            return bound;
+          } catch (e) {
+            return null;
+          }
+        }
+
+        function eulerSteps(f, x0, y0, h, nSteps) {
+          const result = [];
+          let x = x0;
+          let y = y0;
+          for (let n = 0; n <= nSteps; n++) {
+            result.push({ n: n, x: x, y: y });
+            if (n === nSteps) break;
+            const slope = f(x, y);
+            if (!Number.isFinite(slope)) {
+              throw new Error('Non-finite slope f(x,y) encountered at x = ' + x + ', y = ' + y);
+            }
+            y = y + h * slope;
+            x = x + h;
+          }
+          return result;
+        }
+
+        function heunSteps(f, x0, y0, h, nSteps) {
+          const result = [];
+          let x = x0;
+          let y = y0;
+          for (let n = 0; n <= nSteps; n++) {
+            result.push({ n: n, x: x, y: y });
+            if (n === nSteps) break;
+            const k1 = f(x, y);
+            if (!Number.isFinite(k1)) {
+              throw new Error('Non-finite slope f(x,y) encountered at x = ' + x + ', y = ' + y);
+            }
+            const xNext = x + h;
+            const yPred = y + h * k1;
+            const k2 = f(xNext, yPred);
+            if (!Number.isFinite(k2)) {
+              throw new Error('Non-finite slope f(x,y) encountered at predictor point x = ' + xNext + ', y = ' + yPred);
+            }
+            y = y + (h / 2) * (k1 + k2);
+            x = xNext;
+          }
+          return result;
+        }
+
+        function updatePlot(eulerSeries, heunSeries, exactFn) {
+          if (!plotSvg) return;
+          plotSvg.innerHTML = '';
+
+          const width = 400;
+          const height = 260;
+          const pad = 30;
+
+          function seriesToArrays(series) {
+            return {
+              xs: series.map(p => p.x),
+              ys: series.map(p => p.y)
+            };
+          }
+
+          let xs = [];
+          let ys = [];
+
+          if (eulerSeries && eulerSeries.length) {
+            const arr = seriesToArrays(eulerSeries);
+            xs = xs.concat(arr.xs);
+            ys = ys.concat(arr.ys);
+          }
+          if (heunSeries && heunSeries.length) {
+            const arr = seriesToArrays(heunSeries);
+            xs = xs.concat(arr.xs);
+            ys = ys.concat(arr.ys);
+          }
+
+          let exactSamples = [];
+          if (exactFn && xs.length > 1) {
+            const minX = Math.min.apply(null, xs);
+            const maxX = Math.max.apply(null, xs);
+            const m = 80;
+            const step = (maxX - minX) / (m - 1 || 1);
+            for (let i = 0; i < m; i++) {
+              const x = minX + i * step;
+              const y = exactFn(x);
+              if (Number.isFinite(y)) {
+                exactSamples.push({ x, y });
+                xs.push(x);
+                ys.push(y);
+              }
+            }
+          }
+
+          if (!xs.length || !ys.length) {
+            return;
+          }
+
+          let minX = Math.min.apply(null, xs);
+          let maxX = Math.max.apply(null, xs);
+          let minY = Math.min.apply(null, ys);
+          let maxY = Math.max.apply(null, ys);
+
+          if (maxX === minX) { maxX = minX + 1; }
+          if (maxY === minY) { maxY = minY + 1; }
+
+          function mapX(x) {
+            return pad + (x - minX) / (maxX - minX) * (width - 2 * pad);
+          }
+          function mapY(y) {
+            return height - pad - (y - minY) / (maxY - minY) * (height - 2 * pad);
+          }
+
+          const axes = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+          const xAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          xAxis.setAttribute('x1', String(pad));
+          xAxis.setAttribute('y1', String(height - pad));
+          xAxis.setAttribute('x2', String(width - pad));
+          xAxis.setAttribute('y2', String(height - pad));
+          xAxis.setAttribute('stroke', '#d1d5db');
+          xAxis.setAttribute('stroke-width', '1');
+
+          const yAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          yAxis.setAttribute('x1', String(pad));
+          yAxis.setAttribute('y1', String(pad));
+          yAxis.setAttribute('x2', String(pad));
+          yAxis.setAttribute('y2', String(height - pad));
+          yAxis.setAttribute('stroke', '#d1d5db');
+          yAxis.setAttribute('stroke-width', '1');
+
+          axes.appendChild(xAxis);
+          axes.appendChild(yAxis);
+          plotSvg.appendChild(axes);
+
+          function addPolyline(series, color, dashArray) {
+            if (!series || !series.length) return;
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+            const pts = series.map(p => mapX(p.x) + ',' + mapY(p.y)).join(' ');
+            path.setAttribute('points', pts);
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke', color);
+            path.setAttribute('stroke-width', '1.5');
+            if (dashArray) path.setAttribute('stroke-dasharray', dashArray);
+            plotSvg.appendChild(path);
+          }
+
+          function addPoints(series, color) {
+            if (!series || !series.length) return;
+            series.forEach(p => {
+              const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+              c.setAttribute('cx', String(mapX(p.x)));
+              c.setAttribute('cy', String(mapY(p.y)));
+              c.setAttribute('r', '2');
+              c.setAttribute('fill', color);
+              plotSvg.appendChild(c);
+            });
+          }
+
+          if (exactSamples.length) {
+            addPolyline(exactSamples, '#dc2626', '4 2');
+          }
+          if (eulerSeries && eulerSeries.length) {
+            addPolyline(eulerSeries, '#1d4ed8');
+            addPoints(eulerSeries, '#1d4ed8');
+          }
+          if (heunSeries && heunSeries.length) {
+            addPolyline(heunSeries, '#16a34a');
+            addPoints(heunSeries, '#16a34a');
+          }
+        }
+
+        function computeEuler() {
+          clearResults();
+
+          const eqExpr = (eqInput.value || '').trim();
+          const x0 = Number(x0Input.value);
+          const y0 = Number(y0Input.value);
+          const h = Number(hInput.value);
+          const nSteps = Number(nstepsInput.value);
+          const method = methodSelect.value;
+          const exactExpr = (exactInput.value || '').trim();
+
+          if (!eqExpr) {
+            errorEl.textContent = 'Please enter the right-hand side f(x, y).';
+            return;
+          }
+          if (!Number.isFinite(x0) || !Number.isFinite(y0) || !Number.isFinite(h) || !Number.isFinite(nSteps)) {
+            errorEl.textContent = 'x₀, y₀, h and N must be numeric values.';
+            return;
+          }
+          if (h <= 0) {
+            errorEl.textContent = 'Step size h must be strictly positive.';
+            return;
+          }
+          if (!Number.isInteger(nSteps) || nSteps < 1) {
+            errorEl.textContent = 'Number of steps N must be an integer ≥ 1.';
+            return;
+          }
+          if (nSteps > 1000) {
+            errorEl.textContent = 'N is too large; please choose N ≤ 1000 for responsiveness.';
+            return;
+          }
+
+          const f = buildFunction(eqExpr, ['x', 'y']);
+          if (!f) {
+            errorEl.textContent = 'Could not parse f(x, y). Check the expression syntax.';
+            return;
+          }
+
+          let exactFn = null;
+          if (exactExpr) {
+            exactFn = buildFunction(exactExpr, ['x']);
+            if (!exactFn) {
+              errorEl.textContent = 'Could not parse exact solution y(x). Check the expression syntax.';
+              return;
+            }
+          }
+
+          let eulerSeries = null;
+          let heunSeries = null;
+
+          try {
+            if (method === 'euler' || method === 'both') {
+              eulerSeries = eulerSteps(f, x0, y0, h, nSteps);
+            }
+            if (method === 'improved' || method === 'both') {
+              heunSeries = heunSteps(f, x0, y0, h, nSteps);
+            }
+          } catch (e) {
+            errorEl.textContent = e.message || 'Error during numerical integration.';
+            return;
+          }
+
+          const xN = x0 + nSteps * h;
+
+          setResult(resGrid, 'xₙ = x₀ + n·h, 0 ≤ n ≤ ' + nSteps + ' (h = ' + h + ')');
+          setResult(resFinalX, 'xₙ = ' + xN.toPrecision(8));
+
+          if (eulerSeries && eulerSeries.length) {
+            const yEuler = eulerSeries[eulerSeries.length - 1].y;
+            setResult(resFinalEuler, 'yₙ ≈ ' + yEuler.toPrecision(8));
+          } else {
+            setResult(resFinalEuler, '– (not computed)');
+          }
+
+          if (heunSeries && heunSeries.length) {
+            const yHeun = heunSeries[heunSeries.length - 1].y;
+            setResult(resFinalHeun, 'yₙ ≈ ' + yHeun.toPrecision(8));
+          } else {
+            setResult(resFinalHeun, '– (not computed)');
+          }
+
+          let finalExactStr = '–';
+          let globalErrorStr = 'Provide exact y(x) to compute error.';
+          let exactSeries = [];
+          if (exactFn) {
+            try {
+              const yExactFinal = exactFn(xN);
+              if (Number.isFinite(yExactFinal)) {
+                finalExactStr = 'y(xₙ) = ' + yExactFinal.toPrecision(8);
+                const errs = [];
+                if (eulerSeries && eulerSeries.length) {
+                  const yEuler = eulerSeries[eulerSeries.length - 1].y;
+                  const errEuler = Math.abs(yEuler - yExactFinal);
+                  errs.push('Euler |error| ≈ ' + errEuler.toExponential(3));
+                }
+                if (heunSeries && heunSeries.length) {
+                  const yHeun = heunSeries[heunSeries.length - 1].y;
+                  const errHeun = Math.abs(yHeun - yExactFinal);
+                  errs.push('Heun |error| ≈ ' + errHeun.toExponential(3));
+                }
+                globalErrorStr = errs.join(' ; ');
+                setResult(resFinalExact, finalExactStr);
+                setResult(resGlobalError, globalErrorStr);
+              } else {
+                setResult(resFinalExact, 'Exact y(xₙ) is not finite.');
+                setResult(resGlobalError, 'Could not compute error (non-finite exact value).');
+              }
+
+              const baseSeries = eulerSeries || heunSeries || [];
+              exactSeries = baseSeries.map(p => ({
+                n: p.n,
+                x: p.x,
+                y: exactFn(p.x)
+              })).filter(p => Number.isFinite(p.y));
+            } catch (e) {
+              setResult(resFinalExact, 'Error evaluating exact y(xₙ).');
+              setResult(resGlobalError, 'Could not compute error (evaluation error).');
+            }
+          } else {
+            setResult(resFinalExact, finalExactStr);
+            setResult(resGlobalError, globalErrorStr);
+          }
+
+          if (tableBody) {
+            tableBody.innerHTML = '';
+            const maxRows = Math.min(nSteps + 1, 1000);
+
+            for (let i = 0; i < maxRows; i++) {
+              const ePoint = eulerSeries && eulerSeries[i] ? eulerSeries[i] : null;
+              const hPoint = heunSeries && heunSeries[i] ? heunSeries[i] : null;
+              const xVal = ePoint ? ePoint.x : (hPoint ? hPoint.x : null);
+              if (xVal === null) break;
+
+              let yE = ePoint ? ePoint.y : null;
+              let yH = hPoint ? hPoint.y : null;
+              let yEx = null;
+              let errE = null;
+              let errH = null;
+
+              if (exactFn) {
+                try {
+                  yEx = exactFn(xVal);
+                  if (Number.isFinite(yEx)) {
+                    if (ePoint) errE = Math.abs(yE - yEx);
+                    if (hPoint) errH = Math.abs(yH - yEx);
+                  } else {
+                    yEx = null;
+                  }
+                } catch (e) {
+                  yEx = null;
+                }
+              }
+
+              const tr = document.createElement('tr');
+              tr.className = 'border-b';
+
+              const tdN = document.createElement('td');
+              tdN.className = 'px-3 py-1.5 text-gray-700';
+              tdN.textContent = String(i);
+
+              const tdX = document.createElement('td');
+              tdX.className = 'px-3 py-1.5 text-gray-700';
+              tdX.textContent = xVal.toPrecision(6);
+
+              const tdYE = document.createElement('td');
+              tdYE.className = 'px-3 py-1.5 text-gray-700';
+              tdYE.textContent = (yE !== null) ? yE.toPrecision(8) : '–';
+
+              const tdYH = document.createElement('td');
+              tdYH.className = 'px-3 py-1.5 text-gray-700';
+              tdYH.textContent = (yH !== null) ? yH.toPrecision(8) : '–';
+
+              const tdYEx = document.createElement('td');
+              tdYEx.className = 'px-3 py-1.5 text-gray-700';
+              tdYEx.textContent = (yEx !== null) ? yEx.toPrecision(8) : '–';
+
+              const tdErrE = document.createElement('td');
+              tdErrE.className = 'px-3 py-1.5 text-gray-700';
+              tdErrE.textContent = (errE !== null) ? errE.toExponential(3) : '–';
+
+              const tdErrH = document.createElement('td');
+              tdErrH.className = 'px-3 py-1.5 text-gray-700';
+              tdErrH.textContent = (errH !== null) ? errH.toExponential(3) : '–';
+
+              tr.appendChild(tdN);
+              tr.appendChild(tdX);
+              tr.appendChild(tdYE);
+              tr.appendChild(tdYH);
+              tr.appendChild(tdYEx);
+              tr.appendChild(tdErrE);
+              tr.appendChild(tdErrH);
+              tableBody.appendChild(tr);
+            }
+
+            if (nSteps + 1 > maxRows) {
+              const tr = document.createElement('tr');
+              tr.className = 'border-b';
+              const td = document.createElement('td');
+              td.colSpan = 7;
+              td.className = 'px-3 py-1.5 text-gray-500';
+              td.textContent = 'Table truncated to first ' + maxRows + ' rows.';
+              tr.appendChild(td);
+              tableBody.appendChild(tr);
+            }
+          }
+
+          updatePlot(eulerSeries, heunSeries, exactFn);
+        }
+
+        function clearEuler() {
+          eqInput.value = 'x + y';
+          x0Input.value = '0';
+          y0Input.value = '1';
+          hInput.value = '0.1';
+          nstepsInput.value = '10';
+          methodSelect.value = 'both';
+          exactInput.value = '';
+          clearResults();
+        }
+
+        if (btnCompute) btnCompute.addEventListener('click', computeEuler);
+        if (btnClear) btnClear.addEventListener('click', clearEuler);
+
+        exampleButtons.forEach(btn => {
+          btn.addEventListener('click', function () {
+            const payload = btn.getAttribute('data-example') || '';
+            const parts = payload.split(',');
+            if (parts.length >= 5) {
+              eqInput.value = parts[0];
+              x0Input.value = parts[1];
+              y0Input.value = parts[2];
+              hInput.value = parts[3];
+              nstepsInput.value = parts[4];
+            }
+            clearResults();
+          });
+        });
+      });
+    </script>
+
+
+</body></html>
+, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      // Mobile menu toggle
+      document.getElementById('mobile-menu-toggle')?.addEventListener('click', function () {
+        const menu = document.getElementById('mobile-menu');
+        if (!menu) return;
+        const isHidden = menu.classList.contains('hidden');
+        menu.classList.toggle('hidden', !isHidden);
+        this.setAttribute('aria-expanded', String(isHidden));
+      });
+
+      document.addEventListener('DOMContentLoaded', function () {
+        const eqInput = document.getElementById('eq-input');
+        const x0Input = document.getElementById('x0-input');
+        const y0Input = document.getElementById('y0-input');
+        const hInput = document.getElementById('h-input');
+        const nstepsInput = document.getElementById('nsteps-input');
+        const methodSelect = document.getElementById('method-select');
+        const exactInput = document.getElementById('exact-input');
+        const exampleButtons = document.querySelectorAll('[data-example]');
+
+        const btnCompute = document.getElementById('btn-euler-compute');
+        const btnClear = document.getElementById('btn-euler-clear');
+        const errorEl = document.getElementById('euler-error');
+
+        const resGrid = document.getElementById('res-grid');
+        const resFinalX = document.getElementById('res-final-x');
+        const resFinalEuler = document.getElementById('res-final-euler');
+        const resFinalHeun = document.getElementById('res-final-heun');
+        const resFinalExact = document.getElementById('res-final-exact');
+        const resGlobalError = document.getElementById('res-global-error');
+        const tableBody = document.getElementById('euler-table-body');
+        const plotSvg = document.getElementById('euler-plot');
+
+        function setResult(container, text) {
+          if (!container) return;
+          const span = container.querySelector('.result-value');
+          if (span) span.textContent = text;
+        }
+
+        function clearResults() {
+          [resGrid, resFinalX, resFinalEuler, resFinalHeun, resFinalExact, resGlobalError].forEach(el => {
+            if (!el) return;
+            const spans = el.querySelectorAll('.result-value');
+            spans.forEach(span => span.textContent = '—');
+          });
+          if (tableBody) tableBody.innerHTML = '';
+          if (plotSvg) plotSvg.innerHTML = '';
+          if (errorEl) errorEl.textContent = '';
+        }
+
+        function buildFunction(expr, variableNames) {
+          const trimmed = (expr || '').trim();
+          if (!trimmed) return null;
+
+          let safeExpr = trimmed.replace(/\^/g, '**');
+
+          const globals = [
+            'sin','cos','tan','asin','acos','atan','sinh','cosh','tanh',
+            'exp','log','sqrt','abs','pow','floor','ceil','round','max','min'
+          ];
+
+          const args = variableNames.concat(globals.map(name => name));
+          const argList = args.join(',');
+
+          const body = 'return (' + safeExpr + ');';
+
+          try {
+            /* eslint no-new-func: "off" */
+            const fn = new Function(argList, body);
+            const bound = function () {
+              const vars = Array.prototype.slice.call(arguments);
+              const mathArgs = globals.map(name => Math[name] || Math[name.toLowerCase()]);
+              return fn.apply(null, vars.concat(mathArgs));
+            };
+            return bound;
+          } catch (e) {
+            return null;
+          }
+        }
+
+        function eulerSteps(f, x0, y0, h, nSteps) {
+          const result = [];
+          let x = x0;
+          let y = y0;
+          for (let n = 0; n <= nSteps; n++) {
+            result.push({ n: n, x: x, y: y });
+            if (n === nSteps) break;
+            const slope = f(x, y);
+            if (!Number.isFinite(slope)) {
+              throw new Error('Non-finite slope f(x,y) encountered at x = ' + x + ', y = ' + y);
+            }
+            y = y + h * slope;
+            x = x + h;
+          }
+          return result;
+        }
+
+        function heunSteps(f, x0, y0, h, nSteps) {
+          const result = [];
+          let x = x0;
+          let y = y0;
+          for (let n = 0; n <= nSteps; n++) {
+            result.push({ n: n, x: x, y: y });
+            if (n === nSteps) break;
+            const k1 = f(x, y);
+            if (!Number.isFinite(k1)) {
+              throw new Error('Non-finite slope f(x,y) encountered at x = ' + x + ', y = ' + y);
+            }
+            const xNext = x + h;
+            const yPred = y + h * k1;
+            const k2 = f(xNext, yPred);
+            if (!Number.isFinite(k2)) {
+              throw new Error('Non-finite slope f(x,y) encountered at predictor point x = ' + xNext + ', y = ' + yPred);
+            }
+            y = y + (h / 2) * (k1 + k2);
+            x = xNext;
+          }
+          return result;
+        }
+
+        function updatePlot(eulerSeries, heunSeries, exactFn) {
+          if (!plotSvg) return;
+          plotSvg.innerHTML = '';
+
+          const width = 400;
+          const height = 260;
+          const pad = 30;
+
+          function seriesToArrays(series) {
+            return {
+              xs: series.map(p => p.x),
+              ys: series.map(p => p.y)
+            };
+          }
+
+          let xs = [];
+          let ys = [];
+
+          if (eulerSeries && eulerSeries.length) {
+            const arr = seriesToArrays(eulerSeries);
+            xs = xs.concat(arr.xs);
+            ys = ys.concat(arr.ys);
+          }
+          if (heunSeries && heunSeries.length) {
+            const arr = seriesToArrays(heunSeries);
+            xs = xs.concat(arr.xs);
+            ys = ys.concat(arr.ys);
+          }
+
+          let exactSamples = [];
+          if (exactFn && xs.length > 1) {
+            const minX = Math.min.apply(null, xs);
+            const maxX = Math.max.apply(null, xs);
+            const m = 80;
+            const step = (maxX - minX) / (m - 1 || 1);
+            for (let i = 0; i < m; i++) {
+              const x = minX + i * step;
+              const y = exactFn(x);
+              if (Number.isFinite(y)) {
+                exactSamples.push({ x, y });
+                xs.push(x);
+                ys.push(y);
+              }
+            }
+          }
+
+          if (!xs.length || !ys.length) {
+            return;
+          }
+
+          let minX = Math.min.apply(null, xs);
+          let maxX = Math.max.apply(null, xs);
+          let minY = Math.min.apply(null, ys);
+          let maxY = Math.max.apply(null, ys);
+
+          if (maxX === minX) { maxX = minX + 1; }
+          if (maxY === minY) { maxY = minY + 1; }
+
+          function mapX(x) {
+            return pad + (x - minX) / (maxX - minX) * (width - 2 * pad);
+          }
+          function mapY(y) {
+            return height - pad - (y - minY) / (maxY - minY) * (height - 2 * pad);
+          }
+
+          const axes = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+          const xAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          xAxis.setAttribute('x1', String(pad));
+          xAxis.setAttribute('y1', String(height - pad));
+          xAxis.setAttribute('x2', String(width - pad));
+          xAxis.setAttribute('y2', String(height - pad));
+          xAxis.setAttribute('stroke', '#d1d5db');
+          xAxis.setAttribute('stroke-width', '1');
+
+          const yAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          yAxis.setAttribute('x1', String(pad));
+          yAxis.setAttribute('y1', String(pad));
+          yAxis.setAttribute('x2', String(pad));
+          yAxis.setAttribute('y2', String(height - pad));
+          yAxis.setAttribute('stroke', '#d1d5db');
+          yAxis.setAttribute('stroke-width', '1');
+
+          axes.appendChild(xAxis);
+          axes.appendChild(yAxis);
+          plotSvg.appendChild(axes);
+
+          function addPolyline(series, color, dashArray) {
+            if (!series || !series.length) return;
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+            const pts = series.map(p => mapX(p.x) + ',' + mapY(p.y)).join(' ');
+            path.setAttribute('points', pts);
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke', color);
+            path.setAttribute('stroke-width', '1.5');
+            if (dashArray) path.setAttribute('stroke-dasharray', dashArray);
+            plotSvg.appendChild(path);
+          }
+
+          function addPoints(series, color) {
+            if (!series || !series.length) return;
+            series.forEach(p => {
+              const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+              c.setAttribute('cx', String(mapX(p.x)));
+              c.setAttribute('cy', String(mapY(p.y)));
+              c.setAttribute('r', '2');
+              c.setAttribute('fill', color);
+              plotSvg.appendChild(c);
+            });
+          }
+
+          if (exactSamples.length) {
+            addPolyline(exactSamples, '#dc2626', '4 2');
+          }
+          if (eulerSeries && eulerSeries.length) {
+            addPolyline(eulerSeries, '#1d4ed8');
+            addPoints(eulerSeries, '#1d4ed8');
+          }
+          if (heunSeries && heunSeries.length) {
+            addPolyline(heunSeries, '#16a34a');
+            addPoints(heunSeries, '#16a34a');
+          }
+        }
+
+        function computeEuler() {
+          clearResults();
+
+          const eqExpr = (eqInput.value || '').trim();
+          const x0 = Number(x0Input.value);
+          const y0 = Number(y0Input.value);
+          const h = Number(hInput.value);
+          const nSteps = Number(nstepsInput.value);
+          const method = methodSelect.value;
+          const exactExpr = (exactInput.value || '').trim();
+
+          if (!eqExpr) {
+            errorEl.textContent = 'Please enter the right-hand side f(x, y).';
+            return;
+          }
+          if (!Number.isFinite(x0) || !Number.isFinite(y0) || !Number.isFinite(h) || !Number.isFinite(nSteps)) {
+            errorEl.textContent = 'x₀, y₀, h and N must be numeric values.';
+            return;
+          }
+          if (h <= 0) {
+            errorEl.textContent = 'Step size h must be strictly positive.';
+            return;
+          }
+          if (!Number.isInteger(nSteps) || nSteps < 1) {
+            errorEl.textContent = 'Number of steps N must be an integer ≥ 1.';
+            return;
+          }
+          if (nSteps > 1000) {
+            errorEl.textContent = 'N is too large; please choose N ≤ 1000 for responsiveness.';
+            return;
+          }
+
+          const f = buildFunction(eqExpr, ['x', 'y']);
+          if (!f) {
+            errorEl.textContent = 'Could not parse f(x, y). Check the expression syntax.';
+            return;
+          }
+
+          let exactFn = null;
+          if (exactExpr) {
+            exactFn = buildFunction(exactExpr, ['x']);
+            if (!exactFn) {
+              errorEl.textContent = 'Could not parse exact solution y(x). Check the expression syntax.';
+              return;
+            }
+          }
+
+          let eulerSeries = null;
+          let heunSeries = null;
+
+          try {
+            if (method === 'euler' || method === 'both') {
+              eulerSeries = eulerSteps(f, x0, y0, h, nSteps);
+            }
+            if (method === 'improved' || method === 'both') {
+              heunSeries = heunSteps(f, x0, y0, h, nSteps);
+            }
+          } catch (e) {
+            errorEl.textContent = e.message || 'Error during numerical integration.';
+            return;
+          }
+
+          const xN = x0 + nSteps * h;
+
+          setResult(resGrid, 'xₙ = x₀ + n·h, 0 ≤ n ≤ ' + nSteps + ' (h = ' + h + ')');
+          setResult(resFinalX, 'xₙ = ' + xN.toPrecision(8));
+
+          if (eulerSeries && eulerSeries.length) {
+            const yEuler = eulerSeries[eulerSeries.length - 1].y;
+            setResult(resFinalEuler, 'yₙ ≈ ' + yEuler.toPrecision(8));
+          } else {
+            setResult(resFinalEuler, '– (not computed)');
+          }
+
+          if (heunSeries && heunSeries.length) {
+            const yHeun = heunSeries[heunSeries.length - 1].y;
+            setResult(resFinalHeun, 'yₙ ≈ ' + yHeun.toPrecision(8));
+          } else {
+            setResult(resFinalHeun, '– (not computed)');
+          }
+
+          let finalExactStr = '–';
+          let globalErrorStr = 'Provide exact y(x) to compute error.';
+          let exactSeries = [];
+          if (exactFn) {
+            try {
+              const yExactFinal = exactFn(xN);
+              if (Number.isFinite(yExactFinal)) {
+                finalExactStr = 'y(xₙ) = ' + yExactFinal.toPrecision(8);
+                const errs = [];
+                if (eulerSeries && eulerSeries.length) {
+                  const yEuler = eulerSeries[eulerSeries.length - 1].y;
+                  const errEuler = Math.abs(yEuler - yExactFinal);
+                  errs.push('Euler |error| ≈ ' + errEuler.toExponential(3));
+                }
+                if (heunSeries && heunSeries.length) {
+                  const yHeun = heunSeries[heunSeries.length - 1].y;
+                  const errHeun = Math.abs(yHeun - yExactFinal);
+                  errs.push('Heun |error| ≈ ' + errHeun.toExponential(3));
+                }
+                globalErrorStr = errs.join(' ; ');
+                setResult(resFinalExact, finalExactStr);
+                setResult(resGlobalError, globalErrorStr);
+              } else {
+                setResult(resFinalExact, 'Exact y(xₙ) is not finite.');
+                setResult(resGlobalError, 'Could not compute error (non-finite exact value).');
+              }
+
+              const baseSeries = eulerSeries || heunSeries || [];
+              exactSeries = baseSeries.map(p => ({
+                n: p.n,
+                x: p.x,
+                y: exactFn(p.x)
+              })).filter(p => Number.isFinite(p.y));
+            } catch (e) {
+              setResult(resFinalExact, 'Error evaluating exact y(xₙ).');
+              setResult(resGlobalError, 'Could not compute error (evaluation error).');
+            }
+          } else {
+            setResult(resFinalExact, finalExactStr);
+            setResult(resGlobalError, globalErrorStr);
+          }
+
+          if (tableBody) {
+            tableBody.innerHTML = '';
+            const maxRows = Math.min(nSteps + 1, 1000);
+
+            for (let i = 0; i < maxRows; i++) {
+              const ePoint = eulerSeries && eulerSeries[i] ? eulerSeries[i] : null;
+              const hPoint = heunSeries && heunSeries[i] ? heunSeries[i] : null;
+              const xVal = ePoint ? ePoint.x : (hPoint ? hPoint.x : null);
+              if (xVal === null) break;
+
+              let yE = ePoint ? ePoint.y : null;
+              let yH = hPoint ? hPoint.y : null;
+              let yEx = null;
+              let errE = null;
+              let errH = null;
+
+              if (exactFn) {
+                try {
+                  yEx = exactFn(xVal);
+                  if (Number.isFinite(yEx)) {
+                    if (ePoint) errE = Math.abs(yE - yEx);
+                    if (hPoint) errH = Math.abs(yH - yEx);
+                  } else {
+                    yEx = null;
+                  }
+                } catch (e) {
+                  yEx = null;
+                }
+              }
+
+              const tr = document.createElement('tr');
+              tr.className = 'border-b';
+
+              const tdN = document.createElement('td');
+              tdN.className = 'px-3 py-1.5 text-gray-700';
+              tdN.textContent = String(i);
+
+              const tdX = document.createElement('td');
+              tdX.className = 'px-3 py-1.5 text-gray-700';
+              tdX.textContent = xVal.toPrecision(6);
+
+              const tdYE = document.createElement('td');
+              tdYE.className = 'px-3 py-1.5 text-gray-700';
+              tdYE.textContent = (yE !== null) ? yE.toPrecision(8) : '–';
+
+              const tdYH = document.createElement('td');
+              tdYH.className = 'px-3 py-1.5 text-gray-700';
+              tdYH.textContent = (yH !== null) ? yH.toPrecision(8) : '–';
+
+              const tdYEx = document.createElement('td');
+              tdYEx.className = 'px-3 py-1.5 text-gray-700';
+              tdYEx.textContent = (yEx !== null) ? yEx.toPrecision(8) : '–';
+
+              const tdErrE = document.createElement('td');
+              tdErrE.className = 'px-3 py-1.5 text-gray-700';
+              tdErrE.textContent = (errE !== null) ? errE.toExponential(3) : '–';
+
+              const tdErrH = document.createElement('td');
+              tdErrH.className = 'px-3 py-1.5 text-gray-700';
+              tdErrH.textContent = (errH !== null) ? errH.toExponential(3) : '–';
+
+              tr.appendChild(tdN);
+              tr.appendChild(tdX);
+              tr.appendChild(tdYE);
+              tr.appendChild(tdYH);
+              tr.appendChild(tdYEx);
+              tr.appendChild(tdErrE);
+              tr.appendChild(tdErrH);
+              tableBody.appendChild(tr);
+            }
+
+            if (nSteps + 1 > maxRows) {
+              const tr = document.createElement('tr');
+              tr.className = 'border-b';
+              const td = document.createElement('td');
+              td.colSpan = 7;
+              td.className = 'px-3 py-1.5 text-gray-500';
+              td.textContent = 'Table truncated to first ' + maxRows + ' rows.';
+              tr.appendChild(td);
+              tableBody.appendChild(tr);
+            }
+          }
+
+          updatePlot(eulerSeries, heunSeries, exactFn);
+        }
+
+        function clearEuler() {
+          eqInput.value = 'x + y';
+          x0Input.value = '0';
+          y0Input.value = '1';
+          hInput.value = '0.1';
+          nstepsInput.value = '10';
+          methodSelect.value = 'both';
+          exactInput.value = '';
+          clearResults();
+        }
+
+        if (btnCompute) btnCompute.addEventListener('click', computeEuler);
+        if (btnClear) btnClear.addEventListener('click', clearEuler);
+
+        exampleButtons.forEach(btn => {
+          btn.addEventListener('click', function () {
+            const payload = btn.getAttribute('data-example') || '';
+            const parts = payload.split(',');
+            if (parts.length >= 5) {
+              eqInput.value = parts[0];
+              x0Input.value = parts[1];
+              y0Input.value = parts[2];
+              hInput.value = parts[3];
+              nstepsInput.value = parts[4];
+            }
+            clearResults();
+          });
+        });
+      });
+    </script>
+
+
+</body></html>
+]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

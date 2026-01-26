@@ -43,10 +43,6 @@
     
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
     
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-    
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -216,8 +212,6 @@
 <body class="bg-gray-50 text-gray-800">
 
     <!-- BODY_SCRIPTS_INIZIO substituted -->
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
         <div class="flex justify-between items-center">
@@ -705,7 +699,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -772,14 +766,742 @@
 
 
 
+
     
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
     
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      (function() {
+        const baseInput = document.getElementById('me-base');
+        const expInput = document.getElementById('me-exp');
+        const modInput = document.getElementById('me-mod');
+        const showStepsCheckbox = document.getElementById('me-show-steps');
+
+        const calcBtn = document.getElementById('me-calc-btn');
+        const resetBtn = document.getElementById('me-reset-btn');
+        const errorEl = document.getElementById('me-error');
+
+        const resultBox = document.getElementById('me-result-box');
+        const mainResultEl = document.getElementById('me-main-result');
+        const resultsBody = document.getElementById('me-results-body');
+        const noteEl = document.getElementById('me-note');
+
+        const stepsBox = document.getElementById('me-steps-box');
+        const stepsNoteEl = document.getElementById('me-steps-note');
+        const stepsBody = document.getElementById('me-steps-body');
+
+        const presetButtons = document.querySelectorAll('button[data-preset]');
+
+        const MAX_STEP_BITS = 256; // limit for step-by-step output
+
+        function clearError() {
+          errorEl.textContent = '';
+          errorEl.classList.add('hidden');
+        }
+
+        function showError(msg) {
+          errorEl.textContent = msg;
+          errorEl.classList.remove('hidden');
+        }
+
+        function parseBigInt(value, label) {
+          const trimmed = value.trim();
+          if (!trimmed) {
+            throw new Error('Please enter a value for "' + label + '".');
+          }
+          if (!/^[-+]?\d+$/.test(trimmed)) {
+            throw new Error('"' + label + '" must be an integer (digits only, optional leading + or -).');
+          }
+          try {
+            return BigInt(trimmed);
+          } catch (e) {
+            throw new Error('"' + label + '" is too large or not a valid integer for this environment.');
+          }
+        }
+
+        function modNormalize(a, m) {
+          const r = a % m;
+          return r >= 0n ? r : r + m;
+        }
+
+        function modPow(a, b, m) {
+          // Right-to-left binary exponentiation without recording steps
+          let base = modNormalize(a, m);
+          let exp = b;
+          let result = 1n;
+          while (exp > 0n) {
+            if (exp & 1n) {
+              result = (result * base) % m;
+            }
+            base = (base * base) % m;
+            exp >>= 1n;
+          }
+          return result;
+        }
+
+        function modPowWithStepsLeftToRight(a, b, m, maxBits) {
+          const aMod = modNormalize(a, m);
+          if (b === 0n) {
+            // result = 1 mod m, trivial "step"
+            const res = modNormalize(1n, m);
+            return {
+              result: res,
+              bits: '0',
+              truncated: false,
+              steps: [
+                {
+                  step: 1,
+                  bit: '0',
+                  before: '1',
+                  afterSquare: '1',
+                  afterMul: '1'
+                }
+              ]
+            };
+          }
+
+          const bits = b.toString(2); // binary string
+          const truncated = bits.length > maxBits;
+          const bitsToUse = truncated ? bits.slice(bits.length - maxBits) : bits;
+
+          let result = 1n;
+          let steps = [];
+          let stepIndex = 0;
+
+          // If truncated, we still compute using full exponent b (correct result) but
+          // only record the last maxBits iterations for display.
+          let resForRecord = 1n;
+          let iStart = bits.length - bitsToUse.length;
+
+          // Compute result using full exponent
+          result = 1n;
+          for (let i = 0; i < bits.length; i++) {
+            const bit = bits[i];
+            result = (result * result) % m;
+            if (bit === '1') {
+              result = (result * aMod) % m;
+            }
+          }
+
+          // Re-run just for steps from iStart to end (so we can show consistent states)
+          resForRecord = 1n;
+          for (let i = 0; i < bits.length; i++) {
+            const bit = bits[i];
+            const before = resForRecord;
+            let afterSquare = (resForRecord * resForRecord) % m;
+            let afterMul = afterSquare;
+            if (bit === '1') {
+              afterMul = (afterSquare * aMod) % m;
+            }
+            resForRecord = afterMul;
+
+            if (i >= iStart) {
+              stepIndex += 1;
+              steps.push({
+                step: stepIndex,
+                bit: bit,
+                before: before.toString(),
+                afterSquare: afterSquare.toString(),
+                afterMul: afterMul.toString()
+              });
+            }
+          }
+
+          return {
+            result,
+            bits,
+            truncated,
+            steps
+          };
+        }
+
+        function setResultsTable(a, b, m, aMod, result, expBits) {
+          resultsBody.innerHTML = '';
+
+          const rows = [
+            ['Base a (input)', a.toString()],
+            ['Exponent b (input)', b.toString()],
+            ['Modulus m (input)', m.toString()],
+            ['a reduced modulo m', aMod.toString()],
+            ['Exponent b in binary', expBits]
+          ];
+
+          rows.forEach(([label, value]) => {
+            const tr = document.createElement('tr');
+            const td1 = document.createElement('td');
+            const td2 = document.createElement('td');
+            td1.className = 'px-3 py-2 text-gray-800';
+            td2.className = 'px-3 py-2 text-gray-800 mono';
+            td1.textContent = label;
+            td2.textContent = value;
+            tr.appendChild(td1);
+            tr.appendChild(td2);
+            resultsBody.appendChild(tr);
+          });
+
+          const trLast = document.createElement('tr');
+          const td1Last = document.createElement('td');
+          const td2Last = document.createElement('td');
+          td1Last.className = 'px-3 py-2 text-gray-800 font-semibold';
+          td2Last.className = 'px-3 py-2 text-gray-800 mono font-semibold';
+          td1Last.textContent = 'Result a^b mod m';
+          td2Last.textContent = result.toString();
+          trLast.appendChild(td1Last);
+          trLast.appendChild(td2Last);
+          resultsBody.appendChild(trLast);
+        }
+
+        function setStepsTable(stepInfo) {
+          stepsBody.innerHTML = '';
+          stepInfo.steps.forEach(s => {
+            const tr = document.createElement('tr');
+            const tdStep = document.createElement('td');
+            const tdBit = document.createElement('td');
+            const tdBefore = document.createElement('td');
+            const tdSq = document.createElement('td');
+            const tdMul = document.createElement('td');
+            tdStep.className = 'px-2 py-1 text-gray-800';
+            tdBit.className = 'px-2 py-1 text-gray-800';
+            tdBefore.className = 'px-2 py-1 text-gray-800 mono';
+            tdSq.className = 'px-2 py-1 text-gray-800 mono';
+            tdMul.className = 'px-2 py-1 text-gray-800 mono';
+
+            tdStep.textContent = s.step;
+            tdBit.textContent = s.bit;
+            tdBefore.textContent = s.before;
+            tdSq.textContent = s.afterSquare;
+            tdMul.textContent = s.afterMul;
+
+            tr.appendChild(tdStep);
+            tr.appendChild(tdBit);
+            tr.appendChild(tdBefore);
+            tr.appendChild(tdSq);
+            tr.appendChild(tdMul);
+            stepsBody.appendChild(tr);
+          });
+        }
+
+        function applyPreset(key) {
+          if (key === 'toy1') {
+            baseInput.value = '5';
+            expInput.value = '117';
+            modInput.value = '19';
+          } else if (key === 'toy2') {
+            baseInput.value = '7';
+            expInput.value = '256';
+            modInput.value = '33';
+          } else if (key === 'toy3') {
+            baseInput.value = '2';
+            expInput.value = '1024';
+            modInput.value = '1000000007';
+          }
+          clearError();
+          resultBox.classList.add('hidden');
+          stepsBox.classList.add('hidden');
+        }
+
+        presetButtons.forEach(btn => {
+          btn.addEventListener('click', function() {
+            const key = this.getAttribute('data-preset');
+            applyPreset(key);
+          });
+        });
+
+        calcBtn.addEventListener('click', function() {
+          clearError();
+          resultBox.classList.add('hidden');
+          stepsBox.classList.add('hidden');
+          mainResultEl.textContent = '';
+          resultsBody.innerHTML = '';
+          noteEl.textContent = '';
+          stepsBody.innerHTML = '';
+          stepsNoteEl.textContent = '';
+
+          let a, b, m;
+          try {
+            a = parseBigInt(baseInput.value, 'Base a');
+            b = parseBigInt(expInput.value, 'Exponent b');
+            m = parseBigInt(modInput.value, 'Modulus m');
+          } catch (err) {
+            showError(err.message || 'Please check your inputs.');
+            return;
+          }
+
+          if (b < 0n) {
+            showError('Exponent b must be non-negative for this calculator.');
+            return;
+          }
+          if (m <= 0n) {
+            showError('Modulus m must be a positive integer (m ≥ 1).');
+            return;
+          }
+
+          const aMod = modNormalize(a, m);
+
+          let expBits = b.toString(2);
+          let stepInfo = null;
+          const wantSteps = showStepsCheckbox.checked;
+
+          try {
+            if (wantSteps && expBits.length <= MAX_STEP_BITS) {
+              stepInfo = modPowWithStepsLeftToRight(a, b, m, MAX_STEP_BITS);
+            } else if (wantSteps && expBits.length > MAX_STEP_BITS) {
+              // compute without recorded steps, keep a note
+              const res = modPow(a, b, m);
+              stepInfo = {
+                result: res,
+                bits: expBits,
+                truncated: true,
+                steps: []
+              };
+            } else {
+              const res = modPow(a, b, m);
+              stepInfo = {
+                result: res,
+                bits: expBits,
+                truncated: false,
+                steps: []
+              };
+            }
+          } catch (err) {
+            showError(err.message || 'Computation failed. Please check your inputs.');
+            return;
+          }
+
+          const result = stepInfo.result;
+          expBits = stepInfo.bits;
+
+          // Main result line
+          mainResultEl.textContent = 'a^b mod m = ' + result.toString();
+
+          // Table
+          setResultsTable(a, b, m, aMod, result, expBits);
+
+          // Note
+          noteEl.textContent =
+            'Computed using fast binary exponentiation, reducing modulo m at every step to avoid huge intermediate numbers.';
+
+          resultBox.classList.remove('hidden');
+
+          // Steps
+          if (wantSteps) {
+            if (stepInfo.steps.length > 0) {
+              setStepsTable(stepInfo);
+              stepsBox.classList.remove('hidden');
+              if (stepInfo.truncated) {
+                stepsNoteEl.textContent =
+                  'Showing only the last ' + MAX_STEP_BITS +
+                  ' bits of the exponent’s square-and-multiply steps to keep the output readable.';
+              } else {
+                stepsNoteEl.textContent =
+                  'Each row processes one bit of b (from most significant to least) using result ← result² and, if the bit is 1, result ← result · a, all modulo m.';
+              }
+            } else if (stepInfo.truncated) {
+              stepsBox.classList.add('hidden');
+              noteEl.textContent += ' Step-by-step output is disabled because the exponent has too many bits.';
+            }
+          }
+
+          if (window.MathJax && window.MathJax.typeset) {
+            window.MathJax.typeset();
+          }
+        });
+
+        resetBtn.addEventListener('click', function() {
+          baseInput.value = '7';
+          expInput.value = '256';
+          modInput.value = '33';
+          showStepsCheckbox.checked = true;
+          clearError();
+          resultBox.classList.add('hidden');
+          stepsBox.classList.add('hidden');
+          mainResultEl.textContent = '';
+          resultsBody.innerHTML = '';
+          noteEl.textContent = '';
+          stepsBody.innerHTML = '';
+          stepsNoteEl.textContent = '';
+        });
+
+        // Initial defaults
+        resetBtn.click();
+      })();
+    </script>
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      (function() {
+        const baseInput = document.getElementById('me-base');
+        const expInput = document.getElementById('me-exp');
+        const modInput = document.getElementById('me-mod');
+        const showStepsCheckbox = document.getElementById('me-show-steps');
+
+        const calcBtn = document.getElementById('me-calc-btn');
+        const resetBtn = document.getElementById('me-reset-btn');
+        const errorEl = document.getElementById('me-error');
+
+        const resultBox = document.getElementById('me-result-box');
+        const mainResultEl = document.getElementById('me-main-result');
+        const resultsBody = document.getElementById('me-results-body');
+        const noteEl = document.getElementById('me-note');
+
+        const stepsBox = document.getElementById('me-steps-box');
+        const stepsNoteEl = document.getElementById('me-steps-note');
+        const stepsBody = document.getElementById('me-steps-body');
+
+        const presetButtons = document.querySelectorAll('button[data-preset]');
+
+        const MAX_STEP_BITS = 256; // limit for step-by-step output
+
+        function clearError() {
+          errorEl.textContent = '';
+          errorEl.classList.add('hidden');
+        }
+
+        function showError(msg) {
+          errorEl.textContent = msg;
+          errorEl.classList.remove('hidden');
+        }
+
+        function parseBigInt(value, label) {
+          const trimmed = value.trim();
+          if (!trimmed) {
+            throw new Error('Please enter a value for "' + label + '".');
+          }
+          if (!/^[-+]?\d+$/.test(trimmed)) {
+            throw new Error('"' + label + '" must be an integer (digits only, optional leading + or -).');
+          }
+          try {
+            return BigInt(trimmed);
+          } catch (e) {
+            throw new Error('"' + label + '" is too large or not a valid integer for this environment.');
+          }
+        }
+
+        function modNormalize(a, m) {
+          const r = a % m;
+          return r >= 0n ? r : r + m;
+        }
+
+        function modPow(a, b, m) {
+          // Right-to-left binary exponentiation without recording steps
+          let base = modNormalize(a, m);
+          let exp = b;
+          let result = 1n;
+          while (exp > 0n) {
+            if (exp & 1n) {
+              result = (result * base) % m;
+            }
+            base = (base * base) % m;
+            exp >>= 1n;
+          }
+          return result;
+        }
+
+        function modPowWithStepsLeftToRight(a, b, m, maxBits) {
+          const aMod = modNormalize(a, m);
+          if (b === 0n) {
+            // result = 1 mod m, trivial "step"
+            const res = modNormalize(1n, m);
+            return {
+              result: res,
+              bits: '0',
+              truncated: false,
+              steps: [
+                {
+                  step: 1,
+                  bit: '0',
+                  before: '1',
+                  afterSquare: '1',
+                  afterMul: '1'
+                }
+              ]
+            };
+          }
+
+          const bits = b.toString(2); // binary string
+          const truncated = bits.length > maxBits;
+          const bitsToUse = truncated ? bits.slice(bits.length - maxBits) : bits;
+
+          let result = 1n;
+          let steps = [];
+          let stepIndex = 0;
+
+          // If truncated, we still compute using full exponent b (correct result) but
+          // only record the last maxBits iterations for display.
+          let resForRecord = 1n;
+          let iStart = bits.length - bitsToUse.length;
+
+          // Compute result using full exponent
+          result = 1n;
+          for (let i = 0; i < bits.length; i++) {
+            const bit = bits[i];
+            result = (result * result) % m;
+            if (bit === '1') {
+              result = (result * aMod) % m;
+            }
+          }
+
+          // Re-run just for steps from iStart to end (so we can show consistent states)
+          resForRecord = 1n;
+          for (let i = 0; i < bits.length; i++) {
+            const bit = bits[i];
+            const before = resForRecord;
+            let afterSquare = (resForRecord * resForRecord) % m;
+            let afterMul = afterSquare;
+            if (bit === '1') {
+              afterMul = (afterSquare * aMod) % m;
+            }
+            resForRecord = afterMul;
+
+            if (i >= iStart) {
+              stepIndex += 1;
+              steps.push({
+                step: stepIndex,
+                bit: bit,
+                before: before.toString(),
+                afterSquare: afterSquare.toString(),
+                afterMul: afterMul.toString()
+              });
+            }
+          }
+
+          return {
+            result,
+            bits,
+            truncated,
+            steps
+          };
+        }
+
+        function setResultsTable(a, b, m, aMod, result, expBits) {
+          resultsBody.innerHTML = '';
+
+          const rows = [
+            ['Base a (input)', a.toString()],
+            ['Exponent b (input)', b.toString()],
+            ['Modulus m (input)', m.toString()],
+            ['a reduced modulo m', aMod.toString()],
+            ['Exponent b in binary', expBits]
+          ];
+
+          rows.forEach(([label, value]) => {
+            const tr = document.createElement('tr');
+            const td1 = document.createElement('td');
+            const td2 = document.createElement('td');
+            td1.className = 'px-3 py-2 text-gray-800';
+            td2.className = 'px-3 py-2 text-gray-800 mono';
+            td1.textContent = label;
+            td2.textContent = value;
+            tr.appendChild(td1);
+            tr.appendChild(td2);
+            resultsBody.appendChild(tr);
+          });
+
+          const trLast = document.createElement('tr');
+          const td1Last = document.createElement('td');
+          const td2Last = document.createElement('td');
+          td1Last.className = 'px-3 py-2 text-gray-800 font-semibold';
+          td2Last.className = 'px-3 py-2 text-gray-800 mono font-semibold';
+          td1Last.textContent = 'Result a^b mod m';
+          td2Last.textContent = result.toString();
+          trLast.appendChild(td1Last);
+          trLast.appendChild(td2Last);
+          resultsBody.appendChild(trLast);
+        }
+
+        function setStepsTable(stepInfo) {
+          stepsBody.innerHTML = '';
+          stepInfo.steps.forEach(s => {
+            const tr = document.createElement('tr');
+            const tdStep = document.createElement('td');
+            const tdBit = document.createElement('td');
+            const tdBefore = document.createElement('td');
+            const tdSq = document.createElement('td');
+            const tdMul = document.createElement('td');
+            tdStep.className = 'px-2 py-1 text-gray-800';
+            tdBit.className = 'px-2 py-1 text-gray-800';
+            tdBefore.className = 'px-2 py-1 text-gray-800 mono';
+            tdSq.className = 'px-2 py-1 text-gray-800 mono';
+            tdMul.className = 'px-2 py-1 text-gray-800 mono';
+
+            tdStep.textContent = s.step;
+            tdBit.textContent = s.bit;
+            tdBefore.textContent = s.before;
+            tdSq.textContent = s.afterSquare;
+            tdMul.textContent = s.afterMul;
+
+            tr.appendChild(tdStep);
+            tr.appendChild(tdBit);
+            tr.appendChild(tdBefore);
+            tr.appendChild(tdSq);
+            tr.appendChild(tdMul);
+            stepsBody.appendChild(tr);
+          });
+        }
+
+        function applyPreset(key) {
+          if (key === 'toy1') {
+            baseInput.value = '5';
+            expInput.value = '117';
+            modInput.value = '19';
+          } else if (key === 'toy2') {
+            baseInput.value = '7';
+            expInput.value = '256';
+            modInput.value = '33';
+          } else if (key === 'toy3') {
+            baseInput.value = '2';
+            expInput.value = '1024';
+            modInput.value = '1000000007';
+          }
+          clearError();
+          resultBox.classList.add('hidden');
+          stepsBox.classList.add('hidden');
+        }
+
+        presetButtons.forEach(btn => {
+          btn.addEventListener('click', function() {
+            const key = this.getAttribute('data-preset');
+            applyPreset(key);
+          });
+        });
+
+        calcBtn.addEventListener('click', function() {
+          clearError();
+          resultBox.classList.add('hidden');
+          stepsBox.classList.add('hidden');
+          mainResultEl.textContent = '';
+          resultsBody.innerHTML = '';
+          noteEl.textContent = '';
+          stepsBody.innerHTML = '';
+          stepsNoteEl.textContent = '';
+
+          let a, b, m;
+          try {
+            a = parseBigInt(baseInput.value, 'Base a');
+            b = parseBigInt(expInput.value, 'Exponent b');
+            m = parseBigInt(modInput.value, 'Modulus m');
+          } catch (err) {
+            showError(err.message || 'Please check your inputs.');
+            return;
+          }
+
+          if (b < 0n) {
+            showError('Exponent b must be non-negative for this calculator.');
+            return;
+          }
+          if (m <= 0n) {
+            showError('Modulus m must be a positive integer (m ≥ 1).');
+            return;
+          }
+
+          const aMod = modNormalize(a, m);
+
+          let expBits = b.toString(2);
+          let stepInfo = null;
+          const wantSteps = showStepsCheckbox.checked;
+
+          try {
+            if (wantSteps && expBits.length <= MAX_STEP_BITS) {
+              stepInfo = modPowWithStepsLeftToRight(a, b, m, MAX_STEP_BITS);
+            } else if (wantSteps && expBits.length > MAX_STEP_BITS) {
+              // compute without recorded steps, keep a note
+              const res = modPow(a, b, m);
+              stepInfo = {
+                result: res,
+                bits: expBits,
+                truncated: true,
+                steps: []
+              };
+            } else {
+              const res = modPow(a, b, m);
+              stepInfo = {
+                result: res,
+                bits: expBits,
+                truncated: false,
+                steps: []
+              };
+            }
+          } catch (err) {
+            showError(err.message || 'Computation failed. Please check your inputs.');
+            return;
+          }
+
+          const result = stepInfo.result;
+          expBits = stepInfo.bits;
+
+          // Main result line
+          mainResultEl.textContent = 'a^b mod m = ' + result.toString();
+
+          // Table
+          setResultsTable(a, b, m, aMod, result, expBits);
+
+          // Note
+          noteEl.textContent =
+            'Computed using fast binary exponentiation, reducing modulo m at every step to avoid huge intermediate numbers.';
+
+          resultBox.classList.remove('hidden');
+
+          // Steps
+          if (wantSteps) {
+            if (stepInfo.steps.length > 0) {
+              setStepsTable(stepInfo);
+              stepsBox.classList.remove('hidden');
+              if (stepInfo.truncated) {
+                stepsNoteEl.textContent =
+                  'Showing only the last ' + MAX_STEP_BITS +
+                  ' bits of the exponent’s square-and-multiply steps to keep the output readable.';
+              } else {
+                stepsNoteEl.textContent =
+                  'Each row processes one bit of b (from most significant to least) using result ← result² and, if the bit is 1, result ← result · a, all modulo m.';
+              }
+            } else if (stepInfo.truncated) {
+              stepsBox.classList.add('hidden');
+              noteEl.textContent += ' Step-by-step output is disabled because the exponent has too many bits.';
+            }
+          }
+
+          if (window.MathJax && window.MathJax.typeset) {
+            window.MathJax.typeset();
+          }
+        });
+
+        resetBtn.addEventListener('click', function() {
+          baseInput.value = '7';
+          expInput.value = '256';
+          modInput.value = '33';
+          showStepsCheckbox.checked = true;
+          clearError();
+          resultBox.classList.add('hidden');
+          stepsBox.classList.add('hidden');
+          mainResultEl.textContent = '';
+          resultsBody.innerHTML = '';
+          noteEl.textContent = '';
+          stepsBody.innerHTML = '';
+          stepsNoteEl.textContent = '';
+        });
+
+        // Initial defaults
+        resetBtn.click();
+      })();
+    </script>
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

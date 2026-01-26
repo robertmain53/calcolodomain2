@@ -39,10 +39,6 @@
 
 <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-<script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-<script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-<script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
 <script>
     window.ezstandalone = window.ezstandalone || {};
     ezstandalone.cmd = ezstandalone.cmd || [];
@@ -174,8 +170,6 @@
 </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
-
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
 
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
@@ -583,7 +577,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -650,6 +644,7 @@
 
 
 
+
     
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
@@ -657,8 +652,321 @@
     
     <script>
       // MathJax configuration
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      // Mobile menu toggle
+      (function () {
+        const toggle = document.getElementById('mobile-menu-toggle');
+        const menu = document.getElementById('mobile-menu');
+        if (!toggle || !menu) return;
+        toggle.addEventListener('click', () => {
+          const isHidden = menu.classList.contains('hidden');
+          menu.classList.toggle('hidden', !isHidden);
+          toggle.setAttribute('aria-expanded', String(isHidden));
+        });
+      }());
+
+      // Dodecahedron calculator logic
+      (function () {
+        const EDGE_TO_VOL = 'edge-to-volume';
+        const VOL_TO_EDGE = 'volume-to-edge';
+        const K = (15 + 7 * Math.sqrt(5)) / 4; // constant for regular dodecahedron volume
+
+        const modeSelect = document.getElementById('mode');
+        const edgeInputs = document.getElementById('edge-inputs');
+        const volumeInputs = document.getElementById('volume-inputs');
+
+        const edgeLengthInput = document.getElementById('edge-length');
+        const edgeUnitSelect = document.getElementById('edge-unit');
+        const volumeKnownInput = document.getElementById('volume-known');
+        const volumeUnitSelect = document.getElementById('volume-unit');
+
+        const calcBtn = document.getElementById('calculate-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const errorEl = document.getElementById('calc-error');
+
+        const primaryResult = document.getElementById('primary-result');
+        const primaryLabel = document.getElementById('primary-label');
+        const secondaryLine1 = document.getElementById('secondary-line-1');
+        const secondaryLine2 = document.getElementById('secondary-line-2');
+
+        const EDGE_FACTORS = {
+          m: 1,
+          cm: 0.01,
+          mm: 0.001,
+          in: 0.0254,
+          ft: 0.3048,
+          yd: 0.9144
+        };
+
+        const VOLUME_FACTORS = {
+          m3: 1,
+          cm3: 1e-6,
+          mm3: 1e-9,
+          in3: Math.pow(0.0254, 3),
+          ft3: Math.pow(0.3048, 3),
+          yd3: Math.pow(0.9144, 3)
+        };
+
+        function formatNumber(x) {
+          if (!isFinite(x)) return '—';
+          if (x === 0) return '0';
+          const abs = Math.abs(x);
+          if (abs >= 1e5 || abs < 1e-3) {
+            return x.toExponential(4);
+          }
+          return x.toLocaleString(undefined, { maximumFractionDigits: 6 });
+        }
+
+        function setMode(mode) {
+          if (mode === EDGE_TO_VOL) {
+            edgeInputs.classList.remove('hidden');
+            volumeInputs.classList.add('hidden');
+            primaryLabel.textContent = 'Volume of the regular dodecahedron';
+          } else {
+            edgeInputs.classList.add('hidden');
+            volumeInputs.classList.remove('hidden');
+            primaryLabel.textContent = 'Edge length of the regular dodecahedron';
+          }
+          errorEl.classList.add('hidden');
+        }
+
+        modeSelect.addEventListener('change', function () {
+          setMode(this.value);
+          primaryResult.textContent = '—';
+          secondaryLine1.textContent = '—';
+          secondaryLine2.textContent = '—';
+        });
+
+        calcBtn.addEventListener('click', function () {
+          const mode = modeSelect.value;
+          errorEl.classList.add('hidden');
+
+          if (mode === EDGE_TO_VOL) {
+            const a = parseFloat(edgeLengthInput.value);
+            const unit = edgeUnitSelect.value;
+            if (!(a > 0) || !EDGE_FACTORS[unit]) {
+              errorEl.classList.remove('hidden');
+              primaryResult.textContent = '—';
+              secondaryLine1.textContent = '—';
+              secondaryLine2.textContent = '—';
+              return;
+            }
+
+            const a_m = a * EDGE_FACTORS[unit];      // edge in meters
+            const V_m3 = K * Math.pow(a_m, 3);       // volume in cubic meters
+
+            // volume in user edge unit³
+            const factor = EDGE_FACTORS[unit];
+            const V_unit = K * Math.pow(a * 1, 3);   // direct since formula respects units
+            // actually equivalent to: V_unit = V_m3 / Math.pow(factor, 3);
+
+            primaryResult.textContent = formatNumber(V_unit) + ' ' + unit + '³';
+            secondaryLine1.textContent = 'Volume in m³: ' + formatNumber(V_m3) + ' m³';
+            secondaryLine2.textContent = 'Volume in liters: ' + formatNumber(V_m3 * 1000) + ' L';
+
+          } else if (mode === VOL_TO_EDGE) {
+            const V = parseFloat(volumeKnownInput.value);
+            const unit = volumeUnitSelect.value;
+            if (!(V > 0) || !VOLUME_FACTORS[unit]) {
+              errorEl.classList.remove('hidden');
+              primaryResult.textContent = '—';
+              secondaryLine1.textContent = '—';
+              secondaryLine2.textContent = '—';
+              return;
+            }
+
+            const V_m3 = V * VOLUME_FACTORS[unit]; // volume in cubic meters
+            const a_m = Math.cbrt((4 * V_m3) / (15 + 7 * Math.sqrt(5))); // edge in meters
+            const a_unit = a_m / Math.cbrt(VOLUME_FACTORS[unit]);        // consistent with original unit³
+
+            primaryResult.textContent = formatNumber(a_unit) + ' ' + unit.replace('3', '');
+            secondaryLine1.textContent = 'Edge length in meters: ' + formatNumber(a_m) + ' m';
+            secondaryLine2.textContent = 'Check: volume in m³ ≈ ' + formatNumber(V_m3) + ' m³';
+          }
+        });
+
+        resetBtn.addEventListener('click', function () {
+          edgeLengthInput.value = '';
+          volumeKnownInput.value = '';
+          edgeUnitSelect.value = 'm';
+          volumeUnitSelect.value = 'm3';
+          primaryResult.textContent = '—';
+          secondaryLine1.textContent = '—';
+          secondaryLine2.textContent = '—';
+          errorEl.classList.add('hidden');
+        });
+
+        // Initialize mode
+        setMode(EDGE_TO_VOL);
+      }());
+    </script>
+    
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      // Mobile menu toggle
+      (function () {
+        const toggle = document.getElementById('mobile-menu-toggle');
+        const menu = document.getElementById('mobile-menu');
+        if (!toggle || !menu) return;
+        toggle.addEventListener('click', () => {
+          const isHidden = menu.classList.contains('hidden');
+          menu.classList.toggle('hidden', !isHidden);
+          toggle.setAttribute('aria-expanded', String(isHidden));
+        });
+      }());
+
+      // Dodecahedron calculator logic
+      (function () {
+        const EDGE_TO_VOL = 'edge-to-volume';
+        const VOL_TO_EDGE = 'volume-to-edge';
+        const K = (15 + 7 * Math.sqrt(5)) / 4; // constant for regular dodecahedron volume
+
+        const modeSelect = document.getElementById('mode');
+        const edgeInputs = document.getElementById('edge-inputs');
+        const volumeInputs = document.getElementById('volume-inputs');
+
+        const edgeLengthInput = document.getElementById('edge-length');
+        const edgeUnitSelect = document.getElementById('edge-unit');
+        const volumeKnownInput = document.getElementById('volume-known');
+        const volumeUnitSelect = document.getElementById('volume-unit');
+
+        const calcBtn = document.getElementById('calculate-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const errorEl = document.getElementById('calc-error');
+
+        const primaryResult = document.getElementById('primary-result');
+        const primaryLabel = document.getElementById('primary-label');
+        const secondaryLine1 = document.getElementById('secondary-line-1');
+        const secondaryLine2 = document.getElementById('secondary-line-2');
+
+        const EDGE_FACTORS = {
+          m: 1,
+          cm: 0.01,
+          mm: 0.001,
+          in: 0.0254,
+          ft: 0.3048,
+          yd: 0.9144
+        };
+
+        const VOLUME_FACTORS = {
+          m3: 1,
+          cm3: 1e-6,
+          mm3: 1e-9,
+          in3: Math.pow(0.0254, 3),
+          ft3: Math.pow(0.3048, 3),
+          yd3: Math.pow(0.9144, 3)
+        };
+
+        function formatNumber(x) {
+          if (!isFinite(x)) return '—';
+          if (x === 0) return '0';
+          const abs = Math.abs(x);
+          if (abs >= 1e5 || abs < 1e-3) {
+            return x.toExponential(4);
+          }
+          return x.toLocaleString(undefined, { maximumFractionDigits: 6 });
+        }
+
+        function setMode(mode) {
+          if (mode === EDGE_TO_VOL) {
+            edgeInputs.classList.remove('hidden');
+            volumeInputs.classList.add('hidden');
+            primaryLabel.textContent = 'Volume of the regular dodecahedron';
+          } else {
+            edgeInputs.classList.add('hidden');
+            volumeInputs.classList.remove('hidden');
+            primaryLabel.textContent = 'Edge length of the regular dodecahedron';
+          }
+          errorEl.classList.add('hidden');
+        }
+
+        modeSelect.addEventListener('change', function () {
+          setMode(this.value);
+          primaryResult.textContent = '—';
+          secondaryLine1.textContent = '—';
+          secondaryLine2.textContent = '—';
+        });
+
+        calcBtn.addEventListener('click', function () {
+          const mode = modeSelect.value;
+          errorEl.classList.add('hidden');
+
+          if (mode === EDGE_TO_VOL) {
+            const a = parseFloat(edgeLengthInput.value);
+            const unit = edgeUnitSelect.value;
+            if (!(a > 0) || !EDGE_FACTORS[unit]) {
+              errorEl.classList.remove('hidden');
+              primaryResult.textContent = '—';
+              secondaryLine1.textContent = '—';
+              secondaryLine2.textContent = '—';
+              return;
+            }
+
+            const a_m = a * EDGE_FACTORS[unit];      // edge in meters
+            const V_m3 = K * Math.pow(a_m, 3);       // volume in cubic meters
+
+            // volume in user edge unit³
+            const factor = EDGE_FACTORS[unit];
+            const V_unit = K * Math.pow(a * 1, 3);   // direct since formula respects units
+            // actually equivalent to: V_unit = V_m3 / Math.pow(factor, 3);
+
+            primaryResult.textContent = formatNumber(V_unit) + ' ' + unit + '³';
+            secondaryLine1.textContent = 'Volume in m³: ' + formatNumber(V_m3) + ' m³';
+            secondaryLine2.textContent = 'Volume in liters: ' + formatNumber(V_m3 * 1000) + ' L';
+
+          } else if (mode === VOL_TO_EDGE) {
+            const V = parseFloat(volumeKnownInput.value);
+            const unit = volumeUnitSelect.value;
+            if (!(V > 0) || !VOLUME_FACTORS[unit]) {
+              errorEl.classList.remove('hidden');
+              primaryResult.textContent = '—';
+              secondaryLine1.textContent = '—';
+              secondaryLine2.textContent = '—';
+              return;
+            }
+
+            const V_m3 = V * VOLUME_FACTORS[unit]; // volume in cubic meters
+            const a_m = Math.cbrt((4 * V_m3) / (15 + 7 * Math.sqrt(5))); // edge in meters
+            const a_unit = a_m / Math.cbrt(VOLUME_FACTORS[unit]);        // consistent with original unit³
+
+            primaryResult.textContent = formatNumber(a_unit) + ' ' + unit.replace('3', '');
+            secondaryLine1.textContent = 'Edge length in meters: ' + formatNumber(a_m) + ' m';
+            secondaryLine2.textContent = 'Check: volume in m³ ≈ ' + formatNumber(V_m3) + ' m³';
+          }
+        });
+
+        resetBtn.addEventListener('click', function () {
+          edgeLengthInput.value = '';
+          volumeKnownInput.value = '';
+          edgeUnitSelect.value = 'm';
+          volumeUnitSelect.value = 'm3';
+          primaryResult.textContent = '—';
+          secondaryLine1.textContent = '—';
+          secondaryLine2.textContent = '—';
+          errorEl.classList.add('hidden');
+        });
+
+        // Initialize mode
+        setMode(EDGE_TO_VOL);
+      }());
+    </script>
+    
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

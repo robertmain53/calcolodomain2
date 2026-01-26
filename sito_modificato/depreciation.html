@@ -337,7 +337,7 @@
 
 <a class="skip-link" href="#main-content">Skip to main content</a>
 
-<main class="main-content" id="main-content">
+<main class="main-content w-full lg:w-2/3" id="main-content">
 <div class="container mx-auto px-4 py-8">
 <nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="text-blue-600 hover:underline">Home</a> &raquo; <a href="https://calcdomain.com/categories/finance" class="text-blue-600 hover:underline">Finance</a> &raquo; <a href="https://calcdomain.com/subcategories/finance-business-ratios-and-valuation" class="text-blue-600 hover:underline">Business Ratios & Valuation</a></nav>
 
@@ -1016,7 +1016,859 @@
     </div>
 </noscript>
 <!-- MathJax for LaTeX rendering (async) -->
-<script crossorigin="anonymous" defer="" id="MathJax-script" integrity="sha384-t03Q5kk3rYkOeX0Do9kMivG5dYp5I5QY3t4vQdSYo7cmvfV5H0JqGkGwq8xO9m0U" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)'], ['</script>
+<!-- Calculator Logic -->
+
+
+<script defer="" src="/assets/js/mobile-menu.js"></script>
+<script defer="" src="/assets/js/page-enhancements.js"></script>
+<script>
+      // Depreciation calculator logic
+      function formatCurrency(value) {
+        if (isNaN(value)) return "–";
+        return new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: "USD",
+          maximumFractionDigits: 2,
+        }).format(value);
+      }
+
+      function parseNumber(id) {
+        const v = document.getElementById(id).value;
+        if (v === "") return NaN;
+        return Number(v);
+      }
+
+      function showElement(el, show) {
+        el.classList.toggle("hidden", !show);
+      }
+
+      function updateMethodUI() {
+        const method = document.getElementById("method").value;
+        const decliningRateWrapper = document.getElementById(
+          "decliningRateWrapper"
+        );
+        const unitsTotalWrapper = document.getElementById("unitsTotalWrapper");
+        const unitsPerYearWrapper = document.getElementById(
+          "unitsPerYearWrapper"
+        );
+
+        showElement(
+          decliningRateWrapper,
+          method === "ddb" || method === "db150"
+        );
+        showElement(unitsTotalWrapper, method === "units");
+        showElement(unitsPerYearWrapper, method === "units");
+
+        if (method === "ddb" || method === "db150") {
+          const life = parseNumber("usefulLife");
+          if (!isNaN(life) && life > 0) {
+            const baseRate = 1 / life;
+            const factor = method === "ddb" ? 2 : 1.5;
+            const rate = baseRate * factor;
+            document.getElementById("decliningRateDisplay").value =
+              (rate * 100).toFixed(2) + "% of beginning book value per year";
+          } else {
+            document.getElementById("decliningRateDisplay").value =
+              "Enter useful life to see rate";
+          }
+        }
+      }
+
+      document
+        .getElementById("method")
+        .addEventListener("change", updateMethodUI);
+      document
+        .getElementById("usefulLife")
+        .addEventListener("input", updateMethodUI);
+
+      document
+        .getElementById("resetBtn")
+        .addEventListener("click", function () {
+          [
+            "assetCost",
+            "salvageValue",
+            "usefulLife",
+            "startYear",
+            "totalUnits",
+            "unitsPerYear",
+          ].forEach((id) => {
+            document.getElementById(id).value = "";
+          });
+          document.getElementById("method").value = "straight";
+          document.getElementById("errorMsg").textContent = "";
+          document.getElementById("summarySection").classList.add("hidden");
+          document.getElementById("scheduleWrapper").classList.add("hidden");
+          document.getElementById("scheduleBody").innerHTML = "";
+          updateMethodUI();
+        });
+
+      document
+        .getElementById("calculateBtn")
+        .addEventListener("click", function () {
+          const cost = parseNumber("assetCost");
+          const salvage = parseNumber("salvageValue");
+          const life = parseNumber("usefulLife");
+          const startYear = parseNumber("startYear");
+          const method = document.getElementById("method").value;
+          const errorEl = document.getElementById("errorMsg");
+          errorEl.textContent = "";
+
+          if (isNaN(cost) || cost <= 0) {
+            errorEl.textContent =
+              "Please enter a valid asset cost greater than 0.";
+            return;
+          }
+          if (isNaN(salvage) || salvage < 0) {
+            errorEl.textContent =
+              "Please enter a valid salvage value (0 or more).";
+            return;
+          }
+          if (salvage >= cost) {
+            errorEl.textContent = "Salvage value must be less than asset cost.";
+            return;
+          }
+          if (isNaN(life) || life <= 0 || !Number.isInteger(life)) {
+            errorEl.textContent =
+              "Please enter a valid useful life in whole years.";
+            return;
+          }
+
+          const depreciableBase = cost - salvage;
+          const schedule = [];
+          let bookValue = cost;
+          let accumulated = 0;
+
+          const unitsHeader = document.getElementById("unitsHeader");
+          const isUnits = method === "units";
+          unitsHeader.style.display = isUnits ? "" : "none";
+
+          if (method === "straight") {
+            const annual = depreciableBase / life;
+            for (let year = 1; year <= life; year++) {
+              let dep = annual;
+              if (year === life) {
+                dep = bookValue - salvage; // adjust final year
+              }
+              accumulated += dep;
+              bookValue -= dep;
+              schedule.push({
+                year,
+                depreciation: dep,
+                accumulated,
+                bookValue,
+              });
+            }
+          } else if (method === "ddb" || method === "db150") {
+            const factor = method === "ddb" ? 2 : 1.5;
+            const rate = factor / life;
+            for (let year = 1; year <= life; year++) {
+              let dep = bookValue * rate;
+              // Ensure we don't go below salvage
+              if (bookValue - dep < salvage) {
+                dep = bookValue - salvage;
+              }
+              accumulated += dep;
+              bookValue -= dep;
+              schedule.push({
+                year,
+                depreciation: dep,
+                accumulated,
+                bookValue,
+              });
+            }
+          } else if (method === "syd") {
+            const syd = (life * (life + 1)) / 2;
+            for (let year = 1; year <= life; year++) {
+              const remainingLife = life - year + 1;
+              let dep = (remainingLife / syd) * depreciableBase;
+              if (year === life) {
+                dep = bookValue - salvage;
+              }
+              accumulated += dep;
+              bookValue -= dep;
+              schedule.push({
+                year,
+                depreciation: dep,
+                accumulated,
+                bookValue,
+              });
+            }
+          } else if (method === "units") {
+            const totalUnits = parseNumber("totalUnits");
+            if (isNaN(totalUnits) || totalUnits <= 0) {
+              errorEl.textContent =
+                "Please enter total expected units greater than 0 for units of production.";
+              return;
+            }
+            const unitsPerYearStr = document
+              .getElementById("unitsPerYear")
+              .value.trim();
+            let unitsArray = [];
+            if (unitsPerYearStr) {
+              unitsArray = unitsPerYearStr
+                .split(",")
+                .map((s) => Number(s.trim()))
+                .filter((v) => !isNaN(v) && v >= 0);
+              if (unitsArray.length === 0) {
+                errorEl.textContent =
+                  "Please enter valid units per year as comma-separated numbers.";
+                return;
+              }
+            } else {
+              // distribute evenly across life
+              const perYear = totalUnits / life;
+              for (let i = 0; i < life; i++) unitsArray.push(perYear);
+            }
+
+            const depPerUnit = depreciableBase / totalUnits;
+            let usedUnits = 0;
+            for (let year = 1; year <= life; year++) {
+              const units =
+                unitsArray[year - 1] !== undefined ? unitsArray[year - 1] : 0;
+              usedUnits += units;
+              let dep = units * depPerUnit;
+              // Ensure we don't exceed depreciable base
+              if (accumulated + dep > depreciableBase) {
+                dep = depreciableBase - accumulated;
+              }
+              accumulated += dep;
+              bookValue = cost - accumulated;
+              schedule.push({
+                year,
+                depreciation: dep,
+                accumulated,
+                bookValue,
+                units,
+              });
+              if (accumulated >= depreciableBase) break;
+            }
+          }
+
+          // Render summary
+          const summarySection = document.getElementById("summarySection");
+          const scheduleWrapper = document.getElementById("scheduleWrapper");
+          const scheduleBody = document.getElementById("scheduleBody");
+
+          if (schedule.length === 0) {
+            errorEl.textContent =
+              "Unable to compute depreciation with the given inputs.";
+            summarySection.classList.add("hidden");
+            scheduleWrapper.classList.add("hidden");
+            return;
+          }
+
+          document.getElementById("summaryAnnual").textContent = formatCurrency(
+            schedule[0].depreciation
+          );
+          document.getElementById("summaryBase").textContent =
+            formatCurrency(depreciableBase);
+          document.getElementById("summaryEndBook").textContent =
+            formatCurrency(schedule[schedule.length - 1].bookValue);
+
+          summarySection.classList.remove("hidden");
+
+          // Render table
+          scheduleBody.innerHTML = "";
+          const baseYear = !isNaN(startYear) ? startYear : null;
+
+          schedule.forEach((row) => {
+            const tr = document.createElement("tr");
+            const displayYear = baseYear ? baseYear + row.year - 1 : row.year;
+            tr.innerHTML = `
+        <td class="px-3 py-2 whitespace-nowrap text-gray-700">${displayYear}</td>
+        <td class="px-3 py-2 text-right text-gray-700">${formatCurrency(
+          row.depreciation
+        )}</td>
+        <td class="px-3 py-2 text-right text-gray-700">${formatCurrency(
+          row.accumulated
+        )}</td>
+        <td class="px-3 py-2 text-right text-gray-700">${formatCurrency(
+          row.bookValue
+        )}</td>
+        ${
+          isUnits
+            ? `<td class="px-3 py-2 text-right text-gray-700">${
+                row.units != null ? row.units.toLocaleString("en-US") : ""
+              }</td>`
+            : ""
+        }
+      `;
+            scheduleBody.appendChild(tr);
+          });
+
+          scheduleWrapper.classList.remove("hidden");
+        });
+
+      // Simple FAQ toggle (in addition to global script_faq if present)
+      document
+        .querySelectorAll("#faq-container .faq-question")
+        .forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const answer = btn.parentElement.querySelector(".faq-answer");
+            const icon = btn.querySelector("span:last-child");
+            const isHidden = answer.classList.contains("hidden");
+            document
+              .querySelectorAll("#faq-container .faq-answer")
+              .forEach((a) => a.classList.add("hidden"));
+            document
+              .querySelectorAll("#faq-container .faq-question span:last-child")
+              .forEach((i) => (i.textContent = "+"));
+            if (isHidden) {
+              answer.classList.remove("hidden");
+              icon.textContent = "−";
+            }
+          });
+        });
+
+      // Initialize UI
+      updateMethodUI();
+    </script>
+
+<!-- AUDIT_SPINE_START -->
+<hr class="auditspine-hr">
+<section aria-label="Formulas, sources, changelog, verification">
+  <span class="auditspine-badge auditspine-badge-warn">Audit: Needs review</span>
+
+  <details style="margin-top:10px">
+    <summary><strong>Formula (LaTeX) + variables + units</strong></summary>
+    <div class="auditspine-note" style="margin-top:10px">
+      This section shows the formulas used by the calculator engine, plus variable definitions and units.
+      <br><strong>Note:</strong> This page needs review to confirm formulas and sources.
+    </div>
+    <div class="auditspine-formula">
+      <em>No formulas provided in audit spec.</em>
+      <div style="margin-top:12px"><strong>Variables and units</strong></div>
+      <ul style="margin:8px 0 0 18px">
+        <li><em>No variables provided in audit spec.</em></li>
+      </ul>
+    </div>
+  </details>
+
+  <div class="auditspine-note" style="margin-top:12px">
+    <strong>Sources (authoritative):</strong>
+    <ul style="margin:8px 0 0 18px">
+      <li><strong>Depreciation Calculator</strong> — calcdomain.com · Accessed 2026-01-21<br><a href="https://calcdomain.com/depreciation" target="_blank" rel="nofollow noopener">https://calcdomain.com/depreciation</a></li>
+    </ul>
+  </div>
+
+  <div class="auditspine-changelog" style="margin-top:12px">
+    <strong>Changelog</strong><br>
+    <div style="margin-top:6px">
+      <strong>Version:</strong> 0.1.0-draft<br>
+      <strong>Last code update:</strong> 2026-01-21
+    </div>
+    <div style="margin-top:10px">
+  <strong>0.1.0-draft</strong> · 2026-01-21
+  <ul style="margin:6px 0 0 18px">
+    <li>Initial audit spec draft generated from HTML extraction (review required).</li>
+<li>Verify formulas match the calculator engine and convert any text-only formulas to LaTeX.</li>
+<li>Confirm sources are authoritative and relevant to the calculator methodology.</li>
+  </ul>
+</div>
+  </div>
+
+  <div class="auditspine-note" style="margin-top:12px">
+    <strong>Verification pending</strong> · Last code update: 2026-01-21
+  </div>
+</section>
+<!-- AUDIT_SPINE_END -->
+<footer class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div>
+        <h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+        <p class="text-gray-400 mb-4">
+          Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.
+        </p>
+        </div>
+
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Categories</h4>
+                                                                                                                                                                                                        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
+          <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
+          <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
+          <li><a href="https://calcdomain.com/categories/finance" class="text-gray-400 hover:text-white">Finance</a></li>
+          <li><a href="https://calcdomain.com/categories/general" class="text-gray-400 hover:text-white">General</a></li>
+          <li><a href="https://calcdomain.com/categories/health-fitness" class="text-gray-400 hover:text-white">Health & Fitness</a></li>
+          <li><a href="https://calcdomain.com/categories/lifestyle-everyday" class="text-gray-400 hover:text-white">Lifestyle & Everyday</a></li>
+          <li><a href="https://calcdomain.com/categories/math" class="text-gray-400 hover:text-white">Math</a></li>
+          <li><a href="https://calcdomain.com/categories/math-conversions" class="text-gray-400 hover:text-white">Math & Conversions</a></li>
+          <li><a href="https://calcdomain.com/categories/science" class="text-gray-400 hover:text-white">Science</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/mortgage-payment" class="text-gray-400 hover:text-white">Mortgage Calculator</a></li>
+          <li><a href="https://calcdomain.com/percentage-calculator" class="text-gray-400 hover:text-white">Percentage Calculator</a></li>
+          <li><a href="https://calcdomain.com/bmi-calculator" class="text-gray-400 hover:text-white">BMI Calculator</a></li>
+          <li><a href="https://calcdomain.com/auto-loan-calculator" class="text-gray-400 hover:text-white">Auto Loan Calculator</a></li>
+          <li><a href="https://calcdomain.com/house-affordability" class="text-gray-400 hover:text-white">House Affordability</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Support</h4>
+        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/about" class="text-gray-400 hover:text-white">About Us</a></li>
+          <li><a href="https://calcdomain.com/contact" class="text-gray-400 hover:text-white">Contact</a></li>
+          <li><a href="https://calcdomain.com/privacy" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
+          <li><a href="https://calcdomain.com/terms" class="text-gray-400 hover:text-white">Terms of Service</a></li>
+          <li><a href="https://calcdomain.com/sitemap.xml" class="text-gray-400 hover:text-white">Site Map</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+      <p>&copy; 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>, '</script>
+<!-- Calculator Logic -->
+
+
+<script defer="" src="/assets/js/mobile-menu.js"></script>
+<script defer="" src="/assets/js/page-enhancements.js"></script>
+<script>
+      // Depreciation calculator logic
+      function formatCurrency(value) {
+        if (isNaN(value)) return "–";
+        return new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: "USD",
+          maximumFractionDigits: 2,
+        }).format(value);
+      }
+
+      function parseNumber(id) {
+        const v = document.getElementById(id).value;
+        if (v === "") return NaN;
+        return Number(v);
+      }
+
+      function showElement(el, show) {
+        el.classList.toggle("hidden", !show);
+      }
+
+      function updateMethodUI() {
+        const method = document.getElementById("method").value;
+        const decliningRateWrapper = document.getElementById(
+          "decliningRateWrapper"
+        );
+        const unitsTotalWrapper = document.getElementById("unitsTotalWrapper");
+        const unitsPerYearWrapper = document.getElementById(
+          "unitsPerYearWrapper"
+        );
+
+        showElement(
+          decliningRateWrapper,
+          method === "ddb" || method === "db150"
+        );
+        showElement(unitsTotalWrapper, method === "units");
+        showElement(unitsPerYearWrapper, method === "units");
+
+        if (method === "ddb" || method === "db150") {
+          const life = parseNumber("usefulLife");
+          if (!isNaN(life) && life > 0) {
+            const baseRate = 1 / life;
+            const factor = method === "ddb" ? 2 : 1.5;
+            const rate = baseRate * factor;
+            document.getElementById("decliningRateDisplay").value =
+              (rate * 100).toFixed(2) + "% of beginning book value per year";
+          } else {
+            document.getElementById("decliningRateDisplay").value =
+              "Enter useful life to see rate";
+          }
+        }
+      }
+
+      document
+        .getElementById("method")
+        .addEventListener("change", updateMethodUI);
+      document
+        .getElementById("usefulLife")
+        .addEventListener("input", updateMethodUI);
+
+      document
+        .getElementById("resetBtn")
+        .addEventListener("click", function () {
+          [
+            "assetCost",
+            "salvageValue",
+            "usefulLife",
+            "startYear",
+            "totalUnits",
+            "unitsPerYear",
+          ].forEach((id) => {
+            document.getElementById(id).value = "";
+          });
+          document.getElementById("method").value = "straight";
+          document.getElementById("errorMsg").textContent = "";
+          document.getElementById("summarySection").classList.add("hidden");
+          document.getElementById("scheduleWrapper").classList.add("hidden");
+          document.getElementById("scheduleBody").innerHTML = "";
+          updateMethodUI();
+        });
+
+      document
+        .getElementById("calculateBtn")
+        .addEventListener("click", function () {
+          const cost = parseNumber("assetCost");
+          const salvage = parseNumber("salvageValue");
+          const life = parseNumber("usefulLife");
+          const startYear = parseNumber("startYear");
+          const method = document.getElementById("method").value;
+          const errorEl = document.getElementById("errorMsg");
+          errorEl.textContent = "";
+
+          if (isNaN(cost) || cost <= 0) {
+            errorEl.textContent =
+              "Please enter a valid asset cost greater than 0.";
+            return;
+          }
+          if (isNaN(salvage) || salvage < 0) {
+            errorEl.textContent =
+              "Please enter a valid salvage value (0 or more).";
+            return;
+          }
+          if (salvage >= cost) {
+            errorEl.textContent = "Salvage value must be less than asset cost.";
+            return;
+          }
+          if (isNaN(life) || life <= 0 || !Number.isInteger(life)) {
+            errorEl.textContent =
+              "Please enter a valid useful life in whole years.";
+            return;
+          }
+
+          const depreciableBase = cost - salvage;
+          const schedule = [];
+          let bookValue = cost;
+          let accumulated = 0;
+
+          const unitsHeader = document.getElementById("unitsHeader");
+          const isUnits = method === "units";
+          unitsHeader.style.display = isUnits ? "" : "none";
+
+          if (method === "straight") {
+            const annual = depreciableBase / life;
+            for (let year = 1; year <= life; year++) {
+              let dep = annual;
+              if (year === life) {
+                dep = bookValue - salvage; // adjust final year
+              }
+              accumulated += dep;
+              bookValue -= dep;
+              schedule.push({
+                year,
+                depreciation: dep,
+                accumulated,
+                bookValue,
+              });
+            }
+          } else if (method === "ddb" || method === "db150") {
+            const factor = method === "ddb" ? 2 : 1.5;
+            const rate = factor / life;
+            for (let year = 1; year <= life; year++) {
+              let dep = bookValue * rate;
+              // Ensure we don't go below salvage
+              if (bookValue - dep < salvage) {
+                dep = bookValue - salvage;
+              }
+              accumulated += dep;
+              bookValue -= dep;
+              schedule.push({
+                year,
+                depreciation: dep,
+                accumulated,
+                bookValue,
+              });
+            }
+          } else if (method === "syd") {
+            const syd = (life * (life + 1)) / 2;
+            for (let year = 1; year <= life; year++) {
+              const remainingLife = life - year + 1;
+              let dep = (remainingLife / syd) * depreciableBase;
+              if (year === life) {
+                dep = bookValue - salvage;
+              }
+              accumulated += dep;
+              bookValue -= dep;
+              schedule.push({
+                year,
+                depreciation: dep,
+                accumulated,
+                bookValue,
+              });
+            }
+          } else if (method === "units") {
+            const totalUnits = parseNumber("totalUnits");
+            if (isNaN(totalUnits) || totalUnits <= 0) {
+              errorEl.textContent =
+                "Please enter total expected units greater than 0 for units of production.";
+              return;
+            }
+            const unitsPerYearStr = document
+              .getElementById("unitsPerYear")
+              .value.trim();
+            let unitsArray = [];
+            if (unitsPerYearStr) {
+              unitsArray = unitsPerYearStr
+                .split(",")
+                .map((s) => Number(s.trim()))
+                .filter((v) => !isNaN(v) && v >= 0);
+              if (unitsArray.length === 0) {
+                errorEl.textContent =
+                  "Please enter valid units per year as comma-separated numbers.";
+                return;
+              }
+            } else {
+              // distribute evenly across life
+              const perYear = totalUnits / life;
+              for (let i = 0; i < life; i++) unitsArray.push(perYear);
+            }
+
+            const depPerUnit = depreciableBase / totalUnits;
+            let usedUnits = 0;
+            for (let year = 1; year <= life; year++) {
+              const units =
+                unitsArray[year - 1] !== undefined ? unitsArray[year - 1] : 0;
+              usedUnits += units;
+              let dep = units * depPerUnit;
+              // Ensure we don't exceed depreciable base
+              if (accumulated + dep > depreciableBase) {
+                dep = depreciableBase - accumulated;
+              }
+              accumulated += dep;
+              bookValue = cost - accumulated;
+              schedule.push({
+                year,
+                depreciation: dep,
+                accumulated,
+                bookValue,
+                units,
+              });
+              if (accumulated >= depreciableBase) break;
+            }
+          }
+
+          // Render summary
+          const summarySection = document.getElementById("summarySection");
+          const scheduleWrapper = document.getElementById("scheduleWrapper");
+          const scheduleBody = document.getElementById("scheduleBody");
+
+          if (schedule.length === 0) {
+            errorEl.textContent =
+              "Unable to compute depreciation with the given inputs.";
+            summarySection.classList.add("hidden");
+            scheduleWrapper.classList.add("hidden");
+            return;
+          }
+
+          document.getElementById("summaryAnnual").textContent = formatCurrency(
+            schedule[0].depreciation
+          );
+          document.getElementById("summaryBase").textContent =
+            formatCurrency(depreciableBase);
+          document.getElementById("summaryEndBook").textContent =
+            formatCurrency(schedule[schedule.length - 1].bookValue);
+
+          summarySection.classList.remove("hidden");
+
+          // Render table
+          scheduleBody.innerHTML = "";
+          const baseYear = !isNaN(startYear) ? startYear : null;
+
+          schedule.forEach((row) => {
+            const tr = document.createElement("tr");
+            const displayYear = baseYear ? baseYear + row.year - 1 : row.year;
+            tr.innerHTML = `
+        <td class="px-3 py-2 whitespace-nowrap text-gray-700">${displayYear}</td>
+        <td class="px-3 py-2 text-right text-gray-700">${formatCurrency(
+          row.depreciation
+        )}</td>
+        <td class="px-3 py-2 text-right text-gray-700">${formatCurrency(
+          row.accumulated
+        )}</td>
+        <td class="px-3 py-2 text-right text-gray-700">${formatCurrency(
+          row.bookValue
+        )}</td>
+        ${
+          isUnits
+            ? `<td class="px-3 py-2 text-right text-gray-700">${
+                row.units != null ? row.units.toLocaleString("en-US") : ""
+              }</td>`
+            : ""
+        }
+      `;
+            scheduleBody.appendChild(tr);
+          });
+
+          scheduleWrapper.classList.remove("hidden");
+        });
+
+      // Simple FAQ toggle (in addition to global script_faq if present)
+      document
+        .querySelectorAll("#faq-container .faq-question")
+        .forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const answer = btn.parentElement.querySelector(".faq-answer");
+            const icon = btn.querySelector("span:last-child");
+            const isHidden = answer.classList.contains("hidden");
+            document
+              .querySelectorAll("#faq-container .faq-answer")
+              .forEach((a) => a.classList.add("hidden"));
+            document
+              .querySelectorAll("#faq-container .faq-question span:last-child")
+              .forEach((i) => (i.textContent = "+"));
+            if (isHidden) {
+              answer.classList.remove("hidden");
+              icon.textContent = "−";
+            }
+          });
+        });
+
+      // Initialize UI
+      updateMethodUI();
+    </script>
+
+<!-- AUDIT_SPINE_START -->
+<hr class="auditspine-hr">
+<section aria-label="Formulas, sources, changelog, verification">
+  <span class="auditspine-badge auditspine-badge-warn">Audit: Needs review</span>
+
+  <details style="margin-top:10px">
+    <summary><strong>Formula (LaTeX) + variables + units</strong></summary>
+    <div class="auditspine-note" style="margin-top:10px">
+      This section shows the formulas used by the calculator engine, plus variable definitions and units.
+      <br><strong>Note:</strong> This page needs review to confirm formulas and sources.
+    </div>
+    <div class="auditspine-formula">
+      <em>No formulas provided in audit spec.</em>
+      <div style="margin-top:12px"><strong>Variables and units</strong></div>
+      <ul style="margin:8px 0 0 18px">
+        <li><em>No variables provided in audit spec.</em></li>
+      </ul>
+    </div>
+  </details>
+
+  <div class="auditspine-note" style="margin-top:12px">
+    <strong>Sources (authoritative):</strong>
+    <ul style="margin:8px 0 0 18px">
+      <li><strong>Depreciation Calculator</strong> — calcdomain.com · Accessed 2026-01-21<br><a href="https://calcdomain.com/depreciation" target="_blank" rel="nofollow noopener">https://calcdomain.com/depreciation</a></li>
+    </ul>
+  </div>
+
+  <div class="auditspine-changelog" style="margin-top:12px">
+    <strong>Changelog</strong><br>
+    <div style="margin-top:6px">
+      <strong>Version:</strong> 0.1.0-draft<br>
+      <strong>Last code update:</strong> 2026-01-21
+    </div>
+    <div style="margin-top:10px">
+  <strong>0.1.0-draft</strong> · 2026-01-21
+  <ul style="margin:6px 0 0 18px">
+    <li>Initial audit spec draft generated from HTML extraction (review required).</li>
+<li>Verify formulas match the calculator engine and convert any text-only formulas to LaTeX.</li>
+<li>Confirm sources are authoritative and relevant to the calculator methodology.</li>
+  </ul>
+</div>
+  </div>
+
+  <div class="auditspine-note" style="margin-top:12px">
+    <strong>Verification pending</strong> · Last code update: 2026-01-21
+  </div>
+</section>
+<!-- AUDIT_SPINE_END -->
+<footer class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div>
+        <h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+        <p class="text-gray-400 mb-4">
+          Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.
+        </p>
+        </div>
+
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Categories</h4>
+                                                                                                                                                                                                <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
+          <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
+          <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
+          <li><a href="https://calcdomain.com/categories/finance" class="text-gray-400 hover:text-white">Finance</a></li>
+          <li><a href="https://calcdomain.com/categories/general" class="text-gray-400 hover:text-white">General</a></li>
+          <li><a href="https://calcdomain.com/categories/health-fitness" class="text-gray-400 hover:text-white">Health & Fitness</a></li>
+          <li><a href="https://calcdomain.com/categories/lifestyle-everyday" class="text-gray-400 hover:text-white">Lifestyle & Everyday</a></li>
+          <li><a href="https://calcdomain.com/categories/math" class="text-gray-400 hover:text-white">Math</a></li>
+          <li><a href="https://calcdomain.com/categories/math-conversions" class="text-gray-400 hover:text-white">Math & Conversions</a></li>
+          <li><a href="https://calcdomain.com/categories/science" class="text-gray-400 hover:text-white">Science</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/mortgage-payment" class="text-gray-400 hover:text-white">Mortgage Calculator</a></li>
+          <li><a href="https://calcdomain.com/percentage-calculator" class="text-gray-400 hover:text-white">Percentage Calculator</a></li>
+          <li><a href="https://calcdomain.com/bmi-calculator" class="text-gray-400 hover:text-white">BMI Calculator</a></li>
+          <li><a href="https://calcdomain.com/auto-loan-calculator" class="text-gray-400 hover:text-white">Auto Loan Calculator</a></li>
+          <li><a href="https://calcdomain.com/house-affordability" class="text-gray-400 hover:text-white">House Affordability</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Support</h4>
+        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/about" class="text-gray-400 hover:text-white">About Us</a></li>
+          <li><a href="https://calcdomain.com/contact" class="text-gray-400 hover:text-white">Contact</a></li>
+          <li><a href="https://calcdomain.com/privacy" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
+          <li><a href="https://calcdomain.com/terms" class="text-gray-400 hover:text-white">Terms of Service</a></li>
+          <li><a href="https://calcdomain.com/sitemap.xml" class="text-gray-400 hover:text-white">Site Map</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+      <p>&copy; 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer>
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };
+</script>
+<script crossorigin="anonymous" defer="" id="MathJax-script" integrity="sha384-t03Q5kk3rYkOeX0Do9kMivG5dYp5I5QY3t4vQdSYo7cmvfV5H0JqGkGwq8xO9m0U" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <!-- Calculator Logic -->
 
 

@@ -686,7 +686,523 @@ CalcDomain
 </main>
 <!-- Standard Footer --> 
 <!-- MathJax for LaTeX rendering (deferred, non-blocking) -->
-<script defer="" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script>
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)'], ['</script>
+<!-- Calculator Logic -->
+<script defer="">
+    (function(){
+      'use strict';
+
+      const € = (n) => n.toLocaleString(undefined, {style:'currency', currency:'EUR', maximumFractionDigits:2});
+      const pct = (n) => (n*100).toLocaleString(undefined, {maximumFractionDigits:2}) + '%';
+
+      // Elements
+      const statusSingle = document.getElementById('statusSingle');
+      const statusMarried = document.getElementById('statusMarried');
+      const incomeEl = document.getElementById('income');
+      const incomeErr = document.getElementById('incomeErr');
+      const lossesEl = document.getElementById('losses');
+      const lossesErr = document.getElementById('lossesErr');
+      const allowanceEl = document.getElementById('allowance');
+      const allowErr = document.getElementById('allowErr');
+
+      const churchNone = document.getElementById('churchNone');
+      const church8 = document.getElementById('church8');
+      const church9 = document.getElementById('church9');
+
+      const resNetBefore = document.getElementById('resNetBefore');
+      const resAllowanceUsed = document.getElementById('resAllowanceUsed');
+      const resBase = document.getElementById('resBase');
+      const resTax = document.getElementById('resTax');
+      const resChurch = document.getElementById('resChurch');
+      const resSoli = document.getElementById('resSoli');
+      const resTotal = document.getElementById('resTotal');
+      const resEffRate = document.getElementById('resEffRate');
+      const resAfterTax = document.getElementById('resAfterTax');
+
+      const resetBtn = document.getElementById('resetBtn');
+
+      // Tooltips
+      const tooltips = [
+        {btn:'lossTipBtn', panel:'lossTipPanel'},
+        {btn:'allowTipBtn', panel:'allowTipPanel'},
+        {btn:'churchTipBtn', panel:'churchTipPanel'}
+      ];
+      tooltips.forEach(({btn,panel})=>{
+        const b = document.getElementById(btn);
+        const p = document.getElementById(panel);
+        b.addEventListener('click', ()=>{
+          const open = p.getAttribute('data-open') === 'true';
+          p.setAttribute('data-open', String(!open));
+          b.setAttribute('aria-expanded', String(!open));
+        });
+        b.addEventListener('keydown', (e)=>{
+          if(e.key === 'Escape'){
+            p.setAttribute('data-open','false'); b.setAttribute('aria-expanded','false');
+          }
+        });
+      });
+
+      // Helpers
+      function getChurchRate(){
+        if(church8.checked) return 0.08;
+        if(church9.checked) return 0.09;
+        return 0;
+      }
+      function syncAllowanceFromStatus(){
+        const target = statusMarried.checked ? 2000 : 1000;
+        // Only auto-set if user hasn't manually changed or if value equals previous default range
+        const current = Number(allowanceEl.value || 0);
+        if(current === 1000 || current === 2000 || current === 0){
+          allowanceEl.value = String(target);
+        }
+      }
+
+      // Validation
+      function validateNumber(inputEl, errEl, {min=0, max=Number.POSITIVE_INFINITY, required=false} = {}){
+        let v = inputEl.value.trim();
+        const name = inputEl.labels && inputEl.labels[0] ? inputEl.labels[0].innerText.replace('*','').trim() : 'This field';
+        if(required && v === ''){
+          inputEl.setAttribute('aria-invalid','true');
+          errEl.textContent = name + ' is required. Please enter a number.';
+          return null;
+        }
+        if(v === ''){
+          inputEl.setAttribute('aria-invalid','false');
+          errEl.textContent = '';
+          return 0;
+        }
+        const num = Number(v);
+        if(!isFinite(num)){
+          inputEl.setAttribute('aria-invalid','true');
+          errEl.textContent = 'Please enter a valid number for ' + name + '.';
+          return null;
+        }
+        if(num < min){
+          inputEl.setAttribute('aria-invalid','true');
+          errEl.textContent = name + ' must be at least ' + min + '.';
+          return null;
+        }
+        if(num > max){
+          inputEl.setAttribute('aria-invalid','true');
+          errEl.textContent = name + ' must be ≤ ' + max + '.';
+          return null;
+        }
+        inputEl.setAttribute('aria-invalid','false');
+        errEl.textContent = '';
+        return num;
+      }
+
+      // Main calculation
+      function calculate(){
+        const income = validateNumber(incomeEl, incomeErr, {min:0, required:true});
+        const losses = validateNumber(lossesEl, lossesErr, {min:0});
+        const allowance = validateNumber(allowanceEl, allowErr, {min:0});
+
+        if(income === null || losses === null || allowance === null){
+          // Show zeroed results if invalid
+          render(0,0,0,0,0,0,0,0);
+          return;
+        }
+
+        const I_net = Math.max(0, income - losses);
+        const A_used = Math.min(allowance, I_net);
+        const B = Math.max(0, I_net - allowance);
+
+        const k = getChurchRate();
+        let E = 0, K = 0, S = 0, T = 0, r = 0, afterTax = 0;
+
+        if(B > 0){
+          E = 0.25 * B / (1 + 0.25 * k);
+          K = k * E;
+          S = 0.055 * E;
+          T = E + K + S;
+          r = T / B;
+          afterTax = B - T;
+        } else {
+          E = K = S = T = r = afterTax = 0;
+        }
+
+        render(I_net, A_used, B, E, K, S, T, r, afterTax);
+      }
+
+      function render(I_net, A_used, B, E, K, S, T, r, afterTax){
+        resNetBefore.textContent = €(I_net);
+        resAllowanceUsed.textContent = €(A_used);
+        resBase.textContent = €(B);
+        resTax.textContent = €(E);
+        resChurch.textContent = €(K);
+        resSoli.textContent = €(S);
+        resTotal.textContent = €(T);
+        resEffRate.textContent = isFinite(r) ? pct(r || 0) : '0.00%';
+        resAfterTax.textContent = €(afterTax);
+      }
+
+      // Events
+      [statusSingle, statusMarried].forEach(r => r.addEventListener('change', ()=>{
+        syncAllowanceFromStatus();
+        calculate();
+      }));
+      [churchNone, church8, church9].forEach(r => r.addEventListener('change', calculate));
+
+      incomeEl.addEventListener('blur', calculate);
+      lossesEl.addEventListener('blur', calculate);
+      allowanceEl.addEventListener('blur', calculate);
+
+      // Live update with modest throttling
+      let raf = 0;
+      function onInput(){
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(calculate);
+      }
+      incomeEl.addEventListener('input', onInput);
+      lossesEl.addEventListener('input', onInput);
+      allowanceEl.addEventListener('input', onInput);
+
+      resetBtn.addEventListener('click', ()=>{
+        statusSingle.checked = true;
+        churchNone.checked = true;
+        incomeEl.value = '';
+        lossesEl.value = '';
+        allowanceEl.value = '1000';
+        incomeEl.setAttribute('aria-invalid','false'); incomeErr.textContent='';
+        lossesEl.setAttribute('aria-invalid','false'); lossesErr.textContent='';
+        allowanceEl.setAttribute('aria-invalid','false'); allowErr.textContent='';
+        calculate();
+        incomeEl.focus();
+      });
+
+      // Initialize default state
+      syncAllowanceFromStatus();
+      calculate();
+    })();
+  </script>
+
+<script defer="" src="/assets/js/mobile-menu.js"></script>
+<script defer="" src="/assets/js/page-enhancements.js"></script>
+<footer class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div>
+        <h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+        <p class="text-gray-400 mb-4">
+          Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.
+        </p>
+        </div>
+
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Categories</h4>
+                                                                                                                                                                                                        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
+          <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
+          <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
+          <li><a href="https://calcdomain.com/categories/finance" class="text-gray-400 hover:text-white">Finance</a></li>
+          <li><a href="https://calcdomain.com/categories/general" class="text-gray-400 hover:text-white">General</a></li>
+          <li><a href="https://calcdomain.com/categories/health-fitness" class="text-gray-400 hover:text-white">Health & Fitness</a></li>
+          <li><a href="https://calcdomain.com/categories/lifestyle-everyday" class="text-gray-400 hover:text-white">Lifestyle & Everyday</a></li>
+          <li><a href="https://calcdomain.com/categories/math" class="text-gray-400 hover:text-white">Math</a></li>
+          <li><a href="https://calcdomain.com/categories/math-conversions" class="text-gray-400 hover:text-white">Math & Conversions</a></li>
+          <li><a href="https://calcdomain.com/categories/science" class="text-gray-400 hover:text-white">Science</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/mortgage-payment" class="text-gray-400 hover:text-white">Mortgage Calculator</a></li>
+          <li><a href="https://calcdomain.com/percentage-calculator" class="text-gray-400 hover:text-white">Percentage Calculator</a></li>
+          <li><a href="https://calcdomain.com/bmi-calculator" class="text-gray-400 hover:text-white">BMI Calculator</a></li>
+          <li><a href="https://calcdomain.com/auto-loan-calculator" class="text-gray-400 hover:text-white">Auto Loan Calculator</a></li>
+          <li><a href="https://calcdomain.com/house-affordability" class="text-gray-400 hover:text-white">House Affordability</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Support</h4>
+        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/about" class="text-gray-400 hover:text-white">About Us</a></li>
+          <li><a href="https://calcdomain.com/contact" class="text-gray-400 hover:text-white">Contact</a></li>
+          <li><a href="https://calcdomain.com/privacy" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
+          <li><a href="https://calcdomain.com/terms" class="text-gray-400 hover:text-white">Terms of Service</a></li>
+          <li><a href="https://calcdomain.com/sitemap.xml" class="text-gray-400 hover:text-white">Site Map</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+      <p>&copy; 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer>
+
+
+
+
+
+
+
+
+
+</body></html>
+, '</script>
+<!-- Calculator Logic -->
+<script defer="">
+    (function(){
+      'use strict';
+
+      const € = (n) => n.toLocaleString(undefined, {style:'currency', currency:'EUR', maximumFractionDigits:2});
+      const pct = (n) => (n*100).toLocaleString(undefined, {maximumFractionDigits:2}) + '%';
+
+      // Elements
+      const statusSingle = document.getElementById('statusSingle');
+      const statusMarried = document.getElementById('statusMarried');
+      const incomeEl = document.getElementById('income');
+      const incomeErr = document.getElementById('incomeErr');
+      const lossesEl = document.getElementById('losses');
+      const lossesErr = document.getElementById('lossesErr');
+      const allowanceEl = document.getElementById('allowance');
+      const allowErr = document.getElementById('allowErr');
+
+      const churchNone = document.getElementById('churchNone');
+      const church8 = document.getElementById('church8');
+      const church9 = document.getElementById('church9');
+
+      const resNetBefore = document.getElementById('resNetBefore');
+      const resAllowanceUsed = document.getElementById('resAllowanceUsed');
+      const resBase = document.getElementById('resBase');
+      const resTax = document.getElementById('resTax');
+      const resChurch = document.getElementById('resChurch');
+      const resSoli = document.getElementById('resSoli');
+      const resTotal = document.getElementById('resTotal');
+      const resEffRate = document.getElementById('resEffRate');
+      const resAfterTax = document.getElementById('resAfterTax');
+
+      const resetBtn = document.getElementById('resetBtn');
+
+      // Tooltips
+      const tooltips = [
+        {btn:'lossTipBtn', panel:'lossTipPanel'},
+        {btn:'allowTipBtn', panel:'allowTipPanel'},
+        {btn:'churchTipBtn', panel:'churchTipPanel'}
+      ];
+      tooltips.forEach(({btn,panel})=>{
+        const b = document.getElementById(btn);
+        const p = document.getElementById(panel);
+        b.addEventListener('click', ()=>{
+          const open = p.getAttribute('data-open') === 'true';
+          p.setAttribute('data-open', String(!open));
+          b.setAttribute('aria-expanded', String(!open));
+        });
+        b.addEventListener('keydown', (e)=>{
+          if(e.key === 'Escape'){
+            p.setAttribute('data-open','false'); b.setAttribute('aria-expanded','false');
+          }
+        });
+      });
+
+      // Helpers
+      function getChurchRate(){
+        if(church8.checked) return 0.08;
+        if(church9.checked) return 0.09;
+        return 0;
+      }
+      function syncAllowanceFromStatus(){
+        const target = statusMarried.checked ? 2000 : 1000;
+        // Only auto-set if user hasn't manually changed or if value equals previous default range
+        const current = Number(allowanceEl.value || 0);
+        if(current === 1000 || current === 2000 || current === 0){
+          allowanceEl.value = String(target);
+        }
+      }
+
+      // Validation
+      function validateNumber(inputEl, errEl, {min=0, max=Number.POSITIVE_INFINITY, required=false} = {}){
+        let v = inputEl.value.trim();
+        const name = inputEl.labels && inputEl.labels[0] ? inputEl.labels[0].innerText.replace('*','').trim() : 'This field';
+        if(required && v === ''){
+          inputEl.setAttribute('aria-invalid','true');
+          errEl.textContent = name + ' is required. Please enter a number.';
+          return null;
+        }
+        if(v === ''){
+          inputEl.setAttribute('aria-invalid','false');
+          errEl.textContent = '';
+          return 0;
+        }
+        const num = Number(v);
+        if(!isFinite(num)){
+          inputEl.setAttribute('aria-invalid','true');
+          errEl.textContent = 'Please enter a valid number for ' + name + '.';
+          return null;
+        }
+        if(num < min){
+          inputEl.setAttribute('aria-invalid','true');
+          errEl.textContent = name + ' must be at least ' + min + '.';
+          return null;
+        }
+        if(num > max){
+          inputEl.setAttribute('aria-invalid','true');
+          errEl.textContent = name + ' must be ≤ ' + max + '.';
+          return null;
+        }
+        inputEl.setAttribute('aria-invalid','false');
+        errEl.textContent = '';
+        return num;
+      }
+
+      // Main calculation
+      function calculate(){
+        const income = validateNumber(incomeEl, incomeErr, {min:0, required:true});
+        const losses = validateNumber(lossesEl, lossesErr, {min:0});
+        const allowance = validateNumber(allowanceEl, allowErr, {min:0});
+
+        if(income === null || losses === null || allowance === null){
+          // Show zeroed results if invalid
+          render(0,0,0,0,0,0,0,0);
+          return;
+        }
+
+        const I_net = Math.max(0, income - losses);
+        const A_used = Math.min(allowance, I_net);
+        const B = Math.max(0, I_net - allowance);
+
+        const k = getChurchRate();
+        let E = 0, K = 0, S = 0, T = 0, r = 0, afterTax = 0;
+
+        if(B > 0){
+          E = 0.25 * B / (1 + 0.25 * k);
+          K = k * E;
+          S = 0.055 * E;
+          T = E + K + S;
+          r = T / B;
+          afterTax = B - T;
+        } else {
+          E = K = S = T = r = afterTax = 0;
+        }
+
+        render(I_net, A_used, B, E, K, S, T, r, afterTax);
+      }
+
+      function render(I_net, A_used, B, E, K, S, T, r, afterTax){
+        resNetBefore.textContent = €(I_net);
+        resAllowanceUsed.textContent = €(A_used);
+        resBase.textContent = €(B);
+        resTax.textContent = €(E);
+        resChurch.textContent = €(K);
+        resSoli.textContent = €(S);
+        resTotal.textContent = €(T);
+        resEffRate.textContent = isFinite(r) ? pct(r || 0) : '0.00%';
+        resAfterTax.textContent = €(afterTax);
+      }
+
+      // Events
+      [statusSingle, statusMarried].forEach(r => r.addEventListener('change', ()=>{
+        syncAllowanceFromStatus();
+        calculate();
+      }));
+      [churchNone, church8, church9].forEach(r => r.addEventListener('change', calculate));
+
+      incomeEl.addEventListener('blur', calculate);
+      lossesEl.addEventListener('blur', calculate);
+      allowanceEl.addEventListener('blur', calculate);
+
+      // Live update with modest throttling
+      let raf = 0;
+      function onInput(){
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(calculate);
+      }
+      incomeEl.addEventListener('input', onInput);
+      lossesEl.addEventListener('input', onInput);
+      allowanceEl.addEventListener('input', onInput);
+
+      resetBtn.addEventListener('click', ()=>{
+        statusSingle.checked = true;
+        churchNone.checked = true;
+        incomeEl.value = '';
+        lossesEl.value = '';
+        allowanceEl.value = '1000';
+        incomeEl.setAttribute('aria-invalid','false'); incomeErr.textContent='';
+        lossesEl.setAttribute('aria-invalid','false'); lossesErr.textContent='';
+        allowanceEl.setAttribute('aria-invalid','false'); allowErr.textContent='';
+        calculate();
+        incomeEl.focus();
+      });
+
+      // Initialize default state
+      syncAllowanceFromStatus();
+      calculate();
+    })();
+  </script>
+
+<script defer="" src="/assets/js/mobile-menu.js"></script>
+<script defer="" src="/assets/js/page-enhancements.js"></script>
+<footer class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div>
+        <h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+        <p class="text-gray-400 mb-4">
+          Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.
+        </p>
+        </div>
+
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Categories</h4>
+                                                                                                                                                                                                <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
+          <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
+          <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
+          <li><a href="https://calcdomain.com/categories/finance" class="text-gray-400 hover:text-white">Finance</a></li>
+          <li><a href="https://calcdomain.com/categories/general" class="text-gray-400 hover:text-white">General</a></li>
+          <li><a href="https://calcdomain.com/categories/health-fitness" class="text-gray-400 hover:text-white">Health & Fitness</a></li>
+          <li><a href="https://calcdomain.com/categories/lifestyle-everyday" class="text-gray-400 hover:text-white">Lifestyle & Everyday</a></li>
+          <li><a href="https://calcdomain.com/categories/math" class="text-gray-400 hover:text-white">Math</a></li>
+          <li><a href="https://calcdomain.com/categories/math-conversions" class="text-gray-400 hover:text-white">Math & Conversions</a></li>
+          <li><a href="https://calcdomain.com/categories/science" class="text-gray-400 hover:text-white">Science</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/mortgage-payment" class="text-gray-400 hover:text-white">Mortgage Calculator</a></li>
+          <li><a href="https://calcdomain.com/percentage-calculator" class="text-gray-400 hover:text-white">Percentage Calculator</a></li>
+          <li><a href="https://calcdomain.com/bmi-calculator" class="text-gray-400 hover:text-white">BMI Calculator</a></li>
+          <li><a href="https://calcdomain.com/auto-loan-calculator" class="text-gray-400 hover:text-white">Auto Loan Calculator</a></li>
+          <li><a href="https://calcdomain.com/house-affordability" class="text-gray-400 hover:text-white">House Affordability</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Support</h4>
+        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/about" class="text-gray-400 hover:text-white">About Us</a></li>
+          <li><a href="https://calcdomain.com/contact" class="text-gray-400 hover:text-white">Contact</a></li>
+          <li><a href="https://calcdomain.com/privacy" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
+          <li><a href="https://calcdomain.com/terms" class="text-gray-400 hover:text-white">Terms of Service</a></li>
+          <li><a href="https://calcdomain.com/sitemap.xml" class="text-gray-400 hover:text-white">Site Map</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+      <p>&copy; 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer>
+
+
+
+
+
+
+
+
+</body></html>
+]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };
+</script>
+<script defer="" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <!-- Calculator Logic -->
 <script defer="">
     (function(){

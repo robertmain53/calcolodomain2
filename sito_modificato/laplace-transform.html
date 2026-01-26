@@ -46,10 +46,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -235,8 +231,6 @@
 <body class="bg-gray-50 text-gray-800">
 
     <!-- BODY_SCRIPTS_INIZIO -->
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
         <div class="flex justify-between items-center">
@@ -899,7 +893,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -966,14 +960,616 @@
 
 
 
+
     
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
     
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      // Mobile menu toggle (fallback if script_menu.js doesn't handle it)
+      document.addEventListener('DOMContentLoaded', function () {
+        const toggle = document.getElementById('mobile-menu-toggle');
+        const menu = document.getElementById('mobile-menu');
+        if (toggle && menu) {
+          toggle.addEventListener('click', () => {
+            const isHidden = menu.classList.contains('hidden');
+            menu.classList.toggle('hidden', !isHidden);
+            toggle.setAttribute('aria-expanded', String(isHidden));
+          });
+        }
+      });
+
+      document.addEventListener('DOMContentLoaded', function () {
+        const fnSelect = document.getElementById('lt-function-type');
+        const paramPanels = {
+          exp: document.getElementById('lt-params-exp'),
+          poly: document.getElementById('lt-params-poly'),
+          sin: document.getElementById('lt-params-sin'),
+          cos: document.getElementById('lt-params-cos'),
+          exp_sin: document.getElementById('lt-params-exp_sin'),
+          exp_cos: document.getElementById('lt-params-exp_cos'),
+          shift: document.getElementById('lt-params-shift'),
+          delta: document.getElementById('lt-params-delta')
+        };
+
+        function showPanel(key) {
+          Object.keys(paramPanels).forEach(k => {
+            if (paramPanels[k]) {
+              paramPanels[k].classList.toggle('hidden', k !== key);
+            }
+          });
+        }
+
+        fnSelect.addEventListener('change', () => {
+          showPanel(fnSelect.value);
+        });
+
+        showPanel(fnSelect.value);
+
+        const ltError = document.getElementById('lt-error');
+        const ltResultsCard = document.getElementById('lt-results-card');
+        const ltF = document.getElementById('lt-f');
+        const ltFLatex = document.getElementById('lt-F-latex');
+        const ltFText = document.getElementById('lt-F-text');
+        const ltRoc = document.getElementById('lt-roc');
+        const ltS0Input = document.getElementById('lt-s0');
+        const ltS0Block = document.getElementById('lt-s0-block');
+        const ltS0Text = document.getElementById('lt-s0-text');
+        const ltCalcBtn = document.getElementById('lt-calc-btn');
+        const ltClearBtn = document.getElementById('lt-clear-btn');
+        const ltExampleBtn = document.getElementById('lt-example-btn');
+
+        function parseNumber(str, label) {
+          const t = (str || '').trim();
+          if (!t) {
+            throw new Error(label + ' is required.');
+          }
+          const v = Number(t);
+          if (!Number.isFinite(v)) {
+            throw new Error(label + ' must be a finite real number.');
+          }
+          return v;
+        }
+
+        function parseOptionalNumber(str) {
+          const t = (str || '').trim();
+          if (!t) return null;
+          const v = Number(t);
+          if (!Number.isFinite(v)) {
+            throw new Error('s0 must be a finite real number if provided.');
+          }
+          return v;
+        }
+
+        function resetOutputs() {
+          ltError.textContent = '';
+          ltError.classList.add('hidden');
+          ltResultsCard.classList.add('hidden');
+          ltF.textContent = '';
+          ltFLatex.textContent = '';
+          ltFText.textContent = '';
+          ltRoc.textContent = '';
+          ltS0Text.textContent = '';
+          ltS0Block.classList.add('hidden');
+        }
+
+        function computeLaplace() {
+          resetOutputs();
+          try {
+            const type = fnSelect.value;
+            const s0 = parseOptionalNumber(ltS0Input.value);
+            let fDesc = '';
+            let FSymbolic = '';
+            let FText = '';
+            let rocText = '';
+            let FNumeric = null;
+
+            if (type === 'exp') {
+              const K = parseNumber(document.getElementById('lt-K-exp').value, 'Amplitude K');
+              const a = parseNumber(document.getElementById('lt-a-exp').value, 'Exponential rate a');
+              fDesc = 'f(t) = ' + K + ' e^{a t} u(t), with a = ' + a;
+              FSymbolic = '\\\\mathcal{L}\\\\{K e^{a t} u(t)\\\\}(s) = \\\\dfrac{K}{s - a}';
+              FText = 'F(s) = K / (s - a)';
+              rocText = 'Region of convergence: Re(s) > Re(a) = ' + a + '.';
+              if (s0 !== null) {
+                if (s0 === a) {
+                  FNumeric = 'diverges (pole at s0 = a)';
+                } else {
+                  FNumeric = (K / (s0 - a)).toString();
+                }
+              }
+            } else if (type === 'poly') {
+              const K = parseNumber(document.getElementById('lt-K-poly').value, 'Amplitude K');
+              const nVal = document.getElementById('lt-n-poly').value;
+              const n = Number(nVal);
+              if (!Number.isInteger(n) || n < 0) {
+                throw new Error('n must be an integer ≥ 0.');
+              }
+              function factorial(m) {
+                let res = 1;
+                for (let i = 2; i <= m; i++) res *= i;
+                return res;
+              }
+              const fact = factorial(n);
+              fDesc = 'f(t) = ' + K + ' t^' + n + ' u(t)';
+              FSymbolic = '\\\\mathcal{L}\\\\{K t^n u(t)\\\\}(s) = K \\\\dfrac{n!}{s^{n+1}}';
+              FText = 'F(s) = ' + K + ' * ' + n + '! / s^{n+1} = ' + (K * fact) + ' / s^' + (n + 1);
+              rocText = 'Region of convergence: Re(s) > 0.';
+              if (s0 !== null) {
+                if (s0 === 0) {
+                  FNumeric = 'diverges at s0 = 0 (pole at the origin)';
+                } else {
+                  FNumeric = ((K * fact) / Math.pow(s0, n + 1)).toString();
+                }
+              }
+            } else if (type === 'sin') {
+              const K = parseNumber(document.getElementById('lt-K-sin').value, 'Amplitude K');
+              const b = parseNumber(document.getElementById('lt-b-sin').value, 'Angular frequency b');
+              if (b <= 0) {
+                throw new Error('b must be > 0.');
+              }
+              fDesc = 'f(t) = ' + K + ' sin(b t) u(t), with b = ' + b;
+              FSymbolic = '\\\\mathcal{L}\\\\{K \\\\sin(bt) u(t)\\\\}(s) = K \\\\dfrac{b}{s^2 + b^2}';
+              FText = 'F(s) = K * b / (s^2 + b^2)';
+              rocText = 'Region of convergence: Re(s) > 0.';
+              if (s0 !== null) {
+                const denom = s0 * s0 + b * b;
+                FNumeric = (K * b / denom).toString();
+              }
+            } else if (type === 'cos') {
+              const K = parseNumber(document.getElementById('lt-K-cos').value, 'Amplitude K');
+              const b = parseNumber(document.getElementById('lt-b-cos').value, 'Angular frequency b');
+              if (b <= 0) {
+                throw new Error('b must be > 0.');
+              }
+              fDesc = 'f(t) = ' + K + ' cos(b t) u(t), with b = ' + b;
+              FSymbolic = '\\\\mathcal{L}\\\\{K \\\\cos(bt) u(t)\\\\}(s) = K \\\\dfrac{s}{s^2 + b^2}';
+              FText = 'F(s) = K * s / (s^2 + b^2)';
+              rocText = 'Region of convergence: Re(s) > 0.';
+              if (s0 !== null) {
+                const denom = s0 * s0 + b * b;
+                FNumeric = (K * s0 / denom).toString();
+              }
+            } else if (type === 'exp_sin') {
+              const K = parseNumber(document.getElementById('lt-K-exp-sin').value, 'Amplitude K');
+              const a = parseNumber(document.getElementById('lt-a-exp-sin').value, 'Exponential rate a');
+              const b = parseNumber(document.getElementById('lt-b-exp-sin').value, 'Angular frequency b');
+              if (b <= 0) {
+                throw new Error('b must be > 0.');
+              }
+              fDesc = 'f(t) = ' + K + ' e^{a t} sin(b t) u(t), with a = ' + a + ', b = ' + b;
+              FSymbolic = '\\\\mathcal{L}\\\\{K e^{a t} \\\\sin(bt) u(t)\\\\}(s) = K \\\\dfrac{b}{(s-a)^2 + b^2}';
+              FText = 'F(s) = K * b / ((s - a)^2 + b^2)';
+              rocText = 'Region of convergence: Re(s) > Re(a) = ' + a + '.';
+              if (s0 !== null) {
+                const denom = (s0 - a) * (s0 - a) + b * b;
+                FNumeric = (K * b / denom).toString();
+              }
+            } else if (type === 'exp_cos') {
+              const K = parseNumber(document.getElementById('lt-K-exp-cos').value, 'Amplitude K');
+              const a = parseNumber(document.getElementById('lt-a-exp-cos').value, 'Exponential rate a');
+              const b = parseNumber(document.getElementById('lt-b-exp-cos').value, 'Angular frequency b');
+              if (b <= 0) {
+                throw new Error('b must be > 0.');
+              }
+              fDesc = 'f(t) = ' + K + ' e^{a t} cos(b t) u(t), with a = ' + a + ', b = ' + b;
+              FSymbolic = '\\\\mathcal{L}\\\\{K e^{a t} \\\\cos(bt) u(t)\\\\}(s) = K \\\\dfrac{s-a}{(s-a)^2 + b^2}';
+              FText = 'F(s) = K * (s - a) / ((s - a)^2 + b^2)';
+              rocText = 'Region of convergence: Re(s) > Re(a) = ' + a + '.';
+              if (s0 !== null) {
+                const denom = (s0 - a) * (s0 - a) + b * b;
+                FNumeric = (K * (s0 - a) / denom).toString();
+              }
+            } else if (type === 'shift') {
+              const K = parseNumber(document.getElementById('lt-K-shift').value, 'Amplitude K');
+              const a0 = parseNumber(document.getElementById('lt-a0-shift').value, 'Shift a0');
+              if (a0 < 0) {
+                throw new Error('Shift a0 must be ≥ 0 for a standard step-shifted signal.');
+              }
+              const Gs = (document.getElementById('lt-Fg-shift').value || 'G(s)').trim();
+              fDesc = 'f(t) = ' + K + ' u(t - a0) g(t - a0), with a0 = ' + a0;
+              FSymbolic = '\\\\mathcal{L}\\\\{K u(t-a_0) g(t-a_0)\\\\}(s) = K e^{-a_0 s} G(s)';
+              FText = 'F(s) = ' + K + ' * e^{-a0 * s} * ' + Gs;
+              rocText = 'Region of convergence: same as G(s), shifted signal does not change ROC.';
+              if (s0 !== null) {
+                FNumeric = K + ' * exp(-' + a0 + ' * ' + s0 + ') * ' + Gs + '  (symbolic numeric form; G(s0) not evaluated).';
+              }
+            } else if (type === 'delta') {
+              const K = parseNumber(document.getElementById('lt-K-delta').value, 'Amplitude K');
+              const a0 = parseNumber(document.getElementById('lt-a0-delta').value, 'Shift a0');
+              if (a0 < 0) {
+                throw new Error('Shift a0 must be ≥ 0 for a physical impulse at t >= 0.');
+              }
+              fDesc = 'f(t) = ' + K + ' δ(t - a0), with a0 = ' + a0;
+              FSymbolic = '\\\\mathcal{L}\\\\{K \\\\delta(t-a_0)\\\\}(s) = K e^{-a_0 s}';
+              FText = 'F(s) = K * e^{-a0 * s}';
+              rocText = 'Region of convergence: all complex s (entire function).';
+              if (s0 !== null) {
+                FNumeric = (K * Math.exp(-a0 * s0)).toString();
+              }
+            }
+
+            ltF.textContent = fDesc;
+            ltFLatex.textContent = FSymbolic;
+            ltFText.textContent = FText;
+            ltRoc.textContent = rocText;
+
+            if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+              MathJax.typesetPromise([ltFLatex]).catch(function () {/* ignore */});
+            }
+
+            if (s0 !== null && FNumeric !== null) {
+              ltS0Block.classList.remove('hidden');
+              ltS0Text.textContent = 'F(' + s0 + ') ≈ ' + FNumeric;
+            }
+
+            ltResultsCard.classList.remove('hidden');
+          } catch (e) {
+            ltError.textContent = e.message || 'An error occurred while computing the Laplace transform.';
+            ltError.classList.remove('hidden');
+          }
+        }
+
+        function clearLaplace() {
+          document.getElementById('lt-s0').value = '';
+          document.getElementById('lt-K-exp').value = '1';
+          document.getElementById('lt-a-exp').value = '0';
+          document.getElementById('lt-K-poly').value = '1';
+          document.getElementById('lt-n-poly').value = '1';
+          document.getElementById('lt-K-sin').value = '1';
+          document.getElementById('lt-b-sin').value = '1';
+          document.getElementById('lt-K-cos').value = '1';
+          document.getElementById('lt-b-cos').value = '1';
+          document.getElementById('lt-K-exp-sin').value = '1';
+          document.getElementById('lt-a-exp-sin').value = '-1';
+          document.getElementById('lt-b-exp-sin').value = '2';
+          document.getElementById('lt-K-exp-cos').value = '1';
+          document.getElementById('lt-a-exp-cos').value = '-1';
+          document.getElementById('lt-b-exp-cos').value = '2';
+          document.getElementById('lt-K-shift').value = '1';
+          document.getElementById('lt-a0-shift').value = '1';
+          document.getElementById('lt-Fg-shift').value = 'G(s)';
+          document.getElementById('lt-K-delta').value = '1';
+          document.getElementById('lt-a0-delta').value = '0';
+          resetOutputs();
+        }
+
+        function loadExample() {
+          fnSelect.value = 'exp_sin';
+          showPanel('exp_sin');
+          document.getElementById('lt-K-exp-sin').value = '2';
+          document.getElementById('lt-a-exp-sin').value = '-3';
+          document.getElementById('lt-b-exp-sin').value = '5';
+          document.getElementById('lt-s0').value = '4';
+          computeLaplace();
+        }
+
+        ltCalcBtn.addEventListener('click', computeLaplace);
+        ltClearBtn.addEventListener('click', clearLaplace);
+        ltExampleBtn.addEventListener('click', loadExample);
+
+        ltS0Input.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            computeLaplace();
+          }
+        });
+      });
+    </script>
+    
+
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      // Mobile menu toggle (fallback if script_menu.js doesn't handle it)
+      document.addEventListener('DOMContentLoaded', function () {
+        const toggle = document.getElementById('mobile-menu-toggle');
+        const menu = document.getElementById('mobile-menu');
+        if (toggle && menu) {
+          toggle.addEventListener('click', () => {
+            const isHidden = menu.classList.contains('hidden');
+            menu.classList.toggle('hidden', !isHidden);
+            toggle.setAttribute('aria-expanded', String(isHidden));
+          });
+        }
+      });
+
+      document.addEventListener('DOMContentLoaded', function () {
+        const fnSelect = document.getElementById('lt-function-type');
+        const paramPanels = {
+          exp: document.getElementById('lt-params-exp'),
+          poly: document.getElementById('lt-params-poly'),
+          sin: document.getElementById('lt-params-sin'),
+          cos: document.getElementById('lt-params-cos'),
+          exp_sin: document.getElementById('lt-params-exp_sin'),
+          exp_cos: document.getElementById('lt-params-exp_cos'),
+          shift: document.getElementById('lt-params-shift'),
+          delta: document.getElementById('lt-params-delta')
+        };
+
+        function showPanel(key) {
+          Object.keys(paramPanels).forEach(k => {
+            if (paramPanels[k]) {
+              paramPanels[k].classList.toggle('hidden', k !== key);
+            }
+          });
+        }
+
+        fnSelect.addEventListener('change', () => {
+          showPanel(fnSelect.value);
+        });
+
+        showPanel(fnSelect.value);
+
+        const ltError = document.getElementById('lt-error');
+        const ltResultsCard = document.getElementById('lt-results-card');
+        const ltF = document.getElementById('lt-f');
+        const ltFLatex = document.getElementById('lt-F-latex');
+        const ltFText = document.getElementById('lt-F-text');
+        const ltRoc = document.getElementById('lt-roc');
+        const ltS0Input = document.getElementById('lt-s0');
+        const ltS0Block = document.getElementById('lt-s0-block');
+        const ltS0Text = document.getElementById('lt-s0-text');
+        const ltCalcBtn = document.getElementById('lt-calc-btn');
+        const ltClearBtn = document.getElementById('lt-clear-btn');
+        const ltExampleBtn = document.getElementById('lt-example-btn');
+
+        function parseNumber(str, label) {
+          const t = (str || '').trim();
+          if (!t) {
+            throw new Error(label + ' is required.');
+          }
+          const v = Number(t);
+          if (!Number.isFinite(v)) {
+            throw new Error(label + ' must be a finite real number.');
+          }
+          return v;
+        }
+
+        function parseOptionalNumber(str) {
+          const t = (str || '').trim();
+          if (!t) return null;
+          const v = Number(t);
+          if (!Number.isFinite(v)) {
+            throw new Error('s0 must be a finite real number if provided.');
+          }
+          return v;
+        }
+
+        function resetOutputs() {
+          ltError.textContent = '';
+          ltError.classList.add('hidden');
+          ltResultsCard.classList.add('hidden');
+          ltF.textContent = '';
+          ltFLatex.textContent = '';
+          ltFText.textContent = '';
+          ltRoc.textContent = '';
+          ltS0Text.textContent = '';
+          ltS0Block.classList.add('hidden');
+        }
+
+        function computeLaplace() {
+          resetOutputs();
+          try {
+            const type = fnSelect.value;
+            const s0 = parseOptionalNumber(ltS0Input.value);
+            let fDesc = '';
+            let FSymbolic = '';
+            let FText = '';
+            let rocText = '';
+            let FNumeric = null;
+
+            if (type === 'exp') {
+              const K = parseNumber(document.getElementById('lt-K-exp').value, 'Amplitude K');
+              const a = parseNumber(document.getElementById('lt-a-exp').value, 'Exponential rate a');
+              fDesc = 'f(t) = ' + K + ' e^{a t} u(t), with a = ' + a;
+              FSymbolic = '\\\\mathcal{L}\\\\{K e^{a t} u(t)\\\\}(s) = \\\\dfrac{K}{s - a}';
+              FText = 'F(s) = K / (s - a)';
+              rocText = 'Region of convergence: Re(s) > Re(a) = ' + a + '.';
+              if (s0 !== null) {
+                if (s0 === a) {
+                  FNumeric = 'diverges (pole at s0 = a)';
+                } else {
+                  FNumeric = (K / (s0 - a)).toString();
+                }
+              }
+            } else if (type === 'poly') {
+              const K = parseNumber(document.getElementById('lt-K-poly').value, 'Amplitude K');
+              const nVal = document.getElementById('lt-n-poly').value;
+              const n = Number(nVal);
+              if (!Number.isInteger(n) || n < 0) {
+                throw new Error('n must be an integer ≥ 0.');
+              }
+              function factorial(m) {
+                let res = 1;
+                for (let i = 2; i <= m; i++) res *= i;
+                return res;
+              }
+              const fact = factorial(n);
+              fDesc = 'f(t) = ' + K + ' t^' + n + ' u(t)';
+              FSymbolic = '\\\\mathcal{L}\\\\{K t^n u(t)\\\\}(s) = K \\\\dfrac{n!}{s^{n+1}}';
+              FText = 'F(s) = ' + K + ' * ' + n + '! / s^{n+1} = ' + (K * fact) + ' / s^' + (n + 1);
+              rocText = 'Region of convergence: Re(s) > 0.';
+              if (s0 !== null) {
+                if (s0 === 0) {
+                  FNumeric = 'diverges at s0 = 0 (pole at the origin)';
+                } else {
+                  FNumeric = ((K * fact) / Math.pow(s0, n + 1)).toString();
+                }
+              }
+            } else if (type === 'sin') {
+              const K = parseNumber(document.getElementById('lt-K-sin').value, 'Amplitude K');
+              const b = parseNumber(document.getElementById('lt-b-sin').value, 'Angular frequency b');
+              if (b <= 0) {
+                throw new Error('b must be > 0.');
+              }
+              fDesc = 'f(t) = ' + K + ' sin(b t) u(t), with b = ' + b;
+              FSymbolic = '\\\\mathcal{L}\\\\{K \\\\sin(bt) u(t)\\\\}(s) = K \\\\dfrac{b}{s^2 + b^2}';
+              FText = 'F(s) = K * b / (s^2 + b^2)';
+              rocText = 'Region of convergence: Re(s) > 0.';
+              if (s0 !== null) {
+                const denom = s0 * s0 + b * b;
+                FNumeric = (K * b / denom).toString();
+              }
+            } else if (type === 'cos') {
+              const K = parseNumber(document.getElementById('lt-K-cos').value, 'Amplitude K');
+              const b = parseNumber(document.getElementById('lt-b-cos').value, 'Angular frequency b');
+              if (b <= 0) {
+                throw new Error('b must be > 0.');
+              }
+              fDesc = 'f(t) = ' + K + ' cos(b t) u(t), with b = ' + b;
+              FSymbolic = '\\\\mathcal{L}\\\\{K \\\\cos(bt) u(t)\\\\}(s) = K \\\\dfrac{s}{s^2 + b^2}';
+              FText = 'F(s) = K * s / (s^2 + b^2)';
+              rocText = 'Region of convergence: Re(s) > 0.';
+              if (s0 !== null) {
+                const denom = s0 * s0 + b * b;
+                FNumeric = (K * s0 / denom).toString();
+              }
+            } else if (type === 'exp_sin') {
+              const K = parseNumber(document.getElementById('lt-K-exp-sin').value, 'Amplitude K');
+              const a = parseNumber(document.getElementById('lt-a-exp-sin').value, 'Exponential rate a');
+              const b = parseNumber(document.getElementById('lt-b-exp-sin').value, 'Angular frequency b');
+              if (b <= 0) {
+                throw new Error('b must be > 0.');
+              }
+              fDesc = 'f(t) = ' + K + ' e^{a t} sin(b t) u(t), with a = ' + a + ', b = ' + b;
+              FSymbolic = '\\\\mathcal{L}\\\\{K e^{a t} \\\\sin(bt) u(t)\\\\}(s) = K \\\\dfrac{b}{(s-a)^2 + b^2}';
+              FText = 'F(s) = K * b / ((s - a)^2 + b^2)';
+              rocText = 'Region of convergence: Re(s) > Re(a) = ' + a + '.';
+              if (s0 !== null) {
+                const denom = (s0 - a) * (s0 - a) + b * b;
+                FNumeric = (K * b / denom).toString();
+              }
+            } else if (type === 'exp_cos') {
+              const K = parseNumber(document.getElementById('lt-K-exp-cos').value, 'Amplitude K');
+              const a = parseNumber(document.getElementById('lt-a-exp-cos').value, 'Exponential rate a');
+              const b = parseNumber(document.getElementById('lt-b-exp-cos').value, 'Angular frequency b');
+              if (b <= 0) {
+                throw new Error('b must be > 0.');
+              }
+              fDesc = 'f(t) = ' + K + ' e^{a t} cos(b t) u(t), with a = ' + a + ', b = ' + b;
+              FSymbolic = '\\\\mathcal{L}\\\\{K e^{a t} \\\\cos(bt) u(t)\\\\}(s) = K \\\\dfrac{s-a}{(s-a)^2 + b^2}';
+              FText = 'F(s) = K * (s - a) / ((s - a)^2 + b^2)';
+              rocText = 'Region of convergence: Re(s) > Re(a) = ' + a + '.';
+              if (s0 !== null) {
+                const denom = (s0 - a) * (s0 - a) + b * b;
+                FNumeric = (K * (s0 - a) / denom).toString();
+              }
+            } else if (type === 'shift') {
+              const K = parseNumber(document.getElementById('lt-K-shift').value, 'Amplitude K');
+              const a0 = parseNumber(document.getElementById('lt-a0-shift').value, 'Shift a0');
+              if (a0 < 0) {
+                throw new Error('Shift a0 must be ≥ 0 for a standard step-shifted signal.');
+              }
+              const Gs = (document.getElementById('lt-Fg-shift').value || 'G(s)').trim();
+              fDesc = 'f(t) = ' + K + ' u(t - a0) g(t - a0), with a0 = ' + a0;
+              FSymbolic = '\\\\mathcal{L}\\\\{K u(t-a_0) g(t-a_0)\\\\}(s) = K e^{-a_0 s} G(s)';
+              FText = 'F(s) = ' + K + ' * e^{-a0 * s} * ' + Gs;
+              rocText = 'Region of convergence: same as G(s), shifted signal does not change ROC.';
+              if (s0 !== null) {
+                FNumeric = K + ' * exp(-' + a0 + ' * ' + s0 + ') * ' + Gs + '  (symbolic numeric form; G(s0) not evaluated).';
+              }
+            } else if (type === 'delta') {
+              const K = parseNumber(document.getElementById('lt-K-delta').value, 'Amplitude K');
+              const a0 = parseNumber(document.getElementById('lt-a0-delta').value, 'Shift a0');
+              if (a0 < 0) {
+                throw new Error('Shift a0 must be ≥ 0 for a physical impulse at t >= 0.');
+              }
+              fDesc = 'f(t) = ' + K + ' δ(t - a0), with a0 = ' + a0;
+              FSymbolic = '\\\\mathcal{L}\\\\{K \\\\delta(t-a_0)\\\\}(s) = K e^{-a_0 s}';
+              FText = 'F(s) = K * e^{-a0 * s}';
+              rocText = 'Region of convergence: all complex s (entire function).';
+              if (s0 !== null) {
+                FNumeric = (K * Math.exp(-a0 * s0)).toString();
+              }
+            }
+
+            ltF.textContent = fDesc;
+            ltFLatex.textContent = FSymbolic;
+            ltFText.textContent = FText;
+            ltRoc.textContent = rocText;
+
+            if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+              MathJax.typesetPromise([ltFLatex]).catch(function () {/* ignore */});
+            }
+
+            if (s0 !== null && FNumeric !== null) {
+              ltS0Block.classList.remove('hidden');
+              ltS0Text.textContent = 'F(' + s0 + ') ≈ ' + FNumeric;
+            }
+
+            ltResultsCard.classList.remove('hidden');
+          } catch (e) {
+            ltError.textContent = e.message || 'An error occurred while computing the Laplace transform.';
+            ltError.classList.remove('hidden');
+          }
+        }
+
+        function clearLaplace() {
+          document.getElementById('lt-s0').value = '';
+          document.getElementById('lt-K-exp').value = '1';
+          document.getElementById('lt-a-exp').value = '0';
+          document.getElementById('lt-K-poly').value = '1';
+          document.getElementById('lt-n-poly').value = '1';
+          document.getElementById('lt-K-sin').value = '1';
+          document.getElementById('lt-b-sin').value = '1';
+          document.getElementById('lt-K-cos').value = '1';
+          document.getElementById('lt-b-cos').value = '1';
+          document.getElementById('lt-K-exp-sin').value = '1';
+          document.getElementById('lt-a-exp-sin').value = '-1';
+          document.getElementById('lt-b-exp-sin').value = '2';
+          document.getElementById('lt-K-exp-cos').value = '1';
+          document.getElementById('lt-a-exp-cos').value = '-1';
+          document.getElementById('lt-b-exp-cos').value = '2';
+          document.getElementById('lt-K-shift').value = '1';
+          document.getElementById('lt-a0-shift').value = '1';
+          document.getElementById('lt-Fg-shift').value = 'G(s)';
+          document.getElementById('lt-K-delta').value = '1';
+          document.getElementById('lt-a0-delta').value = '0';
+          resetOutputs();
+        }
+
+        function loadExample() {
+          fnSelect.value = 'exp_sin';
+          showPanel('exp_sin');
+          document.getElementById('lt-K-exp-sin').value = '2';
+          document.getElementById('lt-a-exp-sin').value = '-3';
+          document.getElementById('lt-b-exp-sin').value = '5';
+          document.getElementById('lt-s0').value = '4';
+          computeLaplace();
+        }
+
+        ltCalcBtn.addEventListener('click', computeLaplace);
+        ltClearBtn.addEventListener('click', clearLaplace);
+        ltExampleBtn.addEventListener('click', loadExample);
+
+        ltS0Input.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            computeLaplace();
+          }
+        });
+      });
+    </script>
+    
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

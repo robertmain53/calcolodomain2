@@ -720,7 +720,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -788,13 +788,559 @@
 
 
 
+
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
 
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      // Simple tab switching for calculator/notes
+      (function () {
+        const tabDiscrete = document.getElementById('tab-discrete');
+        const tabNotes = document.getElementById('tab-notes');
+        const panelDiscrete = document.getElementById('panel-discrete');
+        const panelNotes = document.getElementById('panel-notes');
+
+        function activate(name) {
+          const discreteActive = name === 'discrete';
+          tabDiscrete.classList.toggle('tab-active', discreteActive);
+          tabDiscrete.classList.toggle('tab-inactive', !discreteActive);
+          tabNotes.classList.toggle('tab-active', !discreteActive);
+          tabNotes.classList.toggle('tab-inactive', discreteActive);
+
+          panelDiscrete.classList.toggle('hidden', !discreteActive);
+          panelNotes.classList.toggle('hidden', discreteActive);
+        }
+
+        tabDiscrete.addEventListener('click', function () { activate('discrete'); });
+        tabNotes.addEventListener('click', function () { activate('notes'); });
+      })();
+
+      // Discrete convolution logic
+      document.addEventListener('DOMContentLoaded', function () {
+        const xInput = document.getElementById('seq-x');
+        const hInput = document.getElementById('seq-h');
+        const modeSelect = document.getElementById('conv-mode');
+        const decimalsSelect = document.getElementById('conv-decimals');
+        const interpSelect = document.getElementById('conv-interpretation');
+
+        const calcBtn = document.getElementById('conv-calc-btn');
+        const clearBtn = document.getElementById('conv-clear-btn');
+        const example1Btn = document.getElementById('conv-example1-btn');
+        const example2Btn = document.getElementById('conv-example2-btn');
+        const errorEl = document.getElementById('conv-error');
+
+        const resultsCard = document.getElementById('conv-results-card');
+        const yArrayEl = document.getElementById('conv-y-array');
+        const metaEl = document.getElementById('conv-meta');
+        const summaryEl = document.getElementById('conv-summary');
+        const interpretEl = document.getElementById('conv-interpret-text');
+        const stepsEl = document.getElementById('conv-steps');
+
+        function resetResults() {
+          errorEl.textContent = '';
+          errorEl.classList.add('hidden');
+          resultsCard.classList.add('hidden');
+          yArrayEl.textContent = '';
+          metaEl.textContent = '';
+          summaryEl.textContent = '';
+          interpretEl.textContent = '';
+          stepsEl.textContent = '';
+        }
+
+        function parseSequence(str) {
+          if (!str) return [];
+          const cleaned = str.replace(/[\n\r;]/g, ' ').replace(/,/g, ' ');
+          const parts = cleaned.split(/\s+/).filter(Boolean);
+          if (!parts.length) return [];
+          const seq = parts.map(function (p) {
+            const num = Number(p);
+            if (!isFinite(num)) {
+              throw new Error('All sequence entries must be real numbers.');
+            }
+            return num;
+          });
+          if (seq.length > 50) {
+            throw new Error('Please limit each sequence to at most 50 samples.');
+          }
+          return seq;
+        }
+
+        function convolveFull(x, h) {
+          const N = x.length;
+          const M = h.length;
+          const L = N + M - 1;
+          const y = new Array(L).fill(0);
+          for (let k = 0; k < L; k++) {
+            let sum = 0;
+            for (let n = 0; n < N; n++) {
+              const m = k - n;
+              if (m >= 0 && m < M) {
+                sum += x[n] * h[m];
+              }
+            }
+            y[k] = sum;
+          }
+          return y;
+        }
+
+        function applyMode(yFull, N, M, mode) {
+          if (mode === 'full') return yFull.slice();
+
+          const maxLen = Math.max(N, M);
+          const L = yFull.length;
+
+          if (mode === 'same') {
+            if (L <= maxLen) return yFull.slice();
+            const start = Math.floor((L - maxLen) / 2);
+            return yFull.slice(start, start + maxLen);
+          }
+
+          if (mode === 'valid') {
+            const minLen = Math.min(N, M);
+            if (maxLen < minLen) return [];
+            const validLen = maxLen - minLen + 1;
+            if (validLen <= 0) return [];
+            const start = Math.floor((L - validLen) / 2);
+            return yFull.slice(start, start + validLen);
+          }
+
+          return yFull.slice();
+        }
+
+        function fmt(val, decimals) {
+          return Number(val).toFixed(decimals);
+        }
+
+        function buildSteps(x, h, yFull, decimals) {
+          const N = x.length;
+          const M = h.length;
+          const L = yFull.length;
+          const lines = [];
+
+          for (let k = 0; k < L; k++) {
+            const terms = [];
+            for (let n = 0; n < N; n++) {
+              const m = k - n;
+              if (m >= 0 && m < M) {
+                const xv = fmt(x[n], decimals);
+                const hv = fmt(h[m], decimals);
+                terms.push(xv + '·' + hv);
+              }
+            }
+            const sumStr = fmt(yFull[k], decimals);
+            lines.push('y[' + k + '] = ' + (terms.length ? terms.join(' + ') : '0') + (terms.length ? ' = ' + sumStr : ''));
+          }
+
+          return lines.join('\n');
+        }
+
+        function buildInterpretation(mode, interp, N, M) {
+          if (interp === 'prob') {
+            return 'Interpreting x and h as discrete probability mass functions (PMFs), the convolution y gives the distribution ' +
+                   'of the sum of two independent random variables. Mode=' + mode + ' controls how you trim the finite-length result.';
+          }
+          if (interp === 'cnn') {
+            return 'Interpreting x as a 1D feature map and h as a learned kernel, convolution corresponds to sliding the kernel ' +
+                   'across the feature map, multiplying and summing local neighborhoods. Mode=' + mode + ' mirrors padding strategies ' +
+                   'like “valid” and “same” in deep-learning libraries.';
+          }
+          // signal
+          return 'Interpreting x as an input signal and h as the impulse response of a linear, time-invariant system, y is the output. ' +
+                 'Mode=' + mode + ' corresponds to how you treat boundaries: full transient response, cropped to match x, or valid overlap only.';
+        }
+
+        function calculate() {
+          resetResults();
+          let x, h;
+          try {
+            x = parseSequence(xInput.value);
+            h = parseSequence(hInput.value);
+          } catch (e) {
+            errorEl.textContent = e.message;
+            errorEl.classList.remove('hidden');
+            return;
+          }
+
+          if (!x.length || !h.length) {
+            errorEl.textContent = 'Please provide at least one numeric sample in both x[n] and h[n].';
+            errorEl.classList.remove('hidden');
+            return;
+          }
+
+          const mode = modeSelect.value;
+          const decimals = parseInt(decimalsSelect.value, 10) || 2;
+
+          const yFull = convolveFull(x, h);
+          const y = applyMode(yFull, x.length, h.length, mode);
+
+          if (!y.length) {
+            errorEl.textContent = 'The selected mode produced an empty result. Try switching to full or same.';
+            errorEl.classList.remove('hidden');
+            return;
+          }
+
+          // Prepare display
+          const yStr = y.map(function (v, idx) {
+            return 'y[' + idx + '] = ' + fmt(v, decimals);
+          }).join(',  ');
+
+          yArrayEl.textContent = yStr;
+
+          const meta = [];
+          meta.push('Length(x) = ' + x.length + ', Length(h) = ' + h.length);
+          meta.push('Full length = ' + yFull.length + ', mode "' + mode + '" output length = ' + y.length);
+
+          // simple energies
+          const energy = function (seq) {
+            return seq.reduce(function (acc, v) { return acc + v * v; }, 0);
+          };
+          meta.push('Energy: ||x||² ≈ ' + fmt(energy(x), 4) +
+                    ', ||h||² ≈ ' + fmt(energy(h), 4) +
+                    ', ||y||² ≈ ' + fmt(energy(y), 4));
+
+          metaEl.textContent = meta.join(' · ');
+
+          const summary = 'Convolution of x[n] with h[n] computed as y[k] = Σ x[n] h[k − n]. ' +
+                          'Values are rounded to ' + decimals + ' decimal place' + (decimals === 1 ? '' : 's') + '.';
+          summaryEl.textContent = summary;
+
+          const interpText = buildInterpretation(mode, interpSelect.value, x.length, h.length);
+          interpretEl.textContent = interpText;
+
+          const stepsText = buildSteps(x, h, yFull, decimals);
+          stepsEl.textContent = stepsText;
+
+          resultsCard.classList.remove('hidden');
+        }
+
+        function clearAll() {
+          xInput.value = '';
+          hInput.value = '';
+          modeSelect.value = 'full';
+          decimalsSelect.value = '2';
+          interpSelect.value = 'signal';
+          resetResults();
+        }
+
+        function loadExample1() {
+          xInput.value = '1, 2, 3, 4';
+          hInput.value = '0.3333, 0.3333, 0.3333';
+          modeSelect.value = 'same';
+          decimalsSelect.value = '4';
+          interpSelect.value = 'signal';
+          calculate();
+        }
+
+        function loadExample2() {
+          xInput.value = '0, 0, 1, 1, 1, 0';
+          hInput.value = '1, 0, -1';
+          modeSelect.value = 'full';
+          decimalsSelect.value = '2';
+          interpSelect.value = 'signal';
+          calculate();
+        }
+
+        calcBtn.addEventListener('click', calculate);
+        clearBtn.addEventListener('click', clearAll);
+        example1Btn.addEventListener('click', loadExample1);
+        example2Btn.addEventListener('click', loadExample2);
+
+        [xInput, hInput].forEach(function (el) {
+          el.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              calculate();
+            }
+          });
+        });
+      });
+    </script>
+
+
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      // Simple tab switching for calculator/notes
+      (function () {
+        const tabDiscrete = document.getElementById('tab-discrete');
+        const tabNotes = document.getElementById('tab-notes');
+        const panelDiscrete = document.getElementById('panel-discrete');
+        const panelNotes = document.getElementById('panel-notes');
+
+        function activate(name) {
+          const discreteActive = name === 'discrete';
+          tabDiscrete.classList.toggle('tab-active', discreteActive);
+          tabDiscrete.classList.toggle('tab-inactive', !discreteActive);
+          tabNotes.classList.toggle('tab-active', !discreteActive);
+          tabNotes.classList.toggle('tab-inactive', discreteActive);
+
+          panelDiscrete.classList.toggle('hidden', !discreteActive);
+          panelNotes.classList.toggle('hidden', discreteActive);
+        }
+
+        tabDiscrete.addEventListener('click', function () { activate('discrete'); });
+        tabNotes.addEventListener('click', function () { activate('notes'); });
+      })();
+
+      // Discrete convolution logic
+      document.addEventListener('DOMContentLoaded', function () {
+        const xInput = document.getElementById('seq-x');
+        const hInput = document.getElementById('seq-h');
+        const modeSelect = document.getElementById('conv-mode');
+        const decimalsSelect = document.getElementById('conv-decimals');
+        const interpSelect = document.getElementById('conv-interpretation');
+
+        const calcBtn = document.getElementById('conv-calc-btn');
+        const clearBtn = document.getElementById('conv-clear-btn');
+        const example1Btn = document.getElementById('conv-example1-btn');
+        const example2Btn = document.getElementById('conv-example2-btn');
+        const errorEl = document.getElementById('conv-error');
+
+        const resultsCard = document.getElementById('conv-results-card');
+        const yArrayEl = document.getElementById('conv-y-array');
+        const metaEl = document.getElementById('conv-meta');
+        const summaryEl = document.getElementById('conv-summary');
+        const interpretEl = document.getElementById('conv-interpret-text');
+        const stepsEl = document.getElementById('conv-steps');
+
+        function resetResults() {
+          errorEl.textContent = '';
+          errorEl.classList.add('hidden');
+          resultsCard.classList.add('hidden');
+          yArrayEl.textContent = '';
+          metaEl.textContent = '';
+          summaryEl.textContent = '';
+          interpretEl.textContent = '';
+          stepsEl.textContent = '';
+        }
+
+        function parseSequence(str) {
+          if (!str) return [];
+          const cleaned = str.replace(/[\n\r;]/g, ' ').replace(/,/g, ' ');
+          const parts = cleaned.split(/\s+/).filter(Boolean);
+          if (!parts.length) return [];
+          const seq = parts.map(function (p) {
+            const num = Number(p);
+            if (!isFinite(num)) {
+              throw new Error('All sequence entries must be real numbers.');
+            }
+            return num;
+          });
+          if (seq.length > 50) {
+            throw new Error('Please limit each sequence to at most 50 samples.');
+          }
+          return seq;
+        }
+
+        function convolveFull(x, h) {
+          const N = x.length;
+          const M = h.length;
+          const L = N + M - 1;
+          const y = new Array(L).fill(0);
+          for (let k = 0; k < L; k++) {
+            let sum = 0;
+            for (let n = 0; n < N; n++) {
+              const m = k - n;
+              if (m >= 0 && m < M) {
+                sum += x[n] * h[m];
+              }
+            }
+            y[k] = sum;
+          }
+          return y;
+        }
+
+        function applyMode(yFull, N, M, mode) {
+          if (mode === 'full') return yFull.slice();
+
+          const maxLen = Math.max(N, M);
+          const L = yFull.length;
+
+          if (mode === 'same') {
+            if (L <= maxLen) return yFull.slice();
+            const start = Math.floor((L - maxLen) / 2);
+            return yFull.slice(start, start + maxLen);
+          }
+
+          if (mode === 'valid') {
+            const minLen = Math.min(N, M);
+            if (maxLen < minLen) return [];
+            const validLen = maxLen - minLen + 1;
+            if (validLen <= 0) return [];
+            const start = Math.floor((L - validLen) / 2);
+            return yFull.slice(start, start + validLen);
+          }
+
+          return yFull.slice();
+        }
+
+        function fmt(val, decimals) {
+          return Number(val).toFixed(decimals);
+        }
+
+        function buildSteps(x, h, yFull, decimals) {
+          const N = x.length;
+          const M = h.length;
+          const L = yFull.length;
+          const lines = [];
+
+          for (let k = 0; k < L; k++) {
+            const terms = [];
+            for (let n = 0; n < N; n++) {
+              const m = k - n;
+              if (m >= 0 && m < M) {
+                const xv = fmt(x[n], decimals);
+                const hv = fmt(h[m], decimals);
+                terms.push(xv + '·' + hv);
+              }
+            }
+            const sumStr = fmt(yFull[k], decimals);
+            lines.push('y[' + k + '] = ' + (terms.length ? terms.join(' + ') : '0') + (terms.length ? ' = ' + sumStr : ''));
+          }
+
+          return lines.join('\n');
+        }
+
+        function buildInterpretation(mode, interp, N, M) {
+          if (interp === 'prob') {
+            return 'Interpreting x and h as discrete probability mass functions (PMFs), the convolution y gives the distribution ' +
+                   'of the sum of two independent random variables. Mode=' + mode + ' controls how you trim the finite-length result.';
+          }
+          if (interp === 'cnn') {
+            return 'Interpreting x as a 1D feature map and h as a learned kernel, convolution corresponds to sliding the kernel ' +
+                   'across the feature map, multiplying and summing local neighborhoods. Mode=' + mode + ' mirrors padding strategies ' +
+                   'like “valid” and “same” in deep-learning libraries.';
+          }
+          // signal
+          return 'Interpreting x as an input signal and h as the impulse response of a linear, time-invariant system, y is the output. ' +
+                 'Mode=' + mode + ' corresponds to how you treat boundaries: full transient response, cropped to match x, or valid overlap only.';
+        }
+
+        function calculate() {
+          resetResults();
+          let x, h;
+          try {
+            x = parseSequence(xInput.value);
+            h = parseSequence(hInput.value);
+          } catch (e) {
+            errorEl.textContent = e.message;
+            errorEl.classList.remove('hidden');
+            return;
+          }
+
+          if (!x.length || !h.length) {
+            errorEl.textContent = 'Please provide at least one numeric sample in both x[n] and h[n].';
+            errorEl.classList.remove('hidden');
+            return;
+          }
+
+          const mode = modeSelect.value;
+          const decimals = parseInt(decimalsSelect.value, 10) || 2;
+
+          const yFull = convolveFull(x, h);
+          const y = applyMode(yFull, x.length, h.length, mode);
+
+          if (!y.length) {
+            errorEl.textContent = 'The selected mode produced an empty result. Try switching to full or same.';
+            errorEl.classList.remove('hidden');
+            return;
+          }
+
+          // Prepare display
+          const yStr = y.map(function (v, idx) {
+            return 'y[' + idx + '] = ' + fmt(v, decimals);
+          }).join(',  ');
+
+          yArrayEl.textContent = yStr;
+
+          const meta = [];
+          meta.push('Length(x) = ' + x.length + ', Length(h) = ' + h.length);
+          meta.push('Full length = ' + yFull.length + ', mode "' + mode + '" output length = ' + y.length);
+
+          // simple energies
+          const energy = function (seq) {
+            return seq.reduce(function (acc, v) { return acc + v * v; }, 0);
+          };
+          meta.push('Energy: ||x||² ≈ ' + fmt(energy(x), 4) +
+                    ', ||h||² ≈ ' + fmt(energy(h), 4) +
+                    ', ||y||² ≈ ' + fmt(energy(y), 4));
+
+          metaEl.textContent = meta.join(' · ');
+
+          const summary = 'Convolution of x[n] with h[n] computed as y[k] = Σ x[n] h[k − n]. ' +
+                          'Values are rounded to ' + decimals + ' decimal place' + (decimals === 1 ? '' : 's') + '.';
+          summaryEl.textContent = summary;
+
+          const interpText = buildInterpretation(mode, interpSelect.value, x.length, h.length);
+          interpretEl.textContent = interpText;
+
+          const stepsText = buildSteps(x, h, yFull, decimals);
+          stepsEl.textContent = stepsText;
+
+          resultsCard.classList.remove('hidden');
+        }
+
+        function clearAll() {
+          xInput.value = '';
+          hInput.value = '';
+          modeSelect.value = 'full';
+          decimalsSelect.value = '2';
+          interpSelect.value = 'signal';
+          resetResults();
+        }
+
+        function loadExample1() {
+          xInput.value = '1, 2, 3, 4';
+          hInput.value = '0.3333, 0.3333, 0.3333';
+          modeSelect.value = 'same';
+          decimalsSelect.value = '4';
+          interpSelect.value = 'signal';
+          calculate();
+        }
+
+        function loadExample2() {
+          xInput.value = '0, 0, 1, 1, 1, 0';
+          hInput.value = '1, 0, -1';
+          modeSelect.value = 'full';
+          decimalsSelect.value = '2';
+          interpSelect.value = 'signal';
+          calculate();
+        }
+
+        calcBtn.addEventListener('click', calculate);
+        clearBtn.addEventListener('click', clearAll);
+        example1Btn.addEventListener('click', loadExample1);
+        example2Btn.addEventListener('click', loadExample2);
+
+        [xInput, hInput].forEach(function (el) {
+          el.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              calculate();
+            }
+          });
+        });
+      });
+    </script>
+
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

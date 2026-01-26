@@ -495,7 +495,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -563,6 +563,760 @@
 
 
 
+
+<script>
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)'], ['</script>
+<script>
+  const ATOMIC_WEIGHTS = {
+    H:1.008, He:4.002602, Li:6.94, Be:9.0121831, B:10.81, C:12.011, N:14.007, O:15.999, F:18.998403163, Ne:20.1797,
+    Na:22.98976928, Mg:24.305, Al:26.9815385, Si:28.085, P:30.973761998, S:32.06, Cl:35.45, Ar:39.948, K:39.0983, Ca:40.078,
+    Sc:44.955908, Ti:47.867, V:50.9415, Cr:51.9961, Mn:54.938044, Fe:55.845, Co:58.933194, Ni:58.6934, Cu:63.546, Zn:65.38,
+    Ga:69.723, Ge:72.63, As:74.921595, Se:78.971, Br:79.904, Kr:83.798, Rb:85.4678, Sr:87.62, Y:88.90584, Zr:91.224,
+    Nb:92.90637, Mo:95.95, Tc:98, Ru:101.07, Rh:102.90550, Pd:106.42, Ag:107.8682, Cd:112.414, In:114.818, Sn:118.71,
+    Sb:121.76, Te:127.60, I:126.90447, Xe:131.293, Cs:132.905452, Ba:137.327, La:138.90547, Ce:140.116, Pr:140.90766, Nd:144.242,
+    Pm:145, Sm:150.36, Eu:151.964, Gd:157.25, Tb:158.92535, Dy:162.5, Ho:164.93033, Er:167.259, Tm:168.93422, Yb:173.045,
+    Lu:174.9668, Hf:178.49, Ta:180.94788, W:183.84, Re:186.207, Os:190.23, Ir:192.217, Pt:195.084, Au:196.966569, Hg:200.592,
+    Tl:204.38, Pb:207.2, Bi:208.98040, Po:209, At:210, Rn:222, Fr:223, Ra:226, Ac:227, Th:232.0377,
+    Pa:231.03588, U:238.02891, Np:237, Pu:244, Am:243, Cm:247, Bk:247, Cf:251, Es:252, Fm:257,
+    Md:258, No:259, Lr:266, Rf:267, Db:268, Sg:269, Bh:270, Hs:269, Mt:278, Ds:281,
+    Rg:282, Cn:285, Nh:286, Fl:289, Mc:290, Lv:293, Ts:294, Og:294
+  };
+
+  const elementsList = Object.keys(ATOMIC_WEIGHTS).sort((a,b)=>a.localeCompare(b));
+  const subMap = {'₀':'0','₁':'1','₂':'2','₃':'3','₄':'4','₅':'5','₆':'6','₇':'7','₈':'8','₉':'9'};
+
+  const els = {
+    modeFormula: document.getElementById('mode-formula'),
+    modeBuilder: document.getElementById('mode-builder'),
+    formulaPanel: document.getElementById('formula-panel'),
+    builderPanel: document.getElementById('builder-panel'),
+    formulaInput: document.getElementById('formula-input'),
+    formulaError: document.getElementById('formula-error'),
+    builderRows: document.getElementById('builder-rows'),
+    addRow: document.getElementById('add-row'),
+    builderError: document.getElementById('builder-error'),
+    builderToFormula: document.getElementById('builder-to-formula'),
+    normalized: document.getElementById('normalized-formula'),
+    empirical: document.getElementById('empirical-formula'),
+    molarMass: document.getElementById('molar-mass'),
+    totalAtoms: document.getElementById('total-atoms'),
+    breakdown: document.getElementById('breakdown'),
+    status: document.getElementById('calc-status'),
+    clearBtn: document.getElementById('clear-btn'),
+    helpBtn: document.getElementById('formula-help-btn'),
+    helpBox: document.getElementById('formula-help')
+  };
+
+  function populateSelect(select){
+    if(select.options.length > 1) return;
+    const frag = document.createDocumentFragment();
+    elementsList.forEach(sym=>{
+      const opt = document.createElement('option');
+      opt.value = sym;
+      opt.textContent = `${sym} (${ATOMIC_WEIGHTS[sym]})`;
+      frag.appendChild(opt);
+    });
+    select.appendChild(frag);
+  }
+
+  function setMode(mode){
+    if(mode === 'builder'){
+      els.formulaPanel.hidden = true;
+      els.builderPanel.hidden = false;
+      els.modeBuilder.checked = true;
+      els.modeFormula.checked = false;
+      els.builderPanel.querySelectorAll('.el-select').forEach(populateSelect);
+      els.formulaInput.setAttribute('tabindex','-1');
+      els.builderPanel.focus({preventScroll:true});
+    }else{
+      els.formulaPanel.hidden = false;
+      els.builderPanel.hidden = true;
+      els.modeBuilder.checked = false;
+      els.modeFormula.checked = true;
+      els.formulaInput.removeAttribute('tabindex');
+      els.formulaInput.focus({preventScroll:true});
+    }
+  }
+  document.getElementsByName('mode').forEach(r=>{
+    r.addEventListener('change', e=> setMode(e.target.value));
+  });
+
+  els.helpBtn.addEventListener('click', ()=>{
+    const expanded = els.helpBtn.getAttribute('aria-expanded') === 'true';
+    els.helpBtn.setAttribute('aria-expanded', String(!expanded));
+    els.helpBox.setAttribute('aria-hidden', String(expanded));
+  });
+
+  function addBuilderRow(sym='', count=''){
+    const row = document.createElement('div');
+    row.className = 'builder-row';
+    row.innerHTML = `
+      <select class="input el-select" aria-label="Element symbol">
+        <option value="">Element…</option>
+      </select>
+      <input class="input el-count" type="number" inputmode="numeric" min="1" step="1" placeholder="Count" aria-label="Atom count" value="${count}">
+      <button type="button" class="btn-icon remove-row" aria-label="Remove row">−</button>
+    `;
+    els.builderRows.appendChild(row);
+    const sel = row.querySelector('.el-select');
+    populateSelect(sel);
+    if(sym) sel.value = sym;
+    row.querySelector('.remove-row').addEventListener('click', ()=>{
+      row.remove();
+      validateBuilder();
+      computeFromCurrentMode();
+    });
+    row.querySelector('.el-count').addEventListener('blur', ()=>{ validateBuilder(); computeFromCurrentMode(); });
+    sel.addEventListener('change', ()=>{ validateBuilder(); computeFromCurrentMode(); });
+  }
+  els.addRow.addEventListener('click', ()=> addBuilderRow());
+
+  els.builderToFormula.addEventListener('click', ()=>{
+    const parts = [];
+    const rows = Array.from(els.builderRows.querySelectorAll('.builder-row'));
+    for(const r of rows){
+      const sym = r.querySelector('.el-select').value;
+      const cnt = Number(r.querySelector('.el-count').value || 0);
+      if(!sym || !cnt || cnt<1){ continue; }
+      parts.push(sym + (cnt>1 ? String(cnt) : ''));
+    }
+    const formula = parts.sort((a,b)=>a.localeCompare(b)).join('');
+    if(formula){
+      setMode('formula');
+      els.formulaInput.value = formula;
+      els.formulaInput.dispatchEvent(new Event('blur'));
+    }
+  });
+
+  addBuilderRow();
+
+  function setError(el, msg){
+    el.setAttribute('aria-invalid','true');
+    if(el === els.formulaInput){
+      els.formulaError.textContent = msg;
+    } else {
+      els.builderError.textContent = msg;
+    }
+  }
+  function clearError(el){
+    el.removeAttribute('aria-invalid');
+    if(el === els.formulaInput){
+      els.formulaError.textContent = '';
+    } else {
+      els.builderError.textContent = '';
+    }
+  }
+
+  function normalizeInput(str){
+    if(!str) return '';
+    let s = str.trim();
+    s = s.replace(/[₀₁₂₃₄₅₆₇₈₉]/g, m => subMap[m] || m);
+    s = s.replace(/\s+/g,'');
+    return s;
+  }
+
+  function parseFormula(formula){
+    const F = normalizeInput(formula)
+      .replace(/·|•/g, '+')
+      .replace(/–|—/g, '-')
+      .replace(/\[(.*?)\]/g,'($1)')
+      .replace(/\{(.*?)\}/g,'($1)');
+    if(!F) throw new Error('Please enter a chemical formula.');
+    const parts = F.split('+').filter(Boolean);
+    const total = new Map();
+    for(let part of parts){
+      let lead = 1;
+      const m = part.match(/^(\d+)(.*)$/);
+      if(m){ lead = parseInt(m[1],10); part = m[2]; }
+      const counts = parseGroup(part, 0).counts;
+      multiplyInto(total, counts, lead);
+    }
+    if(total.size === 0) throw new Error('The formula does not contain any recognizable elements.');
+    return total;
+  }
+
+  function parseGroup(s, i){
+    const counts = new Map();
+    while(i < s.length){
+      const ch = s[i];
+      if(ch === '('){
+        const inner = parseGroup(s, i+1);
+        i = inner.index;
+        let {num, next} = readNumber(s, i);
+        i = next;
+        if(num === null) num = 1;
+        multiplyInto(counts, inner.counts, num);
+        continue;
+      }
+      if(ch === ')'){
+        return {counts, index: i+1};
+      }
+      if(/[A-Z]/.test(ch)){
+        let j = i+1;
+        while(j < s.length && /[a-z]/.test(s[j]) && j-i < 3){ j++; }
+        const sym = s.slice(i, j);
+        if(!ATOMIC_WEIGHTS[sym]){
+          if(/^\d+$/.test(sym)) { i = j; continue; }
+          throw new Error(`Unknown element symbol: “${sym}”.`);
+        }
+        const read = readNumber(s, j);
+        let n = read.num==null ? 1 : read.num;
+        i = read.next;
+        counts.set(sym, (counts.get(sym)||0) + n);
+        continue;
+      }
+      if(/\d/.test(ch)){
+        throw new Error(`Unexpected number “${ch}” at position ${i+1}. Place multipliers after parentheses or element symbols.`);
+      }
+      throw new Error(`Invalid character “${ch}” at position ${i+1}.`);
+    }
+    return {counts, index:i};
+  }
+
+  function readNumber(s, i){
+    if(i >= s.length) return {num:null, next:i};
+    let j=i;
+    while(j < s.length && /\d/.test(s[j])) j++;
+    if(j===i) return {num:null, next:i};
+    return {num: parseInt(s.slice(i,j), 10), next:j};
+  }
+
+  function multiplyInto(target, src, factor){
+    for(const [k,v] of src.entries()){
+      target.set(k, (target.get(k)||0) + v * factor);
+    }
+  }
+
+  function computeFromCounts(counts){
+    let M = 0;
+    for(const [e,n] of counts.entries()){
+      M += ATOMIC_WEIGHTS[e] * n;
+    }
+    const entries = Array.from(counts.entries());
+    const hasCarbon = counts.has('C');
+    entries.sort((a,b)=>{
+      if(hasCarbon){
+        if(a[0]==='C') return -1;
+        if(b[0]==='C') return 1;
+        if(a[0]==='H' && b[0]!=='C') return -1;
+        if(b[0]==='H' && a[0]!=='C') return 1;
+        if(a[0]==='H' && b[0]==='H') return 0;
+        return a[0].localeCompare(b[0]);
+      }
+      return a[0].localeCompare(b[0]);
+    });
+    const normalized = entries.map(([e,n]) => e + (n>1 ? n : '')).join('');
+
+    let g = 0;
+    entries.forEach(([,n]) => { g = gcd(g, n); });
+    const empirical = entries.map(([e,n]) => e + (n/g>1 ? (n/g) : '')).join('');
+
+    const totalAtoms = entries.reduce((acc, [,n]) => acc+n, 0);
+    const breakdown = entries.map(([e,n])=>{
+      const aw = ATOMIC_WEIGHTS[e];
+      const mass = aw * n;
+      const pct = M>0 ? (mass/M*100) : 0;
+      return {e, n, aw, mass, pct};
+    });
+
+    return {M, normalized, empirical, totalAtoms, breakdown};
+  }
+
+  function gcd(a,b){ if(!a) return b; if(!b) return a; while(b){ const t=a%b; a=b; b=t; } return a; }
+
+  function renderResults(res){
+    els.normalized.textContent = res.normalized || '—';
+    els.empirical.textContent = res.empirical || '—';
+    els.molarMass.textContent = `${res.M.toFixed(3)} g/mol`;
+    els.totalAtoms.textContent = String(res.totalAtoms);
+
+    const tbody = els.breakdown;
+    tbody.innerHTML = '';
+    res.breakdown.forEach(row=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${row.e}</strong></td>
+        <td>${row.n}</td>
+        <td>${row.aw.toFixed(3)}</td>
+        <td>${row.mass.toFixed(3)}</td>
+        <td>${row.pct.toFixed(2)}%</td>
+      `;
+      tbody.appendChild(tr);
+    });
+    if(res.breakdown.length === 0){
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td colspan="5" class="muted">Enter a formula to see the breakdown.</td>`;
+      tbody.appendChild(tr);
+    }
+  }
+
+  function validateFormula(){
+    const val = els.formulaInput.value;
+    if(!val.trim()){
+      setError(els.formulaInput, 'This field is required. Please enter a chemical formula.');
+      return null;
+    }
+    try{
+      const counts = parseFormula(val);
+      clearError(els.formulaInput);
+      return counts;
+    }catch(err){
+      setError(els.formulaInput, err.message + ' Example: C6H12O6 or Ca3(PO4)2.');
+      return null;
+    }
+  }
+
+  function validateBuilder(){
+    const rows = Array.from(els.builderRows.querySelectorAll('.builder-row'));
+    const counts = new Map();
+    let hasAny = false;
+    for(const r of rows){
+      const sym = r.querySelector('.el-select').value;
+      const cntRaw = r.querySelector('.el-count').value;
+      if(!sym && !cntRaw) continue;
+      hasAny = true;
+      const cnt = Number(cntRaw);
+      if(!sym){
+        setError(els.builderPanel, 'Please select an element in each filled row.');
+        return null;
+      }
+      if(!cnt || cnt < 1 || !Number.isFinite(cnt) || Math.floor(cnt) !== cnt){
+        setError(els.builderPanel, `Invalid count for ${sym}. Enter a positive integer (e.g., 1, 2, 3).`);
+        return null;
+      }
+      counts.set(sym, (counts.get(sym)||0) + cnt);
+    }
+    if(!hasAny){
+      setError(els.builderPanel, 'Add at least one element row with a positive count.');
+      return null;
+    }
+    clearError(els.builderPanel);
+    return counts;
+  }
+
+  function computeFromCurrentMode(){
+    let counts = null;
+    if(els.modeFormula.checked){
+      counts = validateFormula();
+    } else {
+      counts = validateBuilder();
+    }
+    if(!counts){
+      renderResults({M:0, normalized:'—', empirical:'—', totalAtoms:0, breakdown:[]});
+      els.status.textContent = '';
+      return;
+    }
+    const res = computeFromCounts(counts);
+    renderResults(res);
+    els.status.textContent = `Calculated molar mass ${res.M.toFixed(3)} g/mol for ${res.normalized}.`;
+  }
+
+  els.formulaInput.addEventListener('blur', computeFromCurrentMode);
+  els.clearBtn.addEventListener('click', ()=>{
+    els.formulaInput.value = '';
+    els.formulaError.textContent = '';
+    els.builderError.textContent = '';
+    els.breakdown.innerHTML = '<tr><td colspan="5" class="muted">Enter a formula to see the breakdown.</td></tr>';
+    els.normalized.textContent = '—';
+    els.empirical.textContent = '—';
+    els.molarMass.textContent = '0.000 g/mol';
+    els.totalAtoms.textContent = '0';
+    els.status.textContent = 'Cleared.';
+    els.formulaInput.focus();
+  });
+
+  document.querySelectorAll('.el-select').forEach(populateSelect);
+  window.addEventListener('DOMContentLoaded', ()=>{
+    els.formulaInput.value = 'C8H10N4O2';
+    computeFromCurrentMode();
+  });
+
+  document.getElementById('mobile-menu-toggle')?.addEventListener('click', ()=>{
+    document.getElementById('mobile-menu')?.classList.toggle('hidden');
+  });
+</script>
+<script defer="" src="/assets/js/mobile-menu.js"></script>
+<script defer="" src="/assets/js/page-enhancements.js"></script>
+
+
+
+</body></html>, '</script>
+<script>
+  const ATOMIC_WEIGHTS = {
+    H:1.008, He:4.002602, Li:6.94, Be:9.0121831, B:10.81, C:12.011, N:14.007, O:15.999, F:18.998403163, Ne:20.1797,
+    Na:22.98976928, Mg:24.305, Al:26.9815385, Si:28.085, P:30.973761998, S:32.06, Cl:35.45, Ar:39.948, K:39.0983, Ca:40.078,
+    Sc:44.955908, Ti:47.867, V:50.9415, Cr:51.9961, Mn:54.938044, Fe:55.845, Co:58.933194, Ni:58.6934, Cu:63.546, Zn:65.38,
+    Ga:69.723, Ge:72.63, As:74.921595, Se:78.971, Br:79.904, Kr:83.798, Rb:85.4678, Sr:87.62, Y:88.90584, Zr:91.224,
+    Nb:92.90637, Mo:95.95, Tc:98, Ru:101.07, Rh:102.90550, Pd:106.42, Ag:107.8682, Cd:112.414, In:114.818, Sn:118.71,
+    Sb:121.76, Te:127.60, I:126.90447, Xe:131.293, Cs:132.905452, Ba:137.327, La:138.90547, Ce:140.116, Pr:140.90766, Nd:144.242,
+    Pm:145, Sm:150.36, Eu:151.964, Gd:157.25, Tb:158.92535, Dy:162.5, Ho:164.93033, Er:167.259, Tm:168.93422, Yb:173.045,
+    Lu:174.9668, Hf:178.49, Ta:180.94788, W:183.84, Re:186.207, Os:190.23, Ir:192.217, Pt:195.084, Au:196.966569, Hg:200.592,
+    Tl:204.38, Pb:207.2, Bi:208.98040, Po:209, At:210, Rn:222, Fr:223, Ra:226, Ac:227, Th:232.0377,
+    Pa:231.03588, U:238.02891, Np:237, Pu:244, Am:243, Cm:247, Bk:247, Cf:251, Es:252, Fm:257,
+    Md:258, No:259, Lr:266, Rf:267, Db:268, Sg:269, Bh:270, Hs:269, Mt:278, Ds:281,
+    Rg:282, Cn:285, Nh:286, Fl:289, Mc:290, Lv:293, Ts:294, Og:294
+  };
+
+  const elementsList = Object.keys(ATOMIC_WEIGHTS).sort((a,b)=>a.localeCompare(b));
+  const subMap = {'₀':'0','₁':'1','₂':'2','₃':'3','₄':'4','₅':'5','₆':'6','₇':'7','₈':'8','₉':'9'};
+
+  const els = {
+    modeFormula: document.getElementById('mode-formula'),
+    modeBuilder: document.getElementById('mode-builder'),
+    formulaPanel: document.getElementById('formula-panel'),
+    builderPanel: document.getElementById('builder-panel'),
+    formulaInput: document.getElementById('formula-input'),
+    formulaError: document.getElementById('formula-error'),
+    builderRows: document.getElementById('builder-rows'),
+    addRow: document.getElementById('add-row'),
+    builderError: document.getElementById('builder-error'),
+    builderToFormula: document.getElementById('builder-to-formula'),
+    normalized: document.getElementById('normalized-formula'),
+    empirical: document.getElementById('empirical-formula'),
+    molarMass: document.getElementById('molar-mass'),
+    totalAtoms: document.getElementById('total-atoms'),
+    breakdown: document.getElementById('breakdown'),
+    status: document.getElementById('calc-status'),
+    clearBtn: document.getElementById('clear-btn'),
+    helpBtn: document.getElementById('formula-help-btn'),
+    helpBox: document.getElementById('formula-help')
+  };
+
+  function populateSelect(select){
+    if(select.options.length > 1) return;
+    const frag = document.createDocumentFragment();
+    elementsList.forEach(sym=>{
+      const opt = document.createElement('option');
+      opt.value = sym;
+      opt.textContent = `${sym} (${ATOMIC_WEIGHTS[sym]})`;
+      frag.appendChild(opt);
+    });
+    select.appendChild(frag);
+  }
+
+  function setMode(mode){
+    if(mode === 'builder'){
+      els.formulaPanel.hidden = true;
+      els.builderPanel.hidden = false;
+      els.modeBuilder.checked = true;
+      els.modeFormula.checked = false;
+      els.builderPanel.querySelectorAll('.el-select').forEach(populateSelect);
+      els.formulaInput.setAttribute('tabindex','-1');
+      els.builderPanel.focus({preventScroll:true});
+    }else{
+      els.formulaPanel.hidden = false;
+      els.builderPanel.hidden = true;
+      els.modeBuilder.checked = false;
+      els.modeFormula.checked = true;
+      els.formulaInput.removeAttribute('tabindex');
+      els.formulaInput.focus({preventScroll:true});
+    }
+  }
+  document.getElementsByName('mode').forEach(r=>{
+    r.addEventListener('change', e=> setMode(e.target.value));
+  });
+
+  els.helpBtn.addEventListener('click', ()=>{
+    const expanded = els.helpBtn.getAttribute('aria-expanded') === 'true';
+    els.helpBtn.setAttribute('aria-expanded', String(!expanded));
+    els.helpBox.setAttribute('aria-hidden', String(expanded));
+  });
+
+  function addBuilderRow(sym='', count=''){
+    const row = document.createElement('div');
+    row.className = 'builder-row';
+    row.innerHTML = `
+      <select class="input el-select" aria-label="Element symbol">
+        <option value="">Element…</option>
+      </select>
+      <input class="input el-count" type="number" inputmode="numeric" min="1" step="1" placeholder="Count" aria-label="Atom count" value="${count}">
+      <button type="button" class="btn-icon remove-row" aria-label="Remove row">−</button>
+    `;
+    els.builderRows.appendChild(row);
+    const sel = row.querySelector('.el-select');
+    populateSelect(sel);
+    if(sym) sel.value = sym;
+    row.querySelector('.remove-row').addEventListener('click', ()=>{
+      row.remove();
+      validateBuilder();
+      computeFromCurrentMode();
+    });
+    row.querySelector('.el-count').addEventListener('blur', ()=>{ validateBuilder(); computeFromCurrentMode(); });
+    sel.addEventListener('change', ()=>{ validateBuilder(); computeFromCurrentMode(); });
+  }
+  els.addRow.addEventListener('click', ()=> addBuilderRow());
+
+  els.builderToFormula.addEventListener('click', ()=>{
+    const parts = [];
+    const rows = Array.from(els.builderRows.querySelectorAll('.builder-row'));
+    for(const r of rows){
+      const sym = r.querySelector('.el-select').value;
+      const cnt = Number(r.querySelector('.el-count').value || 0);
+      if(!sym || !cnt || cnt<1){ continue; }
+      parts.push(sym + (cnt>1 ? String(cnt) : ''));
+    }
+    const formula = parts.sort((a,b)=>a.localeCompare(b)).join('');
+    if(formula){
+      setMode('formula');
+      els.formulaInput.value = formula;
+      els.formulaInput.dispatchEvent(new Event('blur'));
+    }
+  });
+
+  addBuilderRow();
+
+  function setError(el, msg){
+    el.setAttribute('aria-invalid','true');
+    if(el === els.formulaInput){
+      els.formulaError.textContent = msg;
+    } else {
+      els.builderError.textContent = msg;
+    }
+  }
+  function clearError(el){
+    el.removeAttribute('aria-invalid');
+    if(el === els.formulaInput){
+      els.formulaError.textContent = '';
+    } else {
+      els.builderError.textContent = '';
+    }
+  }
+
+  function normalizeInput(str){
+    if(!str) return '';
+    let s = str.trim();
+    s = s.replace(/[₀₁₂₃₄₅₆₇₈₉]/g, m => subMap[m] || m);
+    s = s.replace(/\s+/g,'');
+    return s;
+  }
+
+  function parseFormula(formula){
+    const F = normalizeInput(formula)
+      .replace(/·|•/g, '+')
+      .replace(/–|—/g, '-')
+      .replace(/\[(.*?)\]/g,'($1)')
+      .replace(/\{(.*?)\}/g,'($1)');
+    if(!F) throw new Error('Please enter a chemical formula.');
+    const parts = F.split('+').filter(Boolean);
+    const total = new Map();
+    for(let part of parts){
+      let lead = 1;
+      const m = part.match(/^(\d+)(.*)$/);
+      if(m){ lead = parseInt(m[1],10); part = m[2]; }
+      const counts = parseGroup(part, 0).counts;
+      multiplyInto(total, counts, lead);
+    }
+    if(total.size === 0) throw new Error('The formula does not contain any recognizable elements.');
+    return total;
+  }
+
+  function parseGroup(s, i){
+    const counts = new Map();
+    while(i < s.length){
+      const ch = s[i];
+      if(ch === '('){
+        const inner = parseGroup(s, i+1);
+        i = inner.index;
+        let {num, next} = readNumber(s, i);
+        i = next;
+        if(num === null) num = 1;
+        multiplyInto(counts, inner.counts, num);
+        continue;
+      }
+      if(ch === ')'){
+        return {counts, index: i+1};
+      }
+      if(/[A-Z]/.test(ch)){
+        let j = i+1;
+        while(j < s.length && /[a-z]/.test(s[j]) && j-i < 3){ j++; }
+        const sym = s.slice(i, j);
+        if(!ATOMIC_WEIGHTS[sym]){
+          if(/^\d+$/.test(sym)) { i = j; continue; }
+          throw new Error(`Unknown element symbol: “${sym}”.`);
+        }
+        const read = readNumber(s, j);
+        let n = read.num==null ? 1 : read.num;
+        i = read.next;
+        counts.set(sym, (counts.get(sym)||0) + n);
+        continue;
+      }
+      if(/\d/.test(ch)){
+        throw new Error(`Unexpected number “${ch}” at position ${i+1}. Place multipliers after parentheses or element symbols.`);
+      }
+      throw new Error(`Invalid character “${ch}” at position ${i+1}.`);
+    }
+    return {counts, index:i};
+  }
+
+  function readNumber(s, i){
+    if(i >= s.length) return {num:null, next:i};
+    let j=i;
+    while(j < s.length && /\d/.test(s[j])) j++;
+    if(j===i) return {num:null, next:i};
+    return {num: parseInt(s.slice(i,j), 10), next:j};
+  }
+
+  function multiplyInto(target, src, factor){
+    for(const [k,v] of src.entries()){
+      target.set(k, (target.get(k)||0) + v * factor);
+    }
+  }
+
+  function computeFromCounts(counts){
+    let M = 0;
+    for(const [e,n] of counts.entries()){
+      M += ATOMIC_WEIGHTS[e] * n;
+    }
+    const entries = Array.from(counts.entries());
+    const hasCarbon = counts.has('C');
+    entries.sort((a,b)=>{
+      if(hasCarbon){
+        if(a[0]==='C') return -1;
+        if(b[0]==='C') return 1;
+        if(a[0]==='H' && b[0]!=='C') return -1;
+        if(b[0]==='H' && a[0]!=='C') return 1;
+        if(a[0]==='H' && b[0]==='H') return 0;
+        return a[0].localeCompare(b[0]);
+      }
+      return a[0].localeCompare(b[0]);
+    });
+    const normalized = entries.map(([e,n]) => e + (n>1 ? n : '')).join('');
+
+    let g = 0;
+    entries.forEach(([,n]) => { g = gcd(g, n); });
+    const empirical = entries.map(([e,n]) => e + (n/g>1 ? (n/g) : '')).join('');
+
+    const totalAtoms = entries.reduce((acc, [,n]) => acc+n, 0);
+    const breakdown = entries.map(([e,n])=>{
+      const aw = ATOMIC_WEIGHTS[e];
+      const mass = aw * n;
+      const pct = M>0 ? (mass/M*100) : 0;
+      return {e, n, aw, mass, pct};
+    });
+
+    return {M, normalized, empirical, totalAtoms, breakdown};
+  }
+
+  function gcd(a,b){ if(!a) return b; if(!b) return a; while(b){ const t=a%b; a=b; b=t; } return a; }
+
+  function renderResults(res){
+    els.normalized.textContent = res.normalized || '—';
+    els.empirical.textContent = res.empirical || '—';
+    els.molarMass.textContent = `${res.M.toFixed(3)} g/mol`;
+    els.totalAtoms.textContent = String(res.totalAtoms);
+
+    const tbody = els.breakdown;
+    tbody.innerHTML = '';
+    res.breakdown.forEach(row=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${row.e}</strong></td>
+        <td>${row.n}</td>
+        <td>${row.aw.toFixed(3)}</td>
+        <td>${row.mass.toFixed(3)}</td>
+        <td>${row.pct.toFixed(2)}%</td>
+      `;
+      tbody.appendChild(tr);
+    });
+    if(res.breakdown.length === 0){
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td colspan="5" class="muted">Enter a formula to see the breakdown.</td>`;
+      tbody.appendChild(tr);
+    }
+  }
+
+  function validateFormula(){
+    const val = els.formulaInput.value;
+    if(!val.trim()){
+      setError(els.formulaInput, 'This field is required. Please enter a chemical formula.');
+      return null;
+    }
+    try{
+      const counts = parseFormula(val);
+      clearError(els.formulaInput);
+      return counts;
+    }catch(err){
+      setError(els.formulaInput, err.message + ' Example: C6H12O6 or Ca3(PO4)2.');
+      return null;
+    }
+  }
+
+  function validateBuilder(){
+    const rows = Array.from(els.builderRows.querySelectorAll('.builder-row'));
+    const counts = new Map();
+    let hasAny = false;
+    for(const r of rows){
+      const sym = r.querySelector('.el-select').value;
+      const cntRaw = r.querySelector('.el-count').value;
+      if(!sym && !cntRaw) continue;
+      hasAny = true;
+      const cnt = Number(cntRaw);
+      if(!sym){
+        setError(els.builderPanel, 'Please select an element in each filled row.');
+        return null;
+      }
+      if(!cnt || cnt < 1 || !Number.isFinite(cnt) || Math.floor(cnt) !== cnt){
+        setError(els.builderPanel, `Invalid count for ${sym}. Enter a positive integer (e.g., 1, 2, 3).`);
+        return null;
+      }
+      counts.set(sym, (counts.get(sym)||0) + cnt);
+    }
+    if(!hasAny){
+      setError(els.builderPanel, 'Add at least one element row with a positive count.');
+      return null;
+    }
+    clearError(els.builderPanel);
+    return counts;
+  }
+
+  function computeFromCurrentMode(){
+    let counts = null;
+    if(els.modeFormula.checked){
+      counts = validateFormula();
+    } else {
+      counts = validateBuilder();
+    }
+    if(!counts){
+      renderResults({M:0, normalized:'—', empirical:'—', totalAtoms:0, breakdown:[]});
+      els.status.textContent = '';
+      return;
+    }
+    const res = computeFromCounts(counts);
+    renderResults(res);
+    els.status.textContent = `Calculated molar mass ${res.M.toFixed(3)} g/mol for ${res.normalized}.`;
+  }
+
+  els.formulaInput.addEventListener('blur', computeFromCurrentMode);
+  els.clearBtn.addEventListener('click', ()=>{
+    els.formulaInput.value = '';
+    els.formulaError.textContent = '';
+    els.builderError.textContent = '';
+    els.breakdown.innerHTML = '<tr><td colspan="5" class="muted">Enter a formula to see the breakdown.</td></tr>';
+    els.normalized.textContent = '—';
+    els.empirical.textContent = '—';
+    els.molarMass.textContent = '0.000 g/mol';
+    els.totalAtoms.textContent = '0';
+    els.status.textContent = 'Cleared.';
+    els.formulaInput.focus();
+  });
+
+  document.querySelectorAll('.el-select').forEach(populateSelect);
+  window.addEventListener('DOMContentLoaded', ()=>{
+    els.formulaInput.value = 'C8H10N4O2';
+    computeFromCurrentMode();
+  });
+
+  document.getElementById('mobile-menu-toggle')?.addEventListener('click', ()=>{
+    document.getElementById('mobile-menu')?.classList.toggle('hidden');
+  });
+</script>
+<script defer="" src="/assets/js/mobile-menu.js"></script>
+<script defer="" src="/assets/js/page-enhancements.js"></script>
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };
+</script>
 <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script"></script>
 <script>
   const ATOMIC_WEIGHTS = {

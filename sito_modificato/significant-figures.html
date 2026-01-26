@@ -76,10 +76,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -238,8 +234,6 @@
 <body class="bg-gray-50 text-gray-800">
 
     <!-- BODY_SCRIPTS_INIZIO replacement -->
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
         <div class="flex justify-between items-center">
@@ -674,7 +668,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -742,13 +736,1107 @@
 
 
 
+
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
 
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      (function () {
+        const modeSelect = document.getElementById('mode');
+        const form = document.getElementById('sigfig-form');
+        const resetBtn = document.getElementById('sigfig-reset');
+
+        const blockCount = document.getElementById('block-count');
+        const blockRound = document.getElementById('block-round');
+        const blockOps = document.getElementById('block-operations');
+
+        const resultsBox = document.getElementById('sigfig-results');
+        const summaryEl = document.getElementById('sigfig-summary');
+        const detailsEl = document.getElementById('sigfig-details');
+        const stepsEl = document.getElementById('sigfig-steps');
+
+        const countInput = document.getElementById('count-input');
+        const roundValueInput = document.getElementById('round-value');
+        const roundNInput = document.getElementById('round-n');
+        const opTypeSelect = document.getElementById('op-type');
+        const opAInput = document.getElementById('op-a');
+        const opBInput = document.getElementById('op-b');
+
+        function clearResults() {
+          resultsBox.classList.add('hidden');
+          summaryEl.textContent = '';
+          detailsEl.innerHTML = '';
+          stepsEl.innerHTML = '';
+        }
+
+        function setModeVisibility() {
+          const mode = modeSelect.value;
+          clearResults();
+          blockCount.classList.add('hidden');
+          blockRound.classList.add('hidden');
+          blockOps.classList.add('hidden');
+
+          if (mode === 'count') {
+            blockCount.classList.remove('hidden');
+          } else if (mode === 'round') {
+            blockRound.classList.remove('hidden');
+          } else if (mode === 'operations') {
+            blockOps.classList.remove('hidden');
+          }
+        }
+
+        function isDigit(ch) {
+          return ch >= '0' && ch <= '9';
+        }
+
+        /**
+         * Analyze a numeric string for significant figures.
+         * Returns: { valid, error, cleanedInput, coefficientString, sigCount, decimals, isAmbiguousInteger, classification, notes[] }
+         */
+        function analyzeSigFigs(raw) {
+          const notes = [];
+          if (!raw || !raw.trim()) {
+            return { valid: false, error: 'Please enter a value.', notes };
+          }
+
+          let s = raw.trim();
+
+          // Normalize spaces and lowercase
+          s = s.replace(/\s+/g, '');
+
+          // Handle decimal comma vs dot.
+          if (s.includes(',') && !s.includes('.')) {
+            // treat comma as decimal separator
+            s = s.replace(',', '.');
+          } else if (s.includes(',') && s.includes('.')) {
+            // assume commas are thousands separators, remove them
+            s = s.replace(/,/g, '');
+          }
+
+          let sign = '';
+          if (s[0] === '+' || s[0] === '-') {
+            sign = s[0];
+            s = s.slice(1);
+          }
+
+          if (!s) {
+            return { valid: false, error: 'Value is not a valid number.', notes };
+          }
+
+          // Extract scientific notation coefficient if present
+          let coeff = s;
+          let expPart = '';
+
+          const eIndex = s.toLowerCase().indexOf('e');
+          let sciIndex = -1;
+          if (eIndex >= 0) {
+            coeff = s.slice(0, eIndex);
+            expPart = s.slice(eIndex);
+          } else {
+            // handle x10^ or ×10^
+            const matchSci = s.match(/(.+?)(x10\^|×10\^)([-+]?\d+)$/i);
+            if (matchSci) {
+              coeff = matchSci[1];
+              expPart = matchSci[2] + matchSci[3];
+            }
+          }
+
+          // Remove any remaining spaces from coeff
+          coeff = coeff.replace(/\s+/g, '');
+          if (!coeff) {
+            return { valid: false, error: 'Coefficient part is empty.', notes };
+          }
+
+          // Check coefficient numeric
+          // Allow one decimal point.
+          let dotCount = 0;
+          for (let i = 0; i < coeff.length; i++) {
+            const ch = coeff[i];
+            if (ch === '.') {
+              dotCount++;
+              if (dotCount > 1) {
+                return { valid: false, error: 'Too many decimal points in the number.', notes };
+              }
+            } else if (!isDigit(ch)) {
+              return { valid: false, error: 'Invalid character in number: "' + ch + '".', notes };
+            }
+          }
+
+          // Special case: the number is zero or all zeros
+          const digitsOnly = coeff.replace('.', '');
+          const allZero = digitsOnly.split('').every(ch => ch === '0');
+
+          // Determine decimals for decimal-place rule (for add/sub)
+          let decimals = 0;
+          const dotPos = coeff.indexOf('.');
+          if (dotPos >= 0) {
+            decimals = coeff.length - dotPos - 1;
+          }
+
+          // Counting significant figures in coefficient
+          let sigCount = 0;
+          let isAmbiguousInteger = false;
+          let classification = '';
+
+          if (allZero) {
+            // e.g. "0", "0.0", "000"
+            // Convention: treat as 1 significant figure, unless decimals imply something else.
+            // In many labs, a recorded "0.00" could indicate precision, but this is context-dependent.
+            classification = 'all-zero-value';
+            if (digitsOnly.length === 0) {
+              sigCount = 0;
+            } else {
+              sigCount = 1;
+            }
+            notes.push('The value consists only of zeros. As a stand-alone measurement, this is usually treated as having 1 significant figure, but context may vary.');
+          } else {
+            // General case
+            if (dotPos >= 0) {
+              // Decimal number: leading zeros not significant, trailing zeros are significant.
+              classification = 'decimal';
+              // Remove leading zeros (before first non-zero) in the integer+fraction string.
+              // We'll remove them in digitsOnlyWithDot.
+              let digits = coeff;
+
+              // Remove leading zeros before the first non-zero digit (ignoring the decimal point).
+              let idx = 0;
+              while (idx < digits.length && (digits[idx] === '0' || digits[idx] === '.')) {
+                // stop if decimal, but only skip zeros before any non-zero encountered.
+                if (digits[idx] === '.') {
+                  idx++;
+                  // continue, leading zeros may be after dot
+                  while (idx < digits.length && digits[idx] === '0') idx++;
+                  break;
+                }
+                idx++;
+              }
+              const trimmed = digits.slice(idx).replace('.', '');
+              sigCount = trimmed.length;
+              notes.push('Decimal value: trailing zeros to the right of the decimal point are treated as significant.');
+            } else {
+              // Integer without decimal point: trailing zeros ambiguous
+              classification = 'integer-no-decimal';
+              // Find first and last non-zero digit
+              let firstNZ = -1;
+              let lastNZ = -1;
+              for (let i = 0; i < coeff.length; i++) {
+                if (coeff[i] !== '0') {
+                  if (firstNZ === -1) firstNZ = i;
+                  lastNZ = i;
+                }
+              }
+              if (firstNZ === -1) {
+                // safety fallback; should have been caught by allZero
+                sigCount = 1;
+              } else {
+                sigCount = lastNZ - firstNZ + 1;
+              }
+              const trailingZeros = coeff.length - 1 - lastNZ;
+              if (trailingZeros > 0) {
+                isAmbiguousInteger = true;
+                notes.push('Whole number without decimal: trailing zeros are ambiguous. By default we count only digits up to the last non-zero, giving a minimum sig-fig count.');
+              } else {
+                notes.push('Whole number without trailing zeros: all digits from first non-zero to last digit are significant.');
+              }
+            }
+          }
+
+          return {
+            valid: true,
+            error: null,
+            cleanedInput: sign + s,
+            coefficient: coeff,
+            exponentPart: expPart,
+            sigCount: sigCount,
+            decimals: decimals,
+            isAmbiguousInteger: isAmbiguousInteger,
+            classification: classification,
+            notes: notes
+          };
+        }
+
+        function parseNumericValue(raw) {
+          if (!raw || !raw.trim()) return NaN;
+          let s = raw.trim();
+          s = s.replace(/\s+/g, '');
+
+          if (s.includes(',') && !s.includes('.')) {
+            s = s.replace(',', '.');
+          } else if (s.includes(',') && s.includes('.')) {
+            s = s.replace(/,/g, '');
+          }
+
+          // handle ×10^ or x10^ by converting to e notation
+          const sciMatch = s.match(/^(.*?)(x10\^|×10\^)([-+]?\d+)$/i);
+          if (sciMatch) {
+            const mant = sciMatch[1];
+            const exp = sciMatch[3];
+            s = mant + 'e' + exp;
+          }
+
+          const v = Number(s);
+          return Number.isFinite(v) ? v : NaN;
+        }
+
+        function formatSigFigNumber(value, n) {
+          if (!Number.isFinite(value)) return '—';
+          if (value === 0) {
+            // represent zero in scientific notation with n sig figs
+            const zeros = '0'.repeat(Math.max(0, n - 1));
+            return '0.' + zeros;
+          }
+          if (n <= 0) return String(value);
+
+          const abs = Math.abs(value);
+          const exponent = Math.floor(Math.log10(abs));
+          const factor = Math.pow(10, n - 1 - exponent);
+          const rounded = Math.round(value * factor) / factor;
+
+          // Now format the rounded value; if exponent is large or very small, use scientific notation
+          const absRounded = Math.abs(rounded);
+          const expRounded = Math.floor(Math.log10(absRounded));
+          if (expRounded >= n + 2 || expRounded <= -3) {
+            // scientific notation
+            const mant = rounded / Math.pow(10, expRounded);
+            return mant.toPrecision(n) + ' × 10^' + expRounded;
+          } else {
+            // fixed / normal representation
+            return rounded.toPrecision(n).replace(/e\+?(-?\d+)$/i, ' × 10^$1');
+          }
+        }
+
+        function fmt(val, digits) {
+          if (!Number.isFinite(val)) return '—';
+          digits = typeof digits === 'number' ? digits : 6;
+          if (val === 0) return '0';
+          const abs = Math.abs(val);
+          if (abs >= 1e6 || abs < 1e-4) {
+            return val.toExponential(4).replace('e', 'e');
+          }
+          return Number(val.toPrecision(digits));
+        }
+
+        function handleSubmit(evt) {
+          evt.preventDefault();
+          clearResults();
+
+          const mode = modeSelect.value;
+          const steps = [];
+
+          if (mode === 'count') {
+            const raw = countInput.value;
+            const analysis = analyzeSigFigs(raw);
+            if (!analysis.valid) {
+              alert(analysis.error || 'Invalid input.');
+              return;
+            }
+
+            steps.push('1. Normalize the input (remove spaces, handle decimal comma vs dot, interpret scientific notation if present).');
+            steps.push('   Normalized value: ' + analysis.cleanedInput + '.');
+            steps.push('2. Identify coefficient part "' + analysis.coefficient + '" for sig-fig counting and ignore the exponent for now.');
+            if (analysis.classification === 'decimal') {
+              steps.push('3. Detected a decimal value: leading zeros are ignored, trailing zeros to the right of the decimal point are treated as significant.');
+            } else if (analysis.classification === 'integer-no-decimal') {
+              steps.push('3. Detected a whole number without a decimal point: trailing zeros are potentially ambiguous.');
+            } else if (analysis.classification === 'all-zero-value') {
+              steps.push('3. The coefficient consists only of zeros; conventional treatment is that such a measurement has 1 significant figure unless extra notation is used.');
+            }
+            steps.push('4. Count all non-zero digits plus any zeros between or after them according to the classification.');
+            steps.push('5. Result: ' + analysis.sigCount + ' significant figure(s).');
+
+            summaryEl.textContent = 'The value "' + raw.trim() + '" has ' + analysis.sigCount +
+              ' significant figure' + (analysis.sigCount === 1 ? '' : 's') + ' (under standard conventions).';
+
+            detailsEl.innerHTML = '';
+
+            const d1 = document.createElement('p');
+            d1.textContent = 'Classification: ' +
+              (analysis.classification === 'decimal'
+                ? 'decimal with explicit decimal point'
+                : analysis.classification === 'integer-no-decimal'
+                  ? 'integer without decimal point'
+                  : 'all-zero value');
+            detailsEl.appendChild(d1);
+
+            if (analysis.exponentPart) {
+              const d2 = document.createElement('p');
+              d2.textContent = 'Scientific-notation exponent part "' + analysis.exponentPart +
+                '" does not change the number of significant figures.';
+              detailsEl.appendChild(d2);
+            }
+
+            if (analysis.isAmbiguousInteger) {
+              const d3 = document.createElement('p');
+              d3.className = 'text-xs text-amber-700';
+              d3.textContent = 'Note: trailing zeros in integers without a decimal point are ambiguous. Here we report the conventional minimum sig-fig count (ignoring trailing zeros).';
+              detailsEl.appendChild(d3);
+            }
+
+            if (analysis.notes && analysis.notes.length) {
+              const d4 = document.createElement('p');
+              d4.className = 'text-xs text-gray-600';
+              d4.textContent = 'Notes: ' + analysis.notes.join(' ');
+              detailsEl.appendChild(d4);
+            }
+
+            stepsEl.innerHTML = '';
+            steps.forEach(function (line) {
+              const p = document.createElement('p');
+              p.textContent = line;
+              stepsEl.appendChild(p);
+            });
+
+            resultsBox.classList.remove('hidden');
+          } else if (mode === 'round') {
+            const raw = roundValueInput.value;
+            const n = Number(roundNInput.value);
+            if (!Number.isFinite(n) || n <= 0) {
+              alert('Please enter a positive integer for the number of significant figures N.');
+              return;
+            }
+
+            const analysis = analyzeSigFigs(raw);
+            if (!analysis.valid) {
+              alert(analysis.error || 'Invalid input.');
+              return;
+            }
+            const numeric = parseNumericValue(raw);
+            if (!Number.isFinite(numeric)) {
+              alert('The value cannot be interpreted as a numeric quantity.');
+              return;
+            }
+
+            const roundedStr = formatSigFigNumber(numeric, n);
+
+            steps.push('1. Interpret the raw value and, if present, scientific notation: ' + analysis.cleanedInput + '.');
+            steps.push('2. Determine the digit corresponding to the ' + n + getOrdinalSuffix(n) + ' significant figure from the left (ignoring leading zeros).');
+            steps.push('3. Inspect the next digit to the right to decide whether to round up or keep the last significant digit unchanged.');
+            steps.push('4. Adjust the decimal point or switch to scientific notation so that exactly ' + n + ' digits remain significant.');
+            steps.push('5. Final rounded value: ' + roundedStr + '.');
+
+            summaryEl.textContent = 'Rounded to ' + n + ' significant figure' + (n === 1 ? '' : 's') +
+              ': ' + roundedStr;
+
+            detailsEl.innerHTML = '';
+
+            const d1 = document.createElement('p');
+            d1.textContent = 'Original value: ' + raw.trim();
+            detailsEl.appendChild(d1);
+
+            const d2 = document.createElement('p');
+            d2.textContent = 'Numeric value (interpreted): ' + fmt(numeric, 10);
+            detailsEl.appendChild(d2);
+
+            const d3 = document.createElement('p');
+            d3.textContent = 'Rounded representation with ' + n + ' significant figure' + (n === 1 ? '' : 's') +
+              ': ' + roundedStr;
+            detailsEl.appendChild(d3);
+
+            if (analysis.isAmbiguousInteger) {
+              const d4 = document.createElement('p');
+              d4.className = 'text-xs text-amber-700';
+              d4.textContent = 'The original integer had ambiguous trailing zeros. Using scientific notation like 1.50 × 10^3 is often clearer when you need to show specific significant figures.';
+              detailsEl.appendChild(d4);
+            }
+
+            if (analysis.notes && analysis.notes.length) {
+              const d5 = document.createElement('p');
+              d5.className = 'text-xs text-gray-600';
+              d5.textContent = 'Notes: ' + analysis.notes.join(' ');
+              detailsEl.appendChild(d5);
+            }
+
+            stepsEl.innerHTML = '';
+            steps.forEach(function (line) {
+              const p = document.createElement('p');
+              p.textContent = line;
+              stepsEl.appendChild(p);
+            });
+
+            resultsBox.classList.remove('hidden');
+          } else if (mode === 'operations') {
+            const opType = opTypeSelect.value;
+            const rawA = opAInput.value;
+            const rawB = opBInput.value;
+
+            const analysisA = analyzeSigFigs(rawA);
+            const analysisB = analyzeSigFigs(rawB);
+            if (!analysisA.valid) {
+              alert('Value A: ' + (analysisA.error || 'invalid input.'));
+              return;
+            }
+            if (!analysisB.valid) {
+              alert('Value B: ' + (analysisB.error || 'invalid input.'));
+              return;
+            }
+
+            const numA = parseNumericValue(rawA);
+            const numB = parseNumericValue(rawB);
+            if (!Number.isFinite(numA) || !Number.isFinite(numB)) {
+              alert('Both Value A and Value B must be interpretable as numeric values.');
+              return;
+            }
+
+            steps.push('1. Count significant figures and decimal places for each operand separately.');
+
+            const sigA = analysisA.sigCount;
+            const sigB = analysisB.sigCount;
+            const decA = analysisA.decimals;
+            const decB = analysisB.decimals;
+
+            let rawResult;
+            let roundedResult;
+            let resultRuleText = '';
+
+            if (opType === 'multdiv') {
+              rawResult = numA * numB;
+              if (opTypeSelect.value === 'multdiv' && rawB !== '' && rawA !== '' && /÷|\/|division/i.test(opTypeSelect.value)) {
+                rawResult = numA / numB;
+              }
+              const minSig = Math.min(sigA, sigB);
+              roundedResult = formatSigFigNumber(rawResult, minSig);
+              resultRuleText = 'Multiplication/division rule: the result is rounded to the same number of significant figures as the operand with the fewest sig figs (' +
+                minSig + ').';
+              steps.push('2. Operation type: multiplication/division. Compute the raw numeric result.');
+              steps.push('3. Determine sig-fig counts: A has ' + sigA + ', B has ' + sigB + '. The limiting count is ' + minSig + '.');
+              steps.push('4. Round the raw result to ' + minSig + ' significant figure(s).');
+            } else {
+              // addition/subtraction
+              rawResult = numA + numB;
+              const minDecimals = Math.min(decA, decB);
+              // Round rawResult to minDecimals decimal places
+              const factor = Math.pow(10, minDecimals);
+              const roundedNumeric = Math.round(rawResult * factor) / factor;
+              roundedResult = roundedNumeric.toFixed(minDecimals);
+              resultRuleText = 'Addition/subtraction rule: the result is rounded so that it has no more decimal places than the term with the fewest decimal places (' +
+                minDecimals + ').';
+              steps.push('2. Operation type: addition/subtraction. Compute the raw numeric result.');
+              steps.push('3. Decimal-place counts: A has ' + decA + ' decimal place(s), B has ' + decB + '. The limiting count is ' + minDecimals + '.');
+              steps.push('4. Round the raw result to ' + minDecimals + ' decimal place(s).');
+            }
+
+            summaryEl.textContent =
+              'Result: ' + roundedResult + ' (from raw value ' + fmt(rawResult, 10) + ').';
+
+            detailsEl.innerHTML = '';
+
+            const d1 = document.createElement('p');
+            d1.textContent = 'Value A: ' + rawA.trim() + ' → ' + sigA +
+              ' sig fig(s), ' + decA + ' decimal place(s).';
+            detailsEl.appendChild(d1);
+
+            const d2 = document.createElement('p');
+            d2.textContent = 'Value B: ' + rawB.trim() + ' → ' + sigB +
+              ' sig fig(s), ' + decB + ' decimal place(s).';
+            detailsEl.appendChild(d2);
+
+            const d3 = document.createElement('p');
+            d3.textContent = 'Raw numerical result: ' + fmt(rawResult, 10);
+            detailsEl.appendChild(d3);
+
+            const d4 = document.createElement('p');
+            d4.textContent = 'Rounded according to sig-fig rules: ' + roundedResult;
+            detailsEl.appendChild(d4);
+
+            const d5 = document.createElement('p');
+            d5.className = 'text-xs text-gray-600';
+            d5.textContent = resultRuleText;
+            detailsEl.appendChild(d5);
+
+            stepsEl.innerHTML = '';
+            steps.forEach(function (line) {
+              const p = document.createElement('p');
+              p.textContent = line;
+              stepsEl.appendChild(p);
+            });
+
+            resultsBox.classList.remove('hidden');
+          }
+        }
+
+        function getOrdinalSuffix(n) {
+          const v = n % 100;
+          if (v >= 11 && v <= 13) return 'th';
+          switch (n % 10) {
+            case 1: return 'st';
+            case 2: return 'nd';
+            case 3: return 'rd';
+            default: return 'th';
+          }
+        }
+
+        function handleReset() {
+          form.reset();
+          clearResults();
+          setModeVisibility();
+        }
+
+        modeSelect.addEventListener('change', setModeVisibility);
+        form.addEventListener('submit', handleSubmit);
+        resetBtn.addEventListener('click', handleReset);
+
+        setModeVisibility();
+      })();
+    </script>
+
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      (function () {
+        const modeSelect = document.getElementById('mode');
+        const form = document.getElementById('sigfig-form');
+        const resetBtn = document.getElementById('sigfig-reset');
+
+        const blockCount = document.getElementById('block-count');
+        const blockRound = document.getElementById('block-round');
+        const blockOps = document.getElementById('block-operations');
+
+        const resultsBox = document.getElementById('sigfig-results');
+        const summaryEl = document.getElementById('sigfig-summary');
+        const detailsEl = document.getElementById('sigfig-details');
+        const stepsEl = document.getElementById('sigfig-steps');
+
+        const countInput = document.getElementById('count-input');
+        const roundValueInput = document.getElementById('round-value');
+        const roundNInput = document.getElementById('round-n');
+        const opTypeSelect = document.getElementById('op-type');
+        const opAInput = document.getElementById('op-a');
+        const opBInput = document.getElementById('op-b');
+
+        function clearResults() {
+          resultsBox.classList.add('hidden');
+          summaryEl.textContent = '';
+          detailsEl.innerHTML = '';
+          stepsEl.innerHTML = '';
+        }
+
+        function setModeVisibility() {
+          const mode = modeSelect.value;
+          clearResults();
+          blockCount.classList.add('hidden');
+          blockRound.classList.add('hidden');
+          blockOps.classList.add('hidden');
+
+          if (mode === 'count') {
+            blockCount.classList.remove('hidden');
+          } else if (mode === 'round') {
+            blockRound.classList.remove('hidden');
+          } else if (mode === 'operations') {
+            blockOps.classList.remove('hidden');
+          }
+        }
+
+        function isDigit(ch) {
+          return ch >= '0' && ch <= '9';
+        }
+
+        /**
+         * Analyze a numeric string for significant figures.
+         * Returns: { valid, error, cleanedInput, coefficientString, sigCount, decimals, isAmbiguousInteger, classification, notes[] }
+         */
+        function analyzeSigFigs(raw) {
+          const notes = [];
+          if (!raw || !raw.trim()) {
+            return { valid: false, error: 'Please enter a value.', notes };
+          }
+
+          let s = raw.trim();
+
+          // Normalize spaces and lowercase
+          s = s.replace(/\s+/g, '');
+
+          // Handle decimal comma vs dot.
+          if (s.includes(',') && !s.includes('.')) {
+            // treat comma as decimal separator
+            s = s.replace(',', '.');
+          } else if (s.includes(',') && s.includes('.')) {
+            // assume commas are thousands separators, remove them
+            s = s.replace(/,/g, '');
+          }
+
+          let sign = '';
+          if (s[0] === '+' || s[0] === '-') {
+            sign = s[0];
+            s = s.slice(1);
+          }
+
+          if (!s) {
+            return { valid: false, error: 'Value is not a valid number.', notes };
+          }
+
+          // Extract scientific notation coefficient if present
+          let coeff = s;
+          let expPart = '';
+
+          const eIndex = s.toLowerCase().indexOf('e');
+          let sciIndex = -1;
+          if (eIndex >= 0) {
+            coeff = s.slice(0, eIndex);
+            expPart = s.slice(eIndex);
+          } else {
+            // handle x10^ or ×10^
+            const matchSci = s.match(/(.+?)(x10\^|×10\^)([-+]?\d+)$/i);
+            if (matchSci) {
+              coeff = matchSci[1];
+              expPart = matchSci[2] + matchSci[3];
+            }
+          }
+
+          // Remove any remaining spaces from coeff
+          coeff = coeff.replace(/\s+/g, '');
+          if (!coeff) {
+            return { valid: false, error: 'Coefficient part is empty.', notes };
+          }
+
+          // Check coefficient numeric
+          // Allow one decimal point.
+          let dotCount = 0;
+          for (let i = 0; i < coeff.length; i++) {
+            const ch = coeff[i];
+            if (ch === '.') {
+              dotCount++;
+              if (dotCount > 1) {
+                return { valid: false, error: 'Too many decimal points in the number.', notes };
+              }
+            } else if (!isDigit(ch)) {
+              return { valid: false, error: 'Invalid character in number: "' + ch + '".', notes };
+            }
+          }
+
+          // Special case: the number is zero or all zeros
+          const digitsOnly = coeff.replace('.', '');
+          const allZero = digitsOnly.split('').every(ch => ch === '0');
+
+          // Determine decimals for decimal-place rule (for add/sub)
+          let decimals = 0;
+          const dotPos = coeff.indexOf('.');
+          if (dotPos >= 0) {
+            decimals = coeff.length - dotPos - 1;
+          }
+
+          // Counting significant figures in coefficient
+          let sigCount = 0;
+          let isAmbiguousInteger = false;
+          let classification = '';
+
+          if (allZero) {
+            // e.g. "0", "0.0", "000"
+            // Convention: treat as 1 significant figure, unless decimals imply something else.
+            // In many labs, a recorded "0.00" could indicate precision, but this is context-dependent.
+            classification = 'all-zero-value';
+            if (digitsOnly.length === 0) {
+              sigCount = 0;
+            } else {
+              sigCount = 1;
+            }
+            notes.push('The value consists only of zeros. As a stand-alone measurement, this is usually treated as having 1 significant figure, but context may vary.');
+          } else {
+            // General case
+            if (dotPos >= 0) {
+              // Decimal number: leading zeros not significant, trailing zeros are significant.
+              classification = 'decimal';
+              // Remove leading zeros (before first non-zero) in the integer+fraction string.
+              // We'll remove them in digitsOnlyWithDot.
+              let digits = coeff;
+
+              // Remove leading zeros before the first non-zero digit (ignoring the decimal point).
+              let idx = 0;
+              while (idx < digits.length && (digits[idx] === '0' || digits[idx] === '.')) {
+                // stop if decimal, but only skip zeros before any non-zero encountered.
+                if (digits[idx] === '.') {
+                  idx++;
+                  // continue, leading zeros may be after dot
+                  while (idx < digits.length && digits[idx] === '0') idx++;
+                  break;
+                }
+                idx++;
+              }
+              const trimmed = digits.slice(idx).replace('.', '');
+              sigCount = trimmed.length;
+              notes.push('Decimal value: trailing zeros to the right of the decimal point are treated as significant.');
+            } else {
+              // Integer without decimal point: trailing zeros ambiguous
+              classification = 'integer-no-decimal';
+              // Find first and last non-zero digit
+              let firstNZ = -1;
+              let lastNZ = -1;
+              for (let i = 0; i < coeff.length; i++) {
+                if (coeff[i] !== '0') {
+                  if (firstNZ === -1) firstNZ = i;
+                  lastNZ = i;
+                }
+              }
+              if (firstNZ === -1) {
+                // safety fallback; should have been caught by allZero
+                sigCount = 1;
+              } else {
+                sigCount = lastNZ - firstNZ + 1;
+              }
+              const trailingZeros = coeff.length - 1 - lastNZ;
+              if (trailingZeros > 0) {
+                isAmbiguousInteger = true;
+                notes.push('Whole number without decimal: trailing zeros are ambiguous. By default we count only digits up to the last non-zero, giving a minimum sig-fig count.');
+              } else {
+                notes.push('Whole number without trailing zeros: all digits from first non-zero to last digit are significant.');
+              }
+            }
+          }
+
+          return {
+            valid: true,
+            error: null,
+            cleanedInput: sign + s,
+            coefficient: coeff,
+            exponentPart: expPart,
+            sigCount: sigCount,
+            decimals: decimals,
+            isAmbiguousInteger: isAmbiguousInteger,
+            classification: classification,
+            notes: notes
+          };
+        }
+
+        function parseNumericValue(raw) {
+          if (!raw || !raw.trim()) return NaN;
+          let s = raw.trim();
+          s = s.replace(/\s+/g, '');
+
+          if (s.includes(',') && !s.includes('.')) {
+            s = s.replace(',', '.');
+          } else if (s.includes(',') && s.includes('.')) {
+            s = s.replace(/,/g, '');
+          }
+
+          // handle ×10^ or x10^ by converting to e notation
+          const sciMatch = s.match(/^(.*?)(x10\^|×10\^)([-+]?\d+)$/i);
+          if (sciMatch) {
+            const mant = sciMatch[1];
+            const exp = sciMatch[3];
+            s = mant + 'e' + exp;
+          }
+
+          const v = Number(s);
+          return Number.isFinite(v) ? v : NaN;
+        }
+
+        function formatSigFigNumber(value, n) {
+          if (!Number.isFinite(value)) return '—';
+          if (value === 0) {
+            // represent zero in scientific notation with n sig figs
+            const zeros = '0'.repeat(Math.max(0, n - 1));
+            return '0.' + zeros;
+          }
+          if (n <= 0) return String(value);
+
+          const abs = Math.abs(value);
+          const exponent = Math.floor(Math.log10(abs));
+          const factor = Math.pow(10, n - 1 - exponent);
+          const rounded = Math.round(value * factor) / factor;
+
+          // Now format the rounded value; if exponent is large or very small, use scientific notation
+          const absRounded = Math.abs(rounded);
+          const expRounded = Math.floor(Math.log10(absRounded));
+          if (expRounded >= n + 2 || expRounded <= -3) {
+            // scientific notation
+            const mant = rounded / Math.pow(10, expRounded);
+            return mant.toPrecision(n) + ' × 10^' + expRounded;
+          } else {
+            // fixed / normal representation
+            return rounded.toPrecision(n).replace(/e\+?(-?\d+)$/i, ' × 10^$1');
+          }
+        }
+
+        function fmt(val, digits) {
+          if (!Number.isFinite(val)) return '—';
+          digits = typeof digits === 'number' ? digits : 6;
+          if (val === 0) return '0';
+          const abs = Math.abs(val);
+          if (abs >= 1e6 || abs < 1e-4) {
+            return val.toExponential(4).replace('e', 'e');
+          }
+          return Number(val.toPrecision(digits));
+        }
+
+        function handleSubmit(evt) {
+          evt.preventDefault();
+          clearResults();
+
+          const mode = modeSelect.value;
+          const steps = [];
+
+          if (mode === 'count') {
+            const raw = countInput.value;
+            const analysis = analyzeSigFigs(raw);
+            if (!analysis.valid) {
+              alert(analysis.error || 'Invalid input.');
+              return;
+            }
+
+            steps.push('1. Normalize the input (remove spaces, handle decimal comma vs dot, interpret scientific notation if present).');
+            steps.push('   Normalized value: ' + analysis.cleanedInput + '.');
+            steps.push('2. Identify coefficient part "' + analysis.coefficient + '" for sig-fig counting and ignore the exponent for now.');
+            if (analysis.classification === 'decimal') {
+              steps.push('3. Detected a decimal value: leading zeros are ignored, trailing zeros to the right of the decimal point are treated as significant.');
+            } else if (analysis.classification === 'integer-no-decimal') {
+              steps.push('3. Detected a whole number without a decimal point: trailing zeros are potentially ambiguous.');
+            } else if (analysis.classification === 'all-zero-value') {
+              steps.push('3. The coefficient consists only of zeros; conventional treatment is that such a measurement has 1 significant figure unless extra notation is used.');
+            }
+            steps.push('4. Count all non-zero digits plus any zeros between or after them according to the classification.');
+            steps.push('5. Result: ' + analysis.sigCount + ' significant figure(s).');
+
+            summaryEl.textContent = 'The value "' + raw.trim() + '" has ' + analysis.sigCount +
+              ' significant figure' + (analysis.sigCount === 1 ? '' : 's') + ' (under standard conventions).';
+
+            detailsEl.innerHTML = '';
+
+            const d1 = document.createElement('p');
+            d1.textContent = 'Classification: ' +
+              (analysis.classification === 'decimal'
+                ? 'decimal with explicit decimal point'
+                : analysis.classification === 'integer-no-decimal'
+                  ? 'integer without decimal point'
+                  : 'all-zero value');
+            detailsEl.appendChild(d1);
+
+            if (analysis.exponentPart) {
+              const d2 = document.createElement('p');
+              d2.textContent = 'Scientific-notation exponent part "' + analysis.exponentPart +
+                '" does not change the number of significant figures.';
+              detailsEl.appendChild(d2);
+            }
+
+            if (analysis.isAmbiguousInteger) {
+              const d3 = document.createElement('p');
+              d3.className = 'text-xs text-amber-700';
+              d3.textContent = 'Note: trailing zeros in integers without a decimal point are ambiguous. Here we report the conventional minimum sig-fig count (ignoring trailing zeros).';
+              detailsEl.appendChild(d3);
+            }
+
+            if (analysis.notes && analysis.notes.length) {
+              const d4 = document.createElement('p');
+              d4.className = 'text-xs text-gray-600';
+              d4.textContent = 'Notes: ' + analysis.notes.join(' ');
+              detailsEl.appendChild(d4);
+            }
+
+            stepsEl.innerHTML = '';
+            steps.forEach(function (line) {
+              const p = document.createElement('p');
+              p.textContent = line;
+              stepsEl.appendChild(p);
+            });
+
+            resultsBox.classList.remove('hidden');
+          } else if (mode === 'round') {
+            const raw = roundValueInput.value;
+            const n = Number(roundNInput.value);
+            if (!Number.isFinite(n) || n <= 0) {
+              alert('Please enter a positive integer for the number of significant figures N.');
+              return;
+            }
+
+            const analysis = analyzeSigFigs(raw);
+            if (!analysis.valid) {
+              alert(analysis.error || 'Invalid input.');
+              return;
+            }
+            const numeric = parseNumericValue(raw);
+            if (!Number.isFinite(numeric)) {
+              alert('The value cannot be interpreted as a numeric quantity.');
+              return;
+            }
+
+            const roundedStr = formatSigFigNumber(numeric, n);
+
+            steps.push('1. Interpret the raw value and, if present, scientific notation: ' + analysis.cleanedInput + '.');
+            steps.push('2. Determine the digit corresponding to the ' + n + getOrdinalSuffix(n) + ' significant figure from the left (ignoring leading zeros).');
+            steps.push('3. Inspect the next digit to the right to decide whether to round up or keep the last significant digit unchanged.');
+            steps.push('4. Adjust the decimal point or switch to scientific notation so that exactly ' + n + ' digits remain significant.');
+            steps.push('5. Final rounded value: ' + roundedStr + '.');
+
+            summaryEl.textContent = 'Rounded to ' + n + ' significant figure' + (n === 1 ? '' : 's') +
+              ': ' + roundedStr;
+
+            detailsEl.innerHTML = '';
+
+            const d1 = document.createElement('p');
+            d1.textContent = 'Original value: ' + raw.trim();
+            detailsEl.appendChild(d1);
+
+            const d2 = document.createElement('p');
+            d2.textContent = 'Numeric value (interpreted): ' + fmt(numeric, 10);
+            detailsEl.appendChild(d2);
+
+            const d3 = document.createElement('p');
+            d3.textContent = 'Rounded representation with ' + n + ' significant figure' + (n === 1 ? '' : 's') +
+              ': ' + roundedStr;
+            detailsEl.appendChild(d3);
+
+            if (analysis.isAmbiguousInteger) {
+              const d4 = document.createElement('p');
+              d4.className = 'text-xs text-amber-700';
+              d4.textContent = 'The original integer had ambiguous trailing zeros. Using scientific notation like 1.50 × 10^3 is often clearer when you need to show specific significant figures.';
+              detailsEl.appendChild(d4);
+            }
+
+            if (analysis.notes && analysis.notes.length) {
+              const d5 = document.createElement('p');
+              d5.className = 'text-xs text-gray-600';
+              d5.textContent = 'Notes: ' + analysis.notes.join(' ');
+              detailsEl.appendChild(d5);
+            }
+
+            stepsEl.innerHTML = '';
+            steps.forEach(function (line) {
+              const p = document.createElement('p');
+              p.textContent = line;
+              stepsEl.appendChild(p);
+            });
+
+            resultsBox.classList.remove('hidden');
+          } else if (mode === 'operations') {
+            const opType = opTypeSelect.value;
+            const rawA = opAInput.value;
+            const rawB = opBInput.value;
+
+            const analysisA = analyzeSigFigs(rawA);
+            const analysisB = analyzeSigFigs(rawB);
+            if (!analysisA.valid) {
+              alert('Value A: ' + (analysisA.error || 'invalid input.'));
+              return;
+            }
+            if (!analysisB.valid) {
+              alert('Value B: ' + (analysisB.error || 'invalid input.'));
+              return;
+            }
+
+            const numA = parseNumericValue(rawA);
+            const numB = parseNumericValue(rawB);
+            if (!Number.isFinite(numA) || !Number.isFinite(numB)) {
+              alert('Both Value A and Value B must be interpretable as numeric values.');
+              return;
+            }
+
+            steps.push('1. Count significant figures and decimal places for each operand separately.');
+
+            const sigA = analysisA.sigCount;
+            const sigB = analysisB.sigCount;
+            const decA = analysisA.decimals;
+            const decB = analysisB.decimals;
+
+            let rawResult;
+            let roundedResult;
+            let resultRuleText = '';
+
+            if (opType === 'multdiv') {
+              rawResult = numA * numB;
+              if (opTypeSelect.value === 'multdiv' && rawB !== '' && rawA !== '' && /÷|\/|division/i.test(opTypeSelect.value)) {
+                rawResult = numA / numB;
+              }
+              const minSig = Math.min(sigA, sigB);
+              roundedResult = formatSigFigNumber(rawResult, minSig);
+              resultRuleText = 'Multiplication/division rule: the result is rounded to the same number of significant figures as the operand with the fewest sig figs (' +
+                minSig + ').';
+              steps.push('2. Operation type: multiplication/division. Compute the raw numeric result.');
+              steps.push('3. Determine sig-fig counts: A has ' + sigA + ', B has ' + sigB + '. The limiting count is ' + minSig + '.');
+              steps.push('4. Round the raw result to ' + minSig + ' significant figure(s).');
+            } else {
+              // addition/subtraction
+              rawResult = numA + numB;
+              const minDecimals = Math.min(decA, decB);
+              // Round rawResult to minDecimals decimal places
+              const factor = Math.pow(10, minDecimals);
+              const roundedNumeric = Math.round(rawResult * factor) / factor;
+              roundedResult = roundedNumeric.toFixed(minDecimals);
+              resultRuleText = 'Addition/subtraction rule: the result is rounded so that it has no more decimal places than the term with the fewest decimal places (' +
+                minDecimals + ').';
+              steps.push('2. Operation type: addition/subtraction. Compute the raw numeric result.');
+              steps.push('3. Decimal-place counts: A has ' + decA + ' decimal place(s), B has ' + decB + '. The limiting count is ' + minDecimals + '.');
+              steps.push('4. Round the raw result to ' + minDecimals + ' decimal place(s).');
+            }
+
+            summaryEl.textContent =
+              'Result: ' + roundedResult + ' (from raw value ' + fmt(rawResult, 10) + ').';
+
+            detailsEl.innerHTML = '';
+
+            const d1 = document.createElement('p');
+            d1.textContent = 'Value A: ' + rawA.trim() + ' → ' + sigA +
+              ' sig fig(s), ' + decA + ' decimal place(s).';
+            detailsEl.appendChild(d1);
+
+            const d2 = document.createElement('p');
+            d2.textContent = 'Value B: ' + rawB.trim() + ' → ' + sigB +
+              ' sig fig(s), ' + decB + ' decimal place(s).';
+            detailsEl.appendChild(d2);
+
+            const d3 = document.createElement('p');
+            d3.textContent = 'Raw numerical result: ' + fmt(rawResult, 10);
+            detailsEl.appendChild(d3);
+
+            const d4 = document.createElement('p');
+            d4.textContent = 'Rounded according to sig-fig rules: ' + roundedResult;
+            detailsEl.appendChild(d4);
+
+            const d5 = document.createElement('p');
+            d5.className = 'text-xs text-gray-600';
+            d5.textContent = resultRuleText;
+            detailsEl.appendChild(d5);
+
+            stepsEl.innerHTML = '';
+            steps.forEach(function (line) {
+              const p = document.createElement('p');
+              p.textContent = line;
+              stepsEl.appendChild(p);
+            });
+
+            resultsBox.classList.remove('hidden');
+          }
+        }
+
+        function getOrdinalSuffix(n) {
+          const v = n % 100;
+          if (v >= 11 && v <= 13) return 'th';
+          switch (n % 10) {
+            case 1: return 'st';
+            case 2: return 'nd';
+            case 3: return 'rd';
+            default: return 'th';
+          }
+        }
+
+        function handleReset() {
+          form.reset();
+          clearResults();
+          setModeVisibility();
+        }
+
+        modeSelect.addEventListener('change', setModeVisibility);
+        form.addEventListener('submit', handleSubmit);
+        resetBtn.addEventListener('click', handleReset);
+
+        setModeVisibility();
+      })();
+    </script>
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

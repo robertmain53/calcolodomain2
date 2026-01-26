@@ -39,10 +39,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -124,8 +120,6 @@
 </head>
 
 <body class="bg-gray-50 text-gray-800">
-
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
 
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
@@ -658,7 +652,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -726,13 +720,417 @@
 
 
 
+
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
 
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('cross-form');
+        const resetBtn = document.getElementById('cross-reset');
+        const errorEl = document.getElementById('cross-error');
+
+        const resultVectorEl = document.getElementById('result-vector');
+        const resultMagnitudeEl = document.getElementById('result-magnitude');
+        const areaParallelogramEl = document.getElementById('result-area-parallelogram');
+        const areaTriangleEl = document.getElementById('result-area-triangle');
+        const resultNotesEl = document.getElementById('result-notes');
+
+        const axInput = document.getElementById('ax');
+        const ayInput = document.getElementById('ay');
+        const azInput = document.getElementById('az');
+        const bxInput = document.getElementById('bx');
+        const byInput = document.getElementById('by');
+        const bzInput = document.getElementById('bz');
+
+        const azWrapper = document.querySelector('[data-role="az-wrapper"]');
+        const bzWrapper = document.querySelector('[data-role="bz-wrapper"]');
+
+        const precisionSelect = document.getElementById('precision');
+
+        function getDimension() {
+          const radios = form.querySelectorAll('input[name="dimension"]');
+          for (const r of radios) {
+            if (r.checked) return r.value;
+          }
+          return '3d';
+        }
+
+        function setDimensionUI() {
+          const dim = getDimension();
+          if (dim === '2d') {
+            azWrapper.classList.add('opacity-60');
+            bzWrapper.classList.add('opacity-60');
+            azInput.value = '0';
+            bzInput.value = '0';
+            azInput.setAttribute('readonly', 'readonly');
+            bzInput.setAttribute('readonly', 'readonly');
+          } else {
+            azWrapper.classList.remove('opacity-60');
+            bzWrapper.classList.remove('opacity-60');
+            azInput.removeAttribute('readonly');
+            bzInput.removeAttribute('readonly');
+          }
+        }
+
+        function parseComponent(input, name) {
+          const raw = input.value.trim();
+          if (raw === '') return 0;
+          const val = Number(raw);
+          if (!Number.isFinite(val)) {
+            throw new Error(`Component ${name} is not a valid number.`);
+          }
+          return val;
+        }
+
+        function formatNumber(value, decimals) {
+          if (!Number.isFinite(value)) return '–';
+          if (decimals === null) return String(value);
+          return value.toFixed(decimals);
+        }
+
+        function clearOutputs() {
+          resultVectorEl.textContent = '–';
+          resultMagnitudeEl.textContent = '–';
+          areaParallelogramEl.textContent = '–';
+          areaTriangleEl.textContent = '–';
+          resultNotesEl.textContent = 'Enter two vectors to see the cross product and geometric interpretation.';
+        }
+
+        function validateInputs() {
+          const dim = getDimension();
+          const components = [
+            { input: axInput, name: 'a_x' },
+            { input: ayInput, name: 'a_y' },
+            { input: bxInput, name: 'b_x' },
+            { input: byInput, name: 'b_y' }
+          ];
+          if (dim === '3d') {
+            components.push({ input: azInput, name: 'a_z' });
+            components.push({ input: bzInput, name: 'b_z' });
+          }
+          for (const c of components) {
+            const raw = c.input.value.trim();
+            if (raw !== '' && !Number.isFinite(Number(raw))) {
+              return `Component ${c.name} is not a valid number.`;
+            }
+          }
+          return null;
+        }
+
+        function computeNorm(x, y, z) {
+          return Math.sqrt(x * x + y * y + z * z);
+        }
+
+        function handleSubmit(event) {
+          event.preventDefault();
+          errorEl.classList.add('hidden');
+          errorEl.textContent = '';
+
+          const validationError = validateInputs();
+          if (validationError) {
+            errorEl.textContent = validationError;
+            errorEl.classList.remove('hidden');
+            clearOutputs();
+            return;
+          }
+
+          const dim = getDimension();
+          const decimals = Number(precisionSelect.value);
+
+          try {
+            const ax = parseComponent(axInput, 'a_x');
+            const ay = parseComponent(ayInput, 'a_y');
+            const az = dim === '2d' ? 0 : parseComponent(azInput, 'a_z');
+            const bx = parseComponent(bxInput, 'b_x');
+            const by = parseComponent(byInput, 'b_y');
+            const bz = dim === '2d' ? 0 : parseComponent(bzInput, 'b_z');
+
+            const aNorm = computeNorm(ax, ay, az);
+            const bNorm = computeNorm(bx, by, bz);
+
+            const cx = ay * bz - az * by;
+            const cy = az * bx - ax * bz;
+            const cz = ax * by - ay * bx;
+
+            const cNorm = computeNorm(cx, cy, cz);
+            const areaParallelogram = cNorm;
+            const areaTriangle = cNorm / 2;
+
+            if (dim === '2d') {
+              resultVectorEl.textContent = `(0, 0, ${formatNumber(cz, decimals)})`;
+            } else {
+              resultVectorEl.textContent = `(${formatNumber(cx, decimals)}, ${formatNumber(cy, decimals)}, ${formatNumber(cz, decimals)})`;
+            }
+
+            resultMagnitudeEl.textContent = formatNumber(cNorm, decimals);
+            areaParallelogramEl.textContent = formatNumber(areaParallelogram, decimals);
+            areaTriangleEl.textContent = formatNumber(areaTriangle, decimals);
+
+            let notes = '';
+
+            if (aNorm === 0 || bNorm === 0) {
+              notes += 'At least one input vector is the zero vector, so the cross product is the zero vector (no defined orientation or area). ';
+            } else if (cNorm === 0) {
+              notes += 'The two vectors are parallel or anti-parallel; the cross product is the zero vector and the area they span is zero. ';
+            } else {
+              notes += 'The cross product is perpendicular to both input vectors and its magnitude equals the area of the parallelogram spanned by them. ';
+            }
+
+            if (dim === '2d') {
+              if (cz > 0) {
+                notes += 'In 2D mode, a positive z component indicates a counter-clockwise rotation from a to b.';
+              } else if (cz < 0) {
+                notes += 'In 2D mode, a negative z component indicates a clockwise rotation from a to b.';
+              } else {
+                notes += 'In 2D mode, a zero z component means the vectors are parallel, anti-parallel, or one is zero.';
+              }
+            } else {
+              notes += 'Use the right-hand rule to interpret the direction: curling your fingers from a to b, your thumb points in the direction of a × b.';
+            }
+
+            resultNotesEl.textContent = notes;
+
+          } catch (err) {
+            errorEl.textContent = err.message || 'Unable to compute cross product. Please check your inputs.';
+            errorEl.classList.remove('hidden');
+            clearOutputs();
+          }
+        }
+
+        function handleReset() {
+          form.reset();
+          errorEl.classList.add('hidden');
+          errorEl.textContent = '';
+          clearOutputs();
+          setDimensionUI();
+        }
+
+        form.addEventListener('submit', handleSubmit);
+        resetBtn.addEventListener('click', handleReset);
+
+        const dimensionRadios = form.querySelectorAll('input[name="dimension"]');
+        dimensionRadios.forEach(radio => {
+          radio.addEventListener('change', setDimensionUI);
+        });
+
+        setDimensionUI();
+        clearOutputs();
+      });
+    </script>
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('cross-form');
+        const resetBtn = document.getElementById('cross-reset');
+        const errorEl = document.getElementById('cross-error');
+
+        const resultVectorEl = document.getElementById('result-vector');
+        const resultMagnitudeEl = document.getElementById('result-magnitude');
+        const areaParallelogramEl = document.getElementById('result-area-parallelogram');
+        const areaTriangleEl = document.getElementById('result-area-triangle');
+        const resultNotesEl = document.getElementById('result-notes');
+
+        const axInput = document.getElementById('ax');
+        const ayInput = document.getElementById('ay');
+        const azInput = document.getElementById('az');
+        const bxInput = document.getElementById('bx');
+        const byInput = document.getElementById('by');
+        const bzInput = document.getElementById('bz');
+
+        const azWrapper = document.querySelector('[data-role="az-wrapper"]');
+        const bzWrapper = document.querySelector('[data-role="bz-wrapper"]');
+
+        const precisionSelect = document.getElementById('precision');
+
+        function getDimension() {
+          const radios = form.querySelectorAll('input[name="dimension"]');
+          for (const r of radios) {
+            if (r.checked) return r.value;
+          }
+          return '3d';
+        }
+
+        function setDimensionUI() {
+          const dim = getDimension();
+          if (dim === '2d') {
+            azWrapper.classList.add('opacity-60');
+            bzWrapper.classList.add('opacity-60');
+            azInput.value = '0';
+            bzInput.value = '0';
+            azInput.setAttribute('readonly', 'readonly');
+            bzInput.setAttribute('readonly', 'readonly');
+          } else {
+            azWrapper.classList.remove('opacity-60');
+            bzWrapper.classList.remove('opacity-60');
+            azInput.removeAttribute('readonly');
+            bzInput.removeAttribute('readonly');
+          }
+        }
+
+        function parseComponent(input, name) {
+          const raw = input.value.trim();
+          if (raw === '') return 0;
+          const val = Number(raw);
+          if (!Number.isFinite(val)) {
+            throw new Error(`Component ${name} is not a valid number.`);
+          }
+          return val;
+        }
+
+        function formatNumber(value, decimals) {
+          if (!Number.isFinite(value)) return '–';
+          if (decimals === null) return String(value);
+          return value.toFixed(decimals);
+        }
+
+        function clearOutputs() {
+          resultVectorEl.textContent = '–';
+          resultMagnitudeEl.textContent = '–';
+          areaParallelogramEl.textContent = '–';
+          areaTriangleEl.textContent = '–';
+          resultNotesEl.textContent = 'Enter two vectors to see the cross product and geometric interpretation.';
+        }
+
+        function validateInputs() {
+          const dim = getDimension();
+          const components = [
+            { input: axInput, name: 'a_x' },
+            { input: ayInput, name: 'a_y' },
+            { input: bxInput, name: 'b_x' },
+            { input: byInput, name: 'b_y' }
+          ];
+          if (dim === '3d') {
+            components.push({ input: azInput, name: 'a_z' });
+            components.push({ input: bzInput, name: 'b_z' });
+          }
+          for (const c of components) {
+            const raw = c.input.value.trim();
+            if (raw !== '' && !Number.isFinite(Number(raw))) {
+              return `Component ${c.name} is not a valid number.`;
+            }
+          }
+          return null;
+        }
+
+        function computeNorm(x, y, z) {
+          return Math.sqrt(x * x + y * y + z * z);
+        }
+
+        function handleSubmit(event) {
+          event.preventDefault();
+          errorEl.classList.add('hidden');
+          errorEl.textContent = '';
+
+          const validationError = validateInputs();
+          if (validationError) {
+            errorEl.textContent = validationError;
+            errorEl.classList.remove('hidden');
+            clearOutputs();
+            return;
+          }
+
+          const dim = getDimension();
+          const decimals = Number(precisionSelect.value);
+
+          try {
+            const ax = parseComponent(axInput, 'a_x');
+            const ay = parseComponent(ayInput, 'a_y');
+            const az = dim === '2d' ? 0 : parseComponent(azInput, 'a_z');
+            const bx = parseComponent(bxInput, 'b_x');
+            const by = parseComponent(byInput, 'b_y');
+            const bz = dim === '2d' ? 0 : parseComponent(bzInput, 'b_z');
+
+            const aNorm = computeNorm(ax, ay, az);
+            const bNorm = computeNorm(bx, by, bz);
+
+            const cx = ay * bz - az * by;
+            const cy = az * bx - ax * bz;
+            const cz = ax * by - ay * bx;
+
+            const cNorm = computeNorm(cx, cy, cz);
+            const areaParallelogram = cNorm;
+            const areaTriangle = cNorm / 2;
+
+            if (dim === '2d') {
+              resultVectorEl.textContent = `(0, 0, ${formatNumber(cz, decimals)})`;
+            } else {
+              resultVectorEl.textContent = `(${formatNumber(cx, decimals)}, ${formatNumber(cy, decimals)}, ${formatNumber(cz, decimals)})`;
+            }
+
+            resultMagnitudeEl.textContent = formatNumber(cNorm, decimals);
+            areaParallelogramEl.textContent = formatNumber(areaParallelogram, decimals);
+            areaTriangleEl.textContent = formatNumber(areaTriangle, decimals);
+
+            let notes = '';
+
+            if (aNorm === 0 || bNorm === 0) {
+              notes += 'At least one input vector is the zero vector, so the cross product is the zero vector (no defined orientation or area). ';
+            } else if (cNorm === 0) {
+              notes += 'The two vectors are parallel or anti-parallel; the cross product is the zero vector and the area they span is zero. ';
+            } else {
+              notes += 'The cross product is perpendicular to both input vectors and its magnitude equals the area of the parallelogram spanned by them. ';
+            }
+
+            if (dim === '2d') {
+              if (cz > 0) {
+                notes += 'In 2D mode, a positive z component indicates a counter-clockwise rotation from a to b.';
+              } else if (cz < 0) {
+                notes += 'In 2D mode, a negative z component indicates a clockwise rotation from a to b.';
+              } else {
+                notes += 'In 2D mode, a zero z component means the vectors are parallel, anti-parallel, or one is zero.';
+              }
+            } else {
+              notes += 'Use the right-hand rule to interpret the direction: curling your fingers from a to b, your thumb points in the direction of a × b.';
+            }
+
+            resultNotesEl.textContent = notes;
+
+          } catch (err) {
+            errorEl.textContent = err.message || 'Unable to compute cross product. Please check your inputs.';
+            errorEl.classList.remove('hidden');
+            clearOutputs();
+          }
+        }
+
+        function handleReset() {
+          form.reset();
+          errorEl.classList.add('hidden');
+          errorEl.textContent = '';
+          clearOutputs();
+          setDimensionUI();
+        }
+
+        form.addEventListener('submit', handleSubmit);
+        resetBtn.addEventListener('click', handleReset);
+
+        const dimensionRadios = form.querySelectorAll('input[name="dimension"]');
+        dimensionRadios.forEach(radio => {
+          radio.addEventListener('change', setDimensionUI);
+        });
+
+        setDimensionUI();
+        clearOutputs();
+      });
+    </script>
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

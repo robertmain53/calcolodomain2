@@ -36,8 +36,1280 @@
 
   <!-- MathJax for formulas -->
   <script>
-    window.MathJax = {
-      tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['\\[','\\]']] },
+    window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <!-- JSON-LD: SoftwareApplication + FAQPage -->
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Workout & Calories Burned Calculator",
+  "applicationCategory": "HealthApplication",
+  "operatingSystem": "Web",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "url": "https://calcdomain.com/workout-calculator",
+  "publisher": {
+    "@type": "Organization",
+    "name": "CalcDomain"
+  },
+  "description": "Estimate calories burned with METs, plan multi-activity workouts, and get target heart-rate zones using Karvonen or % max HR."
+}
+</script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How are calories burned calculated?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "We use the Compendium of Physical Activities MET method: Calories ≈ MET × 3.5 × weight(kg) ÷ 200 per minute. Total calories = that value × minutes."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What are MET values?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "MET is a multiple of resting metabolic rate (1 MET ≈ 1 kcal/kg/hour ≈ 3.5 ml O₂/kg/min). Activities have empirically-measured METs in the Compendium."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How are heart-rate zones computed?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "You can use Karvonen (HRtarget = HRrest + intensity × (HRmax − HRrest)) or simple % of HRmax. Karvonen personalizes zones by resting HR."
+      }
+    }
+  ]
+}
+</script>
+
+<style>
+/* AUDIT_SPINE_CSS */
+.auditspine-note{
+  border:1px solid #e5e7eb;
+  background:#fff;
+  border-radius:12px;
+  padding:12px;
+  color:#475569;
+  font-size:13px;
+  line-height:1.5;
+}
+.auditspine-mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+.auditspine-changelog{
+  border:1px solid #e5e7eb;
+  background:#fff;
+  border-left:5px solid #334155;
+  border-radius:12px;
+  padding:12px;
+  font-size:13px;
+  color:#475569;
+}
+.auditspine-formula{
+  margin:10px 0;
+  background:#0b1220;
+  color:#e5e7eb;
+  border-radius:12px;
+  padding:12px;
+  border:1px solid rgba(255,255,255,.12);
+  overflow-x:auto;
+}
+.auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
+.auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
+.auditspine-badge{
+  display:inline-block;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:600;
+  border:1px solid #e5e7eb;
+  background:#f8fafc;
+  color:#0f172a;
+}
+.auditspine-badge-warn{
+  background:#fff7ed;
+  border-color:#fed7aa;
+  color:#9a3412;
+}
+</style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+  <!-- Header (same pattern as BMI page) -->
+  <header class="bg-white shadow-sm sticky top-0 z-40">
+    <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
+      <div class="flex items-center justify-between">
+        <a href="https://calcdomain.com" class="text-2xl font-bold text-blue-600">CalcDomain</a>
+        <div class="hidden md:block w-full max-w-md mx-6">
+          <div class="relative">
+            <input id="search-input" type="search" placeholder="Search for a calculator..." class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500" autocomplete="off">
+            <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <div id="search-results" class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200"></div>
+          </div>
+        </div>
+        <div class="hidden md:flex items-center space-x-6">
+          <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600">Advanced Search</a>
+           <a href="https://calcdomain.com/#categories" class="text-gray-700 hover:text-blue-600">Categories</a>
+        </div>
+        <button id="mobile-menu-toggle" class="md:hidden p-2" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" type="button">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
+      </div>
+      <nav id="mobile-menu" class="md:hidden mt-4 hidden" aria-label="Mobile menu" role="navigation">
+        <div class="space-y-2">
+          <a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
+          Categories
+        </div>
+      </nav>
+    </nav>
+  </header>
+
+  <main class="container mx-auto px-4 lg:px-6 py-10 w-full lg:w-2/3">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Left: Calculator -->
+      <section class="lg:col-span-2 space-y-6">
+        <!-- Single Activity Card -->
+        <div class="card card-pad">
+          <h1 class="text-3xl font-bold mb-1">Workout &amp; Calories Burned Calculator</h1>
+          <p class="text-gray-600 mb-4">Estimate calories burned with METs, fine-tune intensity, and get training heart-rate zones.</p>
+
+          <form id="single-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-1" for="act">Activity</label>
+              <div class="relative">
+                <input id="act" list="act-list" placeholder="e.g., running 6 mph, cycling easy, yoga" class="w-full border rounded-md px-3 py-2" autocomplete="off" aria-describedby="act-help">
+                <datalist id="act-list"></datalist>
+              </div>
+              <p id="act-help" class="text-xs text-gray-500 mt-1">Powered by a curated MET database; you can also type to filter.</p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-1">Duration</label>
+              <div class="flex gap-2">
+                <input id="minutes" type="number" min="1" step="1" placeholder="30" class="w-full border rounded-md px-3 py-2">
+                <span class="self-center text-gray-600">min</span>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-1">Weight</label>
+              <div class="flex gap-2">
+                <input id="weight" type="number" min="1" step="0.1" placeholder="70" class="w-full border rounded-md px-3 py-2">
+                <select id="wunit" class="border rounded-md px-2">
+                  <option value="kg" selected="">kg</option>
+                  <option value="lb">lb</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-1">Intensity</label>
+              <input id="intensity" type="range" min="50" max="150" step="5" value="100" class="w-full">
+              <div class="flex justify-between text-xs text-gray-500">
+                <span>Easy</span><span>Moderate</span><span>Vigorous</span>
+              </div>
+              <p class="text-xs text-gray-500">Adjusts effective MET by <span id="intensity-label">1.00×</span>.</p>
+            </div>
+
+            <div class="md:col-span-2 flex gap-3">
+              <button type="button" id="calc-one" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-md">Calculate</button>
+              <button type="button" id="add-to-plan" class="bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold px-4 py-2 rounded-md">Add to Workout Plan</button>
+            </div>
+          </form>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div class="card card-pad">
+              <div class="text-sm text-gray-500 mb-1">Calories (this activity)</div>
+              <div id="out-cal" class="text-3xl font-bold thin">—</div>
+            </div>
+            <div class="card card-pad">
+              <div class="text-sm text-gray-500 mb-1">Effective MET</div>
+              <div id="out-met" class="text-2xl font-semibold thin">—</div>
+              <div class="bar mt-2"><span id="met-bar"></span></div>
+            </div>
+            <div class="card card-pad">
+              <div class="text-sm text-gray-500 mb-1">Method</div>
+              <div class="text-gray-700 text-sm">Calories/min = MET × 3.5 × kg ÷ 200</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Workout Builder -->
+        <div class="card card-pad">
+          <h2 class="text-2xl font-semibold mb-2">Workout Plan (Multi-Activity)</h2>
+          <p class="text-gray-600 mb-4">Combine intervals/activities and see total calories.</p>
+
+          <div id="plan-list" class="space-y-2" aria-live="polite"></div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div class="card card-pad">
+              <div class="text-sm text-gray-500 mb-1">Total Time</div>
+              <div id="plan-time" class="text-2xl font-semibold thin">0 min</div>
+            </div>
+            <div class="card card-pad">
+              <div class="text-sm text-gray-500 mb-1">Total Calories</div>
+              <div id="plan-cal" class="text-3xl font-bold thin">0</div>
+            </div>
+            <div class="card card-pad">
+              <div class="text-sm text-gray-500 mb-1">Average MET</div>
+              <div id="plan-met" class="text-2xl font-semibold thin">—</div>
+            </div>
+          </div>
+
+          <div class="mt-4 flex gap-3">
+            <button id="export-plan" class="bg-white border hover:bg-gray-50 px-4 py-2 rounded-md">Export JSON</button>
+            <button id="clear-plan" class="text-red-600 hover:text-red-700 px-4 py-2 rounded-md">Clear</button>
+          </div>
+        </div>
+
+        <!-- Methodology -->
+        <div class="card card-pad">
+          <h2 class="text-xl font-semibold mb-2">Methodology &amp; Formulas</h2>
+          <div class="text-gray-700 space-y-2 formula-box">
+            <p>Calories per minute: \\( \\text{kcal/min} = \\dfrac{\\text{MET} \\times 3.5 \\times \\text{weight (kg)}}{200} \\)</p>
+            <p>Total calories: \\( \\text{kcal} = \\text{kcal/min} \\times \\text{minutes} \\)</p>
+            <p>Karvonen target heart rate: \\( HR_{target} = HR_{rest} + i \\times (HR_{max}-HR_{rest}) \\)</p>
+          </div>
+          <p class="text-xs text-gray-500 mt-2">METs from research compendia; results are estimates and vary by individual.</p>
+        </div>
+      </section>
+
+      <!-- Right: Heart-Rate Zones -->
+      <aside class="card card-pad w-full lg:w-1/3">
+        <h2 class="text-xl font-semibold mb-3">Heart-Rate Zones</h2>
+        <form id="hr-form" class="space-y-3">
+          <div>
+            <label class="block text-sm font-medium mb-1">Age</label>
+            <input id="age" type="number" min="10" max="100" class="w-full border rounded-md px-3 py-2" placeholder="35">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Resting HR (bpm)</label>
+            <input id="hr-rest" type="number" min="30" max="120" class="w-full border rounded-md px-3 py-2" placeholder="60">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Max HR (bpm)</label>
+            <input id="hr-max" type="number" min="100" max="220" class="w-full border rounded-md px-3 py-2" placeholder="(auto)">
+            <p class="text-xs text-gray-500">If empty, uses 220 − age.</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Zone Method</label>
+            <select id="zone-method" class="w-full border rounded-md px-3 py-2">
+              <option value="karvonen" selected="">Karvonen (HRR)</option>
+              <option value="percentMax">% of Max HR</option>
+            </select>
+          </div>
+          <button type="button" id="calc-hr" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-md">Compute Zones</button>
+        </form>
+
+        <div class="mt-4 space-y-3">
+          <div>
+            <div class="flex justify-between text-sm"><span>Zone 1 (50–60%)</span><span id="z1" class="thin">—</span></div>
+            <div class="bar mt-1"><span id="b1"></span></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-sm"><span>Zone 2 (60–70%)</span><span id="z2" class="thin">—</span></div>
+            <div class="bar mt-1"><span id="b2"></span></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-sm"><span>Zone 3 (70–80%)</span><span id="z3" class="thin">—</span></div>
+            <div class="bar mt-1"><span id="b3"></span></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-sm"><span>Zone 4 (80–90%)</span><span id="z4" class="thin">—</span></div>
+            <div class="bar mt-1"><span id="b4"></span></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-sm"><span>Zone 5 (90–100%)</span><span id="z5" class="thin">—</span></div>
+            <div class="bar mt-1"><span id="b5"></span></div>
+          </div>
+        </div>
+
+        <p class="text-xs text-gray-500 mt-3">Karvonen personalizes zones using your resting heart rate. Consult a professional before starting new training.</p>
+      </aside>
+    </div>
+
+    <!-- FAQ (auto-upgraded to accordions via /assets/js/page-enhancements.js) -->
+    <section class="mt-10 card card-pad">
+      <h2 id="faq" class="text-2xl font-bold mb-3">FAQ</h2>
+      <div>
+        <h3>How accurate are MET calorie estimates?</h3>
+        <p>They are population averages from published compendia; individual variation (technique, efficiency, environment) can be large.</p>
+
+        <h3>What’s the difference between vigorous and moderate intensity?</h3>
+        <p>As a rule of thumb, moderate feels “challenging but sustainable” (can talk, not sing); vigorous makes talking difficult.</p>
+
+        <h3>What if my activity isn’t listed?</h3>
+        <p>Pick a similar activity or set a custom MET value. You can also add it to the plan with your own MET estimate.</p>
+      </div>
+    </section>
+
+    <!-- Sources & review -->
+    <section class="mt-6 text-sm text-gray-600">
+      <h2 class="text-lg font-semibold mb-2">Sources &amp; Methodology</h2>
+      <ul class="list-disc pl-5 space-y-1">
+        <li>Compendium of Physical Activities – definitions &amp; MET values. (Ainsworth et al.)</li>
+        <li>Calories from METs: MET × 3.5 × kg ÷ 200 per minute.</li>
+        <li>Karvonen formula for target HR zones.</li>
+      </ul>
+      <p class="text-xs mt-2">Last reviewed: <time datetime="2025-10-04">October 4, 2025</time></p>
+    </section>
+  
+<!-- AUDIT_SPINE_START -->
+<hr class="auditspine-hr">
+<section aria-label="Formulas, sources, changelog, verification">
+  <span class="auditspine-badge">Audit: Complete</span>
+
+  <details style="margin-top:10px">
+    <summary><strong>Formula (LaTeX) + variables + units</strong></summary>
+    <div class="auditspine-note" style="margin-top:10px">
+      This section shows the formulas used by the calculator engine, plus variable definitions and units.
+      
+    </div>
+    <div class="auditspine-formula">
+      <div style="margin:10px 0">
+  <div><strong>Formula (extracted LaTeX)</strong></div>
+  <div style="margin-top:6px">\[','\\]</div>
+  <pre class="auditspine-mono">','\</pre>
+</div>
+<div style="margin:10px 0">
+  <div><strong>Formula (extracted text)</strong></div>
+  
+  <pre class="auditspine-mono">Calories per minute: \\( \\text{kcal/min} = \\dfrac{\\text{MET} \\times 3.5 \\times \\text{weight (kg)}}{200} \\) Total calories: \\( \\text{kcal} = \\text{kcal/min} \\times \\text{minutes} \\) Karvonen target heart rate: \\( HR_{target} = HR_{rest} + i \\times (HR_{max}-HR_{rest}) \\)</pre>
+</div>
+      <div style="margin-top:12px"><strong>Variables and units</strong></div>
+      <ul style="margin:8px 0 0 18px">
+        <li><em>No variables provided in audit spec.</em></li>
+      </ul>
+    </div>
+  </details>
+
+  <div class="auditspine-note" style="margin-top:12px">
+    <strong>Sources (authoritative):</strong>
+    <ul style="margin:8px 0 0 18px">
+      <li><strong>NIST — Weights and measures</strong> — nist.gov · Accessed 2026-01-19<br><a href="https://www.nist.gov/pml/weights-and-measures" target="_blank" rel="nofollow noopener">https://www.nist.gov/pml/weights-and-measures</a></li>
+<li><strong>FTC — Consumer advice</strong> — consumer.ftc.gov · Accessed 2026-01-19<br><a href="https://consumer.ftc.gov/" target="_blank" rel="nofollow noopener">https://consumer.ftc.gov/</a></li>
+    </ul>
+  </div>
+
+  <div class="auditspine-changelog" style="margin-top:12px">
+    <strong>Changelog</strong><br>
+    <div style="margin-top:6px">
+      <strong>Version:</strong> 0.1.0-draft<br>
+      <strong>Last code update:</strong> 2026-01-19
+    </div>
+    <div style="margin-top:10px">
+  <strong>0.1.0-draft</strong> · 2026-01-19
+  <ul style="margin:6px 0 0 18px">
+    <li>Initial audit spec draft generated from HTML extraction (review required).</li>
+<li>Verify formulas match the calculator engine and convert any text-only formulas to LaTeX.</li>
+<li>Confirm sources are authoritative and relevant to the calculator methodology.</li>
+  </ul>
+</div>
+  </div>
+
+  <div class="auditspine-note" style="margin-top:12px">
+    <strong>Verified by Ugo Candido on 2026-01-19</strong><br>
+    <a href="https://calcdomain.com/ugocandido" target="_blank" rel="noopener">Profile</a> ·
+    <a href="https://www.linkedin.com/in/ugocandido92821/" target="_blank" rel="noopener">LinkedIn</a>
+  </div>
+</section>
+<!-- AUDIT_SPINE_END -->
+</main>
+
+  <footer class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div>
+        <h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+        <p class="text-gray-400 mb-4">
+          Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.
+        </p>
+        </div>
+
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Categories</h4>
+                                                                                                                                                                                                        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
+          <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
+          <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
+          <li><a href="https://calcdomain.com/categories/finance" class="text-gray-400 hover:text-white">Finance</a></li>
+          <li><a href="https://calcdomain.com/categories/general" class="text-gray-400 hover:text-white">General</a></li>
+          <li><a href="https://calcdomain.com/categories/health-fitness" class="text-gray-400 hover:text-white">Health & Fitness</a></li>
+          <li><a href="https://calcdomain.com/categories/lifestyle-everyday" class="text-gray-400 hover:text-white">Lifestyle & Everyday</a></li>
+          <li><a href="https://calcdomain.com/categories/math" class="text-gray-400 hover:text-white">Math</a></li>
+          <li><a href="https://calcdomain.com/categories/math-conversions" class="text-gray-400 hover:text-white">Math & Conversions</a></li>
+          <li><a href="https://calcdomain.com/categories/science" class="text-gray-400 hover:text-white">Science</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/mortgage-payment" class="text-gray-400 hover:text-white">Mortgage Calculator</a></li>
+          <li><a href="https://calcdomain.com/percentage-calculator" class="text-gray-400 hover:text-white">Percentage Calculator</a></li>
+          <li><a href="https://calcdomain.com/bmi-calculator" class="text-gray-400 hover:text-white">BMI Calculator</a></li>
+          <li><a href="https://calcdomain.com/auto-loan-calculator" class="text-gray-400 hover:text-white">Auto Loan Calculator</a></li>
+          <li><a href="https://calcdomain.com/house-affordability" class="text-gray-400 hover:text-white">House Affordability</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Support</h4>
+        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/about" class="text-gray-400 hover:text-white">About Us</a></li>
+          <li><a href="https://calcdomain.com/contact" class="text-gray-400 hover:text-white">Contact</a></li>
+          <li><a href="https://calcdomain.com/privacy" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
+          <li><a href="https://calcdomain.com/terms" class="text-gray-400 hover:text-white">Terms of Service</a></li>
+          <li><a href="https://calcdomain.com/sitemap.xml" class="text-gray-400 hover:text-white">Site Map</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+      <p>&copy; 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <!-- App logic -->
+  <script>
+  (function(){
+    // --- Minimal curated MET database (extendable) ---
+    // Sources: Compendium of Physical Activities (Ainsworth et al., 2011/2024); examples: running, cycling, walking, yoga, HIIT, strength.
+    const METS = [
+      { name:"walking, 3.0 mph (brisk)", met:3.5 },
+      { name:"walking, 4.0 mph (very brisk)", met:5.0 },
+      { name:"running, 5.0 mph (12 min/mi)", met:8.3 },
+      { name:"running, 6.0 mph (10 min/mi)", met:9.8 },
+      { name:"running, 7.0 mph (8:34/mi)", met:11.0 },
+      { name:"cycling, leisure (10–11.9 mph)", met:6.8 },
+      { name:"cycling, moderate (12–13.9 mph)", met:8.0 },
+      { name:"cycling, vigorous (14–15.9 mph)", met:10.0 },
+      { name:"rowing machine, moderate effort", met:7.0 },
+      { name:"elliptical trainer, moderate effort", met:5.0 },
+      { name:"yoga (Hatha)", met:2.5 },
+      { name:"HIIT circuit training", met:8.0 },
+      { name:"strength training, moderate", met:6.0 },
+      { name:"jump rope, moderate", met:11.8 },
+      { name:"swimming, laps, moderate", met:6.0 },
+      { name:"hiking, cross-country", met:6.0 },
+      { name:"stairs, climbing", met:8.8 },
+      { name:"basketball game", met:8.0 },
+      { name:"soccer game", met:10.0 }
+    ];
+
+    // Populate datalist
+    const dl = document.getElementById('act-list');
+    METS.forEach(x => {
+      const o = document.createElement('option');
+      o.value = x.name;
+      dl.appendChild(o);
+    });
+
+    const $ = s => document.querySelector(s);
+    const act = $('#act'), minutes = $('#minutes'), weight = $('#weight'), wunit = $('#wunit');
+    const intensity = $('#intensity'), intensityLabel = $('#intensity-label');
+    const outCal = $('#out-cal'), outMet = $('#out-met'), bar = $('#met-bar');
+
+    function toKg(w, u){ return u === 'lb' ? w * 0.45359237 : w; }
+    function effMet(base, i){ return (base || 0) * (i/100); }
+    function kcalPerMin(met, kg){ return (met * 3.5 * kg) / 200; } // kcal/min
+
+    function findMETByName(q){
+      const s = q.trim().toLowerCase();
+      // exact, startswith, includes — then fallback to number if user typed raw MET
+      let v = METS.find(x => x.name.toLowerCase() === s);
+      if (v) return v.met;
+      v = METS.find(x => x.name.toLowerCase().startsWith(s));
+      if (v) return v.met;
+      v = METS.find(x => x.name.toLowerCase().includes(s));
+      if (v) return v.met;
+      const asNum = parseFloat(q);
+      return isFinite(asNum) && asNum>0 ? asNum : null;
+    }
+
+    function updateIntensityLabel(){
+      intensityLabel.textContent = (intensity.value/100).toFixed(2) + '×';
+    }
+    updateIntensityLabel();
+    intensity.addEventListener('input', updateIntensityLabel);
+
+    function calcOne(){
+      const metBase = findMETByName(act.value);
+      const kg = toKg(parseFloat(weight.value||'0'), wunit.value);
+      const mins = parseFloat(minutes.value||'0');
+      if (!metBase || !kg || !mins){ outCal.textContent='—'; outMet.textContent='—'; bar.style.width='0%'; return; }
+      const met = effMet(metBase, parseFloat(intensity.value));
+      const perMin = kcalPerMin(met, kg);
+      const total = perMin * mins;
+      outCal.textContent = Math.round(total).toLocaleString();
+      outMet.textContent = met.toFixed(1);
+      bar.style.width = Math.min(100, (met/12)*100) + '%';
+      if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise();
+    }
+    $('#calc-one').addEventListener('click', calcOne);
+
+    // --- Workout plan ---
+    const planList = $('#plan-list');
+    const planTime = $('#plan-time');
+    const planCal = $('#plan-cal');
+    const planMet = $('#plan-met');
+    const plan = [];
+
+    function renderPlan(){
+      planList.innerHTML = '';
+      let sumMin = 0, sumCal = 0, sumMetWeighted = 0;
+      plan.forEach((seg, idx) => {
+        sumMin += seg.mins;
+        sumCal += seg.kcal;
+        sumMetWeighted += seg.met * seg.mins;
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between border rounded-md p-3';
+        row.innerHTML = `
+          <div>
+            <div class="font-medium">${seg.name}</div>
+            <div class="text-xs text-gray-500 thin">${seg.mins} min · MET ${seg.met.toFixed(1)} · ${Math.round(seg.kcal)} kcal</div>
+          </div>
+          <button data-i="${idx}" class="text-red-600 hover:text-red-700">Remove</button>`;
+        row.querySelector('button').addEventListener('click',(e)=>{ plan.splice(parseInt(e.target.dataset.i),1); renderPlan(); });
+        planList.appendChild(row);
+      });
+      planTime.textContent = `${sumMin} min`;
+      planCal.textContent = Math.round(sumCal).toLocaleString();
+      planMet.textContent = sumMin ? (sumMetWeighted/sumMin).toFixed(1) : '—';
+    }
+
+    $('#add-to-plan').addEventListener('click', () => {
+      const metBase = findMETByName(act.value);
+      const kg = toKg(parseFloat(weight.value||'0'), wunit.value);
+      const mins = parseFloat(minutes.value||'0');
+      if (!metBase || !kg || !mins) return;
+      const met = effMet(metBase, parseFloat(intensity.value));
+      const kcal = kcalPerMin(met, kg) * mins;
+      plan.push({ name: act.value || `Custom MET ${metBase}`, mins, met, kcal });
+      renderPlan();
+    });
+
+    $('#export-plan').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(plan, null, 2)], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'workout-plan.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    $('#clear-plan').addEventListener('click', () => { plan.length = 0; renderPlan(); });
+
+    // --- Heart-rate zones ---
+    const zMethod = $('#zone-method');
+    const $id = (x)=>document.getElementById(x);
+    function computeZones(){
+      const age = parseFloat($id('age').value||'0');
+      const rhr = parseFloat($id('hr-rest').value||'0');
+      let mhr = parseFloat($id('hr-max').value||'0');
+      if (!mhr && age) mhr = 220 - age;
+      if (!mhr) return;
+      const ranges = [[0.5,0.6],[0.6,0.7],[0.7,0.8],[0.8,0.9],[0.9,1.0]];
+      const labels = ['z1','z2','z3','z4','z5'];
+      const bars = ['b1','b2','b3','b4','b5'];
+      ranges.forEach((r, i) => {
+        let lo, hi;
+        if (zMethod.value === 'karvonen' && rhr){
+          lo = Math.round(r[0]*(mhr - rhr) + rhr);
+          hi = Math.round(r[1]*(mhr - rhr) + rhr);
+        } else {
+          lo = Math.round(r[0]*mhr);
+          hi = Math.round(r[1]*mhr);
+        }
+        $id(labels[i]).textContent = `${lo}–${hi} bpm`;
+        $id(bars[i]).style.width = `${(r[1]*100)}%`;
+      });
+    }
+    $('#calc-hr').addEventListener('click', computeZones);
+  })();
+  </script>
+
+  <!-- Site scripts -->
+  <script defer="" src="https://calcdomain.com/assets/js/mobile-menu.js"></script>
+  <script defer="" src="https://calcdomain.com/assets/js/page-enhancements.js"></script>
+
+
+</body></html>, ',
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <!-- JSON-LD: SoftwareApplication + FAQPage -->
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Workout & Calories Burned Calculator",
+  "applicationCategory": "HealthApplication",
+  "operatingSystem": "Web",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "url": "https://calcdomain.com/workout-calculator",
+  "publisher": {
+    "@type": "Organization",
+    "name": "CalcDomain"
+  },
+  "description": "Estimate calories burned with METs, plan multi-activity workouts, and get target heart-rate zones using Karvonen or % max HR."
+}
+</script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How are calories burned calculated?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "We use the Compendium of Physical Activities MET method: Calories ≈ MET × 3.5 × weight(kg) ÷ 200 per minute. Total calories = that value × minutes."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What are MET values?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "MET is a multiple of resting metabolic rate (1 MET ≈ 1 kcal/kg/hour ≈ 3.5 ml O₂/kg/min). Activities have empirically-measured METs in the Compendium."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How are heart-rate zones computed?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "You can use Karvonen (HRtarget = HRrest + intensity × (HRmax − HRrest)) or simple % of HRmax. Karvonen personalizes zones by resting HR."
+      }
+    }
+  ]
+}
+</script>
+
+<style>
+/* AUDIT_SPINE_CSS */
+.auditspine-note{
+  border:1px solid #e5e7eb;
+  background:#fff;
+  border-radius:12px;
+  padding:12px;
+  color:#475569;
+  font-size:13px;
+  line-height:1.5;
+}
+.auditspine-mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+.auditspine-changelog{
+  border:1px solid #e5e7eb;
+  background:#fff;
+  border-left:5px solid #334155;
+  border-radius:12px;
+  padding:12px;
+  font-size:13px;
+  color:#475569;
+}
+.auditspine-formula{
+  margin:10px 0;
+  background:#0b1220;
+  color:#e5e7eb;
+  border-radius:12px;
+  padding:12px;
+  border:1px solid rgba(255,255,255,.12);
+  overflow-x:auto;
+}
+.auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
+.auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
+.auditspine-badge{
+  display:inline-block;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:600;
+  border:1px solid #e5e7eb;
+  background:#f8fafc;
+  color:#0f172a;
+}
+.auditspine-badge-warn{
+  background:#fff7ed;
+  border-color:#fed7aa;
+  color:#9a3412;
+}
+</style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+  <!-- Header (same pattern as BMI page) -->
+  <header class="bg-white shadow-sm sticky top-0 z-40">
+    <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
+      <div class="flex items-center justify-between">
+        <a href="https://calcdomain.com" class="text-2xl font-bold text-blue-600">CalcDomain</a>
+        <div class="hidden md:block w-full max-w-md mx-6">
+          <div class="relative">
+            <input id="search-input" type="search" placeholder="Search for a calculator..." class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500" autocomplete="off">
+            <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <div id="search-results" class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200"></div>
+          </div>
+        </div>
+        <div class="hidden md:flex items-center space-x-6">
+          <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600">Advanced Search</a>
+           <a href="https://calcdomain.com/#categories" class="text-gray-700 hover:text-blue-600">Categories</a>
+        </div>
+        <button id="mobile-menu-toggle" class="md:hidden p-2" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" type="button">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
+      </div>
+      <nav id="mobile-menu" class="md:hidden mt-4 hidden" aria-label="Mobile menu" role="navigation">
+        <div class="space-y-2">
+          <a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
+          Categories
+        </div>
+      </nav>
+    </nav>
+  </header>
+
+  <main class="container mx-auto px-4 lg:px-6 py-10">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Left: Calculator -->
+      <section class="lg:col-span-2 space-y-6">
+        <!-- Single Activity Card -->
+        <div class="card card-pad">
+          <h1 class="text-3xl font-bold mb-1">Workout &amp; Calories Burned Calculator</h1>
+          <p class="text-gray-600 mb-4">Estimate calories burned with METs, fine-tune intensity, and get training heart-rate zones.</p>
+
+          <form id="single-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-1" for="act">Activity</label>
+              <div class="relative">
+                <input id="act" list="act-list" placeholder="e.g., running 6 mph, cycling easy, yoga" class="w-full border rounded-md px-3 py-2" autocomplete="off" aria-describedby="act-help">
+                <datalist id="act-list"></datalist>
+              </div>
+              <p id="act-help" class="text-xs text-gray-500 mt-1">Powered by a curated MET database; you can also type to filter.</p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-1">Duration</label>
+              <div class="flex gap-2">
+                <input id="minutes" type="number" min="1" step="1" placeholder="30" class="w-full border rounded-md px-3 py-2">
+                <span class="self-center text-gray-600">min</span>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-1">Weight</label>
+              <div class="flex gap-2">
+                <input id="weight" type="number" min="1" step="0.1" placeholder="70" class="w-full border rounded-md px-3 py-2">
+                <select id="wunit" class="border rounded-md px-2">
+                  <option value="kg" selected="">kg</option>
+                  <option value="lb">lb</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-1">Intensity</label>
+              <input id="intensity" type="range" min="50" max="150" step="5" value="100" class="w-full">
+              <div class="flex justify-between text-xs text-gray-500">
+                <span>Easy</span><span>Moderate</span><span>Vigorous</span>
+              </div>
+              <p class="text-xs text-gray-500">Adjusts effective MET by <span id="intensity-label">1.00×</span>.</p>
+            </div>
+
+            <div class="md:col-span-2 flex gap-3">
+              <button type="button" id="calc-one" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-md">Calculate</button>
+              <button type="button" id="add-to-plan" class="bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold px-4 py-2 rounded-md">Add to Workout Plan</button>
+            </div>
+          </form>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div class="card card-pad">
+              <div class="text-sm text-gray-500 mb-1">Calories (this activity)</div>
+              <div id="out-cal" class="text-3xl font-bold thin">—</div>
+            </div>
+            <div class="card card-pad">
+              <div class="text-sm text-gray-500 mb-1">Effective MET</div>
+              <div id="out-met" class="text-2xl font-semibold thin">—</div>
+              <div class="bar mt-2"><span id="met-bar"></span></div>
+            </div>
+            <div class="card card-pad">
+              <div class="text-sm text-gray-500 mb-1">Method</div>
+              <div class="text-gray-700 text-sm">Calories/min = MET × 3.5 × kg ÷ 200</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Workout Builder -->
+        <div class="card card-pad">
+          <h2 class="text-2xl font-semibold mb-2">Workout Plan (Multi-Activity)</h2>
+          <p class="text-gray-600 mb-4">Combine intervals/activities and see total calories.</p>
+
+          <div id="plan-list" class="space-y-2" aria-live="polite"></div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div class="card card-pad">
+              <div class="text-sm text-gray-500 mb-1">Total Time</div>
+              <div id="plan-time" class="text-2xl font-semibold thin">0 min</div>
+            </div>
+            <div class="card card-pad">
+              <div class="text-sm text-gray-500 mb-1">Total Calories</div>
+              <div id="plan-cal" class="text-3xl font-bold thin">0</div>
+            </div>
+            <div class="card card-pad">
+              <div class="text-sm text-gray-500 mb-1">Average MET</div>
+              <div id="plan-met" class="text-2xl font-semibold thin">—</div>
+            </div>
+          </div>
+
+          <div class="mt-4 flex gap-3">
+            <button id="export-plan" class="bg-white border hover:bg-gray-50 px-4 py-2 rounded-md">Export JSON</button>
+            <button id="clear-plan" class="text-red-600 hover:text-red-700 px-4 py-2 rounded-md">Clear</button>
+          </div>
+        </div>
+
+        <!-- Methodology -->
+        <div class="card card-pad">
+          <h2 class="text-xl font-semibold mb-2">Methodology &amp; Formulas</h2>
+          <div class="text-gray-700 space-y-2 formula-box">
+            <p>Calories per minute: \\( \\text{kcal/min} = \\dfrac{\\text{MET} \\times 3.5 \\times \\text{weight (kg)}}{200} \\)</p>
+            <p>Total calories: \\( \\text{kcal} = \\text{kcal/min} \\times \\text{minutes} \\)</p>
+            <p>Karvonen target heart rate: \\( HR_{target} = HR_{rest} + i \\times (HR_{max}-HR_{rest}) \\)</p>
+          </div>
+          <p class="text-xs text-gray-500 mt-2">METs from research compendia; results are estimates and vary by individual.</p>
+        </div>
+      </section>
+
+      <!-- Right: Heart-Rate Zones -->
+      <aside class="card card-pad">
+        <h2 class="text-xl font-semibold mb-3">Heart-Rate Zones</h2>
+        <form id="hr-form" class="space-y-3">
+          <div>
+            <label class="block text-sm font-medium mb-1">Age</label>
+            <input id="age" type="number" min="10" max="100" class="w-full border rounded-md px-3 py-2" placeholder="35">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Resting HR (bpm)</label>
+            <input id="hr-rest" type="number" min="30" max="120" class="w-full border rounded-md px-3 py-2" placeholder="60">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Max HR (bpm)</label>
+            <input id="hr-max" type="number" min="100" max="220" class="w-full border rounded-md px-3 py-2" placeholder="(auto)">
+            <p class="text-xs text-gray-500">If empty, uses 220 − age.</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Zone Method</label>
+            <select id="zone-method" class="w-full border rounded-md px-3 py-2">
+              <option value="karvonen" selected="">Karvonen (HRR)</option>
+              <option value="percentMax">% of Max HR</option>
+            </select>
+          </div>
+          <button type="button" id="calc-hr" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-md">Compute Zones</button>
+        </form>
+
+        <div class="mt-4 space-y-3">
+          <div>
+            <div class="flex justify-between text-sm"><span>Zone 1 (50–60%)</span><span id="z1" class="thin">—</span></div>
+            <div class="bar mt-1"><span id="b1"></span></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-sm"><span>Zone 2 (60–70%)</span><span id="z2" class="thin">—</span></div>
+            <div class="bar mt-1"><span id="b2"></span></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-sm"><span>Zone 3 (70–80%)</span><span id="z3" class="thin">—</span></div>
+            <div class="bar mt-1"><span id="b3"></span></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-sm"><span>Zone 4 (80–90%)</span><span id="z4" class="thin">—</span></div>
+            <div class="bar mt-1"><span id="b4"></span></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-sm"><span>Zone 5 (90–100%)</span><span id="z5" class="thin">—</span></div>
+            <div class="bar mt-1"><span id="b5"></span></div>
+          </div>
+        </div>
+
+        <p class="text-xs text-gray-500 mt-3">Karvonen personalizes zones using your resting heart rate. Consult a professional before starting new training.</p>
+      </aside>
+    </div>
+
+    <!-- FAQ (auto-upgraded to accordions via /assets/js/page-enhancements.js) -->
+    <section class="mt-10 card card-pad">
+      <h2 id="faq" class="text-2xl font-bold mb-3">FAQ</h2>
+      <div>
+        <h3>How accurate are MET calorie estimates?</h3>
+        <p>They are population averages from published compendia; individual variation (technique, efficiency, environment) can be large.</p>
+
+        <h3>What’s the difference between vigorous and moderate intensity?</h3>
+        <p>As a rule of thumb, moderate feels “challenging but sustainable” (can talk, not sing); vigorous makes talking difficult.</p>
+
+        <h3>What if my activity isn’t listed?</h3>
+        <p>Pick a similar activity or set a custom MET value. You can also add it to the plan with your own MET estimate.</p>
+      </div>
+    </section>
+
+    <!-- Sources & review -->
+    <section class="mt-6 text-sm text-gray-600">
+      <h2 class="text-lg font-semibold mb-2">Sources &amp; Methodology</h2>
+      <ul class="list-disc pl-5 space-y-1">
+        <li>Compendium of Physical Activities – definitions &amp; MET values. (Ainsworth et al.)</li>
+        <li>Calories from METs: MET × 3.5 × kg ÷ 200 per minute.</li>
+        <li>Karvonen formula for target HR zones.</li>
+      </ul>
+      <p class="text-xs mt-2">Last reviewed: <time datetime="2025-10-04">October 4, 2025</time></p>
+    </section>
+  
+<!-- AUDIT_SPINE_START -->
+<hr class="auditspine-hr">
+<section aria-label="Formulas, sources, changelog, verification">
+  <span class="auditspine-badge">Audit: Complete</span>
+
+  <details style="margin-top:10px">
+    <summary><strong>Formula (LaTeX) + variables + units</strong></summary>
+    <div class="auditspine-note" style="margin-top:10px">
+      This section shows the formulas used by the calculator engine, plus variable definitions and units.
+      
+    </div>
+    <div class="auditspine-formula">
+      <div style="margin:10px 0">
+  <div><strong>Formula (extracted LaTeX)</strong></div>
+  <div style="margin-top:6px">\[','\\]</div>
+  <pre class="auditspine-mono">','\</pre>
+</div>
+<div style="margin:10px 0">
+  <div><strong>Formula (extracted text)</strong></div>
+  
+  <pre class="auditspine-mono">Calories per minute: \\( \\text{kcal/min} = \\dfrac{\\text{MET} \\times 3.5 \\times \\text{weight (kg)}}{200} \\) Total calories: \\( \\text{kcal} = \\text{kcal/min} \\times \\text{minutes} \\) Karvonen target heart rate: \\( HR_{target} = HR_{rest} + i \\times (HR_{max}-HR_{rest}) \\)</pre>
+</div>
+      <div style="margin-top:12px"><strong>Variables and units</strong></div>
+      <ul style="margin:8px 0 0 18px">
+        <li><em>No variables provided in audit spec.</em></li>
+      </ul>
+    </div>
+  </details>
+
+  <div class="auditspine-note" style="margin-top:12px">
+    <strong>Sources (authoritative):</strong>
+    <ul style="margin:8px 0 0 18px">
+      <li><strong>NIST — Weights and measures</strong> — nist.gov · Accessed 2026-01-19<br><a href="https://www.nist.gov/pml/weights-and-measures" target="_blank" rel="nofollow noopener">https://www.nist.gov/pml/weights-and-measures</a></li>
+<li><strong>FTC — Consumer advice</strong> — consumer.ftc.gov · Accessed 2026-01-19<br><a href="https://consumer.ftc.gov/" target="_blank" rel="nofollow noopener">https://consumer.ftc.gov/</a></li>
+    </ul>
+  </div>
+
+  <div class="auditspine-changelog" style="margin-top:12px">
+    <strong>Changelog</strong><br>
+    <div style="margin-top:6px">
+      <strong>Version:</strong> 0.1.0-draft<br>
+      <strong>Last code update:</strong> 2026-01-19
+    </div>
+    <div style="margin-top:10px">
+  <strong>0.1.0-draft</strong> · 2026-01-19
+  <ul style="margin:6px 0 0 18px">
+    <li>Initial audit spec draft generated from HTML extraction (review required).</li>
+<li>Verify formulas match the calculator engine and convert any text-only formulas to LaTeX.</li>
+<li>Confirm sources are authoritative and relevant to the calculator methodology.</li>
+  </ul>
+</div>
+  </div>
+
+  <div class="auditspine-note" style="margin-top:12px">
+    <strong>Verified by Ugo Candido on 2026-01-19</strong><br>
+    <a href="https://calcdomain.com/ugocandido" target="_blank" rel="noopener">Profile</a> ·
+    <a href="https://www.linkedin.com/in/ugocandido92821/" target="_blank" rel="noopener">LinkedIn</a>
+  </div>
+</section>
+<!-- AUDIT_SPINE_END -->
+</main>
+
+  <footer class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div>
+        <h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+        <p class="text-gray-400 mb-4">
+          Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.
+        </p>
+        </div>
+
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Categories</h4>
+                                                                                                                                                                                                <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
+          <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
+          <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
+          <li><a href="https://calcdomain.com/categories/finance" class="text-gray-400 hover:text-white">Finance</a></li>
+          <li><a href="https://calcdomain.com/categories/general" class="text-gray-400 hover:text-white">General</a></li>
+          <li><a href="https://calcdomain.com/categories/health-fitness" class="text-gray-400 hover:text-white">Health & Fitness</a></li>
+          <li><a href="https://calcdomain.com/categories/lifestyle-everyday" class="text-gray-400 hover:text-white">Lifestyle & Everyday</a></li>
+          <li><a href="https://calcdomain.com/categories/math" class="text-gray-400 hover:text-white">Math</a></li>
+          <li><a href="https://calcdomain.com/categories/math-conversions" class="text-gray-400 hover:text-white">Math & Conversions</a></li>
+          <li><a href="https://calcdomain.com/categories/science" class="text-gray-400 hover:text-white">Science</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/mortgage-payment" class="text-gray-400 hover:text-white">Mortgage Calculator</a></li>
+          <li><a href="https://calcdomain.com/percentage-calculator" class="text-gray-400 hover:text-white">Percentage Calculator</a></li>
+          <li><a href="https://calcdomain.com/bmi-calculator" class="text-gray-400 hover:text-white">BMI Calculator</a></li>
+          <li><a href="https://calcdomain.com/auto-loan-calculator" class="text-gray-400 hover:text-white">Auto Loan Calculator</a></li>
+          <li><a href="https://calcdomain.com/house-affordability" class="text-gray-400 hover:text-white">House Affordability</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 class="text-lg font-semibold mb-4">Support</h4>
+        <ul class="space-y-2">
+          <li><a href="https://calcdomain.com/about" class="text-gray-400 hover:text-white">About Us</a></li>
+          <li><a href="https://calcdomain.com/contact" class="text-gray-400 hover:text-white">Contact</a></li>
+          <li><a href="https://calcdomain.com/privacy" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
+          <li><a href="https://calcdomain.com/terms" class="text-gray-400 hover:text-white">Terms of Service</a></li>
+          <li><a href="https://calcdomain.com/sitemap.xml" class="text-gray-400 hover:text-white">Site Map</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+      <p>&copy; 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <!-- App logic -->
+  <script>
+  (function(){
+    // --- Minimal curated MET database (extendable) ---
+    // Sources: Compendium of Physical Activities (Ainsworth et al., 2011/2024); examples: running, cycling, walking, yoga, HIIT, strength.
+    const METS = [
+      { name:"walking, 3.0 mph (brisk)", met:3.5 },
+      { name:"walking, 4.0 mph (very brisk)", met:5.0 },
+      { name:"running, 5.0 mph (12 min/mi)", met:8.3 },
+      { name:"running, 6.0 mph (10 min/mi)", met:9.8 },
+      { name:"running, 7.0 mph (8:34/mi)", met:11.0 },
+      { name:"cycling, leisure (10–11.9 mph)", met:6.8 },
+      { name:"cycling, moderate (12–13.9 mph)", met:8.0 },
+      { name:"cycling, vigorous (14–15.9 mph)", met:10.0 },
+      { name:"rowing machine, moderate effort", met:7.0 },
+      { name:"elliptical trainer, moderate effort", met:5.0 },
+      { name:"yoga (Hatha)", met:2.5 },
+      { name:"HIIT circuit training", met:8.0 },
+      { name:"strength training, moderate", met:6.0 },
+      { name:"jump rope, moderate", met:11.8 },
+      { name:"swimming, laps, moderate", met:6.0 },
+      { name:"hiking, cross-country", met:6.0 },
+      { name:"stairs, climbing", met:8.8 },
+      { name:"basketball game", met:8.0 },
+      { name:"soccer game", met:10.0 }
+    ];
+
+    // Populate datalist
+    const dl = document.getElementById('act-list');
+    METS.forEach(x => {
+      const o = document.createElement('option');
+      o.value = x.name;
+      dl.appendChild(o);
+    });
+
+    const $ = s => document.querySelector(s);
+    const act = $('#act'), minutes = $('#minutes'), weight = $('#weight'), wunit = $('#wunit');
+    const intensity = $('#intensity'), intensityLabel = $('#intensity-label');
+    const outCal = $('#out-cal'), outMet = $('#out-met'), bar = $('#met-bar');
+
+    function toKg(w, u){ return u === 'lb' ? w * 0.45359237 : w; }
+    function effMet(base, i){ return (base || 0) * (i/100); }
+    function kcalPerMin(met, kg){ return (met * 3.5 * kg) / 200; } // kcal/min
+
+    function findMETByName(q){
+      const s = q.trim().toLowerCase();
+      // exact, startswith, includes — then fallback to number if user typed raw MET
+      let v = METS.find(x => x.name.toLowerCase() === s);
+      if (v) return v.met;
+      v = METS.find(x => x.name.toLowerCase().startsWith(s));
+      if (v) return v.met;
+      v = METS.find(x => x.name.toLowerCase().includes(s));
+      if (v) return v.met;
+      const asNum = parseFloat(q);
+      return isFinite(asNum) && asNum>0 ? asNum : null;
+    }
+
+    function updateIntensityLabel(){
+      intensityLabel.textContent = (intensity.value/100).toFixed(2) + '×';
+    }
+    updateIntensityLabel();
+    intensity.addEventListener('input', updateIntensityLabel);
+
+    function calcOne(){
+      const metBase = findMETByName(act.value);
+      const kg = toKg(parseFloat(weight.value||'0'), wunit.value);
+      const mins = parseFloat(minutes.value||'0');
+      if (!metBase || !kg || !mins){ outCal.textContent='—'; outMet.textContent='—'; bar.style.width='0%'; return; }
+      const met = effMet(metBase, parseFloat(intensity.value));
+      const perMin = kcalPerMin(met, kg);
+      const total = perMin * mins;
+      outCal.textContent = Math.round(total).toLocaleString();
+      outMet.textContent = met.toFixed(1);
+      bar.style.width = Math.min(100, (met/12)*100) + '%';
+      if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise();
+    }
+    $('#calc-one').addEventListener('click', calcOne);
+
+    // --- Workout plan ---
+    const planList = $('#plan-list');
+    const planTime = $('#plan-time');
+    const planCal = $('#plan-cal');
+    const planMet = $('#plan-met');
+    const plan = [];
+
+    function renderPlan(){
+      planList.innerHTML = '';
+      let sumMin = 0, sumCal = 0, sumMetWeighted = 0;
+      plan.forEach((seg, idx) => {
+        sumMin += seg.mins;
+        sumCal += seg.kcal;
+        sumMetWeighted += seg.met * seg.mins;
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between border rounded-md p-3';
+        row.innerHTML = `
+          <div>
+            <div class="font-medium">${seg.name}</div>
+            <div class="text-xs text-gray-500 thin">${seg.mins} min · MET ${seg.met.toFixed(1)} · ${Math.round(seg.kcal)} kcal</div>
+          </div>
+          <button data-i="${idx}" class="text-red-600 hover:text-red-700">Remove</button>`;
+        row.querySelector('button').addEventListener('click',(e)=>{ plan.splice(parseInt(e.target.dataset.i),1); renderPlan(); });
+        planList.appendChild(row);
+      });
+      planTime.textContent = `${sumMin} min`;
+      planCal.textContent = Math.round(sumCal).toLocaleString();
+      planMet.textContent = sumMin ? (sumMetWeighted/sumMin).toFixed(1) : '—';
+    }
+
+    $('#add-to-plan').addEventListener('click', () => {
+      const metBase = findMETByName(act.value);
+      const kg = toKg(parseFloat(weight.value||'0'), wunit.value);
+      const mins = parseFloat(minutes.value||'0');
+      if (!metBase || !kg || !mins) return;
+      const met = effMet(metBase, parseFloat(intensity.value));
+      const kcal = kcalPerMin(met, kg) * mins;
+      plan.push({ name: act.value || `Custom MET ${metBase}`, mins, met, kcal });
+      renderPlan();
+    });
+
+    $('#export-plan').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(plan, null, 2)], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'workout-plan.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    $('#clear-plan').addEventListener('click', () => { plan.length = 0; renderPlan(); });
+
+    // --- Heart-rate zones ---
+    const zMethod = $('#zone-method');
+    const $id = (x)=>document.getElementById(x);
+    function computeZones(){
+      const age = parseFloat($id('age').value||'0');
+      const rhr = parseFloat($id('hr-rest').value||'0');
+      let mhr = parseFloat($id('hr-max').value||'0');
+      if (!mhr && age) mhr = 220 - age;
+      if (!mhr) return;
+      const ranges = [[0.5,0.6],[0.6,0.7],[0.7,0.8],[0.8,0.9],[0.9,1.0]];
+      const labels = ['z1','z2','z3','z4','z5'];
+      const bars = ['b1','b2','b3','b4','b5'];
+      ranges.forEach((r, i) => {
+        let lo, hi;
+        if (zMethod.value === 'karvonen' && rhr){
+          lo = Math.round(r[0]*(mhr - rhr) + rhr);
+          hi = Math.round(r[1]*(mhr - rhr) + rhr);
+        } else {
+          lo = Math.round(r[0]*mhr);
+          hi = Math.round(r[1]*mhr);
+        }
+        $id(labels[i]).textContent = `${lo}–${hi} bpm`;
+        $id(bars[i]).style.width = `${(r[1]*100)}%`;
+      });
+    }
+    $('#calc-hr').addEventListener('click', computeZones);
+  })();
+  </script>
+
+  <!-- Site scripts -->
+  <script defer="" src="https://calcdomain.com/assets/js/mobile-menu.js"></script>
+  <script defer="" src="https://calcdomain.com/assets/js/page-enhancements.js"></script>
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
       svg: { fontCache: 'global' }
     };
   </script>

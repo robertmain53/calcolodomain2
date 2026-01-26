@@ -49,10 +49,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -135,8 +131,6 @@
 <body class="bg-gray-50 text-gray-800">
 
     <!-- BODY_SCRIPTS_INIZIO -->
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
         <div class="flex justify-between items-center">
@@ -664,7 +658,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -731,14 +725,806 @@
 
 
 
+
     
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
     
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      // Mobile menu toggle
+      document.getElementById('mobile-menu-toggle')?.addEventListener('click', function () {
+        const menu = document.getElementById('mobile-menu');
+        if (!menu) return;
+        const isHidden = menu.classList.contains('hidden');
+        menu.classList.toggle('hidden', !isHidden);
+        this.setAttribute('aria-expanded', String(isHidden));
+      });
+
+      document.addEventListener('DOMContentLoaded', function () {
+        // Tabs handling
+        const tabs = document.querySelectorAll('[role="tab"]');
+        const panels = {
+          'tab-single': document.getElementById('panel-single'),
+          'tab-combined': document.getElementById('panel-combined'),
+          'tab-binomial': document.getElementById('panel-binomial')
+        };
+
+        function activateTab(tabId) {
+          tabs.forEach(tab => {
+            const active = tab.id === tabId;
+            tab.classList.toggle('tab-btn-active', active);
+            tab.setAttribute('aria-selected', active ? 'true' : 'false');
+          });
+          Object.keys(panels).forEach(id => {
+            if (!panels[id]) return;
+            if (id === tabId) {
+              panels[id].classList.remove('hidden');
+            } else {
+              panels[id].classList.add('hidden');
+            }
+          });
+        }
+
+        tabs.forEach(tab => {
+          tab.addEventListener('click', () => activateTab(tab.id));
+        });
+
+        // Utility functions
+        function gcd(a, b) {
+          let x = Math.abs(a);
+          let y = Math.abs(b);
+          while (y) {
+            const t = y;
+            y = x % y;
+            x = t;
+          }
+          return x || 1;
+        }
+
+        function formatProb(p) {
+          if (!isFinite(p)) return '—';
+          if (p < 0) p = 0;
+          if (p > 1) p = 1;
+          const dec = p.toFixed(6).replace(/0+$/,'').replace(/\.$/,'');
+          const perc = (p * 100).toFixed(4).replace(/0+$/,'').replace(/\.$/,'');
+          return dec + ' (' + perc + '%)';
+        }
+
+        function parseFractionOrNumber(str) {
+          const s = str.trim();
+          if (!s) return null;
+          if (s.includes('/')) {
+            const parts = s.split('/');
+            if (parts.length !== 2) return null;
+            const num = Number(parts[0]);
+            const den = Number(parts[1]);
+            if (!isFinite(num) || !isFinite(den) || den === 0) return null;
+            return num / den;
+          }
+          const val = Number(s);
+          if (!isFinite(val)) return null;
+          return val;
+        }
+
+        // ---- Single event probability ----
+        const singleFav = document.getElementById('single-favourable');
+        const singleTotal = document.getElementById('single-total');
+        const singleFraction = document.getElementById('single-fraction');
+        const singleDecimal = document.getElementById('single-decimal');
+        const singlePercent = document.getElementById('single-percent');
+        const singleError = document.getElementById('single-error');
+        const btnSingleCalc = document.getElementById('btn-single-calc');
+        const btnSingleClear = document.getElementById('btn-single-clear');
+
+        function calcSingle() {
+          if (!singleFav || !singleTotal || !singleFraction || !singleDecimal || !singlePercent || !singleError) return;
+          singleError.textContent = '';
+          singleFraction.querySelector('.result-value').textContent = '—';
+          singleDecimal.querySelector('.result-value').textContent = '—';
+          const spanP = singlePercent.querySelectorAll('.result-value');
+          if (spanP.length === 2) {
+            spanP[0].textContent = '—';
+            spanP[1].textContent = '—';
+          }
+
+          const fav = Number(singleFav.value);
+          const tot = Number(singleTotal.value);
+          if (!Number.isInteger(fav) || !Number.isInteger(tot) || tot <= 0 || fav < 0 || fav > tot) {
+            singleError.textContent = 'Check that 0 ≤ favourable ≤ total and total ≥ 1.';
+            return;
+          }
+          if (tot === 0) {
+            singleError.textContent = 'Total outcomes must be at least 1.';
+            return;
+          }
+
+          const g = gcd(fav, tot);
+          const numS = fav / g;
+          const denS = tot / g;
+          const p = fav / tot;
+          const decStr = p.toFixed(6).replace(/0+$/,'').replace(/\.$/,'');
+          const percStr = (p * 100).toFixed(4).replace(/0+$/,'').replace(/\.$/,'');
+          const comp = 1 - p;
+          const compStr = (comp * 100).toFixed(4).replace(/0+$/,'').replace(/\.$/,'');
+          const compDec = comp.toFixed(6).replace(/0+$/,'').replace(/\.$/,'');
+          
+          singleFraction.querySelector('.result-value').textContent = numS + ' / ' + denS;
+          singleDecimal.querySelector('.result-value').textContent = decStr;
+          if (spanP.length === 2) {
+            spanP[0].textContent = percStr + '% (P(A) = ' + decStr + ')';
+            spanP[1].textContent = compStr + '% (P(not A) = ' + compDec + ')';
+          }
+        }
+
+        if (btnSingleCalc) btnSingleCalc.addEventListener('click', calcSingle);
+        if (btnSingleClear) {
+          btnSingleClear.addEventListener('click', () => {
+            if (singleFav) singleFav.value = '';
+            if (singleTotal) singleTotal.value = '';
+            if (singleFraction) singleFraction.querySelector('.result-value').textContent = '—';
+            if (singleDecimal) singleDecimal.querySelector('.result-value').textContent = '—';
+            if (singlePercent) {
+              const spanP = singlePercent.querySelectorAll('.result-value');
+              spanP.forEach(sp => sp.textContent = '—');
+            }
+            if (singleError) singleError.textContent = '';
+          });
+        }
+
+        // ---- Combined events ----
+        const probAInput = document.getElementById('prob-a');
+        const probBInput = document.getElementById('prob-b');
+        const combinedAnd = document.getElementById('combined-and');
+        const combinedOr = document.getElementById('combined-or');
+        const combinedComplements = document.getElementById('combined-complements');
+        const combinedError = document.getElementById('combined-error');
+        const btnCombinedCalc = document.getElementById('btn-combined-calc');
+        const btnCombinedClear = document.getElementById('btn-combined-clear');
+
+        function parseProbabilityField(value) {
+          if (!value) return null;
+          const raw = value.trim();
+          if (!raw) return null;
+          const fracNum = parseFractionOrNumber(raw);
+          if (fracNum !== null) {
+            // If >1, assume percentage (e.g. 40 => 40%)
+            const p = fracNum > 1 ? fracNum / 100 : fracNum;
+            if (p < 0 || p > 1) return null;
+            return p;
+          }
+          return null;
+        }
+
+        function calcCombined() {
+          if (!probAInput || !probBInput || !combinedAnd || !combinedOr || !combinedComplements || !combinedError) return;
+          combinedError.textContent = '';
+          combinedAnd.querySelector('.result-value').textContent = '—';
+          combinedOr.querySelector('.result-value').textContent = '—';
+          const compSpan = combinedComplements.querySelectorAll('.result-value');
+          compSpan.forEach(sp => sp.textContent = '—');
+
+          const pA = parseProbabilityField(probAInput.value);
+          const pB = parseProbabilityField(probBInput.value);
+          if (pA === null || pB === null) {
+            combinedError.textContent = 'Enter valid probabilities for P(A) and P(B).';
+            return;
+          }
+
+          const relation = document.querySelector('input[name="relation"]:checked');
+          const relVal = relation ? relation.value : 'independent';
+
+          const pNotA = 1 - pA;
+          const pNotB = 1 - pB;
+          let pAnd, pOr;
+
+          if (relVal === 'exclusive') {
+            pAnd = 0;
+            pOr = pA + pB;
+          } else {
+            pAnd = pA * pB;
+            pOr = pA + pB - pAnd;
+          }
+          if (pOr < 0) pOr = 0;
+          if (pOr > 1) pOr = 1;
+
+          combinedAnd.querySelector('.result-value').textContent = formatProb(pAnd);
+          combinedOr.querySelector('.result-value').textContent = formatProb(pOr);
+          if (compSpan.length >= 2) {
+            compSpan[0].textContent = formatProb(pNotA);
+            compSpan[1].textContent = formatProb(pNotB);
+          }
+        }
+
+        if (btnCombinedCalc) btnCombinedCalc.addEventListener('click', calcCombined);
+        if (btnCombinedClear) {
+          btnCombinedClear.addEventListener('click', () => {
+            if (probAInput) probAInput.value = '';
+            if (probBInput) probBInput.value = '';
+            if (combinedAnd) combinedAnd.querySelector('.result-value').textContent = '—';
+            if (combinedOr) combinedOr.querySelector('.result-value').textContent = '—';
+            if (combinedComplements) {
+              const compSpan = combinedComplements.querySelectorAll('.result-value');
+              compSpan.forEach(sp => sp.textContent = '—');
+            }
+            if (combinedError) combinedError.textContent = '';
+          });
+        }
+
+        // ---- Binomial probability ----
+        const binomN = document.getElementById('binom-n');
+        const binomK = document.getElementById('binom-k');
+        const binomP = document.getElementById('binom-p');
+        const binomMode = document.getElementById('binom-mode');
+        const binomKSlider = document.getElementById('binom-k-slider');
+        const binomKSliderLabel = document.getElementById('binom-k-slider-label');
+        const binomProb = document.getElementById('binom-prob');
+        const binomOdds = document.getElementById('binom-odds');
+        const binomSummary = document.getElementById('binom-summary');
+        const binomError = document.getElementById('binom-error');
+        const btnBinomCalc = document.getElementById('btn-binom-calc');
+        const btnBinomClear = document.getElementById('btn-binom-clear');
+
+        function logChoose(n, k) {
+          // log(C(n,k)) via log factorial to avoid overflow
+          if (k < 0 || k > n) return -Infinity;
+          k = Math.min(k, n - k);
+          let sum = 0;
+          for (let i = 1; i <= k; i++) {
+            sum += Math.log(n - k + i) - Math.log(i);
+          }
+          return sum;
+        }
+
+        function binomProbExact(n, k, p) {
+          if (p === 0) return (k === 0 ? 1 : 0);
+          if (p === 1) return (k === n ? 1 : 0);
+          const logC = logChoose(n, k);
+          const logTerm = logC + k * Math.log(p) + (n - k) * Math.log(1 - p);
+          return Math.exp(logTerm);
+        }
+
+        function calcBinom() {
+          if (!binomN || !binomK || !binomP || !binomProb || !binomOdds || !binomSummary || !binomError || !binomMode) return;
+          binomError.textContent = '';
+          binomProb.querySelector('.result-value').textContent = '—';
+          binomOdds.querySelector('.result-value').textContent = '—';
+          binomSummary.querySelector('.result-value').textContent = '—';
+
+          const n = Number(binomN.value);
+          const k = Number(binomK.value);
+          const p = Number(binomP.value);
+
+          if (!Number.isInteger(n) || n < 1 || n > 200) {
+            binomError.textContent = 'Number of trials n must be an integer between 1 and 200.';
+            return;
+          }
+          if (!Number.isInteger(k) || k < 0 || k > n) {
+            binomError.textContent = 'Successes k must be an integer with 0 ≤ k ≤ n.';
+            return;
+          }
+          if (!isFinite(p) || p < 0 || p > 1) {
+            binomError.textContent = 'Probability p must be between 0 and 1.';
+            return;
+          }
+
+          const mode = binomMode.value;
+          let prob = 0;
+
+          if (mode === 'exact') {
+            prob = binomProbExact(n, k, p);
+          } else if (mode === 'upto') {
+            let sum = 0;
+            for (let i = 0; i <= k; i++) {
+              sum += binomProbExact(n, i, p);
+            }
+            prob = sum;
+          } else if (mode === 'atleast') {
+            let sum = 0;
+            for (let i = k; i <= n; i++) {
+              sum += binomProbExact(n, i, p);
+            }
+            prob = sum;
+          }
+
+          if (!isFinite(prob)) {
+            binomError.textContent = 'Numerical overflow – try smaller n or k.';
+            return;
+          }
+          if (prob < 0) prob = 0;
+          if (prob > 1) prob = 1;
+
+          const decStr = prob.toFixed(6).replace(/0+$/,'').replace(/\.$/,'');
+          const percStr = (prob * 100).toFixed(4).replace(/0+$/,'').replace(/\.$/,'');
+          binomProb.querySelector('.result-value').textContent = decStr + ' (' + percStr + '%)';
+
+          // Odds
+          if (prob === 0) {
+            binomOdds.querySelector('.result-value').textContent = 'Impossible event (odds 0 : 1)';
+          } else if (prob === 1) {
+            binomOdds.querySelector('.result-value').textContent = 'Certain event (odds 1 : 0)';
+          } else {
+            const q = 1 - prob;
+            const num = prob / q;
+            // approximate rational odds
+            let numScaled = num;
+            let denScaled = 1;
+            for (let factor = 1; factor <= 1000; factor *= 10) {
+              numScaled = num * factor;
+              denScaled = 1 * factor;
+            }
+            const gOdds = gcd(Math.round(numScaled), denScaled);
+            const numInt = Math.round(numScaled / gOdds);
+            const denInt = Math.round(denScaled / gOdds);
+            binomOdds.querySelector('.result-value').textContent =
+              numInt + ' : ' + denInt + ' (approximate odds in favour)';
+          }
+
+          // Summary
+          let description = '';
+          if (mode === 'exact') {
+            description = 'Probability of exactly ' + k + ' successes out of ' + n + ' trials with p = ' + p + '.';
+          } else if (mode === 'upto') {
+            description = 'Probability of at most ' + k + ' successes (X ≤ ' + k + ') in ' + n + ' trials with p = ' + p + '.';
+          } else {
+            description = 'Probability of at least ' + k + ' successes (X ≥ ' + k + ') in ' + n + ' trials with p = ' + p + '.';
+          }
+          binomSummary.querySelector('.result-value').textContent = description;
+        }
+
+        if (btnBinomCalc) btnBinomCalc.addEventListener('click', calcBinom);
+        if (btnBinomClear) {
+          btnBinomClear.addEventListener('click', () => {
+            if (binomN) binomN.value = '10';
+            if (binomK) binomK.value = '3';
+            if (binomP) binomP.value = '0.5';
+            if (binomMode) binomMode.value = 'exact';
+            if (binomProb) binomProb.querySelector('.result-value').textContent = '—';
+            if (binomOdds) binomOdds.querySelector('.result-value').textContent = '—';
+            if (binomSummary) binomSummary.querySelector('.result-value').textContent = '—';
+            if (binomError) binomError.textContent = '';
+            if (binomKSlider) {
+              binomKSlider.max = '10';
+              binomKSlider.value = '3';
+            }
+            if (binomKSliderLabel) binomKSliderLabel.textContent = 'k = 3';
+          });
+        }
+
+        // Sync slider and k
+        function syncSliderFromK() {
+          if (!binomK || !binomKSlider || !binomN || !binomKSliderLabel) return;
+          const n = Number(binomN.value);
+          let k = Number(binomK.value);
+          if (!Number.isInteger(n) || n < 1) return;
+          if (!Number.isInteger(k) || k < 0) k = 0;
+          if (k > n) k = n;
+          binomK.value = String(k);
+          binomKSlider.max = String(n);
+          binomKSlider.value = String(k);
+          binomKSliderLabel.textContent = 'k = ' + k;
+        }
+
+        if (binomK && binomKSlider && binomN) {
+          binomN.addEventListener('input', syncSliderFromK);
+          binomK.addEventListener('input', syncSliderFromK);
+          binomKSlider.addEventListener('input', () => {
+            if (!binomK || !binomKSlider || !binomKSliderLabel) return;
+            const k = Number(binomKSlider.value);
+            binomK.value = String(k);
+            binomKSliderLabel.textContent = 'k = ' + k;
+          });
+          // initial sync
+          syncSliderFromK();
+        }
+      });
+    </script>
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      // Mobile menu toggle
+      document.getElementById('mobile-menu-toggle')?.addEventListener('click', function () {
+        const menu = document.getElementById('mobile-menu');
+        if (!menu) return;
+        const isHidden = menu.classList.contains('hidden');
+        menu.classList.toggle('hidden', !isHidden);
+        this.setAttribute('aria-expanded', String(isHidden));
+      });
+
+      document.addEventListener('DOMContentLoaded', function () {
+        // Tabs handling
+        const tabs = document.querySelectorAll('[role="tab"]');
+        const panels = {
+          'tab-single': document.getElementById('panel-single'),
+          'tab-combined': document.getElementById('panel-combined'),
+          'tab-binomial': document.getElementById('panel-binomial')
+        };
+
+        function activateTab(tabId) {
+          tabs.forEach(tab => {
+            const active = tab.id === tabId;
+            tab.classList.toggle('tab-btn-active', active);
+            tab.setAttribute('aria-selected', active ? 'true' : 'false');
+          });
+          Object.keys(panels).forEach(id => {
+            if (!panels[id]) return;
+            if (id === tabId) {
+              panels[id].classList.remove('hidden');
+            } else {
+              panels[id].classList.add('hidden');
+            }
+          });
+        }
+
+        tabs.forEach(tab => {
+          tab.addEventListener('click', () => activateTab(tab.id));
+        });
+
+        // Utility functions
+        function gcd(a, b) {
+          let x = Math.abs(a);
+          let y = Math.abs(b);
+          while (y) {
+            const t = y;
+            y = x % y;
+            x = t;
+          }
+          return x || 1;
+        }
+
+        function formatProb(p) {
+          if (!isFinite(p)) return '—';
+          if (p < 0) p = 0;
+          if (p > 1) p = 1;
+          const dec = p.toFixed(6).replace(/0+$/,'').replace(/\.$/,'');
+          const perc = (p * 100).toFixed(4).replace(/0+$/,'').replace(/\.$/,'');
+          return dec + ' (' + perc + '%)';
+        }
+
+        function parseFractionOrNumber(str) {
+          const s = str.trim();
+          if (!s) return null;
+          if (s.includes('/')) {
+            const parts = s.split('/');
+            if (parts.length !== 2) return null;
+            const num = Number(parts[0]);
+            const den = Number(parts[1]);
+            if (!isFinite(num) || !isFinite(den) || den === 0) return null;
+            return num / den;
+          }
+          const val = Number(s);
+          if (!isFinite(val)) return null;
+          return val;
+        }
+
+        // ---- Single event probability ----
+        const singleFav = document.getElementById('single-favourable');
+        const singleTotal = document.getElementById('single-total');
+        const singleFraction = document.getElementById('single-fraction');
+        const singleDecimal = document.getElementById('single-decimal');
+        const singlePercent = document.getElementById('single-percent');
+        const singleError = document.getElementById('single-error');
+        const btnSingleCalc = document.getElementById('btn-single-calc');
+        const btnSingleClear = document.getElementById('btn-single-clear');
+
+        function calcSingle() {
+          if (!singleFav || !singleTotal || !singleFraction || !singleDecimal || !singlePercent || !singleError) return;
+          singleError.textContent = '';
+          singleFraction.querySelector('.result-value').textContent = '—';
+          singleDecimal.querySelector('.result-value').textContent = '—';
+          const spanP = singlePercent.querySelectorAll('.result-value');
+          if (spanP.length === 2) {
+            spanP[0].textContent = '—';
+            spanP[1].textContent = '—';
+          }
+
+          const fav = Number(singleFav.value);
+          const tot = Number(singleTotal.value);
+          if (!Number.isInteger(fav) || !Number.isInteger(tot) || tot <= 0 || fav < 0 || fav > tot) {
+            singleError.textContent = 'Check that 0 ≤ favourable ≤ total and total ≥ 1.';
+            return;
+          }
+          if (tot === 0) {
+            singleError.textContent = 'Total outcomes must be at least 1.';
+            return;
+          }
+
+          const g = gcd(fav, tot);
+          const numS = fav / g;
+          const denS = tot / g;
+          const p = fav / tot;
+          const decStr = p.toFixed(6).replace(/0+$/,'').replace(/\.$/,'');
+          const percStr = (p * 100).toFixed(4).replace(/0+$/,'').replace(/\.$/,'');
+          const comp = 1 - p;
+          const compStr = (comp * 100).toFixed(4).replace(/0+$/,'').replace(/\.$/,'');
+          const compDec = comp.toFixed(6).replace(/0+$/,'').replace(/\.$/,'');
+          
+          singleFraction.querySelector('.result-value').textContent = numS + ' / ' + denS;
+          singleDecimal.querySelector('.result-value').textContent = decStr;
+          if (spanP.length === 2) {
+            spanP[0].textContent = percStr + '% (P(A) = ' + decStr + ')';
+            spanP[1].textContent = compStr + '% (P(not A) = ' + compDec + ')';
+          }
+        }
+
+        if (btnSingleCalc) btnSingleCalc.addEventListener('click', calcSingle);
+        if (btnSingleClear) {
+          btnSingleClear.addEventListener('click', () => {
+            if (singleFav) singleFav.value = '';
+            if (singleTotal) singleTotal.value = '';
+            if (singleFraction) singleFraction.querySelector('.result-value').textContent = '—';
+            if (singleDecimal) singleDecimal.querySelector('.result-value').textContent = '—';
+            if (singlePercent) {
+              const spanP = singlePercent.querySelectorAll('.result-value');
+              spanP.forEach(sp => sp.textContent = '—');
+            }
+            if (singleError) singleError.textContent = '';
+          });
+        }
+
+        // ---- Combined events ----
+        const probAInput = document.getElementById('prob-a');
+        const probBInput = document.getElementById('prob-b');
+        const combinedAnd = document.getElementById('combined-and');
+        const combinedOr = document.getElementById('combined-or');
+        const combinedComplements = document.getElementById('combined-complements');
+        const combinedError = document.getElementById('combined-error');
+        const btnCombinedCalc = document.getElementById('btn-combined-calc');
+        const btnCombinedClear = document.getElementById('btn-combined-clear');
+
+        function parseProbabilityField(value) {
+          if (!value) return null;
+          const raw = value.trim();
+          if (!raw) return null;
+          const fracNum = parseFractionOrNumber(raw);
+          if (fracNum !== null) {
+            // If >1, assume percentage (e.g. 40 => 40%)
+            const p = fracNum > 1 ? fracNum / 100 : fracNum;
+            if (p < 0 || p > 1) return null;
+            return p;
+          }
+          return null;
+        }
+
+        function calcCombined() {
+          if (!probAInput || !probBInput || !combinedAnd || !combinedOr || !combinedComplements || !combinedError) return;
+          combinedError.textContent = '';
+          combinedAnd.querySelector('.result-value').textContent = '—';
+          combinedOr.querySelector('.result-value').textContent = '—';
+          const compSpan = combinedComplements.querySelectorAll('.result-value');
+          compSpan.forEach(sp => sp.textContent = '—');
+
+          const pA = parseProbabilityField(probAInput.value);
+          const pB = parseProbabilityField(probBInput.value);
+          if (pA === null || pB === null) {
+            combinedError.textContent = 'Enter valid probabilities for P(A) and P(B).';
+            return;
+          }
+
+          const relation = document.querySelector('input[name="relation"]:checked');
+          const relVal = relation ? relation.value : 'independent';
+
+          const pNotA = 1 - pA;
+          const pNotB = 1 - pB;
+          let pAnd, pOr;
+
+          if (relVal === 'exclusive') {
+            pAnd = 0;
+            pOr = pA + pB;
+          } else {
+            pAnd = pA * pB;
+            pOr = pA + pB - pAnd;
+          }
+          if (pOr < 0) pOr = 0;
+          if (pOr > 1) pOr = 1;
+
+          combinedAnd.querySelector('.result-value').textContent = formatProb(pAnd);
+          combinedOr.querySelector('.result-value').textContent = formatProb(pOr);
+          if (compSpan.length >= 2) {
+            compSpan[0].textContent = formatProb(pNotA);
+            compSpan[1].textContent = formatProb(pNotB);
+          }
+        }
+
+        if (btnCombinedCalc) btnCombinedCalc.addEventListener('click', calcCombined);
+        if (btnCombinedClear) {
+          btnCombinedClear.addEventListener('click', () => {
+            if (probAInput) probAInput.value = '';
+            if (probBInput) probBInput.value = '';
+            if (combinedAnd) combinedAnd.querySelector('.result-value').textContent = '—';
+            if (combinedOr) combinedOr.querySelector('.result-value').textContent = '—';
+            if (combinedComplements) {
+              const compSpan = combinedComplements.querySelectorAll('.result-value');
+              compSpan.forEach(sp => sp.textContent = '—');
+            }
+            if (combinedError) combinedError.textContent = '';
+          });
+        }
+
+        // ---- Binomial probability ----
+        const binomN = document.getElementById('binom-n');
+        const binomK = document.getElementById('binom-k');
+        const binomP = document.getElementById('binom-p');
+        const binomMode = document.getElementById('binom-mode');
+        const binomKSlider = document.getElementById('binom-k-slider');
+        const binomKSliderLabel = document.getElementById('binom-k-slider-label');
+        const binomProb = document.getElementById('binom-prob');
+        const binomOdds = document.getElementById('binom-odds');
+        const binomSummary = document.getElementById('binom-summary');
+        const binomError = document.getElementById('binom-error');
+        const btnBinomCalc = document.getElementById('btn-binom-calc');
+        const btnBinomClear = document.getElementById('btn-binom-clear');
+
+        function logChoose(n, k) {
+          // log(C(n,k)) via log factorial to avoid overflow
+          if (k < 0 || k > n) return -Infinity;
+          k = Math.min(k, n - k);
+          let sum = 0;
+          for (let i = 1; i <= k; i++) {
+            sum += Math.log(n - k + i) - Math.log(i);
+          }
+          return sum;
+        }
+
+        function binomProbExact(n, k, p) {
+          if (p === 0) return (k === 0 ? 1 : 0);
+          if (p === 1) return (k === n ? 1 : 0);
+          const logC = logChoose(n, k);
+          const logTerm = logC + k * Math.log(p) + (n - k) * Math.log(1 - p);
+          return Math.exp(logTerm);
+        }
+
+        function calcBinom() {
+          if (!binomN || !binomK || !binomP || !binomProb || !binomOdds || !binomSummary || !binomError || !binomMode) return;
+          binomError.textContent = '';
+          binomProb.querySelector('.result-value').textContent = '—';
+          binomOdds.querySelector('.result-value').textContent = '—';
+          binomSummary.querySelector('.result-value').textContent = '—';
+
+          const n = Number(binomN.value);
+          const k = Number(binomK.value);
+          const p = Number(binomP.value);
+
+          if (!Number.isInteger(n) || n < 1 || n > 200) {
+            binomError.textContent = 'Number of trials n must be an integer between 1 and 200.';
+            return;
+          }
+          if (!Number.isInteger(k) || k < 0 || k > n) {
+            binomError.textContent = 'Successes k must be an integer with 0 ≤ k ≤ n.';
+            return;
+          }
+          if (!isFinite(p) || p < 0 || p > 1) {
+            binomError.textContent = 'Probability p must be between 0 and 1.';
+            return;
+          }
+
+          const mode = binomMode.value;
+          let prob = 0;
+
+          if (mode === 'exact') {
+            prob = binomProbExact(n, k, p);
+          } else if (mode === 'upto') {
+            let sum = 0;
+            for (let i = 0; i <= k; i++) {
+              sum += binomProbExact(n, i, p);
+            }
+            prob = sum;
+          } else if (mode === 'atleast') {
+            let sum = 0;
+            for (let i = k; i <= n; i++) {
+              sum += binomProbExact(n, i, p);
+            }
+            prob = sum;
+          }
+
+          if (!isFinite(prob)) {
+            binomError.textContent = 'Numerical overflow – try smaller n or k.';
+            return;
+          }
+          if (prob < 0) prob = 0;
+          if (prob > 1) prob = 1;
+
+          const decStr = prob.toFixed(6).replace(/0+$/,'').replace(/\.$/,'');
+          const percStr = (prob * 100).toFixed(4).replace(/0+$/,'').replace(/\.$/,'');
+          binomProb.querySelector('.result-value').textContent = decStr + ' (' + percStr + '%)';
+
+          // Odds
+          if (prob === 0) {
+            binomOdds.querySelector('.result-value').textContent = 'Impossible event (odds 0 : 1)';
+          } else if (prob === 1) {
+            binomOdds.querySelector('.result-value').textContent = 'Certain event (odds 1 : 0)';
+          } else {
+            const q = 1 - prob;
+            const num = prob / q;
+            // approximate rational odds
+            let numScaled = num;
+            let denScaled = 1;
+            for (let factor = 1; factor <= 1000; factor *= 10) {
+              numScaled = num * factor;
+              denScaled = 1 * factor;
+            }
+            const gOdds = gcd(Math.round(numScaled), denScaled);
+            const numInt = Math.round(numScaled / gOdds);
+            const denInt = Math.round(denScaled / gOdds);
+            binomOdds.querySelector('.result-value').textContent =
+              numInt + ' : ' + denInt + ' (approximate odds in favour)';
+          }
+
+          // Summary
+          let description = '';
+          if (mode === 'exact') {
+            description = 'Probability of exactly ' + k + ' successes out of ' + n + ' trials with p = ' + p + '.';
+          } else if (mode === 'upto') {
+            description = 'Probability of at most ' + k + ' successes (X ≤ ' + k + ') in ' + n + ' trials with p = ' + p + '.';
+          } else {
+            description = 'Probability of at least ' + k + ' successes (X ≥ ' + k + ') in ' + n + ' trials with p = ' + p + '.';
+          }
+          binomSummary.querySelector('.result-value').textContent = description;
+        }
+
+        if (btnBinomCalc) btnBinomCalc.addEventListener('click', calcBinom);
+        if (btnBinomClear) {
+          btnBinomClear.addEventListener('click', () => {
+            if (binomN) binomN.value = '10';
+            if (binomK) binomK.value = '3';
+            if (binomP) binomP.value = '0.5';
+            if (binomMode) binomMode.value = 'exact';
+            if (binomProb) binomProb.querySelector('.result-value').textContent = '—';
+            if (binomOdds) binomOdds.querySelector('.result-value').textContent = '—';
+            if (binomSummary) binomSummary.querySelector('.result-value').textContent = '—';
+            if (binomError) binomError.textContent = '';
+            if (binomKSlider) {
+              binomKSlider.max = '10';
+              binomKSlider.value = '3';
+            }
+            if (binomKSliderLabel) binomKSliderLabel.textContent = 'k = 3';
+          });
+        }
+
+        // Sync slider and k
+        function syncSliderFromK() {
+          if (!binomK || !binomKSlider || !binomN || !binomKSliderLabel) return;
+          const n = Number(binomN.value);
+          let k = Number(binomK.value);
+          if (!Number.isInteger(n) || n < 1) return;
+          if (!Number.isInteger(k) || k < 0) k = 0;
+          if (k > n) k = n;
+          binomK.value = String(k);
+          binomKSlider.max = String(n);
+          binomKSlider.value = String(k);
+          binomKSliderLabel.textContent = 'k = ' + k;
+        }
+
+        if (binomK && binomKSlider && binomN) {
+          binomN.addEventListener('input', syncSliderFromK);
+          binomK.addEventListener('input', syncSliderFromK);
+          binomKSlider.addEventListener('input', () => {
+            if (!binomK || !binomKSlider || !binomKSliderLabel) return;
+            const k = Number(binomKSlider.value);
+            binomK.value = String(k);
+            binomKSliderLabel.textContent = 'k = ' + k;
+          });
+          // initial sync
+          syncSliderFromK();
+        }
+      });
+    </script>
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

@@ -123,10 +123,6 @@
 
   <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-  <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-  <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-  <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
   <script>
     window.ezstandalone = window.ezstandalone || {};
     ezstandalone.cmd = ezstandalone.cmd || [];
@@ -276,8 +272,6 @@
 
 <body class="bg-gray-50 text-gray-800">
   <!-- BODY_SCRIPTS_INIZIO -->
-  <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
   <header class="bg-white shadow-sm sticky top-0 z-50">
     <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
       <div class="flex justify-between items-center">
@@ -778,7 +772,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -846,13 +840,661 @@
 
 
 
+
   <script src="/assets/js/script_menu.js" defer=""></script>
   <script src="/assets/js/script_faq.js" defer=""></script>
   <script src="search.js" defer=""></script>
 
   <script>
-    window.MathJax = {
-      tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+    window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <script>
+    (function () {
+      function $(id) { return document.getElementById(id); }
+      function show(el) { el && el.classList.remove('hidden'); }
+      function hide(el) { el && el.classList.add('hidden'); }
+
+      // Mobile menu
+      var toggle = $('mobile-menu-toggle');
+      var mobileMenu = $('mobile-menu');
+      if (toggle && mobileMenu) {
+        toggle.addEventListener('click', function () {
+          var isHidden = mobileMenu.classList.contains('hidden');
+          if (isHidden) {
+            mobileMenu.classList.remove('hidden');
+            toggle.setAttribute('aria-expanded', 'true');
+          } else {
+            mobileMenu.classList.add('hidden');
+            toggle.setAttribute('aria-expanded', 'false');
+          }
+        });
+      }
+
+      // Polyfill for Math.log10 if needed
+      if (!Math.log10) {
+        Math.log10 = function (x) { return Math.log(x) / Math.LN10; };
+      }
+
+      // Tabs
+      var tabButtons = document.querySelectorAll('.tab-button[data-sf-tab]');
+      var toStandardPanel = $('sf-to-standard-panel');
+      var fromStandardPanel = $('sf-from-standard-panel');
+
+      function activateTab(tab) {
+        tabButtons.forEach(function (btn) {
+          var t = btn.getAttribute('data-sf-tab');
+          if (t === tab) btn.classList.add('active');
+          else btn.classList.remove('active');
+        });
+        if (tab === 'to-standard') {
+          show(toStandardPanel);
+          hide(fromStandardPanel);
+        } else {
+          hide(toStandardPanel);
+          show(fromStandardPanel);
+        }
+      }
+
+      tabButtons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var t = btn.getAttribute('data-sf-tab');
+          activateTab(t);
+        });
+      });
+
+      // Helpers
+      function parseNumberInput(value, label) {
+        var s = String(value || '').trim();
+        if (!s) {
+          return { ok: false, error: label + ' is empty.' };
+        }
+        // allow decimal + optional exponent, like -1.2e-5
+        var pattern = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
+        if (!pattern.test(s)) {
+          return { ok: false, error: label + ' must be a valid decimal number (optionally with E-notation).' };
+        }
+        var n = Number(s);
+        if (!Number.isFinite(n)) {
+          return { ok: false, error: label + ' is not a finite number.' };
+        }
+        return { ok: true, value: n };
+      }
+
+      function parseInteger(value, label) {
+        var s = String(value || '').trim();
+        if (!s) return { ok: false, error: label + ' is empty.' };
+        if (!/^[+-]?\d+$/.test(s)) {
+          return { ok: false, error: label + ' must be an integer.' };
+        }
+        var n = Number(s);
+        if (!Number.isInteger(n) || !Number.isFinite(n)) {
+          return { ok: false, error: label + ' is not a valid integer.' };
+        }
+        return { ok: true, value: n };
+      }
+
+      function toStandardForm(x, sigFig) {
+        if (x === 0) {
+          return {
+            zero: true,
+            text: '0',
+            note: 'Zero does not have a unique standard form a × 10ⁿ; by convention we simply write 0.'
+          };
+        }
+        var sign = x < 0 ? -1 : 1;
+        var absx = Math.abs(x);
+        var n = Math.floor(Math.log10(absx));
+        var a = absx / Math.pow(10, n);
+
+        // round a to sigFig significant figures using toPrecision
+        var aRoundedStr = a.toPrecision(sigFig);
+        var aRounded = Number(aRoundedStr);
+        // adjust if rounding pushes a to 10 or more
+        if (aRounded >= 10) {
+          aRounded = aRounded / 10;
+          n = n + 1;
+        }
+        aRounded = sign * aRounded;
+
+        return {
+          zero: false,
+          a: aRounded,
+          n: n
+        };
+      }
+
+      function formatCoefficient(a, sigFig) {
+        // use toPrecision for consistent sig figs
+        if (!Number.isFinite(a)) return String(a);
+        return a.toPrecision(sigFig).replace(/(\.[0-9]*[1-9])0+$/,'$1').replace(/\.0+$/,'');
+      }
+
+      function formatDecimal(x) {
+        if (!Number.isFinite(x)) return String(x);
+        var absx = Math.abs(x);
+        if (absx !== 0 && (absx < 1e-4 || absx >= 1e7)) {
+          return x.toExponential();
+        }
+        // show up to ~12 significant digits, trimming trailing zeros
+        var s = x.toString();
+        if (s.indexOf('e') !== -1 || s.indexOf('E') !== -1) {
+          return x.toExponential();
+        }
+        return s;
+      }
+
+      // Number → Standard form
+      var tsForm = $('sf-to-standard-form');
+      var tsInput = $('sf-input-number');
+      var tsSigfigs = $('sf-sigfigs');
+      var tsError = $('sf-to-standard-error');
+      var tsResults = $('sf-to-standard-results');
+      var tsMain = $('sf-to-standard-main');
+      var tsSteps = $('sf-to-standard-steps');
+      var tsEnotation = $('sf-to-standard-enotation');
+      var tsReset = $('sf-to-standard-reset');
+
+      function handleToStandardSubmit(e) {
+        e.preventDefault();
+        hide(tsError);
+        hide(tsResults);
+        tsMain.innerHTML = '';
+        tsSteps.textContent = '';
+        tsEnotation.textContent = '';
+
+        var parsed = parseNumberInput(tsInput.value, 'Number');
+        if (!parsed.ok) {
+          tsError.textContent = parsed.error;
+          show(tsError);
+          return;
+        }
+        var x = parsed.value;
+        var sig = Number(tsSigfigs.value) || 3;
+        if (!Number.isInteger(sig) || sig < 1 || sig > 15) {
+          sig = 3;
+        }
+
+        var sf = toStandardForm(x, sig);
+        if (sf.zero) {
+          tsMain.innerHTML =
+            'The number is <strong>0</strong>. Zero does not have a unique standard form ' +
+            '<span class="inline-code">a × 10ⁿ</span>; we simply write <strong>0</strong>.';
+          tsSteps.textContent =
+            'Any representation 0 × 10ⁿ equals 0, so there is no single preferred exponent n.';
+          show(tsResults);
+          return;
+        }
+
+        var a = sf.a;
+        var n = sf.n;
+        var aStr = formatCoefficient(a, sig);
+        var originalFormatted = formatDecimal(x);
+
+        tsMain.innerHTML =
+          'Writing ' +
+          '<span class="vector-pill">x = ' + originalFormatted + '</span>' +
+          ' in standard form, we obtain ' +
+          '<span class="vector-pill">x = ' + aStr + ' × 10' +
+          '<sup>' + n + '</sup></span>' +
+          ' (to ' + sig + ' significant figure' + (sig !== 1 ? 's' : '') + ').';
+
+        tsSteps.textContent =
+          'Step: take the base-10 logarithm of |x| to find the exponent n = ⌊log₁₀|x|⌋, then set ' +
+          'a = x / 10ⁿ and round a to ' + sig + ' significant figure' + (sig !== 1 ? 's' : '') +
+          ' so that 1 ≤ |a| < 10.';
+
+        tsEnotation.textContent =
+          'In E-notation (calculator/programming style), this standard form is written as ' +
+          aStr + 'E' + n + '.';
+
+        show(tsResults);
+
+        if (window.MathJax && window.MathJax.typesetPromise) {
+          window.MathJax.typesetPromise();
+        }
+      }
+
+      function handleToStandardReset() {
+        tsInput.value = '350000';
+        tsSigfigs.value = '3';
+        hide(tsError);
+        hide(tsResults);
+        tsMain.innerHTML = '';
+        tsSteps.textContent = '';
+        tsEnotation.textContent = '';
+      }
+
+      if (tsForm) tsForm.addEventListener('submit', handleToStandardSubmit);
+      if (tsReset) tsReset.addEventListener('click', handleToStandardReset);
+
+      // Standard form → Number
+      var fsForm = $('sf-from-standard-form');
+      var fsCoeff = $('sf-coefficient');
+      var fsExp = $('sf-exponent');
+      var fsError = $('sf-from-standard-error');
+      var fsResults = $('sf-from-standard-results');
+      var fsMain = $('sf-from-standard-main');
+      var fsSteps = $('sf-from-standard-steps');
+      var fsEnotation = $('sf-from-standard-enotation');
+      var fsReset = $('sf-from-standard-reset');
+
+      function handleFromStandardSubmit(e) {
+        e.preventDefault();
+        hide(fsError);
+        hide(fsResults);
+        fsMain.innerHTML = '';
+        fsSteps.textContent = '';
+        fsEnotation.textContent = '';
+
+        var pA = parseNumberInput(fsCoeff.value, 'Coefficient a');
+        if (!pA.ok) {
+          fsError.textContent = pA.error;
+          show(fsError);
+          return;
+        }
+        var pN = parseInteger(fsExp.value, 'Exponent n');
+        if (!pN.ok) {
+          fsError.textContent = pN.error;
+          show(fsError);
+          return;
+        }
+
+        var a = pA.value;
+        var n = pN.value;
+
+        var value = a * Math.pow(10, n);
+        var valueStr = formatDecimal(value);
+        var aStr = formatDecimal(a);
+
+        fsMain.innerHTML =
+          'Starting from <span class="vector-pill">x = ' + aStr + ' × 10' +
+          '<sup>' + n + '</sup></span>, the corresponding decimal number is ' +
+          '<strong>' + valueStr + '</strong>.';
+
+        fsSteps.textContent =
+          'Step: multiply the coefficient a by 10 raised to the power n, ' +
+          'that is x = a · 10ⁿ. This shifts the decimal point ' +
+          (n > 0 ? n + ' place' + (n !== 1 ? 's' : '') + ' to the right.' :
+           n < 0 ? Math.abs(n) + ' place' + (Math.abs(n) !== 1 ? 's' : '') + ' to the left.' :
+           '0 places (n = 0).');
+
+        fsEnotation.textContent =
+          'In E-notation, this standard form is written as ' + aStr + 'E' + n +
+          ', which most scientific calculators and many programming languages understand.';
+
+        show(fsResults);
+      }
+
+      function handleFromStandardReset() {
+        fsCoeff.value = '3.5';
+        fsExp.value = '5';
+        hide(fsError);
+        hide(fsResults);
+        fsMain.innerHTML = '';
+        fsSteps.textContent = '';
+        fsEnotation.textContent = '';
+      }
+
+      if (fsForm) fsForm.addEventListener('submit', handleFromStandardSubmit);
+      if (fsReset) fsReset.addEventListener('click', handleFromStandardReset);
+
+      // Quick examples
+      document.querySelectorAll('.chip-button[data-sf-example]').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+          var spec = chip.getAttribute('data-sf-example') || '';
+          if (spec.startsWith('to-standard:')) {
+            activateTab('to-standard');
+            var rest = spec.replace('to-standard:', '');
+            var parts = rest.split(',');
+            tsInput.value = (parts[0] || '').trim();
+            tsSigfigs.value = (parts[1] || '3').trim();
+            tsForm.dispatchEvent(new Event('submit'));
+          } else if (spec.startsWith('from-standard:')) {
+            activateTab('from-standard');
+            var r = spec.replace('from-standard:', '');
+            var p = r.split(',');
+            fsCoeff.value = (p[0] || '').trim();
+            fsExp.value = (p[1] || '').trim();
+            fsForm.dispatchEvent(new Event('submit'));
+          }
+        });
+      });
+
+      // Default active tab
+      activateTab('to-standard');
+    })();
+  </script>
+
+
+</body></html>, ',
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <script>
+    (function () {
+      function $(id) { return document.getElementById(id); }
+      function show(el) { el && el.classList.remove('hidden'); }
+      function hide(el) { el && el.classList.add('hidden'); }
+
+      // Mobile menu
+      var toggle = $('mobile-menu-toggle');
+      var mobileMenu = $('mobile-menu');
+      if (toggle && mobileMenu) {
+        toggle.addEventListener('click', function () {
+          var isHidden = mobileMenu.classList.contains('hidden');
+          if (isHidden) {
+            mobileMenu.classList.remove('hidden');
+            toggle.setAttribute('aria-expanded', 'true');
+          } else {
+            mobileMenu.classList.add('hidden');
+            toggle.setAttribute('aria-expanded', 'false');
+          }
+        });
+      }
+
+      // Polyfill for Math.log10 if needed
+      if (!Math.log10) {
+        Math.log10 = function (x) { return Math.log(x) / Math.LN10; };
+      }
+
+      // Tabs
+      var tabButtons = document.querySelectorAll('.tab-button[data-sf-tab]');
+      var toStandardPanel = $('sf-to-standard-panel');
+      var fromStandardPanel = $('sf-from-standard-panel');
+
+      function activateTab(tab) {
+        tabButtons.forEach(function (btn) {
+          var t = btn.getAttribute('data-sf-tab');
+          if (t === tab) btn.classList.add('active');
+          else btn.classList.remove('active');
+        });
+        if (tab === 'to-standard') {
+          show(toStandardPanel);
+          hide(fromStandardPanel);
+        } else {
+          hide(toStandardPanel);
+          show(fromStandardPanel);
+        }
+      }
+
+      tabButtons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var t = btn.getAttribute('data-sf-tab');
+          activateTab(t);
+        });
+      });
+
+      // Helpers
+      function parseNumberInput(value, label) {
+        var s = String(value || '').trim();
+        if (!s) {
+          return { ok: false, error: label + ' is empty.' };
+        }
+        // allow decimal + optional exponent, like -1.2e-5
+        var pattern = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
+        if (!pattern.test(s)) {
+          return { ok: false, error: label + ' must be a valid decimal number (optionally with E-notation).' };
+        }
+        var n = Number(s);
+        if (!Number.isFinite(n)) {
+          return { ok: false, error: label + ' is not a finite number.' };
+        }
+        return { ok: true, value: n };
+      }
+
+      function parseInteger(value, label) {
+        var s = String(value || '').trim();
+        if (!s) return { ok: false, error: label + ' is empty.' };
+        if (!/^[+-]?\d+$/.test(s)) {
+          return { ok: false, error: label + ' must be an integer.' };
+        }
+        var n = Number(s);
+        if (!Number.isInteger(n) || !Number.isFinite(n)) {
+          return { ok: false, error: label + ' is not a valid integer.' };
+        }
+        return { ok: true, value: n };
+      }
+
+      function toStandardForm(x, sigFig) {
+        if (x === 0) {
+          return {
+            zero: true,
+            text: '0',
+            note: 'Zero does not have a unique standard form a × 10ⁿ; by convention we simply write 0.'
+          };
+        }
+        var sign = x < 0 ? -1 : 1;
+        var absx = Math.abs(x);
+        var n = Math.floor(Math.log10(absx));
+        var a = absx / Math.pow(10, n);
+
+        // round a to sigFig significant figures using toPrecision
+        var aRoundedStr = a.toPrecision(sigFig);
+        var aRounded = Number(aRoundedStr);
+        // adjust if rounding pushes a to 10 or more
+        if (aRounded >= 10) {
+          aRounded = aRounded / 10;
+          n = n + 1;
+        }
+        aRounded = sign * aRounded;
+
+        return {
+          zero: false,
+          a: aRounded,
+          n: n
+        };
+      }
+
+      function formatCoefficient(a, sigFig) {
+        // use toPrecision for consistent sig figs
+        if (!Number.isFinite(a)) return String(a);
+        return a.toPrecision(sigFig).replace(/(\.[0-9]*[1-9])0+$/,'$1').replace(/\.0+$/,'');
+      }
+
+      function formatDecimal(x) {
+        if (!Number.isFinite(x)) return String(x);
+        var absx = Math.abs(x);
+        if (absx !== 0 && (absx < 1e-4 || absx >= 1e7)) {
+          return x.toExponential();
+        }
+        // show up to ~12 significant digits, trimming trailing zeros
+        var s = x.toString();
+        if (s.indexOf('e') !== -1 || s.indexOf('E') !== -1) {
+          return x.toExponential();
+        }
+        return s;
+      }
+
+      // Number → Standard form
+      var tsForm = $('sf-to-standard-form');
+      var tsInput = $('sf-input-number');
+      var tsSigfigs = $('sf-sigfigs');
+      var tsError = $('sf-to-standard-error');
+      var tsResults = $('sf-to-standard-results');
+      var tsMain = $('sf-to-standard-main');
+      var tsSteps = $('sf-to-standard-steps');
+      var tsEnotation = $('sf-to-standard-enotation');
+      var tsReset = $('sf-to-standard-reset');
+
+      function handleToStandardSubmit(e) {
+        e.preventDefault();
+        hide(tsError);
+        hide(tsResults);
+        tsMain.innerHTML = '';
+        tsSteps.textContent = '';
+        tsEnotation.textContent = '';
+
+        var parsed = parseNumberInput(tsInput.value, 'Number');
+        if (!parsed.ok) {
+          tsError.textContent = parsed.error;
+          show(tsError);
+          return;
+        }
+        var x = parsed.value;
+        var sig = Number(tsSigfigs.value) || 3;
+        if (!Number.isInteger(sig) || sig < 1 || sig > 15) {
+          sig = 3;
+        }
+
+        var sf = toStandardForm(x, sig);
+        if (sf.zero) {
+          tsMain.innerHTML =
+            'The number is <strong>0</strong>. Zero does not have a unique standard form ' +
+            '<span class="inline-code">a × 10ⁿ</span>; we simply write <strong>0</strong>.';
+          tsSteps.textContent =
+            'Any representation 0 × 10ⁿ equals 0, so there is no single preferred exponent n.';
+          show(tsResults);
+          return;
+        }
+
+        var a = sf.a;
+        var n = sf.n;
+        var aStr = formatCoefficient(a, sig);
+        var originalFormatted = formatDecimal(x);
+
+        tsMain.innerHTML =
+          'Writing ' +
+          '<span class="vector-pill">x = ' + originalFormatted + '</span>' +
+          ' in standard form, we obtain ' +
+          '<span class="vector-pill">x = ' + aStr + ' × 10' +
+          '<sup>' + n + '</sup></span>' +
+          ' (to ' + sig + ' significant figure' + (sig !== 1 ? 's' : '') + ').';
+
+        tsSteps.textContent =
+          'Step: take the base-10 logarithm of |x| to find the exponent n = ⌊log₁₀|x|⌋, then set ' +
+          'a = x / 10ⁿ and round a to ' + sig + ' significant figure' + (sig !== 1 ? 's' : '') +
+          ' so that 1 ≤ |a| < 10.';
+
+        tsEnotation.textContent =
+          'In E-notation (calculator/programming style), this standard form is written as ' +
+          aStr + 'E' + n + '.';
+
+        show(tsResults);
+
+        if (window.MathJax && window.MathJax.typesetPromise) {
+          window.MathJax.typesetPromise();
+        }
+      }
+
+      function handleToStandardReset() {
+        tsInput.value = '350000';
+        tsSigfigs.value = '3';
+        hide(tsError);
+        hide(tsResults);
+        tsMain.innerHTML = '';
+        tsSteps.textContent = '';
+        tsEnotation.textContent = '';
+      }
+
+      if (tsForm) tsForm.addEventListener('submit', handleToStandardSubmit);
+      if (tsReset) tsReset.addEventListener('click', handleToStandardReset);
+
+      // Standard form → Number
+      var fsForm = $('sf-from-standard-form');
+      var fsCoeff = $('sf-coefficient');
+      var fsExp = $('sf-exponent');
+      var fsError = $('sf-from-standard-error');
+      var fsResults = $('sf-from-standard-results');
+      var fsMain = $('sf-from-standard-main');
+      var fsSteps = $('sf-from-standard-steps');
+      var fsEnotation = $('sf-from-standard-enotation');
+      var fsReset = $('sf-from-standard-reset');
+
+      function handleFromStandardSubmit(e) {
+        e.preventDefault();
+        hide(fsError);
+        hide(fsResults);
+        fsMain.innerHTML = '';
+        fsSteps.textContent = '';
+        fsEnotation.textContent = '';
+
+        var pA = parseNumberInput(fsCoeff.value, 'Coefficient a');
+        if (!pA.ok) {
+          fsError.textContent = pA.error;
+          show(fsError);
+          return;
+        }
+        var pN = parseInteger(fsExp.value, 'Exponent n');
+        if (!pN.ok) {
+          fsError.textContent = pN.error;
+          show(fsError);
+          return;
+        }
+
+        var a = pA.value;
+        var n = pN.value;
+
+        var value = a * Math.pow(10, n);
+        var valueStr = formatDecimal(value);
+        var aStr = formatDecimal(a);
+
+        fsMain.innerHTML =
+          'Starting from <span class="vector-pill">x = ' + aStr + ' × 10' +
+          '<sup>' + n + '</sup></span>, the corresponding decimal number is ' +
+          '<strong>' + valueStr + '</strong>.';
+
+        fsSteps.textContent =
+          'Step: multiply the coefficient a by 10 raised to the power n, ' +
+          'that is x = a · 10ⁿ. This shifts the decimal point ' +
+          (n > 0 ? n + ' place' + (n !== 1 ? 's' : '') + ' to the right.' :
+           n < 0 ? Math.abs(n) + ' place' + (Math.abs(n) !== 1 ? 's' : '') + ' to the left.' :
+           '0 places (n = 0).');
+
+        fsEnotation.textContent =
+          'In E-notation, this standard form is written as ' + aStr + 'E' + n +
+          ', which most scientific calculators and many programming languages understand.';
+
+        show(fsResults);
+      }
+
+      function handleFromStandardReset() {
+        fsCoeff.value = '3.5';
+        fsExp.value = '5';
+        hide(fsError);
+        hide(fsResults);
+        fsMain.innerHTML = '';
+        fsSteps.textContent = '';
+        fsEnotation.textContent = '';
+      }
+
+      if (fsForm) fsForm.addEventListener('submit', handleFromStandardSubmit);
+      if (fsReset) fsReset.addEventListener('click', handleFromStandardReset);
+
+      // Quick examples
+      document.querySelectorAll('.chip-button[data-sf-example]').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+          var spec = chip.getAttribute('data-sf-example') || '';
+          if (spec.startsWith('to-standard:')) {
+            activateTab('to-standard');
+            var rest = spec.replace('to-standard:', '');
+            var parts = rest.split(',');
+            tsInput.value = (parts[0] || '').trim();
+            tsSigfigs.value = (parts[1] || '3').trim();
+            tsForm.dispatchEvent(new Event('submit'));
+          } else if (spec.startsWith('from-standard:')) {
+            activateTab('from-standard');
+            var r = spec.replace('from-standard:', '');
+            var p = r.split(',');
+            fsCoeff.value = (p[0] || '').trim();
+            fsExp.value = (p[1] || '').trim();
+            fsForm.dispatchEvent(new Event('submit'));
+          }
+        });
+      });
+
+      // Default active tab
+      activateTab('to-standard');
+    })();
+  </script>
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
       svg: { fontCache: 'global' }
     };
   </script>

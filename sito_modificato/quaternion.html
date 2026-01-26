@@ -122,10 +122,6 @@
 
   <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-  <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-  <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-  <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
   <script>
     window.ezstandalone = window.ezstandalone || {};
     ezstandalone.cmd = ezstandalone.cmd || [];
@@ -283,8 +279,6 @@
 
 <body class="bg-gray-50 text-gray-800">
   <!-- BODY_SCRIPTS_INIZIO -->
-  <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
   <header class="bg-white shadow-sm sticky top-0 z-50">
     <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
       <div class="flex justify-between items-center">
@@ -819,7 +813,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -887,13 +881,985 @@
 
 
 
+
   <script src="/assets/js/script_menu.js" defer=""></script>
   <script src="/assets/js/script_faq.js" defer=""></script>
   <script src="search.js" defer=""></script>
 
   <script>
-    window.MathJax = {
-      tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+    window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <script>
+    (function () {
+      function $(id) { return document.getElementById(id); }
+      function show(el) { el && el.classList.remove('hidden'); }
+      function hide(el) { el && el.classList.add('hidden'); }
+      function num(v, def) {
+        var n = parseFloat(v);
+        return Number.isFinite(n) ? n : def;
+      }
+
+      // Mobile menu
+      var toggle = document.getElementById('mobile-menu-toggle');
+      var mobileMenu = document.getElementById('mobile-menu');
+      if (toggle && mobileMenu) {
+        toggle.addEventListener('click', function () {
+          var isHidden = mobileMenu.classList.contains('hidden');
+          if (isHidden) {
+            mobileMenu.classList.remove('hidden');
+            toggle.setAttribute('aria-expanded', 'true');
+          } else {
+            mobileMenu.classList.add('hidden');
+            toggle.setAttribute('aria-expanded', 'false');
+          }
+        });
+      }
+
+      // Quaternion helpers
+      function quat(w, x, y, z) {
+        return { w: w, x: x, y: y, z: z };
+      }
+      function quatAdd(a, b) {
+        return quat(a.w + b.w, a.x + b.x, a.y + b.y, a.z + b.z);
+      }
+      function quatSub(a, b) {
+        return quat(a.w - b.w, a.x - b.x, a.y - b.y, a.z - b.z);
+      }
+      function quatMul(a, b) {
+        // a * b (Hamilton product)
+        return quat(
+          a.w*b.w - a.x*b.x - a.y*b.y - a.z*b.z,
+          a.w*b.x + a.x*b.w + a.y*b.z - a.z*b.y,
+          a.w*b.y - a.x*b.z + a.y*b.w + a.z*b.x,
+          a.w*b.z + a.x*b.y - a.y*b.x + a.z*b.w
+        );
+      }
+      function quatConj(q) {
+        return quat(q.w, -q.x, -q.y, -q.z);
+      }
+      function quatNorm(q) {
+        return Math.sqrt(q.w*q.w + q.x*q.x + q.y*q.y + q.z*q.z);
+      }
+      function quatNormalize(q) {
+        var n = quatNorm(q);
+        if (n === 0) return quat(0, 0, 0, 0);
+        return quat(q.w/n, q.x/n, q.y/n, q.z/n);
+      }
+      function quatInv(q) {
+        var n2 = q.w*q.w + q.x*q.x + q.y*q.y + q.z*q.z;
+        if (n2 === 0) return null;
+        var c = quatConj(q);
+        return quat(c.w/n2, c.x/n2, c.y/n2, c.z/n2);
+      }
+
+      function vec(x, y, z) { return { x: x, y: y, z: z }; }
+      function vecLength(v) { return Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z); }
+      function vecNormalize(v) {
+        var n = vecLength(v);
+        if (n === 0) return vec(0, 0, 0);
+        return vec(v.x/n, v.y/n, v.z/n);
+      }
+
+      function quatFromAxisAngle(axis, deg) {
+        var theta = deg * Math.PI / 180;
+        var u = vecNormalize(axis);
+        var half = theta / 2;
+        var s = Math.sin(half);
+        return quat(Math.cos(half), u.x * s, u.y * s, u.z * s);
+      }
+
+      // Rotate vector v by unit quaternion q
+      function rotateVectorByQuat(q, v) {
+        // Efficient formula: v' = v + 2 * w * (q_vec × v) + 2 * (q_vec × (q_vec × v))
+        var vx = v.x, vy = v.y, vz = v.z;
+        var qx = q.x, qy = q.y, qz = q.z, qw = q.w;
+
+        // t = 2 * (q_vec × v)
+        var tx = 2 * (qy * vz - qz * vy);
+        var ty = 2 * (qz * vx - qx * vz);
+        var tz = 2 * (qx * vy - qy * vx);
+
+        return {
+          x: vx + qw * tx + (qy * tz - qz * ty),
+          y: vy + qw * ty + (qz * tx - qx * tz),
+          z: vz + qw * tz + (qx * ty - qy * tx)
+        };
+      }
+
+      // Rotation matrix from unit quaternion
+      function rotationMatrixFromQuat(q) {
+        var w = q.w, x = q.x, y = q.y, z = q.z;
+        var ww = w*w, xx = x*x, yy = y*y, zz = z*z;
+        return [
+          [1 - 2*(yy + zz), 2*(x*y - w*z),   2*(x*z + w*y)],
+          [2*(x*y + w*z),   1 - 2*(xx + zz), 2*(y*z - w*x)],
+          [2*(x*z - w*y),   2*(y*z + w*x),   1 - 2*(xx + yy)]
+        ];
+      }
+
+      // Read quaternions from inputs
+      function readQ(prefix) {
+        return quat(
+          num($(prefix + '-w').value, 0),
+          num($(prefix + '-x').value, 0),
+          num($(prefix + '-y').value, 0),
+          num($(prefix + '-z').value, 0)
+        );
+      }
+      function writeQ(prefix, q) {
+        $(prefix + '-w').value = q.w;
+        $(prefix + '-x').value = q.x;
+        $(prefix + '-y').value = q.y;
+        $(prefix + '-z').value = q.z;
+      }
+
+      // Arithmetic form
+      var arithForm = $('quat-arithmetic-form');
+      var arithError = $('quat-error');
+      var arithRes = $('quat-arith-results');
+      var resText = $('quat-result-text');
+      var resNorm = $('quat-result-norm');
+      var resNotes = $('quat-result-notes');
+
+      function qToString(q) {
+        return 'q = (' + q.w.toFixed(6) + ', ' +
+                        q.x.toFixed(6) + ', ' +
+                        q.y.toFixed(6) + ', ' +
+                        q.z.toFixed(6) + ')';
+      }
+
+      function handleArithSubmit(e) {
+        e.preventDefault();
+        hide(arithError);
+        hide(arithRes);
+        resText.textContent = '';
+        resNorm.textContent = '';
+        resNotes.textContent = '';
+
+        var q1 = readQ('q1');
+        var q2 = readQ('q2');
+        var op = $('quat-operation').value;
+        var result = null;
+        var extraNote = '';
+
+        try {
+          switch (op) {
+            case 'add':
+              result = quatAdd(q1, q2);
+              extraNote = 'Component-wise sum of q₁ and q₂.';
+              break;
+            case 'sub':
+              result = quatSub(q1, q2);
+              extraNote = 'Component-wise difference q₁ − q₂.';
+              break;
+            case 'mul12':
+              result = quatMul(q2, q1);
+              extraNote = 'q₂·q₁ corresponds to applying q₁ followed by q₂.';
+              break;
+            case 'mul21':
+              result = quatMul(q1, q2);
+              extraNote = 'q₁·q₂ corresponds to applying q₂ followed by q₁.';
+              break;
+            case 'conj1':
+              result = quatConj(q1);
+              extraNote = 'Quaternion conjugate of q₁.';
+              break;
+            case 'norm1':
+              var n1 = quatNorm(q1);
+              resText.textContent = '‖q₁‖ = ' + n1.toFixed(9);
+              resNotes.textContent = 'Norm is the square root of the sum of squared components.';
+              show(arithRes);
+              return;
+            case 'inv1':
+              var inv1 = quatInv(q1);
+              if (!inv1) throw new Error('q₁ has zero norm and is not invertible.');
+              result = inv1;
+              extraNote = 'Inverse q₁⁻¹ = conj(q₁) / ‖q₁‖².';
+              break;
+            case 'normalize1':
+              result = quatNormalize(q1);
+              extraNote = 'Normalised q₁ so that ‖q₁‖ = 1 (or 0 if q₁ was zero).';
+              break;
+            case 'conj2':
+              result = quatConj(q2);
+              extraNote = 'Quaternion conjugate of q₂.';
+              break;
+            case 'norm2':
+              var n2 = quatNorm(q2);
+              resText.textContent = '‖q₂‖ = ' + n2.toFixed(9);
+              resNotes.textContent = 'Norm is the square root of the sum of squared components.';
+              show(arithRes);
+              return;
+            case 'inv2':
+              var inv2 = quatInv(q2);
+              if (!inv2) throw new Error('q₂ has zero norm and is not invertible.');
+              result = inv2;
+              extraNote = 'Inverse q₂⁻¹ = conj(q₂) / ‖q₂‖².';
+              break;
+            case 'normalize2':
+              result = quatNormalize(q2);
+              extraNote = 'Normalised q₂ so that ‖q₂‖ = 1 (or 0 if q₂ was zero).';
+              break;
+            default:
+              throw new Error('Unknown operation.');
+          }
+        } catch (ex) {
+          arithError.textContent = ex.message;
+          show(arithError);
+          return;
+        }
+
+        if (result) {
+          var n = quatNorm(result);
+          resText.textContent = qToString(result);
+          resNorm.textContent = '‖q‖ = ' + n.toFixed(9);
+          resNotes.textContent = extraNote;
+          show(arithRes);
+        }
+      }
+
+      // Presets
+      function applyPreset(name) {
+        if (name === 'identity') {
+          writeQ('q1', quat(1, 0, 0, 0));
+        } else if (name === '90z') {
+          // 90 deg around z: (cos 45°, 0,0,sin45°)
+          writeQ('q1', quat(Math.SQRT1_2, 0, 0, Math.SQRT1_2));
+        } else if (name === '180x') {
+          // 180 deg around x: (0,1,0,0)
+          writeQ('q1', quat(0, 1, 0, 0));
+        }
+      }
+
+      function applyVectorPreset(name) {
+        if (name === 'x') {
+          $('v-x').value = 1; $('v-y').value = 0; $('v-z').value = 0;
+        } else if (name === 'y') {
+          $('v-x').value = 0; $('v-y').value = 1; $('v-z').value = 0;
+        } else if (name === 'z') {
+          $('v-x').value = 0; $('v-y').value = 0; $('v-z').value = 1;
+        } else if (name === 'diag') {
+          $('v-x').value = 1; $('v-y').value = 1; $('v-z').value = 1;
+        }
+      }
+
+      // Axis → q1 button
+      function handleAxisToQ1() {
+        var ax = num($('axis-x').value, 0);
+        var ay = num($('axis-y').value, 0);
+        var az = num($('axis-z').value, 1);
+        var deg = num($('axis-angle-deg').value, 0);
+        var axis = vec(ax, ay, az);
+        var n = vecLength(axis);
+        if (n === 0) {
+          alert('Axis vector must be non-zero.');
+          return;
+        }
+        var q = quatFromAxisAngle(axis, deg);
+        writeQ('q1', q);
+      }
+
+      // Rotation form & 3D canvas
+      var rotationForm = $('quat-rotation-form');
+      var rotationError = $('quat-rotation-error');
+      var rotationResult = $('quat-rotation-result');
+      var rotationMatrixOut = $('quat-rotation-matrix');
+      var canvas = $('quat-canvas');
+      var ctx = canvas && canvas.getContext ? canvas.getContext('2d') : null;
+
+      var currentOriginal = vec(1, 0, 0);
+      var currentRotated = null;
+
+      function projectPoint(p) {
+        var w = canvas.width;
+        var h = canvas.height;
+        var cx = w / 2;
+        var cy = h / 2;
+        var zOffset = 3.0;
+        var scale = Math.min(w, h) * 0.28;
+        var denom = (p.z + zOffset);
+        if (denom === 0) denom = 0.0001;
+        var x2d = cx + scale * p.x / denom;
+        var y2d = cy - scale * p.y / denom;
+        return { x: x2d, y: y2d };
+      }
+
+      function drawArrow(from, to, color) {
+        var p0 = projectPoint(from);
+        var p1 = projectPoint(to);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.stroke();
+
+        var dx = p1.x - p0.x;
+        var dy = p1.y - p0.y;
+        var len = Math.sqrt(dx*dx + dy*dy) || 1;
+        var ux = dx / len, uy = dy / len;
+        var size = 7;
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p1.x - size*(ux + uy*0.4), p1.y - size*(uy - ux*0.4));
+        ctx.lineTo(p1.x - size*(ux - uy*0.4), p1.y - size*(uy + ux*0.4));
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+      }
+
+      function drawAxes() {
+        // axes from origin
+        var origin = vec(0, 0, 0);
+        drawArrow(origin, vec(1, 0, 0), '#2563eb'); // x
+        drawArrow(origin, vec(0, 1, 0), '#16a34a'); // y
+        drawArrow(origin, vec(0, 0, 1), '#f59e0b'); // z
+      }
+
+      function drawScene() {
+        if (!ctx || !canvas) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // background grid
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        ctx.globalAlpha = 0.9;
+        drawAxes();
+        ctx.restore();
+
+        // Original vector v (grey)
+        if (currentOriginal) {
+          ctx.save();
+          drawArrow(vec(0,0,0), currentOriginal, '#9ca3af');
+          ctx.restore();
+        }
+        // Rotated vector v' (red)
+        if (currentRotated) {
+          ctx.save();
+          drawArrow(vec(0,0,0), currentRotated, '#dc2626');
+          ctx.restore();
+        }
+      }
+
+      function renderMatrix(matrix) {
+        rotationMatrixOut.innerHTML = '';
+        if (!matrix) return;
+        matrix.forEach(function (row) {
+          var line = document.createElement('div');
+          line.textContent = '[' +
+            row.map(function (v) { return v.toFixed(6); }).join(', ') +
+            ']';
+          rotationMatrixOut.appendChild(line);
+        });
+      }
+
+      function handleRotationSubmit(e) {
+        e.preventDefault();
+        hide(rotationError);
+        rotationResult.textContent = '';
+        renderMatrix(null);
+        currentRotated = null;
+
+        var qr = quat(
+          num($('qr-w').value, 0),
+          num($('qr-x').value, 0),
+          num($('qr-y').value, 0),
+          num($('qr-z').value, 0)
+        );
+        var v = vec(
+          num($('v-x').value, 0),
+          num($('v-y').value, 0),
+          num($('v-z').value, 0)
+        );
+        currentOriginal = v;
+
+        var autoNorm = $('qr-auto-normalize').checked;
+        var qrUsed = qr;
+        var nqr = quatNorm(qr);
+        if (autoNorm) {
+          qrUsed = quatNormalize(qr);
+        } else if (Math.abs(nqr - 1) > 1e-6) {
+          rotationError.textContent = 'Warning: q_rot is not unit length. The rotation may include scaling. Enable auto-normalise for pure rotations.';
+          show(rotationError);
+        }
+
+        var vRot = rotateVectorByQuat(qrUsed, v);
+        currentRotated = vRot;
+        drawScene();
+
+        rotationResult.innerHTML =
+          '<span class="vector-pill">v = (' + v.x.toFixed(4) + ', ' + v.y.toFixed(4) + ', ' + v.z.toFixed(4) + ')</span>' +
+          '<span class="vector-pill">v′ = (' + vRot.x.toFixed(4) + ', ' + vRot.y.toFixed(4) + ', ' + vRot.z.toFixed(4) + ')</span>';
+
+        var R = rotationMatrixFromQuat(qrUsed);
+        renderMatrix(R);
+      }
+
+      function handleRotationReset() {
+        hide(rotationError);
+        rotationResult.textContent = '';
+        renderMatrix(null);
+        $('qr-w').value = '0.70710678';
+        $('qr-x').value = '0';
+        $('qr-y').value = '0';
+        $('qr-z').value = '0.70710678';
+        $('qr-auto-normalize').checked = true;
+        $('v-x').value = '1';
+        $('v-y').value = '0';
+        $('v-z').value = '0';
+        currentOriginal = vec(1,0,0);
+        currentRotated = null;
+        drawScene();
+      }
+
+      function copyQ1ToQr() {
+        var q1 = readQ('q1');
+        writeQ('qr', q1);
+      }
+
+      // Event wiring
+      document.addEventListener('DOMContentLoaded', function () {
+        if (arithForm) {
+          arithForm.addEventListener('submit', handleArithSubmit);
+        }
+        var arithReset = $('quat-arith-reset');
+        if (arithReset) {
+          arithReset.addEventListener('click', function () {
+            arithForm.reset();
+            $('q1-w').value = 1;
+            $('q1-x').value = 0;
+            $('q1-y').value = 0;
+            $('q1-z').value = 0;
+            hide(arithError);
+            hide(arithRes);
+          });
+        }
+
+        document.querySelectorAll('.chip-button[data-preset]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            applyPreset(btn.getAttribute('data-preset'));
+          });
+        });
+        document.querySelectorAll('.chip-button[data-vpreset]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            applyVectorPreset(btn.getAttribute('data-vpreset'));
+          });
+        });
+
+        var axisBtn = $('btn-axis-to-q1');
+        if (axisBtn) axisBtn.addEventListener('click', handleAxisToQ1);
+
+        if (rotationForm) {
+          rotationForm.addEventListener('submit', handleRotationSubmit);
+        }
+        var rotReset = $('quat-rotation-reset');
+        if (rotReset) rotReset.addEventListener('click', handleRotationReset);
+
+        var copyBtn = $('btn-copy-q1-to-qr');
+        if (copyBtn) copyBtn.addEventListener('click', copyQ1ToQr);
+
+        // Init canvas
+        if (canvas && ctx) {
+          drawScene();
+        }
+      });
+    })();
+  </script>
+
+
+</body></html>, ',
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <script>
+    (function () {
+      function $(id) { return document.getElementById(id); }
+      function show(el) { el && el.classList.remove('hidden'); }
+      function hide(el) { el && el.classList.add('hidden'); }
+      function num(v, def) {
+        var n = parseFloat(v);
+        return Number.isFinite(n) ? n : def;
+      }
+
+      // Mobile menu
+      var toggle = document.getElementById('mobile-menu-toggle');
+      var mobileMenu = document.getElementById('mobile-menu');
+      if (toggle && mobileMenu) {
+        toggle.addEventListener('click', function () {
+          var isHidden = mobileMenu.classList.contains('hidden');
+          if (isHidden) {
+            mobileMenu.classList.remove('hidden');
+            toggle.setAttribute('aria-expanded', 'true');
+          } else {
+            mobileMenu.classList.add('hidden');
+            toggle.setAttribute('aria-expanded', 'false');
+          }
+        });
+      }
+
+      // Quaternion helpers
+      function quat(w, x, y, z) {
+        return { w: w, x: x, y: y, z: z };
+      }
+      function quatAdd(a, b) {
+        return quat(a.w + b.w, a.x + b.x, a.y + b.y, a.z + b.z);
+      }
+      function quatSub(a, b) {
+        return quat(a.w - b.w, a.x - b.x, a.y - b.y, a.z - b.z);
+      }
+      function quatMul(a, b) {
+        // a * b (Hamilton product)
+        return quat(
+          a.w*b.w - a.x*b.x - a.y*b.y - a.z*b.z,
+          a.w*b.x + a.x*b.w + a.y*b.z - a.z*b.y,
+          a.w*b.y - a.x*b.z + a.y*b.w + a.z*b.x,
+          a.w*b.z + a.x*b.y - a.y*b.x + a.z*b.w
+        );
+      }
+      function quatConj(q) {
+        return quat(q.w, -q.x, -q.y, -q.z);
+      }
+      function quatNorm(q) {
+        return Math.sqrt(q.w*q.w + q.x*q.x + q.y*q.y + q.z*q.z);
+      }
+      function quatNormalize(q) {
+        var n = quatNorm(q);
+        if (n === 0) return quat(0, 0, 0, 0);
+        return quat(q.w/n, q.x/n, q.y/n, q.z/n);
+      }
+      function quatInv(q) {
+        var n2 = q.w*q.w + q.x*q.x + q.y*q.y + q.z*q.z;
+        if (n2 === 0) return null;
+        var c = quatConj(q);
+        return quat(c.w/n2, c.x/n2, c.y/n2, c.z/n2);
+      }
+
+      function vec(x, y, z) { return { x: x, y: y, z: z }; }
+      function vecLength(v) { return Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z); }
+      function vecNormalize(v) {
+        var n = vecLength(v);
+        if (n === 0) return vec(0, 0, 0);
+        return vec(v.x/n, v.y/n, v.z/n);
+      }
+
+      function quatFromAxisAngle(axis, deg) {
+        var theta = deg * Math.PI / 180;
+        var u = vecNormalize(axis);
+        var half = theta / 2;
+        var s = Math.sin(half);
+        return quat(Math.cos(half), u.x * s, u.y * s, u.z * s);
+      }
+
+      // Rotate vector v by unit quaternion q
+      function rotateVectorByQuat(q, v) {
+        // Efficient formula: v' = v + 2 * w * (q_vec × v) + 2 * (q_vec × (q_vec × v))
+        var vx = v.x, vy = v.y, vz = v.z;
+        var qx = q.x, qy = q.y, qz = q.z, qw = q.w;
+
+        // t = 2 * (q_vec × v)
+        var tx = 2 * (qy * vz - qz * vy);
+        var ty = 2 * (qz * vx - qx * vz);
+        var tz = 2 * (qx * vy - qy * vx);
+
+        return {
+          x: vx + qw * tx + (qy * tz - qz * ty),
+          y: vy + qw * ty + (qz * tx - qx * tz),
+          z: vz + qw * tz + (qx * ty - qy * tx)
+        };
+      }
+
+      // Rotation matrix from unit quaternion
+      function rotationMatrixFromQuat(q) {
+        var w = q.w, x = q.x, y = q.y, z = q.z;
+        var ww = w*w, xx = x*x, yy = y*y, zz = z*z;
+        return [
+          [1 - 2*(yy + zz), 2*(x*y - w*z),   2*(x*z + w*y)],
+          [2*(x*y + w*z),   1 - 2*(xx + zz), 2*(y*z - w*x)],
+          [2*(x*z - w*y),   2*(y*z + w*x),   1 - 2*(xx + yy)]
+        ];
+      }
+
+      // Read quaternions from inputs
+      function readQ(prefix) {
+        return quat(
+          num($(prefix + '-w').value, 0),
+          num($(prefix + '-x').value, 0),
+          num($(prefix + '-y').value, 0),
+          num($(prefix + '-z').value, 0)
+        );
+      }
+      function writeQ(prefix, q) {
+        $(prefix + '-w').value = q.w;
+        $(prefix + '-x').value = q.x;
+        $(prefix + '-y').value = q.y;
+        $(prefix + '-z').value = q.z;
+      }
+
+      // Arithmetic form
+      var arithForm = $('quat-arithmetic-form');
+      var arithError = $('quat-error');
+      var arithRes = $('quat-arith-results');
+      var resText = $('quat-result-text');
+      var resNorm = $('quat-result-norm');
+      var resNotes = $('quat-result-notes');
+
+      function qToString(q) {
+        return 'q = (' + q.w.toFixed(6) + ', ' +
+                        q.x.toFixed(6) + ', ' +
+                        q.y.toFixed(6) + ', ' +
+                        q.z.toFixed(6) + ')';
+      }
+
+      function handleArithSubmit(e) {
+        e.preventDefault();
+        hide(arithError);
+        hide(arithRes);
+        resText.textContent = '';
+        resNorm.textContent = '';
+        resNotes.textContent = '';
+
+        var q1 = readQ('q1');
+        var q2 = readQ('q2');
+        var op = $('quat-operation').value;
+        var result = null;
+        var extraNote = '';
+
+        try {
+          switch (op) {
+            case 'add':
+              result = quatAdd(q1, q2);
+              extraNote = 'Component-wise sum of q₁ and q₂.';
+              break;
+            case 'sub':
+              result = quatSub(q1, q2);
+              extraNote = 'Component-wise difference q₁ − q₂.';
+              break;
+            case 'mul12':
+              result = quatMul(q2, q1);
+              extraNote = 'q₂·q₁ corresponds to applying q₁ followed by q₂.';
+              break;
+            case 'mul21':
+              result = quatMul(q1, q2);
+              extraNote = 'q₁·q₂ corresponds to applying q₂ followed by q₁.';
+              break;
+            case 'conj1':
+              result = quatConj(q1);
+              extraNote = 'Quaternion conjugate of q₁.';
+              break;
+            case 'norm1':
+              var n1 = quatNorm(q1);
+              resText.textContent = '‖q₁‖ = ' + n1.toFixed(9);
+              resNotes.textContent = 'Norm is the square root of the sum of squared components.';
+              show(arithRes);
+              return;
+            case 'inv1':
+              var inv1 = quatInv(q1);
+              if (!inv1) throw new Error('q₁ has zero norm and is not invertible.');
+              result = inv1;
+              extraNote = 'Inverse q₁⁻¹ = conj(q₁) / ‖q₁‖².';
+              break;
+            case 'normalize1':
+              result = quatNormalize(q1);
+              extraNote = 'Normalised q₁ so that ‖q₁‖ = 1 (or 0 if q₁ was zero).';
+              break;
+            case 'conj2':
+              result = quatConj(q2);
+              extraNote = 'Quaternion conjugate of q₂.';
+              break;
+            case 'norm2':
+              var n2 = quatNorm(q2);
+              resText.textContent = '‖q₂‖ = ' + n2.toFixed(9);
+              resNotes.textContent = 'Norm is the square root of the sum of squared components.';
+              show(arithRes);
+              return;
+            case 'inv2':
+              var inv2 = quatInv(q2);
+              if (!inv2) throw new Error('q₂ has zero norm and is not invertible.');
+              result = inv2;
+              extraNote = 'Inverse q₂⁻¹ = conj(q₂) / ‖q₂‖².';
+              break;
+            case 'normalize2':
+              result = quatNormalize(q2);
+              extraNote = 'Normalised q₂ so that ‖q₂‖ = 1 (or 0 if q₂ was zero).';
+              break;
+            default:
+              throw new Error('Unknown operation.');
+          }
+        } catch (ex) {
+          arithError.textContent = ex.message;
+          show(arithError);
+          return;
+        }
+
+        if (result) {
+          var n = quatNorm(result);
+          resText.textContent = qToString(result);
+          resNorm.textContent = '‖q‖ = ' + n.toFixed(9);
+          resNotes.textContent = extraNote;
+          show(arithRes);
+        }
+      }
+
+      // Presets
+      function applyPreset(name) {
+        if (name === 'identity') {
+          writeQ('q1', quat(1, 0, 0, 0));
+        } else if (name === '90z') {
+          // 90 deg around z: (cos 45°, 0,0,sin45°)
+          writeQ('q1', quat(Math.SQRT1_2, 0, 0, Math.SQRT1_2));
+        } else if (name === '180x') {
+          // 180 deg around x: (0,1,0,0)
+          writeQ('q1', quat(0, 1, 0, 0));
+        }
+      }
+
+      function applyVectorPreset(name) {
+        if (name === 'x') {
+          $('v-x').value = 1; $('v-y').value = 0; $('v-z').value = 0;
+        } else if (name === 'y') {
+          $('v-x').value = 0; $('v-y').value = 1; $('v-z').value = 0;
+        } else if (name === 'z') {
+          $('v-x').value = 0; $('v-y').value = 0; $('v-z').value = 1;
+        } else if (name === 'diag') {
+          $('v-x').value = 1; $('v-y').value = 1; $('v-z').value = 1;
+        }
+      }
+
+      // Axis → q1 button
+      function handleAxisToQ1() {
+        var ax = num($('axis-x').value, 0);
+        var ay = num($('axis-y').value, 0);
+        var az = num($('axis-z').value, 1);
+        var deg = num($('axis-angle-deg').value, 0);
+        var axis = vec(ax, ay, az);
+        var n = vecLength(axis);
+        if (n === 0) {
+          alert('Axis vector must be non-zero.');
+          return;
+        }
+        var q = quatFromAxisAngle(axis, deg);
+        writeQ('q1', q);
+      }
+
+      // Rotation form & 3D canvas
+      var rotationForm = $('quat-rotation-form');
+      var rotationError = $('quat-rotation-error');
+      var rotationResult = $('quat-rotation-result');
+      var rotationMatrixOut = $('quat-rotation-matrix');
+      var canvas = $('quat-canvas');
+      var ctx = canvas && canvas.getContext ? canvas.getContext('2d') : null;
+
+      var currentOriginal = vec(1, 0, 0);
+      var currentRotated = null;
+
+      function projectPoint(p) {
+        var w = canvas.width;
+        var h = canvas.height;
+        var cx = w / 2;
+        var cy = h / 2;
+        var zOffset = 3.0;
+        var scale = Math.min(w, h) * 0.28;
+        var denom = (p.z + zOffset);
+        if (denom === 0) denom = 0.0001;
+        var x2d = cx + scale * p.x / denom;
+        var y2d = cy - scale * p.y / denom;
+        return { x: x2d, y: y2d };
+      }
+
+      function drawArrow(from, to, color) {
+        var p0 = projectPoint(from);
+        var p1 = projectPoint(to);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.stroke();
+
+        var dx = p1.x - p0.x;
+        var dy = p1.y - p0.y;
+        var len = Math.sqrt(dx*dx + dy*dy) || 1;
+        var ux = dx / len, uy = dy / len;
+        var size = 7;
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p1.x - size*(ux + uy*0.4), p1.y - size*(uy - ux*0.4));
+        ctx.lineTo(p1.x - size*(ux - uy*0.4), p1.y - size*(uy + ux*0.4));
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+      }
+
+      function drawAxes() {
+        // axes from origin
+        var origin = vec(0, 0, 0);
+        drawArrow(origin, vec(1, 0, 0), '#2563eb'); // x
+        drawArrow(origin, vec(0, 1, 0), '#16a34a'); // y
+        drawArrow(origin, vec(0, 0, 1), '#f59e0b'); // z
+      }
+
+      function drawScene() {
+        if (!ctx || !canvas) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // background grid
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        ctx.globalAlpha = 0.9;
+        drawAxes();
+        ctx.restore();
+
+        // Original vector v (grey)
+        if (currentOriginal) {
+          ctx.save();
+          drawArrow(vec(0,0,0), currentOriginal, '#9ca3af');
+          ctx.restore();
+        }
+        // Rotated vector v' (red)
+        if (currentRotated) {
+          ctx.save();
+          drawArrow(vec(0,0,0), currentRotated, '#dc2626');
+          ctx.restore();
+        }
+      }
+
+      function renderMatrix(matrix) {
+        rotationMatrixOut.innerHTML = '';
+        if (!matrix) return;
+        matrix.forEach(function (row) {
+          var line = document.createElement('div');
+          line.textContent = '[' +
+            row.map(function (v) { return v.toFixed(6); }).join(', ') +
+            ']';
+          rotationMatrixOut.appendChild(line);
+        });
+      }
+
+      function handleRotationSubmit(e) {
+        e.preventDefault();
+        hide(rotationError);
+        rotationResult.textContent = '';
+        renderMatrix(null);
+        currentRotated = null;
+
+        var qr = quat(
+          num($('qr-w').value, 0),
+          num($('qr-x').value, 0),
+          num($('qr-y').value, 0),
+          num($('qr-z').value, 0)
+        );
+        var v = vec(
+          num($('v-x').value, 0),
+          num($('v-y').value, 0),
+          num($('v-z').value, 0)
+        );
+        currentOriginal = v;
+
+        var autoNorm = $('qr-auto-normalize').checked;
+        var qrUsed = qr;
+        var nqr = quatNorm(qr);
+        if (autoNorm) {
+          qrUsed = quatNormalize(qr);
+        } else if (Math.abs(nqr - 1) > 1e-6) {
+          rotationError.textContent = 'Warning: q_rot is not unit length. The rotation may include scaling. Enable auto-normalise for pure rotations.';
+          show(rotationError);
+        }
+
+        var vRot = rotateVectorByQuat(qrUsed, v);
+        currentRotated = vRot;
+        drawScene();
+
+        rotationResult.innerHTML =
+          '<span class="vector-pill">v = (' + v.x.toFixed(4) + ', ' + v.y.toFixed(4) + ', ' + v.z.toFixed(4) + ')</span>' +
+          '<span class="vector-pill">v′ = (' + vRot.x.toFixed(4) + ', ' + vRot.y.toFixed(4) + ', ' + vRot.z.toFixed(4) + ')</span>';
+
+        var R = rotationMatrixFromQuat(qrUsed);
+        renderMatrix(R);
+      }
+
+      function handleRotationReset() {
+        hide(rotationError);
+        rotationResult.textContent = '';
+        renderMatrix(null);
+        $('qr-w').value = '0.70710678';
+        $('qr-x').value = '0';
+        $('qr-y').value = '0';
+        $('qr-z').value = '0.70710678';
+        $('qr-auto-normalize').checked = true;
+        $('v-x').value = '1';
+        $('v-y').value = '0';
+        $('v-z').value = '0';
+        currentOriginal = vec(1,0,0);
+        currentRotated = null;
+        drawScene();
+      }
+
+      function copyQ1ToQr() {
+        var q1 = readQ('q1');
+        writeQ('qr', q1);
+      }
+
+      // Event wiring
+      document.addEventListener('DOMContentLoaded', function () {
+        if (arithForm) {
+          arithForm.addEventListener('submit', handleArithSubmit);
+        }
+        var arithReset = $('quat-arith-reset');
+        if (arithReset) {
+          arithReset.addEventListener('click', function () {
+            arithForm.reset();
+            $('q1-w').value = 1;
+            $('q1-x').value = 0;
+            $('q1-y').value = 0;
+            $('q1-z').value = 0;
+            hide(arithError);
+            hide(arithRes);
+          });
+        }
+
+        document.querySelectorAll('.chip-button[data-preset]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            applyPreset(btn.getAttribute('data-preset'));
+          });
+        });
+        document.querySelectorAll('.chip-button[data-vpreset]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            applyVectorPreset(btn.getAttribute('data-vpreset'));
+          });
+        });
+
+        var axisBtn = $('btn-axis-to-q1');
+        if (axisBtn) axisBtn.addEventListener('click', handleAxisToQ1);
+
+        if (rotationForm) {
+          rotationForm.addEventListener('submit', handleRotationSubmit);
+        }
+        var rotReset = $('quat-rotation-reset');
+        if (rotReset) rotReset.addEventListener('click', handleRotationReset);
+
+        var copyBtn = $('btn-copy-q1-to-qr');
+        if (copyBtn) copyBtn.addEventListener('click', copyQ1ToQr);
+
+        // Init canvas
+        if (canvas && ctx) {
+          drawScene();
+        }
+      });
+    })();
+  </script>
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
       svg: { fontCache: 'global' }
     };
   </script>

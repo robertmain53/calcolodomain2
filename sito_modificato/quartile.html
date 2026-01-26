@@ -49,10 +49,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -213,8 +209,6 @@
 <body class="bg-gray-50 text-gray-800">
 
     <!-- BODY_SCRIPTS_INIZIO -->
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
         <div class="flex justify-between items-center">
@@ -250,7 +244,7 @@
     </header>
 
     <a class="skip-link" href="#main-content">Skip to main content</a>
-    <main class="container mx-auto px-4 py-8" id="main-content">
+    <main class="container mx-auto px-4 py-8 w-full lg:w-2/3" id="main-content">
       
       <nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/math" class="hover:text-blue-600">Math</a> &raquo; <a href="https://calcdomain.com/subcategories/core-math-algebra" class="hover:text-blue-600">Core Math &amp; Algebra</a></nav>
       
@@ -711,7 +705,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -778,14 +772,618 @@
 
 
 
+
     
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
     
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      // Mobile menu toggle
+      document.getElementById('mobile-menu-toggle')?.addEventListener('click', function () {
+        const menu = document.getElementById('mobile-menu');
+        if (!menu) return;
+        const isHidden = menu.classList.contains('hidden');
+        menu.classList.toggle('hidden', !isHidden);
+        this.setAttribute('aria-expanded', String(isHidden));
+      });
+
+      document.addEventListener('DOMContentLoaded', function () {
+        const dataInput = document.getElementById('data-input');
+        const decimalsSelect = document.getElementById('decimals');
+        const sortOrderRadios = document.querySelectorAll('input[name="sort-order"]');
+        const methodRadios = document.querySelectorAll('input[name="quartile-method"]');
+        const btnCalc = document.getElementById('btn-calc-quartiles');
+        const btnClear = document.getElementById('btn-clear-quartiles');
+        const errorEl = document.getElementById('quartile-error');
+
+        const resQ1 = document.getElementById('res-q1');
+        const resMedian = document.getElementById('res-median');
+        const resQ3 = document.getElementById('res-q3');
+        const resIqr = document.getElementById('res-iqr');
+        const resFences = document.getElementById('res-fences');
+        const resMinMax = document.getElementById('res-minmax');
+        const resCount = document.getElementById('res-count');
+        const resOutliers = document.getElementById('res-outliers');
+        const sortedTableBody = document.getElementById('sorted-table-body');
+        const currentMethodLabel = document.getElementById('current-method-label');
+
+        const sampleButtons = document.querySelectorAll('[data-sample]');
+
+        function setResultText(container, index, text) {
+          if (!container) return;
+          const spans = container.querySelectorAll('.result-value');
+          if (spans[index]) spans[index].textContent = text;
+        }
+
+        function clearAllResults() {
+          [resQ1, resMedian, resQ3, resIqr, resFences, resMinMax, resCount, resOutliers].forEach(function (box) {
+            if (!box) return;
+            box.querySelectorAll('.result-value').forEach(function (span) {
+              span.textContent = '—';
+            });
+          });
+          if (sortedTableBody) sortedTableBody.innerHTML = '';
+          if (currentMethodLabel) currentMethodLabel.textContent = 'Method: —';
+          if (errorEl) errorEl.textContent = '';
+        }
+
+        function getDecimals() {
+          if (!decimalsSelect) return 2;
+          const d = Number(decimalsSelect.value);
+          if (!Number.isInteger(d) || d < 0 || d > 10) return 2;
+          return d;
+        }
+
+        function fmt(value) {
+          if (!isFinite(value)) return '—';
+          const d = getDecimals();
+          return Number(value.toFixed(d)).toString();
+        }
+
+        function parseData() {
+          if (!dataInput) return [];
+          const raw = dataInput.value;
+          if (!raw.trim()) return [];
+          const tokens = raw.split(/[\s,;]+/);
+          const nums = [];
+          for (let t of tokens) {
+            const s = t.trim();
+            if (!s) continue;
+            const v = Number(s);
+            if (!isFinite(v)) {
+              return { error: 'All non-empty entries must be numeric. Problem with: "' + s + '".' };
+            }
+            nums.push(v);
+            if (nums.length > 5000) {
+              return { error: 'Maximum allowed size is 5,000 values for performance reasons.' };
+            }
+          }
+          if (nums.length === 0) {
+            return { error: 'Please enter at least one numeric value.' };
+          }
+          return { data: nums };
+        }
+
+        function medianOfSortedSlice(arr, start, end) {
+          // arr sorted ascending, slice [start, end)
+          const len = end - start;
+          if (len <= 0) return NaN;
+          const mid = Math.floor(len / 2);
+          if (len % 2 === 1) {
+            return arr[start + mid];
+          } else {
+            return (arr[start + mid - 1] + arr[start + mid]) / 2;
+          }
+        }
+
+        function quartilesTukey(sorted) {
+          const n = sorted.length;
+          if (n === 0) return { q1: NaN, q2: NaN, q3: NaN };
+          const q2 = medianOfSortedSlice(sorted, 0, n);
+          let lowerEnd, upperStart;
+          if (n % 2 === 1) {
+            const mid = Math.floor(n / 2);
+            lowerEnd = mid;        // 0 .. mid-1
+            upperStart = mid + 1;  // mid+1 .. n-1
+          } else {
+            const half = n / 2;
+            lowerEnd = half;       // 0 .. half-1
+            upperStart = half;     // half .. n-1
+          }
+          const q1 = medianOfSortedSlice(sorted, 0, lowerEnd);
+          const q3 = medianOfSortedSlice(sorted, upperStart, n);
+          return { q1, q2, q3 };
+        }
+
+        function quartilesInclusive(sorted) {
+          const n = sorted.length;
+          if (n === 0) return { q1: NaN, q2: NaN, q3: NaN };
+
+          function quantile(p) {
+            if (n === 1) return sorted[0];
+            const pos = (n - 1) * p;
+            const lower = Math.floor(pos);
+            const upper = Math.ceil(pos);
+            const frac = pos - lower;
+            if (upper >= n) return sorted[n - 1];
+            return sorted[lower] + frac * (sorted[upper] - sorted[lower]);
+          }
+
+          return {
+            q1: quantile(0.25),
+            q2: quantile(0.5),
+            q3: quantile(0.75)
+          };
+        }
+
+        function computeQuartiles() {
+          clearAllResults();
+
+          const parsed = parseData();
+          if (parsed.error) {
+            if (errorEl) errorEl.textContent = parsed.error;
+            return;
+          }
+          const values = parsed.data;
+          const n = values.length;
+
+          const method = (Array.from(methodRadios).find(r => r.checked)?.value) || 'tukey';
+          const sortOrder = (Array.from(sortOrderRadios).find(r => r.checked)?.value) || 'asc';
+
+          const sortedAsc = values.slice().sort((a, b) => a - b);
+          const sorted = sortOrder === 'desc' ? sortedAsc.slice().reverse() : sortedAsc.slice();
+
+          let q;
+          if (method === 'inclusive') {
+            q = quartilesInclusive(sortedAsc);
+          } else {
+            q = quartilesTukey(sortedAsc);
+          }
+          const q1 = q.q1;
+          const q2 = q.q2;
+          const q3 = q.q3;
+
+          // IQR, fences, min, max, counts
+          const iqr = q3 - q1;
+          const lowerFence = q1 - 1.5 * iqr;
+          const upperFence = q3 + 1.5 * iqr;
+
+          const minVal = sortedAsc[0];
+          const maxVal = sortedAsc[sortedAsc.length - 1];
+
+          const distinctCount = new Set(sortedAsc.map(v => v.toString())).size;
+
+          // Outliers based on sortedAsc
+          const lowOutliers = sortedAsc.filter(v => v < lowerFence);
+          const highOutliers = sortedAsc.filter(v => v > upperFence);
+
+          // Fill summary results
+          setResultText(resQ1, 0, fmt(q1));
+          setResultText(resMedian, 0, fmt(q2));
+          setResultText(resQ3, 0, fmt(q3));
+          setResultText(resIqr, 0, fmt(iqr));
+
+          if (resFences) {
+            setResultText(resFences, 0, fmt(lowerFence));
+            setResultText(resFences, 1, fmt(upperFence));
+          }
+          if (resMinMax) {
+            setResultText(resMinMax, 0, fmt(minVal));
+            setResultText(resMinMax, 1, fmt(maxVal));
+          }
+          if (resCount) {
+            setResultText(resCount, 0, n.toString());
+            setResultText(resCount, 1, distinctCount.toString());
+          }
+          if (resOutliers) {
+            const lowLabel = lowOutliers.length
+              ? lowOutliers.map(fmt).join(', ')
+              : 'none';
+            const highLabel = highOutliers.length
+              ? highOutliers.map(fmt).join(', ')
+              : 'none';
+            setResultText(resOutliers, 0, lowLabel);
+            setResultText(resOutliers, 1, highLabel);
+          }
+
+          if (currentMethodLabel) {
+            currentMethodLabel.textContent =
+              'Method: ' + (method === 'inclusive' ? 'Inclusive (Excel-like)' : 'Tukey (median-of-halves)');
+          }
+
+          // Build table with positions and notes
+          if (sortedTableBody) {
+            sortedTableBody.innerHTML = '';
+            const d = getDecimals();
+
+            // Build mark sets for quartiles (using values from sortedAsc)
+            function approxEqual(a, b) {
+              const tol = Math.pow(10, -d) / 2;
+              return Math.abs(a - b) <= tol;
+            }
+
+            const marks = {
+              Q1: sortedAsc.filter(v => approxEqual(v, q1)),
+              Q2: sortedAsc.filter(v => approxEqual(v, q2)),
+              Q3: sortedAsc.filter(v => approxEqual(v, q3))
+            };
+
+            sorted.forEach((value, index) => {
+              const tr = document.createElement('tr');
+              tr.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+
+              const posCell = document.createElement('td');
+              posCell.className = 'px-3 py-1.5 border-b text-gray-700';
+              posCell.textContent = (index + 1).toString();
+
+              const valCell = document.createElement('td');
+              valCell.className = 'px-3 py-1.5 border-b text-gray-700';
+              valCell.textContent = fmt(value);
+
+              const noteCell = document.createElement('td');
+              noteCell.className = 'px-3 py-1.5 border-b text-gray-600 text-xs';
+
+              const tags = [];
+              if (approxEqual(value, minVal)) tags.push('min');
+              if (approxEqual(value, maxVal)) tags.push('max');
+              if (lowOutliers.includes(value)) tags.push('outlier (low)');
+              if (highOutliers.includes(value)) tags.push('outlier (high)');
+              if (marks.Q1.some(v => approxEqual(v, value))) tags.push('Q1');
+              if (marks.Q2.some(v => approxEqual(v, value))) tags.push('median');
+              if (marks.Q3.some(v => approxEqual(v, value))) tags.push('Q3');
+
+              noteCell.textContent = tags.join(' · ');
+
+              tr.appendChild(posCell);
+              tr.appendChild(valCell);
+              tr.appendChild(noteCell);
+              sortedTableBody.appendChild(tr);
+            });
+          }
+        }
+
+        if (btnCalc) btnCalc.addEventListener('click', computeQuartiles);
+
+        if (btnClear) {
+          btnClear.addEventListener('click', function () {
+            if (dataInput) dataInput.value = '';
+            clearAllResults();
+          });
+        }
+
+        // Sample data buttons
+        sampleButtons.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const type = btn.getAttribute('data-sample');
+            if (!dataInput || !type) return;
+            let sample = '';
+            if (type === 'symmetric') {
+              sample = '7, 8, 9, 10, 11, 12, 13, 14, 15';
+            } else if (type === 'skewed') {
+              sample = '3, 4, 4, 5, 6, 7, 12, 15, 18, 24';
+            } else if (type === 'outliers') {
+              sample = '10, 11, 11, 12, 13, 13, 14, 15, 15, 120, 135';
+            }
+            dataInput.value = sample;
+            clearAllResults();
+          });
+        });
+      });
+    </script>
+
+
+</body></html>
+, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      // Mobile menu toggle
+      document.getElementById('mobile-menu-toggle')?.addEventListener('click', function () {
+        const menu = document.getElementById('mobile-menu');
+        if (!menu) return;
+        const isHidden = menu.classList.contains('hidden');
+        menu.classList.toggle('hidden', !isHidden);
+        this.setAttribute('aria-expanded', String(isHidden));
+      });
+
+      document.addEventListener('DOMContentLoaded', function () {
+        const dataInput = document.getElementById('data-input');
+        const decimalsSelect = document.getElementById('decimals');
+        const sortOrderRadios = document.querySelectorAll('input[name="sort-order"]');
+        const methodRadios = document.querySelectorAll('input[name="quartile-method"]');
+        const btnCalc = document.getElementById('btn-calc-quartiles');
+        const btnClear = document.getElementById('btn-clear-quartiles');
+        const errorEl = document.getElementById('quartile-error');
+
+        const resQ1 = document.getElementById('res-q1');
+        const resMedian = document.getElementById('res-median');
+        const resQ3 = document.getElementById('res-q3');
+        const resIqr = document.getElementById('res-iqr');
+        const resFences = document.getElementById('res-fences');
+        const resMinMax = document.getElementById('res-minmax');
+        const resCount = document.getElementById('res-count');
+        const resOutliers = document.getElementById('res-outliers');
+        const sortedTableBody = document.getElementById('sorted-table-body');
+        const currentMethodLabel = document.getElementById('current-method-label');
+
+        const sampleButtons = document.querySelectorAll('[data-sample]');
+
+        function setResultText(container, index, text) {
+          if (!container) return;
+          const spans = container.querySelectorAll('.result-value');
+          if (spans[index]) spans[index].textContent = text;
+        }
+
+        function clearAllResults() {
+          [resQ1, resMedian, resQ3, resIqr, resFences, resMinMax, resCount, resOutliers].forEach(function (box) {
+            if (!box) return;
+            box.querySelectorAll('.result-value').forEach(function (span) {
+              span.textContent = '—';
+            });
+          });
+          if (sortedTableBody) sortedTableBody.innerHTML = '';
+          if (currentMethodLabel) currentMethodLabel.textContent = 'Method: —';
+          if (errorEl) errorEl.textContent = '';
+        }
+
+        function getDecimals() {
+          if (!decimalsSelect) return 2;
+          const d = Number(decimalsSelect.value);
+          if (!Number.isInteger(d) || d < 0 || d > 10) return 2;
+          return d;
+        }
+
+        function fmt(value) {
+          if (!isFinite(value)) return '—';
+          const d = getDecimals();
+          return Number(value.toFixed(d)).toString();
+        }
+
+        function parseData() {
+          if (!dataInput) return [];
+          const raw = dataInput.value;
+          if (!raw.trim()) return [];
+          const tokens = raw.split(/[\s,;]+/);
+          const nums = [];
+          for (let t of tokens) {
+            const s = t.trim();
+            if (!s) continue;
+            const v = Number(s);
+            if (!isFinite(v)) {
+              return { error: 'All non-empty entries must be numeric. Problem with: "' + s + '".' };
+            }
+            nums.push(v);
+            if (nums.length > 5000) {
+              return { error: 'Maximum allowed size is 5,000 values for performance reasons.' };
+            }
+          }
+          if (nums.length === 0) {
+            return { error: 'Please enter at least one numeric value.' };
+          }
+          return { data: nums };
+        }
+
+        function medianOfSortedSlice(arr, start, end) {
+          // arr sorted ascending, slice [start, end)
+          const len = end - start;
+          if (len <= 0) return NaN;
+          const mid = Math.floor(len / 2);
+          if (len % 2 === 1) {
+            return arr[start + mid];
+          } else {
+            return (arr[start + mid - 1] + arr[start + mid]) / 2;
+          }
+        }
+
+        function quartilesTukey(sorted) {
+          const n = sorted.length;
+          if (n === 0) return { q1: NaN, q2: NaN, q3: NaN };
+          const q2 = medianOfSortedSlice(sorted, 0, n);
+          let lowerEnd, upperStart;
+          if (n % 2 === 1) {
+            const mid = Math.floor(n / 2);
+            lowerEnd = mid;        // 0 .. mid-1
+            upperStart = mid + 1;  // mid+1 .. n-1
+          } else {
+            const half = n / 2;
+            lowerEnd = half;       // 0 .. half-1
+            upperStart = half;     // half .. n-1
+          }
+          const q1 = medianOfSortedSlice(sorted, 0, lowerEnd);
+          const q3 = medianOfSortedSlice(sorted, upperStart, n);
+          return { q1, q2, q3 };
+        }
+
+        function quartilesInclusive(sorted) {
+          const n = sorted.length;
+          if (n === 0) return { q1: NaN, q2: NaN, q3: NaN };
+
+          function quantile(p) {
+            if (n === 1) return sorted[0];
+            const pos = (n - 1) * p;
+            const lower = Math.floor(pos);
+            const upper = Math.ceil(pos);
+            const frac = pos - lower;
+            if (upper >= n) return sorted[n - 1];
+            return sorted[lower] + frac * (sorted[upper] - sorted[lower]);
+          }
+
+          return {
+            q1: quantile(0.25),
+            q2: quantile(0.5),
+            q3: quantile(0.75)
+          };
+        }
+
+        function computeQuartiles() {
+          clearAllResults();
+
+          const parsed = parseData();
+          if (parsed.error) {
+            if (errorEl) errorEl.textContent = parsed.error;
+            return;
+          }
+          const values = parsed.data;
+          const n = values.length;
+
+          const method = (Array.from(methodRadios).find(r => r.checked)?.value) || 'tukey';
+          const sortOrder = (Array.from(sortOrderRadios).find(r => r.checked)?.value) || 'asc';
+
+          const sortedAsc = values.slice().sort((a, b) => a - b);
+          const sorted = sortOrder === 'desc' ? sortedAsc.slice().reverse() : sortedAsc.slice();
+
+          let q;
+          if (method === 'inclusive') {
+            q = quartilesInclusive(sortedAsc);
+          } else {
+            q = quartilesTukey(sortedAsc);
+          }
+          const q1 = q.q1;
+          const q2 = q.q2;
+          const q3 = q.q3;
+
+          // IQR, fences, min, max, counts
+          const iqr = q3 - q1;
+          const lowerFence = q1 - 1.5 * iqr;
+          const upperFence = q3 + 1.5 * iqr;
+
+          const minVal = sortedAsc[0];
+          const maxVal = sortedAsc[sortedAsc.length - 1];
+
+          const distinctCount = new Set(sortedAsc.map(v => v.toString())).size;
+
+          // Outliers based on sortedAsc
+          const lowOutliers = sortedAsc.filter(v => v < lowerFence);
+          const highOutliers = sortedAsc.filter(v => v > upperFence);
+
+          // Fill summary results
+          setResultText(resQ1, 0, fmt(q1));
+          setResultText(resMedian, 0, fmt(q2));
+          setResultText(resQ3, 0, fmt(q3));
+          setResultText(resIqr, 0, fmt(iqr));
+
+          if (resFences) {
+            setResultText(resFences, 0, fmt(lowerFence));
+            setResultText(resFences, 1, fmt(upperFence));
+          }
+          if (resMinMax) {
+            setResultText(resMinMax, 0, fmt(minVal));
+            setResultText(resMinMax, 1, fmt(maxVal));
+          }
+          if (resCount) {
+            setResultText(resCount, 0, n.toString());
+            setResultText(resCount, 1, distinctCount.toString());
+          }
+          if (resOutliers) {
+            const lowLabel = lowOutliers.length
+              ? lowOutliers.map(fmt).join(', ')
+              : 'none';
+            const highLabel = highOutliers.length
+              ? highOutliers.map(fmt).join(', ')
+              : 'none';
+            setResultText(resOutliers, 0, lowLabel);
+            setResultText(resOutliers, 1, highLabel);
+          }
+
+          if (currentMethodLabel) {
+            currentMethodLabel.textContent =
+              'Method: ' + (method === 'inclusive' ? 'Inclusive (Excel-like)' : 'Tukey (median-of-halves)');
+          }
+
+          // Build table with positions and notes
+          if (sortedTableBody) {
+            sortedTableBody.innerHTML = '';
+            const d = getDecimals();
+
+            // Build mark sets for quartiles (using values from sortedAsc)
+            function approxEqual(a, b) {
+              const tol = Math.pow(10, -d) / 2;
+              return Math.abs(a - b) <= tol;
+            }
+
+            const marks = {
+              Q1: sortedAsc.filter(v => approxEqual(v, q1)),
+              Q2: sortedAsc.filter(v => approxEqual(v, q2)),
+              Q3: sortedAsc.filter(v => approxEqual(v, q3))
+            };
+
+            sorted.forEach((value, index) => {
+              const tr = document.createElement('tr');
+              tr.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+
+              const posCell = document.createElement('td');
+              posCell.className = 'px-3 py-1.5 border-b text-gray-700';
+              posCell.textContent = (index + 1).toString();
+
+              const valCell = document.createElement('td');
+              valCell.className = 'px-3 py-1.5 border-b text-gray-700';
+              valCell.textContent = fmt(value);
+
+              const noteCell = document.createElement('td');
+              noteCell.className = 'px-3 py-1.5 border-b text-gray-600 text-xs';
+
+              const tags = [];
+              if (approxEqual(value, minVal)) tags.push('min');
+              if (approxEqual(value, maxVal)) tags.push('max');
+              if (lowOutliers.includes(value)) tags.push('outlier (low)');
+              if (highOutliers.includes(value)) tags.push('outlier (high)');
+              if (marks.Q1.some(v => approxEqual(v, value))) tags.push('Q1');
+              if (marks.Q2.some(v => approxEqual(v, value))) tags.push('median');
+              if (marks.Q3.some(v => approxEqual(v, value))) tags.push('Q3');
+
+              noteCell.textContent = tags.join(' · ');
+
+              tr.appendChild(posCell);
+              tr.appendChild(valCell);
+              tr.appendChild(noteCell);
+              sortedTableBody.appendChild(tr);
+            });
+          }
+        }
+
+        if (btnCalc) btnCalc.addEventListener('click', computeQuartiles);
+
+        if (btnClear) {
+          btnClear.addEventListener('click', function () {
+            if (dataInput) dataInput.value = '';
+            clearAllResults();
+          });
+        }
+
+        // Sample data buttons
+        sampleButtons.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const type = btn.getAttribute('data-sample');
+            if (!dataInput || !type) return;
+            let sample = '';
+            if (type === 'symmetric') {
+              sample = '7, 8, 9, 10, 11, 12, 13, 14, 15';
+            } else if (type === 'skewed') {
+              sample = '3, 4, 4, 5, 6, 7, 12, 15, 18, 24';
+            } else if (type === 'outliers') {
+              sample = '10, 11, 11, 12, 13, 13, 14, 15, 15, 120, 135';
+            }
+            dataInput.value = sample;
+            clearAllResults();
+          });
+        });
+      });
+    </script>
+
+
+</body></html>
+]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

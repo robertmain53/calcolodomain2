@@ -48,10 +48,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -222,8 +218,6 @@
 </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
-
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
 
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
@@ -741,7 +735,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -809,13 +803,781 @@
 
 
 
+
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
 
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      // Mobile menu toggle
+      document.addEventListener('DOMContentLoaded', function () {
+        const toggle = document.getElementById('mobile-menu-toggle');
+        const menu = document.getElementById('mobile-menu');
+        if (toggle && menu) {
+          toggle.addEventListener('click', () => {
+            const isHidden = menu.classList.contains('hidden');
+            menu.classList.toggle('hidden', !isHidden);
+            toggle.setAttribute('aria-expanded', String(isHidden));
+          });
+        }
+      });
+
+      // Dice probability calculator logic
+      document.addEventListener('DOMContentLoaded', function () {
+        const modeSumBtn = document.getElementById('mode-sum-btn');
+        const modeSuccessBtn = document.getElementById('mode-success-btn');
+        const panelSum = document.getElementById('panel-sum');
+        const panelSuccess = document.getElementById('panel-success');
+
+        const diceCountInput = document.getElementById('dice-count');
+        const diceSidesInput = document.getElementById('dice-sides');
+        const decimalsSelect = document.getElementById('dice-decimals');
+
+        const sumCompareSelect = document.getElementById('sum-compare');
+        const sumTargetInput = document.getElementById('sum-target');
+        const sumShowTableCheckbox = document.getElementById('sum-show-table');
+
+        const successFacesInput = document.getElementById('success-faces');
+        const successCompareSelect = document.getElementById('success-compare');
+        const successKInput = document.getElementById('success-k');
+
+        const calcBtn = document.getElementById('dice-calc-btn');
+        const clearBtn = document.getElementById('dice-clear-btn');
+        const ex1Btn = document.getElementById('dice-example1-btn');
+        const ex2Btn = document.getElementById('dice-example2-btn');
+        const errorEl = document.getElementById('dice-error');
+
+        const resultsCard = document.getElementById('dice-results-card');
+        const mainResultEl = document.getElementById('dice-main-result');
+        const detailsEl = document.getElementById('dice-details');
+        const oddsEl = document.getElementById('dice-odds');
+        const distSection = document.getElementById('dice-distribution-section');
+        const distEl = document.getElementById('dice-distribution');
+
+        let currentMode = 'sum'; // 'sum' or 'success'
+
+        function setMode(mode) {
+          currentMode = mode;
+          const sumActive = mode === 'sum';
+          modeSumBtn.classList.toggle('pill-active', sumActive);
+          modeSumBtn.classList.toggle('pill-inactive', !sumActive);
+          modeSuccessBtn.classList.toggle('pill-active', !sumActive);
+          modeSuccessBtn.classList.toggle('pill-inactive', sumActive);
+
+          panelSum.classList.toggle('hidden', !sumActive);
+          panelSuccess.classList.toggle('hidden', sumActive);
+          resetResults();
+        }
+
+        modeSumBtn.addEventListener('click', () => setMode('sum'));
+        modeSuccessBtn.addEventListener('click', () => setMode('success'));
+
+        function resetResults() {
+          errorEl.textContent = '';
+          errorEl.classList.add('hidden');
+          resultsCard.classList.add('hidden');
+          mainResultEl.textContent = '';
+          detailsEl.textContent = '';
+          oddsEl.textContent = '';
+          distSection.classList.add('hidden');
+          distEl.textContent = '';
+        }
+
+        function parsePositiveInt(inputEl, name, min, max) {
+          const v = Number(inputEl.value);
+          if (!Number.isInteger(v) || v < min || (max != null && v > max)) {
+            throw new Error(name + ' must be an integer between ' + min + (max != null ? (' and ' + max) : '') + '.');
+          }
+          return v;
+        }
+
+        function formatProb(p, decimals) {
+          if (p < 0) p = 0;
+          if (p > 1) p = 1;
+          const pct = (p * 100).toFixed(decimals);
+          const decStr = p.toFixed(decimals);
+          let oddsStr = 'N/A';
+          if (p > 0) {
+            const n = Math.round(1 / p);
+            oddsStr = '≈ 1 in ' + n.toLocaleString();
+          }
+          return { pct, decStr, oddsStr };
+        }
+
+        function factorialBigInt(n) {
+          let result = 1n;
+          for (let i = 2n; i <= n; i++) {
+            result *= i;
+          }
+          return result;
+        }
+
+        function binomialBigInt(n, k) {
+          if (k < 0n || k > n) return 0n;
+          if (k === 0n || k === n) return 1n;
+          if (k > n - k) k = n - k;
+          let num = 1n;
+          let den = 1n;
+          for (let i = 1n; i <= k; i++) {
+            num *= (n - (k - i));
+            den *= i;
+          }
+          return num / den;
+        }
+
+        function computeSumDistribution(nDice, sides) {
+          const minSum = nDice;
+          const maxSum = nDice * sides;
+          const ways = new Array(maxSum + 1).fill(0n);
+          ways[0] = 1n;
+
+          for (let d = 0; d < nDice; d++) {
+            const newWays = new Array(maxSum + 1).fill(0n);
+            for (let s = 0; s <= maxSum; s++) {
+              const count = ways[s];
+              if (count === 0n) continue;
+              for (let face = 1; face <= sides; face++) {
+                const ns = s + face;
+                if (ns <= maxSum) {
+                  newWays[ns] += count;
+                }
+              }
+            }
+            for (let s = 0; s <= maxSum; s++) {
+              ways[s] = newWays[s];
+            }
+          }
+          return { ways, minSum, maxSum };
+        }
+
+        function powBigInt(base, exp) {
+          let result = 1n;
+          for (let i = 0n; i < exp; i++) {
+            result *= base;
+          }
+          return result;
+        }
+
+        function computeSumProbability(nDice, sides, compare, target, showTable, decimals) {
+          if (!Number.isInteger(target)) {
+            throw new Error('Target sum must be an integer.');
+          }
+          const minSum = nDice;
+          const maxSum = nDice * sides;
+          if (target < minSum || target > maxSum) {
+            throw new Error('Target sum must be between ' + minSum + ' and ' + maxSum + '.');
+          }
+
+          // Restrict very large DP to keep fast
+          if (nDice > 15 || sides > 20) {
+            throw new Error('For exact sum probabilities, please keep dice ≤ 15 and sides ≤ 20.');
+          }
+
+          const { ways, minSum: sMin, maxSum: sMax } = computeSumDistribution(nDice, sides);
+          const totalOutcomes = powBigInt(BigInt(sides), BigInt(nDice));
+
+          let favWays = 0n;
+          if (compare === 'eq') {
+            favWays = ways[target];
+          } else if (compare === 'ge') {
+            for (let s = target; s <= sMax; s++) {
+              favWays += ways[s];
+            }
+          } else if (compare === 'le') {
+            for (let s = sMin; s <= target; s++) {
+              favWays += ways[s];
+            }
+          }
+
+          const p = Number(favWays) / Number(totalOutcomes);
+
+          let tableStr = '';
+          if (showTable && nDice <= 6 && sides <= 12) {
+            const rows = [];
+            for (let s = sMin; s <= sMax; s++) {
+              const w = ways[s];
+              if (w === 0n) continue;
+              const pp = Number(w) / Number(totalOutcomes);
+              rows.push('Sum ' + s.toString().padStart(2, ' ') +
+                        ': ways=' + w.toString().padStart(4, ' ') +
+                        ', P=' + pp.toFixed(decimals));
+            }
+            tableStr = rows.join('\n');
+          }
+
+          return {
+            p,
+            favWays,
+            totalOutcomes,
+            minSum: sMin,
+            maxSum: sMax,
+            tableStr
+          };
+        }
+
+        function computeSuccessProbability(nDice, sides, successFaces, compare, k) {
+          if (successFaces <= 0 || successFaces > sides) {
+            throw new Error('Success faces must be between 1 and the number of sides.');
+          }
+          if (k < 0 || k > nDice) {
+            throw new Error('Target successes k must be between 0 and number of dice.');
+          }
+          const pSuccess = successFaces / sides;
+          const pFail = 1 - pSuccess;
+
+          let p = 0;
+          const n = BigInt(nDice);
+          if (compare === 'eq') {
+            const kk = BigInt(k);
+            const C = binomialBigInt(n, kk);
+            p = Number(C) * Math.pow(pSuccess, k) * Math.pow(pFail, nDice - k);
+          } else if (compare === 'ge') {
+            for (let i = k; i <= nDice; i++) {
+              const C = binomialBigInt(n, BigInt(i));
+              p += Number(C) * Math.pow(pSuccess, i) * Math.pow(pFail, nDice - i);
+            }
+          } else if (compare === 'le') {
+            for (let i = 0; i <= k; i++) {
+              const C = binomialBigInt(n, BigInt(i));
+              p += Number(C) * Math.pow(pSuccess, i) * Math.pow(pFail, nDice - i);
+            }
+          }
+          return { p, pSuccess };
+        }
+
+        function calculate() {
+          resetResults();
+          try {
+            const nDice = parsePositiveInt(diceCountInput, 'Number of dice', 1, 20);
+            const sides = parsePositiveInt(diceSidesInput, 'Sides per die', 2, 100);
+            const decimals = parseInt(decimalsSelect.value, 10) || 2;
+
+            if (currentMode === 'sum') {
+              const cmp = sumCompareSelect.value;
+              const target = Number(sumTargetInput.value);
+              if (!Number.isFinite(target)) {
+                throw new Error('Please enter a valid target sum.');
+              }
+              const showTable = sumShowTableCheckbox.checked;
+
+              const { p, favWays, totalOutcomes, minSum, maxSum, tableStr } =
+                computeSumProbability(nDice, sides, cmp, Math.round(target), showTable, decimals);
+
+              const { pct, decStr, oddsStr } = formatProb(p, decimals);
+
+              let cmpText = 'sum = ' + Math.round(target);
+              if (cmp === 'ge') cmpText = 'sum ≥ ' + Math.round(target);
+              if (cmp === 'le') cmpText = 'sum ≤ ' + Math.round(target);
+
+              mainResultEl.textContent =
+                'P(' + nDice + 'd' + sides + ' ' + cmpText + ') = ' +
+                decStr + ' (' + pct + '%).';
+
+              detailsEl.textContent =
+                'Total outcomes: ' + totalOutcomes.toLocaleString() +
+                '. Favourable outcomes: ' + favWays.toLocaleString() + '.' +
+                ' Valid sums range from ' + minSum + ' to ' + maxSum + '.';
+
+              oddsEl.textContent =
+                'Odds: ' + oddsStr +
+                '. This probability is computed exactly using dynamic programming on the sums of ' +
+                nDice + ' independent fair d' + sides + ' dice.';
+
+              if (tableStr) {
+                distSection.classList.remove('hidden');
+                distEl.textContent = tableStr;
+              }
+
+            } else {
+              const successFaces = parsePositiveInt(successFacesInput, 'Success faces', 1, null);
+              const cmp = successCompareSelect.value;
+              const k = parsePositiveInt(successKInput, 'Target successes', 0, nDice);
+
+              const { p, pSuccess } =
+                computeSuccessProbability(nDice, sides, successFaces, cmp, k);
+
+              const { pct, decStr, oddsStr } = formatProb(p, decimals);
+
+              let cmpText = 'K = ' + k;
+              if (cmp === 'ge') cmpText = 'K ≥ ' + k;
+              if (cmp === 'le') cmpText = 'K ≤ ' + k;
+
+              mainResultEl.textContent =
+                'P(' + cmpText + ' successes on ' + nDice + 'd' + sides + ') = ' +
+                decStr + ' (' + pct + '%).';
+
+              detailsEl.textContent =
+                'Per-die success probability p = ' +
+                pSuccess.toFixed(decimals) +
+                ' (success faces ' + successFaces + ' out of ' + sides + '). ' +
+                'The number of successes follows a binomial distribution with parameters n = ' +
+                nDice + ' and p = ' + pSuccess.toFixed(decimals) + '.';
+
+              oddsEl.textContent =
+                'Odds: ' + oddsStr +
+                '. For “at least one success”, use type = “At least” and k = 1. ' +
+                'All probabilities are exact within floating-point precision.';
+
+            }
+
+            resultsCard.classList.remove('hidden');
+          } catch (e) {
+            errorEl.textContent = e.message || 'An error occurred while computing the probability.';
+            errorEl.classList.remove('hidden');
+          }
+        }
+
+        function clearAll() {
+          diceCountInput.value = '2';
+          diceSidesInput.value = '6';
+          decimalsSelect.value = '2';
+
+          sumCompareSelect.value = 'eq';
+          sumTargetInput.value = '';
+          sumShowTableCheckbox.checked = false;
+
+          successFacesInput.value = '';
+          successCompareSelect.value = 'eq';
+          successKInput.value = '';
+
+          setMode('sum');
+          resetResults();
+        }
+
+        function loadExample1() {
+          setMode('sum');
+          diceCountInput.value = '2';
+          diceSidesInput.value = '6';
+          decimalsSelect.value = '4';
+          sumCompareSelect.value = 'eq';
+          sumTargetInput.value = '7';
+          sumShowTableCheckbox.checked = true;
+          calculate();
+        }
+
+        function loadExample2() {
+          setMode('success');
+          diceCountInput.value = '4';
+          diceSidesInput.value = '6';
+          decimalsSelect.value = '4';
+          successFacesInput.value = '1'; // only face 6
+          successCompareSelect.value = 'ge';
+          successKInput.value = '1';
+          calculate();
+        }
+
+        calcBtn.addEventListener('click', calculate);
+        clearBtn.addEventListener('click', clearAll);
+        ex1Btn.addEventListener('click', loadExample1);
+        ex2Btn.addEventListener('click', loadExample2);
+
+        // Quick Enter shortcut: Ctrl+Enter on any numeric field triggers calculate
+        [diceCountInput, diceSidesInput, sumTargetInput, successFacesInput, successKInput].forEach(function (el) {
+          el.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              calculate();
+            }
+          });
+        });
+      });
+    </script>
+
+
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      // Mobile menu toggle
+      document.addEventListener('DOMContentLoaded', function () {
+        const toggle = document.getElementById('mobile-menu-toggle');
+        const menu = document.getElementById('mobile-menu');
+        if (toggle && menu) {
+          toggle.addEventListener('click', () => {
+            const isHidden = menu.classList.contains('hidden');
+            menu.classList.toggle('hidden', !isHidden);
+            toggle.setAttribute('aria-expanded', String(isHidden));
+          });
+        }
+      });
+
+      // Dice probability calculator logic
+      document.addEventListener('DOMContentLoaded', function () {
+        const modeSumBtn = document.getElementById('mode-sum-btn');
+        const modeSuccessBtn = document.getElementById('mode-success-btn');
+        const panelSum = document.getElementById('panel-sum');
+        const panelSuccess = document.getElementById('panel-success');
+
+        const diceCountInput = document.getElementById('dice-count');
+        const diceSidesInput = document.getElementById('dice-sides');
+        const decimalsSelect = document.getElementById('dice-decimals');
+
+        const sumCompareSelect = document.getElementById('sum-compare');
+        const sumTargetInput = document.getElementById('sum-target');
+        const sumShowTableCheckbox = document.getElementById('sum-show-table');
+
+        const successFacesInput = document.getElementById('success-faces');
+        const successCompareSelect = document.getElementById('success-compare');
+        const successKInput = document.getElementById('success-k');
+
+        const calcBtn = document.getElementById('dice-calc-btn');
+        const clearBtn = document.getElementById('dice-clear-btn');
+        const ex1Btn = document.getElementById('dice-example1-btn');
+        const ex2Btn = document.getElementById('dice-example2-btn');
+        const errorEl = document.getElementById('dice-error');
+
+        const resultsCard = document.getElementById('dice-results-card');
+        const mainResultEl = document.getElementById('dice-main-result');
+        const detailsEl = document.getElementById('dice-details');
+        const oddsEl = document.getElementById('dice-odds');
+        const distSection = document.getElementById('dice-distribution-section');
+        const distEl = document.getElementById('dice-distribution');
+
+        let currentMode = 'sum'; // 'sum' or 'success'
+
+        function setMode(mode) {
+          currentMode = mode;
+          const sumActive = mode === 'sum';
+          modeSumBtn.classList.toggle('pill-active', sumActive);
+          modeSumBtn.classList.toggle('pill-inactive', !sumActive);
+          modeSuccessBtn.classList.toggle('pill-active', !sumActive);
+          modeSuccessBtn.classList.toggle('pill-inactive', sumActive);
+
+          panelSum.classList.toggle('hidden', !sumActive);
+          panelSuccess.classList.toggle('hidden', sumActive);
+          resetResults();
+        }
+
+        modeSumBtn.addEventListener('click', () => setMode('sum'));
+        modeSuccessBtn.addEventListener('click', () => setMode('success'));
+
+        function resetResults() {
+          errorEl.textContent = '';
+          errorEl.classList.add('hidden');
+          resultsCard.classList.add('hidden');
+          mainResultEl.textContent = '';
+          detailsEl.textContent = '';
+          oddsEl.textContent = '';
+          distSection.classList.add('hidden');
+          distEl.textContent = '';
+        }
+
+        function parsePositiveInt(inputEl, name, min, max) {
+          const v = Number(inputEl.value);
+          if (!Number.isInteger(v) || v < min || (max != null && v > max)) {
+            throw new Error(name + ' must be an integer between ' + min + (max != null ? (' and ' + max) : '') + '.');
+          }
+          return v;
+        }
+
+        function formatProb(p, decimals) {
+          if (p < 0) p = 0;
+          if (p > 1) p = 1;
+          const pct = (p * 100).toFixed(decimals);
+          const decStr = p.toFixed(decimals);
+          let oddsStr = 'N/A';
+          if (p > 0) {
+            const n = Math.round(1 / p);
+            oddsStr = '≈ 1 in ' + n.toLocaleString();
+          }
+          return { pct, decStr, oddsStr };
+        }
+
+        function factorialBigInt(n) {
+          let result = 1n;
+          for (let i = 2n; i <= n; i++) {
+            result *= i;
+          }
+          return result;
+        }
+
+        function binomialBigInt(n, k) {
+          if (k < 0n || k > n) return 0n;
+          if (k === 0n || k === n) return 1n;
+          if (k > n - k) k = n - k;
+          let num = 1n;
+          let den = 1n;
+          for (let i = 1n; i <= k; i++) {
+            num *= (n - (k - i));
+            den *= i;
+          }
+          return num / den;
+        }
+
+        function computeSumDistribution(nDice, sides) {
+          const minSum = nDice;
+          const maxSum = nDice * sides;
+          const ways = new Array(maxSum + 1).fill(0n);
+          ways[0] = 1n;
+
+          for (let d = 0; d < nDice; d++) {
+            const newWays = new Array(maxSum + 1).fill(0n);
+            for (let s = 0; s <= maxSum; s++) {
+              const count = ways[s];
+              if (count === 0n) continue;
+              for (let face = 1; face <= sides; face++) {
+                const ns = s + face;
+                if (ns <= maxSum) {
+                  newWays[ns] += count;
+                }
+              }
+            }
+            for (let s = 0; s <= maxSum; s++) {
+              ways[s] = newWays[s];
+            }
+          }
+          return { ways, minSum, maxSum };
+        }
+
+        function powBigInt(base, exp) {
+          let result = 1n;
+          for (let i = 0n; i < exp; i++) {
+            result *= base;
+          }
+          return result;
+        }
+
+        function computeSumProbability(nDice, sides, compare, target, showTable, decimals) {
+          if (!Number.isInteger(target)) {
+            throw new Error('Target sum must be an integer.');
+          }
+          const minSum = nDice;
+          const maxSum = nDice * sides;
+          if (target < minSum || target > maxSum) {
+            throw new Error('Target sum must be between ' + minSum + ' and ' + maxSum + '.');
+          }
+
+          // Restrict very large DP to keep fast
+          if (nDice > 15 || sides > 20) {
+            throw new Error('For exact sum probabilities, please keep dice ≤ 15 and sides ≤ 20.');
+          }
+
+          const { ways, minSum: sMin, maxSum: sMax } = computeSumDistribution(nDice, sides);
+          const totalOutcomes = powBigInt(BigInt(sides), BigInt(nDice));
+
+          let favWays = 0n;
+          if (compare === 'eq') {
+            favWays = ways[target];
+          } else if (compare === 'ge') {
+            for (let s = target; s <= sMax; s++) {
+              favWays += ways[s];
+            }
+          } else if (compare === 'le') {
+            for (let s = sMin; s <= target; s++) {
+              favWays += ways[s];
+            }
+          }
+
+          const p = Number(favWays) / Number(totalOutcomes);
+
+          let tableStr = '';
+          if (showTable && nDice <= 6 && sides <= 12) {
+            const rows = [];
+            for (let s = sMin; s <= sMax; s++) {
+              const w = ways[s];
+              if (w === 0n) continue;
+              const pp = Number(w) / Number(totalOutcomes);
+              rows.push('Sum ' + s.toString().padStart(2, ' ') +
+                        ': ways=' + w.toString().padStart(4, ' ') +
+                        ', P=' + pp.toFixed(decimals));
+            }
+            tableStr = rows.join('\n');
+          }
+
+          return {
+            p,
+            favWays,
+            totalOutcomes,
+            minSum: sMin,
+            maxSum: sMax,
+            tableStr
+          };
+        }
+
+        function computeSuccessProbability(nDice, sides, successFaces, compare, k) {
+          if (successFaces <= 0 || successFaces > sides) {
+            throw new Error('Success faces must be between 1 and the number of sides.');
+          }
+          if (k < 0 || k > nDice) {
+            throw new Error('Target successes k must be between 0 and number of dice.');
+          }
+          const pSuccess = successFaces / sides;
+          const pFail = 1 - pSuccess;
+
+          let p = 0;
+          const n = BigInt(nDice);
+          if (compare === 'eq') {
+            const kk = BigInt(k);
+            const C = binomialBigInt(n, kk);
+            p = Number(C) * Math.pow(pSuccess, k) * Math.pow(pFail, nDice - k);
+          } else if (compare === 'ge') {
+            for (let i = k; i <= nDice; i++) {
+              const C = binomialBigInt(n, BigInt(i));
+              p += Number(C) * Math.pow(pSuccess, i) * Math.pow(pFail, nDice - i);
+            }
+          } else if (compare === 'le') {
+            for (let i = 0; i <= k; i++) {
+              const C = binomialBigInt(n, BigInt(i));
+              p += Number(C) * Math.pow(pSuccess, i) * Math.pow(pFail, nDice - i);
+            }
+          }
+          return { p, pSuccess };
+        }
+
+        function calculate() {
+          resetResults();
+          try {
+            const nDice = parsePositiveInt(diceCountInput, 'Number of dice', 1, 20);
+            const sides = parsePositiveInt(diceSidesInput, 'Sides per die', 2, 100);
+            const decimals = parseInt(decimalsSelect.value, 10) || 2;
+
+            if (currentMode === 'sum') {
+              const cmp = sumCompareSelect.value;
+              const target = Number(sumTargetInput.value);
+              if (!Number.isFinite(target)) {
+                throw new Error('Please enter a valid target sum.');
+              }
+              const showTable = sumShowTableCheckbox.checked;
+
+              const { p, favWays, totalOutcomes, minSum, maxSum, tableStr } =
+                computeSumProbability(nDice, sides, cmp, Math.round(target), showTable, decimals);
+
+              const { pct, decStr, oddsStr } = formatProb(p, decimals);
+
+              let cmpText = 'sum = ' + Math.round(target);
+              if (cmp === 'ge') cmpText = 'sum ≥ ' + Math.round(target);
+              if (cmp === 'le') cmpText = 'sum ≤ ' + Math.round(target);
+
+              mainResultEl.textContent =
+                'P(' + nDice + 'd' + sides + ' ' + cmpText + ') = ' +
+                decStr + ' (' + pct + '%).';
+
+              detailsEl.textContent =
+                'Total outcomes: ' + totalOutcomes.toLocaleString() +
+                '. Favourable outcomes: ' + favWays.toLocaleString() + '.' +
+                ' Valid sums range from ' + minSum + ' to ' + maxSum + '.';
+
+              oddsEl.textContent =
+                'Odds: ' + oddsStr +
+                '. This probability is computed exactly using dynamic programming on the sums of ' +
+                nDice + ' independent fair d' + sides + ' dice.';
+
+              if (tableStr) {
+                distSection.classList.remove('hidden');
+                distEl.textContent = tableStr;
+              }
+
+            } else {
+              const successFaces = parsePositiveInt(successFacesInput, 'Success faces', 1, null);
+              const cmp = successCompareSelect.value;
+              const k = parsePositiveInt(successKInput, 'Target successes', 0, nDice);
+
+              const { p, pSuccess } =
+                computeSuccessProbability(nDice, sides, successFaces, cmp, k);
+
+              const { pct, decStr, oddsStr } = formatProb(p, decimals);
+
+              let cmpText = 'K = ' + k;
+              if (cmp === 'ge') cmpText = 'K ≥ ' + k;
+              if (cmp === 'le') cmpText = 'K ≤ ' + k;
+
+              mainResultEl.textContent =
+                'P(' + cmpText + ' successes on ' + nDice + 'd' + sides + ') = ' +
+                decStr + ' (' + pct + '%).';
+
+              detailsEl.textContent =
+                'Per-die success probability p = ' +
+                pSuccess.toFixed(decimals) +
+                ' (success faces ' + successFaces + ' out of ' + sides + '). ' +
+                'The number of successes follows a binomial distribution with parameters n = ' +
+                nDice + ' and p = ' + pSuccess.toFixed(decimals) + '.';
+
+              oddsEl.textContent =
+                'Odds: ' + oddsStr +
+                '. For “at least one success”, use type = “At least” and k = 1. ' +
+                'All probabilities are exact within floating-point precision.';
+
+            }
+
+            resultsCard.classList.remove('hidden');
+          } catch (e) {
+            errorEl.textContent = e.message || 'An error occurred while computing the probability.';
+            errorEl.classList.remove('hidden');
+          }
+        }
+
+        function clearAll() {
+          diceCountInput.value = '2';
+          diceSidesInput.value = '6';
+          decimalsSelect.value = '2';
+
+          sumCompareSelect.value = 'eq';
+          sumTargetInput.value = '';
+          sumShowTableCheckbox.checked = false;
+
+          successFacesInput.value = '';
+          successCompareSelect.value = 'eq';
+          successKInput.value = '';
+
+          setMode('sum');
+          resetResults();
+        }
+
+        function loadExample1() {
+          setMode('sum');
+          diceCountInput.value = '2';
+          diceSidesInput.value = '6';
+          decimalsSelect.value = '4';
+          sumCompareSelect.value = 'eq';
+          sumTargetInput.value = '7';
+          sumShowTableCheckbox.checked = true;
+          calculate();
+        }
+
+        function loadExample2() {
+          setMode('success');
+          diceCountInput.value = '4';
+          diceSidesInput.value = '6';
+          decimalsSelect.value = '4';
+          successFacesInput.value = '1'; // only face 6
+          successCompareSelect.value = 'ge';
+          successKInput.value = '1';
+          calculate();
+        }
+
+        calcBtn.addEventListener('click', calculate);
+        clearBtn.addEventListener('click', clearAll);
+        ex1Btn.addEventListener('click', loadExample1);
+        ex2Btn.addEventListener('click', loadExample2);
+
+        // Quick Enter shortcut: Ctrl+Enter on any numeric field triggers calculate
+        [diceCountInput, diceSidesInput, sumTargetInput, successFacesInput, successKInput].forEach(function (el) {
+          el.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              calculate();
+            }
+          });
+        });
+      });
+    </script>
+
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

@@ -124,10 +124,6 @@
 
   <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-  <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-  <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-  <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
   <script>
     window.ezstandalone = window.ezstandalone || {};
     ezstandalone.cmd = ezstandalone.cmd || [];
@@ -253,8 +249,6 @@
 
 <body class="bg-gray-50 text-gray-800">
   <!-- BODY_SCRIPTS_INIZIO -->
-  <script async="" src="https://pagead2.googlesyndication.com/pagead/js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
   <header class="bg-white shadow-sm sticky top-0 z-50">
     <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
       <div class="flex justify-between items-center">
@@ -685,7 +679,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -753,13 +747,789 @@
 
 
 
+
   <script src="/assets/js/script_menu.js" defer=""></script>
   <script src="/assets/js/script_faq.js" defer=""></script>
   <script src="search.js" defer=""></script>
 
   <script>
-    window.MathJax = {
-      tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+    window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <script>
+    (function () {
+      function $(id) { return document.getElementById(id); }
+      function show(el) { el.classList.remove('hidden'); }
+      function hide(el) { el.classList.add('hidden'); }
+
+      function loadExample() {
+        var ex = [
+          '1  2',
+          '3  4',
+          '5  6'
+        ].join('\\n');
+        $('matrix-input').value = ex;
+      }
+
+      function parseMatrix(text) {
+        var lines = text.split(/\\r?\\n/).map(function (l) { return l.trim(); }).filter(function (l) { return l.length > 0; });
+        if (lines.length === 0) {
+          return { error: 'Please provide at least one non-empty row for matrix A.' };
+        }
+        var m = 0, n = null;
+        var A = [];
+        for (var i = 0; i < lines.length; i++) {
+          var rowTokens = lines[i]
+            .replace(/;/g, ' ')
+            .replace(/,/g, ' ')
+            .trim()
+            .split(/\\s+/)
+            .filter(function (s) { return s.length > 0; });
+          if (rowTokens.length === 0) continue;
+          if (n === null) {
+            n = rowTokens.length;
+          } else if (rowTokens.length !== n) {
+            return { error: 'Row ' + (i + 1) + ' has ' + rowTokens.length + ' entries, but expected ' + n + ' based on previous rows.' };
+          }
+          var row = [];
+          for (var j = 0; j < rowTokens.length; j++) {
+            var v = Number(rowTokens[j]);
+            if (!Number.isFinite(v)) {
+              return { error: 'Non-numeric value "' + rowTokens[j] + '" in row ' + (i + 1) + ', column ' + (j + 1) + '.' };
+            }
+            row.push(v);
+          }
+          A.push(row);
+          m++;
+        }
+        if (!n || m === 0) {
+          return { error: 'Could not detect a valid numeric matrix. Please check the input.' };
+        }
+        if (m < n) {
+          // Still allowed, but warn in summary instead of erroring.
+        }
+        return { A: A, m: m, n: n };
+      }
+
+      function zeros(rows, cols) {
+        var M = new Array(rows);
+        for (var i = 0; i < rows; i++) {
+          M[i] = new Array(cols);
+          for (var j = 0; j < cols; j++) M[i][j] = 0;
+        }
+        return M;
+      }
+
+      function copyMatrix(A) {
+        var m = A.length, n = A[0].length;
+        var B = zeros(m, n);
+        for (var i = 0; i < m; i++) {
+          for (var j = 0; j < n; j++) B[i][j] = A[i][j];
+        }
+        return B;
+      }
+
+      function col(A, k) {
+        var m = A.length;
+        var v = new Array(m);
+        for (var i = 0; i < m; i++) v[i] = A[i][k];
+        return v;
+      }
+
+      function dot(u, v) {
+        var s = 0;
+        for (var i = 0; i < u.length; i++) s += u[i] * v[i];
+        return s;
+      }
+
+      function norm2(v) {
+        return Math.sqrt(dot(v, v));
+      }
+
+      function qrDecomposition(A) {
+        var m = A.length;
+        var n = A[0].length;
+        var Q = zeros(m, n);
+        var R = zeros(n, n);
+
+        // Modified Gram–Schmidt
+        var V = [];
+        for (var j = 0; j < n; j++) {
+          V[j] = col(A, j);
+        }
+
+        var rankWarning = false;
+
+        for (var j = 0; j < n; j++) {
+          var v = V[j].slice();
+
+          // subtract projections onto previous q_i
+          for (var i = 0; i < j; i++) {
+            var qi = col(Q, i);
+            var rij = dot(qi, v);
+            R[i][j] = rij;
+            for (var k = 0; k < m; k++) {
+              v[k] -= rij * qi[k];
+            }
+          }
+
+          var rjj = norm2(v);
+          R[j][j] = rjj;
+          if (rjj === 0) {
+            rankWarning = true;
+            for (var k = 0; k < m; k++) Q[k][j] = 0;
+          } else {
+            for (var k = 0; k < m; k++) {
+              Q[k][j] = v[k] / rjj;
+            }
+          }
+        }
+
+        return { Q: Q, R: R, rankWarning: rankWarning };
+      }
+
+      function matMul(A, B) {
+        var m = A.length;
+        var p = A[0].length;
+        var n = B[0].length;
+        var C = zeros(m, n);
+        for (var i = 0; i < m; i++) {
+          for (var j = 0; j < n; j++) {
+            var s = 0;
+            for (var k = 0; k < p; k++) {
+              s += A[i][k] * B[k][j];
+            }
+            C[i][j] = s;
+          }
+        }
+        return C;
+      }
+
+      function matTranspose(A) {
+        var m = A.length;
+        var n = A[0].length;
+        var T = zeros(n, m);
+        for (var i = 0; i < m; i++) {
+          for (var j = 0; j < n; j++) {
+            T[j][i] = A[i][j];
+          }
+        }
+        return T;
+      }
+
+      function matDiff(A, B) {
+        var m = A.length;
+        var n = A[0].length;
+        var D = zeros(m, n);
+        for (var i = 0; i < m; i++) {
+          for (var j = 0; j < n; j++) {
+            D[i][j] = A[i][j] - B[i][j];
+          }
+        }
+        return D;
+      }
+
+      function maxAbs(A) {
+        var m = A.length, n = A[0].length;
+        var maxVal = 0;
+        for (var i = 0; i < m; i++) {
+          for (var j = 0; j < n; j++) {
+            var v = Math.abs(A[i][j]);
+            if (v > maxVal) maxVal = v;
+          }
+        }
+        return maxVal;
+      }
+
+      function fmt(x, digits) {
+        if (!Number.isFinite(x)) return '—';
+        digits = typeof digits === 'number' ? digits : 6;
+        return Number(x.toFixed(digits)).toString();
+      }
+
+      function renderMatrixBody(bodyEl, A, cssClass) {
+        bodyEl.innerHTML = '';
+        var m = A.length, n = A[0].length;
+        for (var i = 0; i < m; i++) {
+          var tr = document.createElement('tr');
+          for (var j = 0; j < n; j++) {
+            var td = document.createElement('td');
+            td.className = 'px-3 py-1 border-b border-gray-100 text-right text-xs';
+            if (cssClass) td.classList.add(cssClass);
+            td.textContent = A[i][j];
+            tr.appendChild(td);
+          }
+          bodyEl.appendChild(tr);
+        }
+      }
+
+      function renderMatrixBodyRounded(bodyEl, A, digits, cssClass) {
+        bodyEl.innerHTML = '';
+        var m = A.length, n = A[0].length;
+        for (var i = 0; i < m; i++) {
+          var tr = document.createElement('tr');
+          for (var j = 0; j < n; j++) {
+            var td = document.createElement('td');
+            td.className = 'px-3 py-1 border-b border-gray-100 text-right text-xs';
+            if (cssClass) td.classList.add(cssClass);
+            td.textContent = fmt(A[i][j], digits);
+            tr.appendChild(td);
+          }
+          bodyEl.appendChild(tr);
+        }
+      }
+
+      function onSubmit(e) {
+        e.preventDefault();
+        var err = $('qr-error');
+        var res = $('qr-results');
+        var checksSection = $('qr-checks-section');
+        var aSection = $('qr-a-section');
+        var summaryEl = $('qr-summary');
+        var summaryDetailEl = $('qr-summary-detail');
+        var checksEl = $('qr-checks');
+        var stepsEl = $('qr-steps');
+
+        hide(err);
+        hide(res);
+        hide(checksSection);
+        hide(aSection);
+        summaryEl.textContent = '';
+        summaryDetailEl.textContent = '';
+        checksEl.innerHTML = '';
+        stepsEl.innerHTML = '';
+
+        var raw = $('matrix-input').value || '';
+        var parsed = parseMatrix(raw);
+        if (parsed.error) {
+          err.textContent = parsed.error;
+          show(err);
+          return;
+        }
+
+        var A = parsed.A;
+        var m = parsed.m;
+        var n = parsed.n;
+        var digits = parseInt($('round-digits').value, 10);
+        if (!Number.isFinite(digits) || digits < 0) digits = 6;
+        if (digits > 10) digits = 10;
+
+        if (m * n > 144) {
+          err.textContent = 'For readability this tool is limited to matrices up to about 12×12. Please input a smaller matrix.';
+          show(err);
+          return;
+        }
+
+        var qr = qrDecomposition(A);
+        var Q = qr.Q;
+        var R = qr.R;
+
+        summaryEl.textContent = 'Computed QR decomposition of an ' + m + ' × ' + n +
+          ' matrix A into Q (' + m + ' × ' + n + ') and R (' + n + ' × ' + n + ').';
+
+        var details = [];
+        if (m < n) {
+          details.push('Note: m < n. QR is still defined, but A does not have full column rank by dimension.');
+        }
+        if (qr.rankWarning) {
+          details.push('At least one R diagonal entry is zero, indicating rank deficiency or exact collinearity among columns.');
+        } else {
+          details.push('All R diagonal entries are non-zero, suggesting full column rank (within numerical precision).');
+        }
+        summaryDetailEl.textContent = details.join(' ');
+
+        var showA = $('show-a').checked;
+        if (showA) {
+          renderMatrixBodyRounded($('qr-a-body'), A, digits, 'matrix-a');
+          show(aSection);
+        }
+
+        renderMatrixBodyRounded($('qr-q-body'), Q, digits, 'matrix-q');
+        renderMatrixBodyRounded($('qr-r-body'), R, digits, 'matrix-r');
+
+        if ($('show-checks').checked) {
+          var QT = matTranspose(Q);
+          var QTQ = matMul(QT, Q);
+          var I = zeros(n, n);
+          for (var i = 0; i < n; i++) I[i][i] = 1;
+          var QTQminusI = matDiff(QTQ, I);
+          var orthoErr = maxAbs(QTQminusI);
+
+          var QR = matMul(Q, R);
+          var AminusQR = matDiff(A, QR);
+          var reconErr = maxAbs(AminusQR);
+
+          var normA = maxAbs(A);
+
+          var orthoTag = document.createElement('span');
+          var reconTag = document.createElement('span');
+
+          function classify(errVal, scale) {
+            scale = scale || 1;
+            var rel = scale > 0 ? errVal / scale : errVal;
+            if (rel < 1e-10) return 'ok';
+            if (rel < 1e-6) return 'warn';
+            return 'bad';
+          }
+
+          var orthoLevel = classify(orthoErr, 1);
+          var reconLevel = classify(reconErr, normA || 1);
+
+          orthoTag.textContent = 'QᵀQ − I: max |·| = ' + fmt(orthoErr, 3);
+          reconTag.textContent = 'A − QR: max |·| = ' + fmt(reconErr, 3);
+
+          orthoTag.className = orthoLevel === 'ok' ? 'tag-ok' : (orthoLevel === 'warn' ? 'tag-warn' : 'tag-bad');
+          reconTag.className = reconLevel === 'ok' ? 'tag-ok' : (reconLevel === 'warn' ? 'tag-warn' : 'tag-bad');
+
+          var p1 = document.createElement('p');
+          p1.className = 'flex items-center gap-2';
+          p1.appendChild(orthoTag);
+
+          var p2 = document.createElement('p');
+          p2.className = 'flex items-center gap-2';
+          p2.appendChild(reconTag);
+
+          var p3 = document.createElement('p');
+          p3.className = 'muted-note mt-1';
+          p3.textContent = '“OK” tags indicate errors close to machine precision for typical teaching-size matrices; “Warning” or “Bad” suggest ill-conditioning or that a more stable algorithm (e.g. Householder QR) may be preferable.';
+
+          checksEl.appendChild(p1);
+          checksEl.appendChild(p2);
+          checksEl.appendChild(p3);
+
+          show(checksSection);
+        }
+
+        var steps = [];
+        steps.push('1. Interpret the input as an m × n matrix A with columns a₁, …, aₙ.');
+        steps.push('2. Initialise vⱼ = aⱼ for j = 1,…,n and set R = 0, Q = 0.');
+        steps.push('3. For each column j = 1,…,n, subtract projections onto previously computed qᵢ:');
+        steps.push('   For i = 1,…,j−1, set rᵢⱼ = qᵢᵀ vⱼ and update vⱼ ← vⱼ − rᵢⱼ qᵢ.');
+        steps.push('4. Compute rⱼⱼ = ∥vⱼ∥₂. If rⱼⱼ = 0 the column is linearly dependent; otherwise set qⱼ = vⱼ / rⱼⱼ.');
+        steps.push('5. After processing all columns, form Q = [q₁ … qₙ] and the upper triangular R = [rᵢⱼ].');
+        steps.push('6. Optionally verify the factorisation by checking the residual matrices QᵀQ − I and A − Q R.');
+
+        steps.forEach(function (line) {
+          var pEl = document.createElement('p');
+          pEl.textContent = line;
+          stepsEl.appendChild(pEl);
+        });
+
+        show(res);
+
+        if (window.MathJax && window.MathJax.typesetPromise) {
+          window.MathJax.typesetPromise([stepsEl]).catch(function () {});
+        }
+      }
+
+      function onReset() {
+        $('qr-form').reset();
+        $('matrix-input').value = '';
+        hide($('qr-error'));
+        hide($('qr-results'));
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        $('qr-form').addEventListener('submit', onSubmit);
+        $('qr-reset').addEventListener('click', onReset);
+        $('qr-example').addEventListener('click', loadExample);
+      });
+    })();
+  </script>
+
+
+</body></html>, ',
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <script>
+    (function () {
+      function $(id) { return document.getElementById(id); }
+      function show(el) { el.classList.remove('hidden'); }
+      function hide(el) { el.classList.add('hidden'); }
+
+      function loadExample() {
+        var ex = [
+          '1  2',
+          '3  4',
+          '5  6'
+        ].join('\\n');
+        $('matrix-input').value = ex;
+      }
+
+      function parseMatrix(text) {
+        var lines = text.split(/\\r?\\n/).map(function (l) { return l.trim(); }).filter(function (l) { return l.length > 0; });
+        if (lines.length === 0) {
+          return { error: 'Please provide at least one non-empty row for matrix A.' };
+        }
+        var m = 0, n = null;
+        var A = [];
+        for (var i = 0; i < lines.length; i++) {
+          var rowTokens = lines[i]
+            .replace(/;/g, ' ')
+            .replace(/,/g, ' ')
+            .trim()
+            .split(/\\s+/)
+            .filter(function (s) { return s.length > 0; });
+          if (rowTokens.length === 0) continue;
+          if (n === null) {
+            n = rowTokens.length;
+          } else if (rowTokens.length !== n) {
+            return { error: 'Row ' + (i + 1) + ' has ' + rowTokens.length + ' entries, but expected ' + n + ' based on previous rows.' };
+          }
+          var row = [];
+          for (var j = 0; j < rowTokens.length; j++) {
+            var v = Number(rowTokens[j]);
+            if (!Number.isFinite(v)) {
+              return { error: 'Non-numeric value "' + rowTokens[j] + '" in row ' + (i + 1) + ', column ' + (j + 1) + '.' };
+            }
+            row.push(v);
+          }
+          A.push(row);
+          m++;
+        }
+        if (!n || m === 0) {
+          return { error: 'Could not detect a valid numeric matrix. Please check the input.' };
+        }
+        if (m < n) {
+          // Still allowed, but warn in summary instead of erroring.
+        }
+        return { A: A, m: m, n: n };
+      }
+
+      function zeros(rows, cols) {
+        var M = new Array(rows);
+        for (var i = 0; i < rows; i++) {
+          M[i] = new Array(cols);
+          for (var j = 0; j < cols; j++) M[i][j] = 0;
+        }
+        return M;
+      }
+
+      function copyMatrix(A) {
+        var m = A.length, n = A[0].length;
+        var B = zeros(m, n);
+        for (var i = 0; i < m; i++) {
+          for (var j = 0; j < n; j++) B[i][j] = A[i][j];
+        }
+        return B;
+      }
+
+      function col(A, k) {
+        var m = A.length;
+        var v = new Array(m);
+        for (var i = 0; i < m; i++) v[i] = A[i][k];
+        return v;
+      }
+
+      function dot(u, v) {
+        var s = 0;
+        for (var i = 0; i < u.length; i++) s += u[i] * v[i];
+        return s;
+      }
+
+      function norm2(v) {
+        return Math.sqrt(dot(v, v));
+      }
+
+      function qrDecomposition(A) {
+        var m = A.length;
+        var n = A[0].length;
+        var Q = zeros(m, n);
+        var R = zeros(n, n);
+
+        // Modified Gram–Schmidt
+        var V = [];
+        for (var j = 0; j < n; j++) {
+          V[j] = col(A, j);
+        }
+
+        var rankWarning = false;
+
+        for (var j = 0; j < n; j++) {
+          var v = V[j].slice();
+
+          // subtract projections onto previous q_i
+          for (var i = 0; i < j; i++) {
+            var qi = col(Q, i);
+            var rij = dot(qi, v);
+            R[i][j] = rij;
+            for (var k = 0; k < m; k++) {
+              v[k] -= rij * qi[k];
+            }
+          }
+
+          var rjj = norm2(v);
+          R[j][j] = rjj;
+          if (rjj === 0) {
+            rankWarning = true;
+            for (var k = 0; k < m; k++) Q[k][j] = 0;
+          } else {
+            for (var k = 0; k < m; k++) {
+              Q[k][j] = v[k] / rjj;
+            }
+          }
+        }
+
+        return { Q: Q, R: R, rankWarning: rankWarning };
+      }
+
+      function matMul(A, B) {
+        var m = A.length;
+        var p = A[0].length;
+        var n = B[0].length;
+        var C = zeros(m, n);
+        for (var i = 0; i < m; i++) {
+          for (var j = 0; j < n; j++) {
+            var s = 0;
+            for (var k = 0; k < p; k++) {
+              s += A[i][k] * B[k][j];
+            }
+            C[i][j] = s;
+          }
+        }
+        return C;
+      }
+
+      function matTranspose(A) {
+        var m = A.length;
+        var n = A[0].length;
+        var T = zeros(n, m);
+        for (var i = 0; i < m; i++) {
+          for (var j = 0; j < n; j++) {
+            T[j][i] = A[i][j];
+          }
+        }
+        return T;
+      }
+
+      function matDiff(A, B) {
+        var m = A.length;
+        var n = A[0].length;
+        var D = zeros(m, n);
+        for (var i = 0; i < m; i++) {
+          for (var j = 0; j < n; j++) {
+            D[i][j] = A[i][j] - B[i][j];
+          }
+        }
+        return D;
+      }
+
+      function maxAbs(A) {
+        var m = A.length, n = A[0].length;
+        var maxVal = 0;
+        for (var i = 0; i < m; i++) {
+          for (var j = 0; j < n; j++) {
+            var v = Math.abs(A[i][j]);
+            if (v > maxVal) maxVal = v;
+          }
+        }
+        return maxVal;
+      }
+
+      function fmt(x, digits) {
+        if (!Number.isFinite(x)) return '—';
+        digits = typeof digits === 'number' ? digits : 6;
+        return Number(x.toFixed(digits)).toString();
+      }
+
+      function renderMatrixBody(bodyEl, A, cssClass) {
+        bodyEl.innerHTML = '';
+        var m = A.length, n = A[0].length;
+        for (var i = 0; i < m; i++) {
+          var tr = document.createElement('tr');
+          for (var j = 0; j < n; j++) {
+            var td = document.createElement('td');
+            td.className = 'px-3 py-1 border-b border-gray-100 text-right text-xs';
+            if (cssClass) td.classList.add(cssClass);
+            td.textContent = A[i][j];
+            tr.appendChild(td);
+          }
+          bodyEl.appendChild(tr);
+        }
+      }
+
+      function renderMatrixBodyRounded(bodyEl, A, digits, cssClass) {
+        bodyEl.innerHTML = '';
+        var m = A.length, n = A[0].length;
+        for (var i = 0; i < m; i++) {
+          var tr = document.createElement('tr');
+          for (var j = 0; j < n; j++) {
+            var td = document.createElement('td');
+            td.className = 'px-3 py-1 border-b border-gray-100 text-right text-xs';
+            if (cssClass) td.classList.add(cssClass);
+            td.textContent = fmt(A[i][j], digits);
+            tr.appendChild(td);
+          }
+          bodyEl.appendChild(tr);
+        }
+      }
+
+      function onSubmit(e) {
+        e.preventDefault();
+        var err = $('qr-error');
+        var res = $('qr-results');
+        var checksSection = $('qr-checks-section');
+        var aSection = $('qr-a-section');
+        var summaryEl = $('qr-summary');
+        var summaryDetailEl = $('qr-summary-detail');
+        var checksEl = $('qr-checks');
+        var stepsEl = $('qr-steps');
+
+        hide(err);
+        hide(res);
+        hide(checksSection);
+        hide(aSection);
+        summaryEl.textContent = '';
+        summaryDetailEl.textContent = '';
+        checksEl.innerHTML = '';
+        stepsEl.innerHTML = '';
+
+        var raw = $('matrix-input').value || '';
+        var parsed = parseMatrix(raw);
+        if (parsed.error) {
+          err.textContent = parsed.error;
+          show(err);
+          return;
+        }
+
+        var A = parsed.A;
+        var m = parsed.m;
+        var n = parsed.n;
+        var digits = parseInt($('round-digits').value, 10);
+        if (!Number.isFinite(digits) || digits < 0) digits = 6;
+        if (digits > 10) digits = 10;
+
+        if (m * n > 144) {
+          err.textContent = 'For readability this tool is limited to matrices up to about 12×12. Please input a smaller matrix.';
+          show(err);
+          return;
+        }
+
+        var qr = qrDecomposition(A);
+        var Q = qr.Q;
+        var R = qr.R;
+
+        summaryEl.textContent = 'Computed QR decomposition of an ' + m + ' × ' + n +
+          ' matrix A into Q (' + m + ' × ' + n + ') and R (' + n + ' × ' + n + ').';
+
+        var details = [];
+        if (m < n) {
+          details.push('Note: m < n. QR is still defined, but A does not have full column rank by dimension.');
+        }
+        if (qr.rankWarning) {
+          details.push('At least one R diagonal entry is zero, indicating rank deficiency or exact collinearity among columns.');
+        } else {
+          details.push('All R diagonal entries are non-zero, suggesting full column rank (within numerical precision).');
+        }
+        summaryDetailEl.textContent = details.join(' ');
+
+        var showA = $('show-a').checked;
+        if (showA) {
+          renderMatrixBodyRounded($('qr-a-body'), A, digits, 'matrix-a');
+          show(aSection);
+        }
+
+        renderMatrixBodyRounded($('qr-q-body'), Q, digits, 'matrix-q');
+        renderMatrixBodyRounded($('qr-r-body'), R, digits, 'matrix-r');
+
+        if ($('show-checks').checked) {
+          var QT = matTranspose(Q);
+          var QTQ = matMul(QT, Q);
+          var I = zeros(n, n);
+          for (var i = 0; i < n; i++) I[i][i] = 1;
+          var QTQminusI = matDiff(QTQ, I);
+          var orthoErr = maxAbs(QTQminusI);
+
+          var QR = matMul(Q, R);
+          var AminusQR = matDiff(A, QR);
+          var reconErr = maxAbs(AminusQR);
+
+          var normA = maxAbs(A);
+
+          var orthoTag = document.createElement('span');
+          var reconTag = document.createElement('span');
+
+          function classify(errVal, scale) {
+            scale = scale || 1;
+            var rel = scale > 0 ? errVal / scale : errVal;
+            if (rel < 1e-10) return 'ok';
+            if (rel < 1e-6) return 'warn';
+            return 'bad';
+          }
+
+          var orthoLevel = classify(orthoErr, 1);
+          var reconLevel = classify(reconErr, normA || 1);
+
+          orthoTag.textContent = 'QᵀQ − I: max |·| = ' + fmt(orthoErr, 3);
+          reconTag.textContent = 'A − QR: max |·| = ' + fmt(reconErr, 3);
+
+          orthoTag.className = orthoLevel === 'ok' ? 'tag-ok' : (orthoLevel === 'warn' ? 'tag-warn' : 'tag-bad');
+          reconTag.className = reconLevel === 'ok' ? 'tag-ok' : (reconLevel === 'warn' ? 'tag-warn' : 'tag-bad');
+
+          var p1 = document.createElement('p');
+          p1.className = 'flex items-center gap-2';
+          p1.appendChild(orthoTag);
+
+          var p2 = document.createElement('p');
+          p2.className = 'flex items-center gap-2';
+          p2.appendChild(reconTag);
+
+          var p3 = document.createElement('p');
+          p3.className = 'muted-note mt-1';
+          p3.textContent = '“OK” tags indicate errors close to machine precision for typical teaching-size matrices; “Warning” or “Bad” suggest ill-conditioning or that a more stable algorithm (e.g. Householder QR) may be preferable.';
+
+          checksEl.appendChild(p1);
+          checksEl.appendChild(p2);
+          checksEl.appendChild(p3);
+
+          show(checksSection);
+        }
+
+        var steps = [];
+        steps.push('1. Interpret the input as an m × n matrix A with columns a₁, …, aₙ.');
+        steps.push('2. Initialise vⱼ = aⱼ for j = 1,…,n and set R = 0, Q = 0.');
+        steps.push('3. For each column j = 1,…,n, subtract projections onto previously computed qᵢ:');
+        steps.push('   For i = 1,…,j−1, set rᵢⱼ = qᵢᵀ vⱼ and update vⱼ ← vⱼ − rᵢⱼ qᵢ.');
+        steps.push('4. Compute rⱼⱼ = ∥vⱼ∥₂. If rⱼⱼ = 0 the column is linearly dependent; otherwise set qⱼ = vⱼ / rⱼⱼ.');
+        steps.push('5. After processing all columns, form Q = [q₁ … qₙ] and the upper triangular R = [rᵢⱼ].');
+        steps.push('6. Optionally verify the factorisation by checking the residual matrices QᵀQ − I and A − Q R.');
+
+        steps.forEach(function (line) {
+          var pEl = document.createElement('p');
+          pEl.textContent = line;
+          stepsEl.appendChild(pEl);
+        });
+
+        show(res);
+
+        if (window.MathJax && window.MathJax.typesetPromise) {
+          window.MathJax.typesetPromise([stepsEl]).catch(function () {});
+        }
+      }
+
+      function onReset() {
+        $('qr-form').reset();
+        $('matrix-input').value = '';
+        hide($('qr-error'));
+        hide($('qr-results'));
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        $('qr-form').addEventListener('submit', onSubmit);
+        $('qr-reset').addEventListener('click', onReset);
+        $('qr-example').addEventListener('click', loadExample);
+      });
+    })();
+  </script>
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
       svg: { fontCache: 'global' }
     };
   </script>

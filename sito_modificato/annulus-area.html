@@ -44,10 +44,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -215,8 +211,6 @@
 <body class="bg-gray-50 text-gray-800">
 
     <!-- BODY SCRIPTS (replacement for %%BODY_SCRIPTS_INIZIO%%) -->
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
         <div class="flex justify-between items-center">
@@ -722,7 +716,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -790,13 +784,411 @@
 
 
 
+
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
 
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Annulus calculator logic -->
+    <script>
+      (function() {
+        const modeRadios = document.querySelectorAll('input[name="annulus-mode"]');
+        const modeRadii = document.getElementById('annulus-mode-radii');
+        const modeDiam = document.getElementById('annulus-mode-diameters');
+        const modeThick = document.getElementById('annulus-mode-thickness');
+
+        const unitSelect = document.getElementById('annulus-unit');
+
+        const Rr_R = document.getElementById('annulus-R-radius');
+        const Rr_r = document.getElementById('annulus-r-radius');
+
+        const Dd_D = document.getElementById('annulus-D-diam');
+        const Dd_d = document.getElementById('annulus-d-diam');
+
+        const Rt_R = document.getElementById('annulus-R-thick');
+        const Rt_t = document.getElementById('annulus-t-thick');
+
+        const calcBtn = document.getElementById('annulus-calc-btn');
+        const clearBtn = document.getElementById('annulus-clear-btn');
+        const errorBox = document.getElementById('annulus-error-box');
+        const resultsBox = document.getElementById('annulus-results');
+
+        const outSummary = document.getElementById('annulus-results-summary');
+        const outR = document.getElementById('annulus-out-R');
+        const outr = document.getElementById('annulus-out-r');
+        const outt = document.getElementById('annulus-out-t');
+        const outAreaOuter = document.getElementById('annulus-out-area-outer');
+        const outAreaInner = document.getElementById('annulus-out-area-inner');
+        const outArea = document.getElementById('annulus-out-area');
+        const outRect = document.getElementById('annulus-out-rect');
+
+        function showMode(mode) {
+          modeRadii.classList.add('hidden');
+          modeDiam.classList.add('hidden');
+          modeThick.classList.add('hidden');
+          if (mode === 'radii') modeRadii.classList.remove('hidden');
+          if (mode === 'diameters') modeDiam.classList.remove('hidden');
+          if (mode === 'thickness') modeThick.classList.remove('hidden');
+        }
+
+        modeRadios.forEach(r => {
+          r.addEventListener('change', () => showMode(r.value));
+        });
+
+        function currentMode() {
+          for (const r of modeRadios) {
+            if (r.checked) return r.value;
+          }
+          return 'radii';
+        }
+
+        function fmt(x, decimals) {
+          if (!isFinite(x)) return String(x);
+          const d = typeof decimals === 'number' ? decimals : 6;
+          const abs = Math.abs(x);
+          if (abs !== 0 && (abs < 1e-4 || abs >= 1e7)) {
+            return x.toExponential(6);
+          }
+          return x.toFixed(d).replace(/0+$/,'').replace(/\.$/,'');
+        }
+
+        function unitSquared(u) {
+          if (!u) return '';
+          return u + '\u00b2';
+        }
+
+        function clearError() {
+          errorBox.textContent = '';
+          errorBox.classList.add('hidden');
+        }
+
+        function showError(msg) {
+          errorBox.textContent = msg;
+          errorBox.classList.remove('hidden');
+          resultsBox.classList.add('hidden');
+        }
+
+        function clearInputs() {
+          Rr_R.value = '';
+          Rr_r.value = '';
+          Dd_D.value = '';
+          Dd_d.value = '';
+          Rt_R.value = '';
+          Rt_t.value = '';
+          clearError();
+          resultsBox.classList.add('hidden');
+        }
+
+        clearBtn.addEventListener('click', clearInputs);
+
+        function parsePositive(value, name) {
+          const v = String(value || '').trim();
+          if (v === '') {
+            throw new Error('Please enter a value for ' + name + '.');
+          }
+          const x = parseFloat(v);
+          if (!isFinite(x)) {
+            throw new Error('Value for ' + name + ' must be a number.');
+          }
+          if (x < 0) {
+            throw new Error('Value for ' + name + ' must be non-negative.');
+          }
+          return x;
+        }
+
+        function calculate() {
+          clearError();
+          resultsBox.classList.add('hidden');
+
+          const mode = currentMode();
+          let R, r;
+
+          try {
+            if (mode === 'radii') {
+              R = parsePositive(Rr_R.value, 'outer radius R');
+              r = parsePositive(Rr_r.value, 'inner radius r');
+            } else if (mode === 'diameters') {
+              const D = parsePositive(Dd_D.value, 'outer diameter D');
+              const d = parsePositive(Dd_d.value, 'inner diameter d');
+              R = D / 2;
+              r = d / 2;
+            } else if (mode === 'thickness') {
+              R = parsePositive(Rt_R.value, 'outer radius R');
+              const t = parsePositive(Rt_t.value, 'thickness t');
+              r = R - t;
+              if (r < 0) {
+                throw new Error('Thickness t cannot exceed outer radius R (inner radius would be negative).');
+              }
+            } else {
+              throw new Error('Unknown mode.');
+            }
+
+            if (R <= 0) {
+              throw new Error('Outer radius R must be greater than zero.');
+            }
+            if (r < 0) {
+              throw new Error('Inner radius r cannot be negative.');
+            }
+            if (r >= R) {
+              throw new Error('Outer radius R must be strictly larger than inner radius r for a valid annulus.');
+            }
+
+            const t = R - r;
+            const pi = Math.PI;
+            const A_outer = pi * R * R;
+            const A_inner = pi * r * r;
+            const A = A_outer - A_inner;
+
+            const rectWidth = t;
+            const rectHeight = pi * (R + r);
+
+            const unit = unitSelect.value || '';
+            const u2 = unitSquared(unit);
+
+            outR.textContent = fmt(R, 6) + ' ' + unit;
+            outr.textContent = fmt(r, 6) + ' ' + unit;
+            outt.textContent = fmt(t, 6) + ' ' + unit;
+
+            outAreaOuter.textContent = fmt(A_outer, 6) + ' ' + u2;
+            outAreaInner.textContent = fmt(A_inner, 6) + ' ' + u2;
+            outArea.textContent = fmt(A, 6) + ' ' + u2;
+
+            outSummary.textContent =
+              'Computed annulus area as A = \u03c0(R^2 - r^2) with R = ' + fmt(R, 6) +
+              ' ' + unit + ' and r = ' + fmt(r, 6) + ' ' + unit + '.';
+
+            outRect.textContent =
+              'Equivalent rectangle: width (R - r) = ' + fmt(rectWidth, 6) + ' ' + unit +
+              ', height \u03c0(R + r) = ' + fmt(rectHeight, 6) + ' ' + unit +
+              ', area \u2248 ' + fmt(rectWidth * rectHeight, 6) + ' ' + u2 + '.';
+
+            resultsBox.classList.remove('hidden');
+
+            if (window.MathJax && window.MathJax.typesetPromise) {
+              window.MathJax.typesetPromise();
+            }
+          } catch (err) {
+            showError(err.message || String(err));
+          }
+        }
+
+        calcBtn.addEventListener('click', calculate);
+
+        // initialise default mode
+        showMode('radii');
+      })();
+    </script>
+
+
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Annulus calculator logic -->
+    <script>
+      (function() {
+        const modeRadios = document.querySelectorAll('input[name="annulus-mode"]');
+        const modeRadii = document.getElementById('annulus-mode-radii');
+        const modeDiam = document.getElementById('annulus-mode-diameters');
+        const modeThick = document.getElementById('annulus-mode-thickness');
+
+        const unitSelect = document.getElementById('annulus-unit');
+
+        const Rr_R = document.getElementById('annulus-R-radius');
+        const Rr_r = document.getElementById('annulus-r-radius');
+
+        const Dd_D = document.getElementById('annulus-D-diam');
+        const Dd_d = document.getElementById('annulus-d-diam');
+
+        const Rt_R = document.getElementById('annulus-R-thick');
+        const Rt_t = document.getElementById('annulus-t-thick');
+
+        const calcBtn = document.getElementById('annulus-calc-btn');
+        const clearBtn = document.getElementById('annulus-clear-btn');
+        const errorBox = document.getElementById('annulus-error-box');
+        const resultsBox = document.getElementById('annulus-results');
+
+        const outSummary = document.getElementById('annulus-results-summary');
+        const outR = document.getElementById('annulus-out-R');
+        const outr = document.getElementById('annulus-out-r');
+        const outt = document.getElementById('annulus-out-t');
+        const outAreaOuter = document.getElementById('annulus-out-area-outer');
+        const outAreaInner = document.getElementById('annulus-out-area-inner');
+        const outArea = document.getElementById('annulus-out-area');
+        const outRect = document.getElementById('annulus-out-rect');
+
+        function showMode(mode) {
+          modeRadii.classList.add('hidden');
+          modeDiam.classList.add('hidden');
+          modeThick.classList.add('hidden');
+          if (mode === 'radii') modeRadii.classList.remove('hidden');
+          if (mode === 'diameters') modeDiam.classList.remove('hidden');
+          if (mode === 'thickness') modeThick.classList.remove('hidden');
+        }
+
+        modeRadios.forEach(r => {
+          r.addEventListener('change', () => showMode(r.value));
+        });
+
+        function currentMode() {
+          for (const r of modeRadios) {
+            if (r.checked) return r.value;
+          }
+          return 'radii';
+        }
+
+        function fmt(x, decimals) {
+          if (!isFinite(x)) return String(x);
+          const d = typeof decimals === 'number' ? decimals : 6;
+          const abs = Math.abs(x);
+          if (abs !== 0 && (abs < 1e-4 || abs >= 1e7)) {
+            return x.toExponential(6);
+          }
+          return x.toFixed(d).replace(/0+$/,'').replace(/\.$/,'');
+        }
+
+        function unitSquared(u) {
+          if (!u) return '';
+          return u + '\u00b2';
+        }
+
+        function clearError() {
+          errorBox.textContent = '';
+          errorBox.classList.add('hidden');
+        }
+
+        function showError(msg) {
+          errorBox.textContent = msg;
+          errorBox.classList.remove('hidden');
+          resultsBox.classList.add('hidden');
+        }
+
+        function clearInputs() {
+          Rr_R.value = '';
+          Rr_r.value = '';
+          Dd_D.value = '';
+          Dd_d.value = '';
+          Rt_R.value = '';
+          Rt_t.value = '';
+          clearError();
+          resultsBox.classList.add('hidden');
+        }
+
+        clearBtn.addEventListener('click', clearInputs);
+
+        function parsePositive(value, name) {
+          const v = String(value || '').trim();
+          if (v === '') {
+            throw new Error('Please enter a value for ' + name + '.');
+          }
+          const x = parseFloat(v);
+          if (!isFinite(x)) {
+            throw new Error('Value for ' + name + ' must be a number.');
+          }
+          if (x < 0) {
+            throw new Error('Value for ' + name + ' must be non-negative.');
+          }
+          return x;
+        }
+
+        function calculate() {
+          clearError();
+          resultsBox.classList.add('hidden');
+
+          const mode = currentMode();
+          let R, r;
+
+          try {
+            if (mode === 'radii') {
+              R = parsePositive(Rr_R.value, 'outer radius R');
+              r = parsePositive(Rr_r.value, 'inner radius r');
+            } else if (mode === 'diameters') {
+              const D = parsePositive(Dd_D.value, 'outer diameter D');
+              const d = parsePositive(Dd_d.value, 'inner diameter d');
+              R = D / 2;
+              r = d / 2;
+            } else if (mode === 'thickness') {
+              R = parsePositive(Rt_R.value, 'outer radius R');
+              const t = parsePositive(Rt_t.value, 'thickness t');
+              r = R - t;
+              if (r < 0) {
+                throw new Error('Thickness t cannot exceed outer radius R (inner radius would be negative).');
+              }
+            } else {
+              throw new Error('Unknown mode.');
+            }
+
+            if (R <= 0) {
+              throw new Error('Outer radius R must be greater than zero.');
+            }
+            if (r < 0) {
+              throw new Error('Inner radius r cannot be negative.');
+            }
+            if (r >= R) {
+              throw new Error('Outer radius R must be strictly larger than inner radius r for a valid annulus.');
+            }
+
+            const t = R - r;
+            const pi = Math.PI;
+            const A_outer = pi * R * R;
+            const A_inner = pi * r * r;
+            const A = A_outer - A_inner;
+
+            const rectWidth = t;
+            const rectHeight = pi * (R + r);
+
+            const unit = unitSelect.value || '';
+            const u2 = unitSquared(unit);
+
+            outR.textContent = fmt(R, 6) + ' ' + unit;
+            outr.textContent = fmt(r, 6) + ' ' + unit;
+            outt.textContent = fmt(t, 6) + ' ' + unit;
+
+            outAreaOuter.textContent = fmt(A_outer, 6) + ' ' + u2;
+            outAreaInner.textContent = fmt(A_inner, 6) + ' ' + u2;
+            outArea.textContent = fmt(A, 6) + ' ' + u2;
+
+            outSummary.textContent =
+              'Computed annulus area as A = \u03c0(R^2 - r^2) with R = ' + fmt(R, 6) +
+              ' ' + unit + ' and r = ' + fmt(r, 6) + ' ' + unit + '.';
+
+            outRect.textContent =
+              'Equivalent rectangle: width (R - r) = ' + fmt(rectWidth, 6) + ' ' + unit +
+              ', height \u03c0(R + r) = ' + fmt(rectHeight, 6) + ' ' + unit +
+              ', area \u2248 ' + fmt(rectWidth * rectHeight, 6) + ' ' + u2 + '.';
+
+            resultsBox.classList.remove('hidden');
+
+            if (window.MathJax && window.MathJax.typesetPromise) {
+              window.MathJax.typesetPromise();
+            }
+          } catch (err) {
+            showError(err.message || String(err));
+          }
+        }
+
+        calcBtn.addEventListener('click', calculate);
+
+        // initialise default mode
+        showMode('radii');
+      })();
+    </script>
+
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

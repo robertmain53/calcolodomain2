@@ -50,10 +50,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -214,8 +210,6 @@
 <body class="bg-gray-50 text-gray-800">
 
     <!-- BODY_SCRIPTS_INIZIO -->
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
         <div class="flex justify-between items-center">
@@ -745,7 +739,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -812,14 +806,746 @@
 
 
 
+
     
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
     
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      // Mobile menu toggle
+      document.getElementById('mobile-menu-toggle')?.addEventListener('click', function () {
+        const menu = document.getElementById('mobile-menu');
+        if (!menu) return;
+        const isHidden = menu.classList.contains('hidden');
+        menu.classList.toggle('hidden', !isHidden);
+        this.setAttribute('aria-expanded', String(isHidden));
+      });
+
+      document.addEventListener('DOMContentLoaded', function () {
+        // Elements
+        const nInput = document.getElementById('n-input');
+        const exampleButtons = document.querySelectorAll('[data-example-n]');
+        const btnFactorSingle = document.getElementById('btn-factor-single');
+        const btnClearSingle = document.getElementById('btn-clear-single');
+        const singleError = document.getElementById('single-error');
+
+        const resFactorization = document.getElementById('res-factorization');
+        const resPrimeComposite = document.getElementById('res-prime-composite');
+        const resTau = document.getElementById('res-tau');
+        const resSigma = document.getElementById('res-sigma');
+        const resDivisors = document.getElementById('res-divisors');
+        const resTree = document.getElementById('res-tree');
+
+        const multiInput = document.getElementById('multi-input');
+        const btnFactorMulti = document.getElementById('btn-factor-multi');
+        const btnClearMulti = document.getElementById('btn-clear-multi');
+        const multiError = document.getElementById('multi-error');
+        const multiBody = document.getElementById('multi-body');
+
+        const tableMaxInput = document.getElementById('table-max-input');
+        const btnGenTable = document.getElementById('btn-gen-table');
+        const tableBody = document.getElementById('table-body');
+
+        // Helpers
+        function setResult(container, text) {
+          if (!container) return;
+          const span = container.querySelector('.result-value');
+          if (span) span.textContent = text;
+        }
+
+        function clearSingleResults() {
+          [resFactorization, resPrimeComposite, resTau, resSigma, resDivisors, resTree].forEach(el => {
+            if (!el) return;
+            const spans = el.querySelectorAll('.result-value');
+            spans.forEach(span => span.textContent = '—');
+          });
+          if (singleError) singleError.textContent = '';
+        }
+
+        function factorize(n) {
+          const factors = [];
+          let x = Math.abs(n);
+          if (x < 2) return factors;
+
+          let count = 0;
+          while (x % 2 === 0) {
+            x /= 2;
+            count++;
+          }
+          if (count > 0) factors.push({ p: 2, a: count });
+
+          let f = 3;
+          const limit = Math.floor(Math.sqrt(x)) + 1;
+          while (f <= limit && x > 1) {
+            count = 0;
+            while (x % f === 0) {
+              x /= f;
+              count++;
+            }
+            if (count > 0) factors.push({ p: f, a: count });
+            f += 2;
+          }
+
+          if (x > 1) {
+            factors.push({ p: x, a: 1 });
+          }
+          return factors;
+        }
+
+        function formatFactorization(n, factors) {
+          if (n === 0) return '0 (not factorizable into primes in the usual sense)';
+          if (n === 1) return '1 (no prime factors)';
+          if (!factors || factors.length === 0) return '1';
+          return factors
+            .map(fa => fa.a === 1 ? String(fa.p) : (fa.p + '^' + fa.a))
+            .join(' · ');
+        }
+
+        function computeTau(factors) {
+          if (!factors || factors.length === 0) return 1;
+          return factors.reduce((acc, fa) => acc * (fa.a + 1), 1);
+        }
+
+        function computeSigma(factors) {
+          if (!factors || factors.length === 0) return 1;
+          return factors.reduce((acc, fa) => {
+            const p = fa.p;
+            const a = fa.a;
+            const num = Math.pow(p, a + 1) - 1;
+            const den = p - 1;
+            return acc * (num / den);
+          }, 1);
+        }
+
+        function generateDivisors(factors) {
+          if (!factors || factors.length === 0) return [1];
+          let divisors = [1];
+          factors.forEach(fa => {
+            const p = fa.p;
+            const a = fa.a;
+            const newDivisors = [];
+            const powers = [];
+            for (let e = 1; e <= a; e++) {
+              powers.push(Math.pow(p, e));
+            }
+            divisors.forEach(d => {
+              powers.forEach(pow => {
+                newDivisors.push(d * pow);
+              });
+            });
+            divisors = divisors.concat(newDivisors);
+          });
+          divisors.sort((a, b) => a - b);
+          return divisors;
+        }
+
+        function buildFactorTree(n, factors) {
+          if (n < 2) {
+            return 'No prime factor tree for n < 2.';
+          }
+          const lines = [];
+          lines.push('Start: ' + n);
+          let remaining = n;
+
+          function divideByPrime(p) {
+            while (remaining % p === 0) {
+              const next = remaining / p;
+              lines.push(remaining + ' = ' + p + ' × ' + next);
+              remaining = next;
+            }
+          }
+
+          factors.forEach(fa => {
+            divideByPrime(fa.p);
+          });
+
+          if (remaining !== 1) {
+            lines.push('Remaining factor: ' + remaining);
+          }
+
+          lines.push('Leaves (prime factors): ' + factors.map(fa => fa.p).join(', ') + ' (with multiplicities).');
+          return lines.join('\n');
+        }
+
+        function parseNumberList(raw) {
+          const tokens = raw
+            .replace(/[\n\r]+/g, ' ')
+            .split(/[\s,;]+/)
+            .map(t => t.trim())
+            .filter(t => t.length > 0);
+          const nums = [];
+          tokens.forEach(t => {
+            const val = Number(t);
+            if (Number.isFinite(val) && Number.isInteger(val)) {
+              nums.push(val);
+            }
+          });
+          return nums;
+        }
+
+        // Single number factorization
+        function factorSingle() {
+          clearSingleResults();
+          const raw = (nInput.value || '').trim();
+          if (!raw) {
+            singleError.textContent = 'Please enter an integer n ≥ 2.';
+            return;
+          }
+          let n = Number(raw);
+          if (!Number.isInteger(n)) {
+            singleError.textContent = 'n must be an integer.';
+            return;
+          }
+          if (n < 2) {
+            singleError.textContent = 'Prime factorization is defined for n ≥ 2.';
+            return;
+          }
+          if (Math.abs(n) > 1e12) {
+            singleError.textContent = 'n is very large; try a value ≤ 10^12 for responsive performance.';
+            return;
+          }
+
+          const sign = n < 0 ? -1 : 1;
+          n = Math.abs(n);
+
+          const factors = factorize(n);
+          const factStrCore = formatFactorization(n, factors);
+          const factStr = sign < 0 ? '−1 · ' + factStrCore : factStrCore;
+          setResult(resFactorization, factStr);
+
+          if (factors.length === 1 && factors[0].a === 1) {
+            setResult(resPrimeComposite, 'Prime number');
+          } else {
+            setResult(resPrimeComposite, 'Composite number');
+          }
+
+          const tau = computeTau(factors);
+          const sigma = computeSigma(factors);
+          setResult(resTau, String(tau));
+          setResult(resSigma, String(sigma));
+
+          const divisors = generateDivisors(factors);
+          const maxDisp = 80;
+          const list = divisors.length <= maxDisp
+            ? divisors.join(', ')
+            : divisors.slice(0, maxDisp).join(', ') + ', …';
+          setResult(
+            resDivisors,
+            'There are τ(n) = ' + tau + ' positive divisors. List: ' +
+            list + (divisors.length > maxDisp ? ' (truncated)' : '')
+          );
+
+          const treeText = buildFactorTree(n, factors);
+          setResult(resTree, treeText);
+        }
+
+        function clearSingle() {
+          nInput.value = '';
+          clearSingleResults();
+        }
+
+        if (btnFactorSingle) btnFactorSingle.addEventListener('click', factorSingle);
+        if (btnClearSingle) btnClearSingle.addEventListener('click', clearSingle);
+
+        exampleButtons.forEach(btn => {
+          btn.addEventListener('click', function () {
+            const n = btn.getAttribute('data-example-n') || '';
+            nInput.value = n;
+            clearSingleResults();
+          });
+        });
+
+        // Multiple numbers factorization
+        function factorMulti() {
+          if (!multiBody) return;
+          multiBody.innerHTML = '';
+          multiError.textContent = '';
+
+          const raw = multiInput.value || '';
+          const nums = parseNumberList(raw).filter(n => Math.abs(n) >= 2);
+          if (nums.length < 2) {
+            multiError.textContent = 'Enter at least two integers with |n| ≥ 2.';
+            return;
+          }
+
+          const maxRows = 200;
+          const limited = nums.slice(0, maxRows);
+
+          limited.forEach(n0 => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b';
+            const sign = n0 < 0 ? -1 : 1;
+            const n = Math.abs(n0);
+            const factors = factorize(n);
+            const factStrCore = formatFactorization(n, factors);
+            const factStr = sign < 0 ? '−1 · ' + factStrCore : factStrCore;
+            const tau = computeTau(factors);
+            const sigma = computeSigma(factors);
+            const isPrime = (n >= 2 && factors.length === 1 && factors[0].a === 1);
+
+            const tdN = document.createElement('td');
+            tdN.className = 'px-3 py-1.5 text-gray-700';
+            tdN.textContent = String(n0);
+
+            const tdFact = document.createElement('td');
+            tdFact.className = 'px-3 py-1.5 text-gray-700';
+            tdFact.textContent = factStr;
+
+            const tdPC = document.createElement('td');
+            tdPC.className = 'px-3 py-1.5 text-gray-700';
+            tdPC.textContent = isPrime ? 'Prime' : 'Composite';
+
+            const tdTau = document.createElement('td');
+            tdTau.className = 'px-3 py-1.5 text-gray-700';
+            tdTau.textContent = String(tau);
+
+            const tdSigma = document.createElement('td');
+            tdSigma.className = 'px-3 py-1.5 text-gray-700';
+            tdSigma.textContent = String(sigma);
+
+            tr.appendChild(tdN);
+            tr.appendChild(tdFact);
+            tr.appendChild(tdPC);
+            tr.appendChild(tdTau);
+            tr.appendChild(tdSigma);
+            multiBody.appendChild(tr);
+          });
+
+          if (nums.length > maxRows) {
+            multiError.textContent = 'Showing first ' + maxRows + ' entries (list truncated).';
+          }
+        }
+
+        function clearMulti() {
+          multiInput.value = '';
+          multiError.textContent = '';
+          if (multiBody) multiBody.innerHTML = '';
+        }
+
+        if (btnFactorMulti) btnFactorMulti.addEventListener('click', factorMulti);
+        if (btnClearMulti) btnClearMulti.addEventListener('click', clearMulti);
+
+        // Factoring table 2..N
+        function genFactorTable() {
+          if (!tableBody) return;
+          tableBody.innerHTML = '';
+
+          let N = Number(tableMaxInput.value);
+          if (!Number.isInteger(N) || N < 2) N = 2;
+          if (N > 200) N = 200;
+          tableMaxInput.value = String(N);
+
+          for (let n = 2; n <= N; n++) {
+            const factors = factorize(n);
+            const factStr = formatFactorization(n, factors);
+            const isPrime = (factors.length === 1 && factors[0].a === 1);
+
+            const tr = document.createElement('tr');
+            tr.className = 'border-b';
+
+            const tdN = document.createElement('td');
+            tdN.className = 'px-3 py-1.5 text-gray-700';
+            tdN.textContent = String(n);
+
+            const tdFact = document.createElement('td');
+            tdFact.className = 'px-3 py-1.5 text-gray-700';
+            tdFact.textContent = factStr;
+
+            const tdPrime = document.createElement('td');
+            tdPrime.className = 'px-3 py-1.5 text-gray-700';
+            tdPrime.textContent = isPrime ? 'Yes' : 'No';
+
+            tr.appendChild(tdN);
+            tr.appendChild(tdFact);
+            tr.appendChild(tdPrime);
+            tableBody.appendChild(tr);
+          }
+        }
+
+        if (btnGenTable) btnGenTable.addEventListener('click', genFactorTable);
+
+        // Pre-generate default table
+        genFactorTable();
+      });
+    </script>
+
+
+</body></html>
+, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      // Mobile menu toggle
+      document.getElementById('mobile-menu-toggle')?.addEventListener('click', function () {
+        const menu = document.getElementById('mobile-menu');
+        if (!menu) return;
+        const isHidden = menu.classList.contains('hidden');
+        menu.classList.toggle('hidden', !isHidden);
+        this.setAttribute('aria-expanded', String(isHidden));
+      });
+
+      document.addEventListener('DOMContentLoaded', function () {
+        // Elements
+        const nInput = document.getElementById('n-input');
+        const exampleButtons = document.querySelectorAll('[data-example-n]');
+        const btnFactorSingle = document.getElementById('btn-factor-single');
+        const btnClearSingle = document.getElementById('btn-clear-single');
+        const singleError = document.getElementById('single-error');
+
+        const resFactorization = document.getElementById('res-factorization');
+        const resPrimeComposite = document.getElementById('res-prime-composite');
+        const resTau = document.getElementById('res-tau');
+        const resSigma = document.getElementById('res-sigma');
+        const resDivisors = document.getElementById('res-divisors');
+        const resTree = document.getElementById('res-tree');
+
+        const multiInput = document.getElementById('multi-input');
+        const btnFactorMulti = document.getElementById('btn-factor-multi');
+        const btnClearMulti = document.getElementById('btn-clear-multi');
+        const multiError = document.getElementById('multi-error');
+        const multiBody = document.getElementById('multi-body');
+
+        const tableMaxInput = document.getElementById('table-max-input');
+        const btnGenTable = document.getElementById('btn-gen-table');
+        const tableBody = document.getElementById('table-body');
+
+        // Helpers
+        function setResult(container, text) {
+          if (!container) return;
+          const span = container.querySelector('.result-value');
+          if (span) span.textContent = text;
+        }
+
+        function clearSingleResults() {
+          [resFactorization, resPrimeComposite, resTau, resSigma, resDivisors, resTree].forEach(el => {
+            if (!el) return;
+            const spans = el.querySelectorAll('.result-value');
+            spans.forEach(span => span.textContent = '—');
+          });
+          if (singleError) singleError.textContent = '';
+        }
+
+        function factorize(n) {
+          const factors = [];
+          let x = Math.abs(n);
+          if (x < 2) return factors;
+
+          let count = 0;
+          while (x % 2 === 0) {
+            x /= 2;
+            count++;
+          }
+          if (count > 0) factors.push({ p: 2, a: count });
+
+          let f = 3;
+          const limit = Math.floor(Math.sqrt(x)) + 1;
+          while (f <= limit && x > 1) {
+            count = 0;
+            while (x % f === 0) {
+              x /= f;
+              count++;
+            }
+            if (count > 0) factors.push({ p: f, a: count });
+            f += 2;
+          }
+
+          if (x > 1) {
+            factors.push({ p: x, a: 1 });
+          }
+          return factors;
+        }
+
+        function formatFactorization(n, factors) {
+          if (n === 0) return '0 (not factorizable into primes in the usual sense)';
+          if (n === 1) return '1 (no prime factors)';
+          if (!factors || factors.length === 0) return '1';
+          return factors
+            .map(fa => fa.a === 1 ? String(fa.p) : (fa.p + '^' + fa.a))
+            .join(' · ');
+        }
+
+        function computeTau(factors) {
+          if (!factors || factors.length === 0) return 1;
+          return factors.reduce((acc, fa) => acc * (fa.a + 1), 1);
+        }
+
+        function computeSigma(factors) {
+          if (!factors || factors.length === 0) return 1;
+          return factors.reduce((acc, fa) => {
+            const p = fa.p;
+            const a = fa.a;
+            const num = Math.pow(p, a + 1) - 1;
+            const den = p - 1;
+            return acc * (num / den);
+          }, 1);
+        }
+
+        function generateDivisors(factors) {
+          if (!factors || factors.length === 0) return [1];
+          let divisors = [1];
+          factors.forEach(fa => {
+            const p = fa.p;
+            const a = fa.a;
+            const newDivisors = [];
+            const powers = [];
+            for (let e = 1; e <= a; e++) {
+              powers.push(Math.pow(p, e));
+            }
+            divisors.forEach(d => {
+              powers.forEach(pow => {
+                newDivisors.push(d * pow);
+              });
+            });
+            divisors = divisors.concat(newDivisors);
+          });
+          divisors.sort((a, b) => a - b);
+          return divisors;
+        }
+
+        function buildFactorTree(n, factors) {
+          if (n < 2) {
+            return 'No prime factor tree for n < 2.';
+          }
+          const lines = [];
+          lines.push('Start: ' + n);
+          let remaining = n;
+
+          function divideByPrime(p) {
+            while (remaining % p === 0) {
+              const next = remaining / p;
+              lines.push(remaining + ' = ' + p + ' × ' + next);
+              remaining = next;
+            }
+          }
+
+          factors.forEach(fa => {
+            divideByPrime(fa.p);
+          });
+
+          if (remaining !== 1) {
+            lines.push('Remaining factor: ' + remaining);
+          }
+
+          lines.push('Leaves (prime factors): ' + factors.map(fa => fa.p).join(', ') + ' (with multiplicities).');
+          return lines.join('\n');
+        }
+
+        function parseNumberList(raw) {
+          const tokens = raw
+            .replace(/[\n\r]+/g, ' ')
+            .split(/[\s,;]+/)
+            .map(t => t.trim())
+            .filter(t => t.length > 0);
+          const nums = [];
+          tokens.forEach(t => {
+            const val = Number(t);
+            if (Number.isFinite(val) && Number.isInteger(val)) {
+              nums.push(val);
+            }
+          });
+          return nums;
+        }
+
+        // Single number factorization
+        function factorSingle() {
+          clearSingleResults();
+          const raw = (nInput.value || '').trim();
+          if (!raw) {
+            singleError.textContent = 'Please enter an integer n ≥ 2.';
+            return;
+          }
+          let n = Number(raw);
+          if (!Number.isInteger(n)) {
+            singleError.textContent = 'n must be an integer.';
+            return;
+          }
+          if (n < 2) {
+            singleError.textContent = 'Prime factorization is defined for n ≥ 2.';
+            return;
+          }
+          if (Math.abs(n) > 1e12) {
+            singleError.textContent = 'n is very large; try a value ≤ 10^12 for responsive performance.';
+            return;
+          }
+
+          const sign = n < 0 ? -1 : 1;
+          n = Math.abs(n);
+
+          const factors = factorize(n);
+          const factStrCore = formatFactorization(n, factors);
+          const factStr = sign < 0 ? '−1 · ' + factStrCore : factStrCore;
+          setResult(resFactorization, factStr);
+
+          if (factors.length === 1 && factors[0].a === 1) {
+            setResult(resPrimeComposite, 'Prime number');
+          } else {
+            setResult(resPrimeComposite, 'Composite number');
+          }
+
+          const tau = computeTau(factors);
+          const sigma = computeSigma(factors);
+          setResult(resTau, String(tau));
+          setResult(resSigma, String(sigma));
+
+          const divisors = generateDivisors(factors);
+          const maxDisp = 80;
+          const list = divisors.length <= maxDisp
+            ? divisors.join(', ')
+            : divisors.slice(0, maxDisp).join(', ') + ', …';
+          setResult(
+            resDivisors,
+            'There are τ(n) = ' + tau + ' positive divisors. List: ' +
+            list + (divisors.length > maxDisp ? ' (truncated)' : '')
+          );
+
+          const treeText = buildFactorTree(n, factors);
+          setResult(resTree, treeText);
+        }
+
+        function clearSingle() {
+          nInput.value = '';
+          clearSingleResults();
+        }
+
+        if (btnFactorSingle) btnFactorSingle.addEventListener('click', factorSingle);
+        if (btnClearSingle) btnClearSingle.addEventListener('click', clearSingle);
+
+        exampleButtons.forEach(btn => {
+          btn.addEventListener('click', function () {
+            const n = btn.getAttribute('data-example-n') || '';
+            nInput.value = n;
+            clearSingleResults();
+          });
+        });
+
+        // Multiple numbers factorization
+        function factorMulti() {
+          if (!multiBody) return;
+          multiBody.innerHTML = '';
+          multiError.textContent = '';
+
+          const raw = multiInput.value || '';
+          const nums = parseNumberList(raw).filter(n => Math.abs(n) >= 2);
+          if (nums.length < 2) {
+            multiError.textContent = 'Enter at least two integers with |n| ≥ 2.';
+            return;
+          }
+
+          const maxRows = 200;
+          const limited = nums.slice(0, maxRows);
+
+          limited.forEach(n0 => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b';
+            const sign = n0 < 0 ? -1 : 1;
+            const n = Math.abs(n0);
+            const factors = factorize(n);
+            const factStrCore = formatFactorization(n, factors);
+            const factStr = sign < 0 ? '−1 · ' + factStrCore : factStrCore;
+            const tau = computeTau(factors);
+            const sigma = computeSigma(factors);
+            const isPrime = (n >= 2 && factors.length === 1 && factors[0].a === 1);
+
+            const tdN = document.createElement('td');
+            tdN.className = 'px-3 py-1.5 text-gray-700';
+            tdN.textContent = String(n0);
+
+            const tdFact = document.createElement('td');
+            tdFact.className = 'px-3 py-1.5 text-gray-700';
+            tdFact.textContent = factStr;
+
+            const tdPC = document.createElement('td');
+            tdPC.className = 'px-3 py-1.5 text-gray-700';
+            tdPC.textContent = isPrime ? 'Prime' : 'Composite';
+
+            const tdTau = document.createElement('td');
+            tdTau.className = 'px-3 py-1.5 text-gray-700';
+            tdTau.textContent = String(tau);
+
+            const tdSigma = document.createElement('td');
+            tdSigma.className = 'px-3 py-1.5 text-gray-700';
+            tdSigma.textContent = String(sigma);
+
+            tr.appendChild(tdN);
+            tr.appendChild(tdFact);
+            tr.appendChild(tdPC);
+            tr.appendChild(tdTau);
+            tr.appendChild(tdSigma);
+            multiBody.appendChild(tr);
+          });
+
+          if (nums.length > maxRows) {
+            multiError.textContent = 'Showing first ' + maxRows + ' entries (list truncated).';
+          }
+        }
+
+        function clearMulti() {
+          multiInput.value = '';
+          multiError.textContent = '';
+          if (multiBody) multiBody.innerHTML = '';
+        }
+
+        if (btnFactorMulti) btnFactorMulti.addEventListener('click', factorMulti);
+        if (btnClearMulti) btnClearMulti.addEventListener('click', clearMulti);
+
+        // Factoring table 2..N
+        function genFactorTable() {
+          if (!tableBody) return;
+          tableBody.innerHTML = '';
+
+          let N = Number(tableMaxInput.value);
+          if (!Number.isInteger(N) || N < 2) N = 2;
+          if (N > 200) N = 200;
+          tableMaxInput.value = String(N);
+
+          for (let n = 2; n <= N; n++) {
+            const factors = factorize(n);
+            const factStr = formatFactorization(n, factors);
+            const isPrime = (factors.length === 1 && factors[0].a === 1);
+
+            const tr = document.createElement('tr');
+            tr.className = 'border-b';
+
+            const tdN = document.createElement('td');
+            tdN.className = 'px-3 py-1.5 text-gray-700';
+            tdN.textContent = String(n);
+
+            const tdFact = document.createElement('td');
+            tdFact.className = 'px-3 py-1.5 text-gray-700';
+            tdFact.textContent = factStr;
+
+            const tdPrime = document.createElement('td');
+            tdPrime.className = 'px-3 py-1.5 text-gray-700';
+            tdPrime.textContent = isPrime ? 'Yes' : 'No';
+
+            tr.appendChild(tdN);
+            tr.appendChild(tdFact);
+            tr.appendChild(tdPrime);
+            tableBody.appendChild(tr);
+          }
+        }
+
+        if (btnGenTable) btnGenTable.addEventListener('click', genFactorTable);
+
+        // Pre-generate default table
+        genFactorTable();
+      });
+    </script>
+
+
+</body></html>
+]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

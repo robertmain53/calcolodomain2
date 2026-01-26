@@ -39,10 +39,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -199,8 +195,6 @@
 </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
-
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
 
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
@@ -738,7 +732,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -806,13 +800,549 @@
 
 
 
+
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
 
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      (function () {
+        const calcTypeSelect = document.getElementById('calc-type');
+        const form = document.getElementById('percent-error-form');
+        const resetButton = document.getElementById('reset-button');
+
+        const experimentalInput = document.getElementById('experimental-value');
+        const trueInput = document.getElementById('true-value');
+        const percentInput = document.getElementById('percent-error-input');
+
+        const fieldExperimental = document.getElementById('field-experimental');
+        const fieldPercent = document.getElementById('field-percent');
+        const fieldSigned = document.getElementById('field-signed');
+        const signedToggle = document.getElementById('signed-toggle');
+        const signedPercentToggle = document.getElementById('signed-percent-toggle');
+
+        const resultsPanel = document.getElementById('results-panel');
+        const primaryLabel = document.getElementById('primary-label');
+        const primaryValue = document.getElementById('primary-value');
+        const primaryRounded = document.getElementById('primary-rounded');
+        const absoluteErrorEl = document.getElementById('absolute-error');
+        const relativeErrorEl = document.getElementById('relative-error');
+        const stepsContent = document.getElementById('steps-content');
+        const multiSolutionPanel = document.getElementById('multi-solution-panel');
+        const solutionPositive = document.getElementById('solution-positive');
+        const solutionNegative = document.getElementById('solution-negative');
+
+        function parseNumber(value) {
+          if (typeof value !== 'string') return NaN;
+          const trimmed = value.trim().replace(',', '.');
+          if (!trimmed) return NaN;
+          const num = Number(trimmed);
+          return Number.isFinite(num) ? num : NaN;
+        }
+
+        function formatNumber(value) {
+          if (!Number.isFinite(value)) return '—';
+          const abs = Math.abs(value);
+          if (abs === 0) return '0';
+          if (abs >= 1e6 || abs < 1e-4) {
+            return value.toExponential(4);
+          }
+          return Number(value.toPrecision(4));
+        }
+
+        function formatPercent(value) {
+          if (!Number.isFinite(value)) return '—';
+          return formatNumber(value) + '%';
+        }
+
+        function clearResults() {
+          resultsPanel.classList.add('hidden');
+          multiSolutionPanel.classList.add('hidden');
+          stepsContent.innerHTML = '';
+          primaryValue.textContent = '';
+          primaryRounded.textContent = '';
+          absoluteErrorEl.textContent = '';
+          relativeErrorEl.textContent = '';
+          solutionPositive.textContent = '';
+          solutionNegative.textContent = '';
+        }
+
+        function updateFieldVisibility() {
+          const mode = calcTypeSelect.value;
+          clearResults();
+
+          if (mode === 'percent-error') {
+            fieldExperimental.classList.remove('hidden');
+            fieldPercent.classList.add('hidden');
+            fieldSigned.classList.remove('hidden');
+          } else {
+            fieldExperimental.classList.remove('hidden');
+            fieldPercent.classList.remove('hidden');
+            fieldSigned.classList.add('hidden');
+          }
+
+          if (mode === 'percent-error') {
+            experimentalInput.disabled = false;
+            trueInput.disabled = false;
+            percentInput.disabled = true;
+          } else if (mode === 'experimental-from-percent-error') {
+            experimentalInput.disabled = true;
+            trueInput.disabled = false;
+            percentInput.disabled = false;
+          } else if (mode === 'true-from-percent-error') {
+            experimentalInput.disabled = false;
+            trueInput.disabled = true;
+            percentInput.disabled = false;
+          }
+        }
+
+        function handleCalculate(event) {
+          event.preventDefault();
+          clearResults();
+
+          const mode = calcTypeSelect.value;
+
+          const E_raw = parseNumber(experimentalInput.value);
+          const T_raw = parseNumber(trueInput.value);
+          const P_raw = parseNumber(percentInput.value);
+
+          const signed = signedToggle.checked;
+          const signedPercent = signedPercentToggle.checked;
+
+          let E = E_raw;
+          let T = T_raw;
+          let P = P_raw; // in percent (not fraction)
+
+          if (mode === 'percent-error') {
+            if (!Number.isFinite(E) || !Number.isFinite(T)) {
+              alert('Please enter valid numeric values for E and T.');
+              return;
+            }
+            if (T === 0) {
+              alert('The true value T must be non-zero to compute percent error.');
+              return;
+            }
+
+            const rawError = E - T;
+            const absoluteError = Math.abs(rawError);
+            const relativeError = absoluteError / Math.abs(T);
+            let percentError;
+
+            if (signed) {
+              percentError = (E - T) / T * 100;
+            } else {
+              percentError = relativeError * 100;
+            }
+
+            primaryLabel.textContent = signed ? 'Signed percent error' : 'Percent error';
+            primaryValue.textContent = formatPercent(percentError);
+            primaryRounded.textContent = 'Rounded (4 significant figures): ' + formatPercent(percentError);
+
+            absoluteErrorEl.textContent = formatNumber(absoluteError);
+            relativeErrorEl.textContent = formatNumber(relativeError);
+
+            const steps = [];
+            steps.push('1. Experimental value (E) = ' + E);
+            steps.push('2. True value (T) = ' + T);
+            steps.push('3. Error = E − T = ' + (E - T));
+            if (!signed) {
+              steps.push('4. Absolute error = |E − T| = ' + absoluteError);
+              steps.push('5. Relative error = |E − T| / |T| = ' + absoluteError + ' / ' + Math.abs(T) + ' ≈ ' + relativeError);
+            } else {
+              steps.push('4. Relative signed error = (E − T) / T = ' + (E - T) + ' / ' + T + ' ≈ ' + ((E - T) / T));
+            }
+            steps.push('6. Percent error = relative error × 100 = ' + percentError + '%');
+
+            steps.forEach(function (line) {
+              const p = document.createElement('p');
+              p.textContent = line;
+              stepsContent.appendChild(p);
+            });
+
+            resultsPanel.classList.remove('hidden');
+          } else if (mode === 'experimental-from-percent-error') {
+            if (!Number.isFinite(P) || !Number.isFinite(T)) {
+              alert('Please enter valid numeric values for percent error P and true value T.');
+              return;
+            }
+            if (T === 0) {
+              alert('The true value T must be non-zero.');
+              return;
+            }
+
+            const frac = P / 100;
+            const E_plus = T * (1 + frac);
+            const E_minus = T * (1 - frac);
+
+            primaryLabel.textContent = 'Experimental value (E) from percent error';
+            primaryValue.textContent = formatNumber(E_plus) + ' or ' + formatNumber(E_minus);
+            primaryRounded.textContent = 'Two solutions: one above T, one below T.';
+
+            const absErr = Math.abs(E_plus - T);
+            const relErr = absErr / Math.abs(T);
+            absoluteErrorEl.textContent = formatNumber(absErr) + ' (for E above T)';
+            relativeErrorEl.textContent = formatNumber(relErr);
+
+            solutionPositive.textContent = 'E = T × (1 + P / 100) = ' + T + ' × (1 + ' + (P / 100) + ') = ' + E_plus;
+            solutionNegative.textContent = 'E = T × (1 − P / 100) = ' + T + ' × (1 − ' + (P / 100) + ') = ' + E_minus;
+
+            const steps = [];
+            steps.push('1. Percent error P = ' + P + '%.');
+            steps.push('2. Convert to fraction: P / 100 = ' + (P / 100) + '.');
+            steps.push('3. Use the formula E = T (1 ± P / 100).');
+            steps.push('4. E₁ = T (1 + P / 100) = ' + E_plus + '.');
+            steps.push('5. E₂ = T (1 − P / 100) = ' + E_minus + '.');
+
+            steps.forEach(function (line) {
+              const p = document.createElement('p');
+              p.textContent = line;
+              stepsContent.appendChild(p);
+            });
+
+            multiSolutionPanel.classList.remove('hidden');
+            resultsPanel.classList.remove('hidden');
+          } else if (mode === 'true-from-percent-error') {
+            if (!Number.isFinite(P) || !Number.isFinite(E)) {
+              alert('Please enter valid numeric values for percent error P and experimental value E.');
+              return;
+            }
+
+            const frac = P / 100;
+            if (frac === 1) {
+              alert('When P = 100%, the denominator 1 − P/100 becomes zero. In that special case, the true value cannot be determined uniquely from P and E alone.');
+              return;
+            }
+
+            const T_plus = E / (1 + frac);
+            const T_minus = E / (1 - frac);
+
+            primaryLabel.textContent = 'True value (T) from percent error';
+            primaryValue.textContent = formatNumber(T_plus) + ' or ' + formatNumber(T_minus);
+            primaryRounded.textContent = 'Two possible true values are consistent with the given percent error.';
+
+            const absErr = Math.abs(E - T_plus);
+            const relErr = absErr / Math.abs(T_plus);
+            absoluteErrorEl.textContent = formatNumber(absErr) + ' (for T above E)';
+            relativeErrorEl.textContent = formatNumber(relErr);
+
+            solutionPositive.textContent = 'T = E / (1 + P / 100) = ' + E + ' / (1 + ' + (P / 100) + ') = ' + T_plus;
+            solutionNegative.textContent = 'T = E / (1 − P / 100) = ' + E + ' / (1 − ' + (P / 100) + ') = ' + T_minus;
+
+            const steps = [];
+            steps.push('1. Percent error P = ' + P + '%.');
+            steps.push('2. Convert to fraction: P / 100 = ' + (P / 100) + '.');
+            steps.push('3. Use the formula T = E / (1 ± P / 100).');
+            steps.push('4. T₁ = E / (1 + P / 100) = ' + T_plus + '.');
+            steps.push('5. T₂ = E / (1 − P / 100) = ' + T_minus + '.');
+
+            steps.forEach(function (line) {
+              const p = document.createElement('p');
+              p.textContent = line;
+              stepsContent.appendChild(p);
+            });
+
+            multiSolutionPanel.classList.remove('hidden');
+            resultsPanel.classList.remove('hidden');
+          }
+        }
+
+        function handleReset() {
+          experimentalInput.value = '';
+          trueInput.value = '';
+          percentInput.value = '';
+          signedToggle.checked = false;
+          signedPercentToggle.checked = false;
+          calcTypeSelect.value = 'percent-error';
+          updateFieldVisibility();
+          clearResults();
+        }
+
+        calcTypeSelect.addEventListener('change', updateFieldVisibility);
+        form.addEventListener('submit', handleCalculate);
+        resetButton.addEventListener('click', handleReset);
+
+        updateFieldVisibility();
+      })();
+    </script>
+
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      (function () {
+        const calcTypeSelect = document.getElementById('calc-type');
+        const form = document.getElementById('percent-error-form');
+        const resetButton = document.getElementById('reset-button');
+
+        const experimentalInput = document.getElementById('experimental-value');
+        const trueInput = document.getElementById('true-value');
+        const percentInput = document.getElementById('percent-error-input');
+
+        const fieldExperimental = document.getElementById('field-experimental');
+        const fieldPercent = document.getElementById('field-percent');
+        const fieldSigned = document.getElementById('field-signed');
+        const signedToggle = document.getElementById('signed-toggle');
+        const signedPercentToggle = document.getElementById('signed-percent-toggle');
+
+        const resultsPanel = document.getElementById('results-panel');
+        const primaryLabel = document.getElementById('primary-label');
+        const primaryValue = document.getElementById('primary-value');
+        const primaryRounded = document.getElementById('primary-rounded');
+        const absoluteErrorEl = document.getElementById('absolute-error');
+        const relativeErrorEl = document.getElementById('relative-error');
+        const stepsContent = document.getElementById('steps-content');
+        const multiSolutionPanel = document.getElementById('multi-solution-panel');
+        const solutionPositive = document.getElementById('solution-positive');
+        const solutionNegative = document.getElementById('solution-negative');
+
+        function parseNumber(value) {
+          if (typeof value !== 'string') return NaN;
+          const trimmed = value.trim().replace(',', '.');
+          if (!trimmed) return NaN;
+          const num = Number(trimmed);
+          return Number.isFinite(num) ? num : NaN;
+        }
+
+        function formatNumber(value) {
+          if (!Number.isFinite(value)) return '—';
+          const abs = Math.abs(value);
+          if (abs === 0) return '0';
+          if (abs >= 1e6 || abs < 1e-4) {
+            return value.toExponential(4);
+          }
+          return Number(value.toPrecision(4));
+        }
+
+        function formatPercent(value) {
+          if (!Number.isFinite(value)) return '—';
+          return formatNumber(value) + '%';
+        }
+
+        function clearResults() {
+          resultsPanel.classList.add('hidden');
+          multiSolutionPanel.classList.add('hidden');
+          stepsContent.innerHTML = '';
+          primaryValue.textContent = '';
+          primaryRounded.textContent = '';
+          absoluteErrorEl.textContent = '';
+          relativeErrorEl.textContent = '';
+          solutionPositive.textContent = '';
+          solutionNegative.textContent = '';
+        }
+
+        function updateFieldVisibility() {
+          const mode = calcTypeSelect.value;
+          clearResults();
+
+          if (mode === 'percent-error') {
+            fieldExperimental.classList.remove('hidden');
+            fieldPercent.classList.add('hidden');
+            fieldSigned.classList.remove('hidden');
+          } else {
+            fieldExperimental.classList.remove('hidden');
+            fieldPercent.classList.remove('hidden');
+            fieldSigned.classList.add('hidden');
+          }
+
+          if (mode === 'percent-error') {
+            experimentalInput.disabled = false;
+            trueInput.disabled = false;
+            percentInput.disabled = true;
+          } else if (mode === 'experimental-from-percent-error') {
+            experimentalInput.disabled = true;
+            trueInput.disabled = false;
+            percentInput.disabled = false;
+          } else if (mode === 'true-from-percent-error') {
+            experimentalInput.disabled = false;
+            trueInput.disabled = true;
+            percentInput.disabled = false;
+          }
+        }
+
+        function handleCalculate(event) {
+          event.preventDefault();
+          clearResults();
+
+          const mode = calcTypeSelect.value;
+
+          const E_raw = parseNumber(experimentalInput.value);
+          const T_raw = parseNumber(trueInput.value);
+          const P_raw = parseNumber(percentInput.value);
+
+          const signed = signedToggle.checked;
+          const signedPercent = signedPercentToggle.checked;
+
+          let E = E_raw;
+          let T = T_raw;
+          let P = P_raw; // in percent (not fraction)
+
+          if (mode === 'percent-error') {
+            if (!Number.isFinite(E) || !Number.isFinite(T)) {
+              alert('Please enter valid numeric values for E and T.');
+              return;
+            }
+            if (T === 0) {
+              alert('The true value T must be non-zero to compute percent error.');
+              return;
+            }
+
+            const rawError = E - T;
+            const absoluteError = Math.abs(rawError);
+            const relativeError = absoluteError / Math.abs(T);
+            let percentError;
+
+            if (signed) {
+              percentError = (E - T) / T * 100;
+            } else {
+              percentError = relativeError * 100;
+            }
+
+            primaryLabel.textContent = signed ? 'Signed percent error' : 'Percent error';
+            primaryValue.textContent = formatPercent(percentError);
+            primaryRounded.textContent = 'Rounded (4 significant figures): ' + formatPercent(percentError);
+
+            absoluteErrorEl.textContent = formatNumber(absoluteError);
+            relativeErrorEl.textContent = formatNumber(relativeError);
+
+            const steps = [];
+            steps.push('1. Experimental value (E) = ' + E);
+            steps.push('2. True value (T) = ' + T);
+            steps.push('3. Error = E − T = ' + (E - T));
+            if (!signed) {
+              steps.push('4. Absolute error = |E − T| = ' + absoluteError);
+              steps.push('5. Relative error = |E − T| / |T| = ' + absoluteError + ' / ' + Math.abs(T) + ' ≈ ' + relativeError);
+            } else {
+              steps.push('4. Relative signed error = (E − T) / T = ' + (E - T) + ' / ' + T + ' ≈ ' + ((E - T) / T));
+            }
+            steps.push('6. Percent error = relative error × 100 = ' + percentError + '%');
+
+            steps.forEach(function (line) {
+              const p = document.createElement('p');
+              p.textContent = line;
+              stepsContent.appendChild(p);
+            });
+
+            resultsPanel.classList.remove('hidden');
+          } else if (mode === 'experimental-from-percent-error') {
+            if (!Number.isFinite(P) || !Number.isFinite(T)) {
+              alert('Please enter valid numeric values for percent error P and true value T.');
+              return;
+            }
+            if (T === 0) {
+              alert('The true value T must be non-zero.');
+              return;
+            }
+
+            const frac = P / 100;
+            const E_plus = T * (1 + frac);
+            const E_minus = T * (1 - frac);
+
+            primaryLabel.textContent = 'Experimental value (E) from percent error';
+            primaryValue.textContent = formatNumber(E_plus) + ' or ' + formatNumber(E_minus);
+            primaryRounded.textContent = 'Two solutions: one above T, one below T.';
+
+            const absErr = Math.abs(E_plus - T);
+            const relErr = absErr / Math.abs(T);
+            absoluteErrorEl.textContent = formatNumber(absErr) + ' (for E above T)';
+            relativeErrorEl.textContent = formatNumber(relErr);
+
+            solutionPositive.textContent = 'E = T × (1 + P / 100) = ' + T + ' × (1 + ' + (P / 100) + ') = ' + E_plus;
+            solutionNegative.textContent = 'E = T × (1 − P / 100) = ' + T + ' × (1 − ' + (P / 100) + ') = ' + E_minus;
+
+            const steps = [];
+            steps.push('1. Percent error P = ' + P + '%.');
+            steps.push('2. Convert to fraction: P / 100 = ' + (P / 100) + '.');
+            steps.push('3. Use the formula E = T (1 ± P / 100).');
+            steps.push('4. E₁ = T (1 + P / 100) = ' + E_plus + '.');
+            steps.push('5. E₂ = T (1 − P / 100) = ' + E_minus + '.');
+
+            steps.forEach(function (line) {
+              const p = document.createElement('p');
+              p.textContent = line;
+              stepsContent.appendChild(p);
+            });
+
+            multiSolutionPanel.classList.remove('hidden');
+            resultsPanel.classList.remove('hidden');
+          } else if (mode === 'true-from-percent-error') {
+            if (!Number.isFinite(P) || !Number.isFinite(E)) {
+              alert('Please enter valid numeric values for percent error P and experimental value E.');
+              return;
+            }
+
+            const frac = P / 100;
+            if (frac === 1) {
+              alert('When P = 100%, the denominator 1 − P/100 becomes zero. In that special case, the true value cannot be determined uniquely from P and E alone.');
+              return;
+            }
+
+            const T_plus = E / (1 + frac);
+            const T_minus = E / (1 - frac);
+
+            primaryLabel.textContent = 'True value (T) from percent error';
+            primaryValue.textContent = formatNumber(T_plus) + ' or ' + formatNumber(T_minus);
+            primaryRounded.textContent = 'Two possible true values are consistent with the given percent error.';
+
+            const absErr = Math.abs(E - T_plus);
+            const relErr = absErr / Math.abs(T_plus);
+            absoluteErrorEl.textContent = formatNumber(absErr) + ' (for T above E)';
+            relativeErrorEl.textContent = formatNumber(relErr);
+
+            solutionPositive.textContent = 'T = E / (1 + P / 100) = ' + E + ' / (1 + ' + (P / 100) + ') = ' + T_plus;
+            solutionNegative.textContent = 'T = E / (1 − P / 100) = ' + E + ' / (1 − ' + (P / 100) + ') = ' + T_minus;
+
+            const steps = [];
+            steps.push('1. Percent error P = ' + P + '%.');
+            steps.push('2. Convert to fraction: P / 100 = ' + (P / 100) + '.');
+            steps.push('3. Use the formula T = E / (1 ± P / 100).');
+            steps.push('4. T₁ = E / (1 + P / 100) = ' + T_plus + '.');
+            steps.push('5. T₂ = E / (1 − P / 100) = ' + T_minus + '.');
+
+            steps.forEach(function (line) {
+              const p = document.createElement('p');
+              p.textContent = line;
+              stepsContent.appendChild(p);
+            });
+
+            multiSolutionPanel.classList.remove('hidden');
+            resultsPanel.classList.remove('hidden');
+          }
+        }
+
+        function handleReset() {
+          experimentalInput.value = '';
+          trueInput.value = '';
+          percentInput.value = '';
+          signedToggle.checked = false;
+          signedPercentToggle.checked = false;
+          calcTypeSelect.value = 'percent-error';
+          updateFieldVisibility();
+          clearResults();
+        }
+
+        calcTypeSelect.addEventListener('change', updateFieldVisibility);
+        form.addEventListener('submit', handleCalculate);
+        resetButton.addEventListener('click', handleReset);
+
+        updateFieldVisibility();
+      })();
+    </script>
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

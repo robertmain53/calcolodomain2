@@ -42,10 +42,6 @@
     
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
     
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-    
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -215,8 +211,6 @@
 <body class="bg-gray-50 text-gray-800">
 
     <!-- BODY_SCRIPTS_INIZIO -->
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
         <div class="flex justify-between items-center">
@@ -789,7 +783,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -856,14 +850,642 @@
 
 
 
+
     
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
     
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      (function() {
+        const aInput = document.getElementById('rt-a');
+        const bInput = document.getElementById('rt-b');
+        const cInput = document.getElementById('rt-c');
+        const alphaInput = document.getElementById('rt-alpha');
+        const betaInput = document.getElementById('rt-beta');
+        const angleUnitSelect = document.getElementById('rt-angle-unit');
+        const unitLabelSelect = document.getElementById('rt-unit-label');
+
+        const calcBtn = document.getElementById('rt-calc-btn');
+        const resetBtn = document.getElementById('rt-reset-btn');
+        const errorEl = document.getElementById('rt-error');
+
+        const resultsBox = document.getElementById('rt-results');
+        const resultsBody = document.getElementById('rt-results-body');
+        const summaryEl = document.getElementById('rt-summary');
+        const checkEl = document.getElementById('rt-check');
+
+        const formulaBox = document.getElementById('rt-formula-box');
+        const formulaEl = document.getElementById('rt-formula');
+
+        function clearError() {
+          errorEl.textContent = '';
+          errorEl.classList.add('hidden');
+        }
+
+        function showError(msg) {
+          errorEl.textContent = msg;
+          errorEl.classList.remove('hidden');
+        }
+
+        function toNumberOrNull(inputEl) {
+          const raw = inputEl.value.trim();
+          if (!raw) return null;
+          const num = Number(raw);
+          if (!isFinite(num)) return NaN;
+          return num;
+        }
+
+        function degToRad(d) {
+          return d * Math.PI / 180;
+        }
+
+        function radToDeg(r) {
+          return r * 180 / Math.PI;
+        }
+
+        function fmt(x) {
+          if (!isFinite(x)) return '—';
+          const abs = Math.abs(x);
+          if (abs !== 0 && (abs < 1e-4 || abs >= 1e6)) {
+            return x.toExponential(6);
+          }
+          return x.toLocaleString(undefined, { maximumFractionDigits: 6 });
+        }
+
+        function unitSuffix(power) {
+          const u = unitLabelSelect.value;
+          if (!u) return '';
+          if (power === 1) return ' ' + u;
+          if (power === 2) return ' ' + u + '²';
+          return ' ' + u;
+        }
+
+        function updateFormulas(description) {
+          if (!description) {
+            formulaBox.classList.add('hidden');
+            formulaEl.textContent = '';
+            return;
+          }
+          formulaEl.textContent = description;
+          formulaBox.classList.remove('hidden');
+          if (window.MathJax && window.MathJax.typeset) {
+            window.MathJax.typeset();
+          }
+        }
+
+        function solve() {
+          clearError();
+          resultsBox.classList.add('hidden');
+          resultsBody.innerHTML = '';
+          summaryEl.textContent = '';
+          checkEl.textContent = '';
+          updateFormulas('');
+
+          let a = toNumberOrNull(aInput);
+          let b = toNumberOrNull(bInput);
+          let c = toNumberOrNull(cInput);
+          let alpha = toNumberOrNull(alphaInput);
+          let beta = toNumberOrNull(betaInput);
+          const angleUnit = angleUnitSelect.value;
+
+          const fields = { a, b, c, alpha, beta };
+          const present = {};
+          let countKnown = 0;
+
+          for (const key of Object.keys(fields)) {
+            const v = fields[key];
+            if (v === null) {
+              present[key] = false;
+            } else if (isNaN(v)) {
+              showError('All numeric fields must be valid numbers.');
+              return;
+            } else {
+              if ((key === 'alpha' || key === 'beta') && v <= 0) {
+                showError('Angles must be positive.');
+                return;
+              }
+              if ((key === 'a' || key === 'b' || key === 'c') && v <= 0) {
+                showError('Side lengths must be positive.');
+                return;
+              }
+              present[key] = true;
+              countKnown += 1;
+            }
+          }
+
+          if (countKnown !== 2) {
+            showError('Please enter exactly two of a, b, c, α, β using one of the supported pairs: (a,b), (a,c), (b,c), (c,α), (c,β), (a,α), or (b,β).');
+            return;
+          }
+
+          // Validate angle ranges if provided
+          const maxAngle = angleUnit === 'deg' ? 90 : Math.PI / 2;
+          if (present.alpha && alpha >= maxAngle) {
+            showError('Angle α must be less than 90° (or π/2 rad) in a right triangle.');
+            return;
+          }
+          if (present.beta && beta >= maxAngle) {
+            showError('Angle β must be less than 90° (or π/2 rad) in a right triangle.');
+            return;
+          }
+
+          let alphaRad = null;
+          let betaRad = null;
+          if (present.alpha) {
+            alphaRad = angleUnit === 'deg' ? degToRad(alpha) : alpha;
+          }
+          if (present.beta) {
+            betaRad = angleUnit === 'deg' ? degToRad(beta) : beta;
+          }
+
+          let caseId = '';
+          if (present.a && present.b && !present.c && !present.alpha && !present.beta) {
+            caseId = 'ab';
+          } else if (present.a && present.c && !present.b && !present.alpha && !present.beta) {
+            caseId = 'ac';
+          } else if (present.b && present.c && !present.a && !present.alpha && !present.beta) {
+            caseId = 'bc';
+          } else if (present.c && present.alpha && !present.a && !present.b && !present.beta) {
+            caseId = 'c_alpha';
+          } else if (present.c && present.beta && !present.a && !present.b && !present.alpha) {
+            caseId = 'c_beta';
+          } else if (present.a && present.alpha && !present.b && !present.c && !present.beta) {
+            caseId = 'a_alpha';
+          } else if (present.b && present.beta && !present.a && !present.c && !present.alpha) {
+            caseId = 'b_beta';
+          } else {
+            showError('This combination of inputs is not supported. Use one of: (a,b), (a,c), (b,c), (c,α), (c,β), (a,α), or (b,β).');
+            return;
+          }
+
+          // Solve
+          let formulasUsed = '';
+          try {
+            switch (caseId) {
+              case 'ab':
+                c = Math.sqrt(a*a + b*b);
+                alphaRad = Math.atan2(a, b);
+                betaRad = Math.atan2(b, a);
+                formulasUsed = 'Pythagorean theorem: c = √(a² + b²); angles from tan: α = arctan(a/b), β = arctan(b/a).';
+                break;
+              case 'ac':
+                if (c <= a) {
+                  showError('For a right triangle the hypotenuse c must be longer than leg a.');
+                  return;
+                }
+                b = Math.sqrt(c*c - a*a);
+                alphaRad = Math.asin(a / c);
+                betaRad = Math.PI / 2 - alphaRad;
+                formulasUsed = 'b = √(c² - a²); α = arcsin(a/c); β = 90° − α.';
+                break;
+              case 'bc':
+                if (c <= b) {
+                  showError('For a right triangle the hypotenuse c must be longer than leg b.');
+                  return;
+                }
+                a = Math.sqrt(c*c - b*b);
+                betaRad = Math.asin(b / c);
+                alphaRad = Math.PI / 2 - betaRad;
+                formulasUsed = 'a = √(c² - b²); β = arcsin(b/c); α = 90° − β.';
+                break;
+              case 'c_alpha':
+                // 0 < alpha < 90
+                a = c * Math.sin(alphaRad);
+                b = c * Math.cos(alphaRad);
+                betaRad = Math.PI / 2 - alphaRad;
+                formulasUsed = 'a = c·sin(α); b = c·cos(α); β = 90° − α.';
+                break;
+              case 'c_beta':
+                a = c * Math.cos(betaRad);
+                b = c * Math.sin(betaRad);
+                alphaRad = Math.PI / 2 - betaRad;
+                formulasUsed = 'b = c·sin(β); a = c·cos(β); α = 90° − β.';
+                break;
+              case 'a_alpha':
+                // c = a/sin α, b = a/tan α
+                c = a / Math.sin(alphaRad);
+                b = a / Math.tan(alphaRad);
+                betaRad = Math.PI / 2 - alphaRad;
+                formulasUsed = 'c = a / sin(α); b = a / tan(α); β = 90° − α.';
+                break;
+              case 'b_beta':
+                c = b / Math.sin(betaRad);
+                a = b / Math.tan(betaRad);
+                alphaRad = Math.PI / 2 - betaRad;
+                formulasUsed = 'c = b / sin(β); a = b / tan(β); α = 90° − β.';
+                break;
+            }
+          } catch (e) {
+            showError('Unable to solve the triangle with the given values. Please check that the data is consistent.');
+            return;
+          }
+
+          // Final sanity checks
+          if (!(a > 0 && b > 0 && c > 0)) {
+            showError('Computed side lengths are not positive. The given data may be inconsistent.');
+            return;
+          }
+          if (c <= a || c <= b) {
+            showError('Computed hypotenuse c is not longer than legs a and b. The given data may be inconsistent.');
+            return;
+          }
+
+          const area = 0.5 * a * b;
+          const perimeter = a + b + c;
+          const h_c = (a * b) / c;
+
+          let alphaOut = angleUnit === 'deg' ? radToDeg(alphaRad) : alphaRad;
+          let betaOut = angleUnit === 'deg' ? radToDeg(betaRad) : betaRad;
+
+          const pythLHS = a*a + b*b;
+          const pythRHS = c*c;
+
+          // Populate results table
+          const rows = [
+            ['Leg a', fmt(a) + unitSuffix(1)],
+            ['Leg b', fmt(b) + unitSuffix(1)],
+            ['Hypotenuse c', fmt(c) + unitSuffix(1)],
+            ['Angle α', fmt(alphaOut) + (angleUnit === 'deg' ? ' °' : ' rad')],
+            ['Angle β', fmt(betaOut) + (angleUnit === 'deg' ? ' °' : ' rad')],
+            ['Area A', fmt(area) + unitSuffix(2)],
+            ['Perimeter P', fmt(perimeter) + unitSuffix(1)],
+            ['Altitude to hypotenuse h\u2095', fmt(h_c) + unitSuffix(1)]
+          ];
+
+          resultsBody.innerHTML = '';
+          rows.forEach(([label, value]) => {
+            const tr = document.createElement('tr');
+            const td1 = document.createElement('td');
+            const td2 = document.createElement('td');
+            td1.className = 'px-3 py-2 text-gray-800';
+            td2.className = 'px-3 py-2 text-gray-800';
+            td1.textContent = label;
+            td2.textContent = value;
+            tr.appendChild(td1);
+            tr.appendChild(td2);
+            resultsBody.appendChild(tr);
+          });
+
+          summaryEl.textContent =
+            'Solved right triangle with hypotenuse c and legs a, b using the Pythagorean theorem and basic trigonometry. ' +
+            'All quantities are consistent with a right angle between the legs.';
+
+          checkEl.textContent =
+            'Pythagorean check: a² + b² = ' + fmt(pythLHS) +
+            ', c² = ' + fmt(pythRHS) +
+            '. Small differences are due to rounding.';
+
+          resultsBox.classList.remove('hidden');
+          updateFormulas(formulasUsed);
+        }
+
+        calcBtn.addEventListener('click', solve);
+
+        resetBtn.addEventListener('click', function() {
+          aInput.value = '3';
+          bInput.value = '4';
+          cInput.value = '5';
+          alphaInput.value = '';
+          betaInput.value = '';
+          angleUnitSelect.value = 'deg';
+          unitLabelSelect.value = '';
+          clearError();
+          resultsBox.classList.add('hidden');
+          resultsBody.innerHTML = '';
+          summaryEl.textContent = '';
+          checkEl.textContent = '';
+          updateFormulas('');
+        });
+
+        // Initial state
+        resetBtn.click();
+      })();
+    </script>
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <script>
+      (function() {
+        const aInput = document.getElementById('rt-a');
+        const bInput = document.getElementById('rt-b');
+        const cInput = document.getElementById('rt-c');
+        const alphaInput = document.getElementById('rt-alpha');
+        const betaInput = document.getElementById('rt-beta');
+        const angleUnitSelect = document.getElementById('rt-angle-unit');
+        const unitLabelSelect = document.getElementById('rt-unit-label');
+
+        const calcBtn = document.getElementById('rt-calc-btn');
+        const resetBtn = document.getElementById('rt-reset-btn');
+        const errorEl = document.getElementById('rt-error');
+
+        const resultsBox = document.getElementById('rt-results');
+        const resultsBody = document.getElementById('rt-results-body');
+        const summaryEl = document.getElementById('rt-summary');
+        const checkEl = document.getElementById('rt-check');
+
+        const formulaBox = document.getElementById('rt-formula-box');
+        const formulaEl = document.getElementById('rt-formula');
+
+        function clearError() {
+          errorEl.textContent = '';
+          errorEl.classList.add('hidden');
+        }
+
+        function showError(msg) {
+          errorEl.textContent = msg;
+          errorEl.classList.remove('hidden');
+        }
+
+        function toNumberOrNull(inputEl) {
+          const raw = inputEl.value.trim();
+          if (!raw) return null;
+          const num = Number(raw);
+          if (!isFinite(num)) return NaN;
+          return num;
+        }
+
+        function degToRad(d) {
+          return d * Math.PI / 180;
+        }
+
+        function radToDeg(r) {
+          return r * 180 / Math.PI;
+        }
+
+        function fmt(x) {
+          if (!isFinite(x)) return '—';
+          const abs = Math.abs(x);
+          if (abs !== 0 && (abs < 1e-4 || abs >= 1e6)) {
+            return x.toExponential(6);
+          }
+          return x.toLocaleString(undefined, { maximumFractionDigits: 6 });
+        }
+
+        function unitSuffix(power) {
+          const u = unitLabelSelect.value;
+          if (!u) return '';
+          if (power === 1) return ' ' + u;
+          if (power === 2) return ' ' + u + '²';
+          return ' ' + u;
+        }
+
+        function updateFormulas(description) {
+          if (!description) {
+            formulaBox.classList.add('hidden');
+            formulaEl.textContent = '';
+            return;
+          }
+          formulaEl.textContent = description;
+          formulaBox.classList.remove('hidden');
+          if (window.MathJax && window.MathJax.typeset) {
+            window.MathJax.typeset();
+          }
+        }
+
+        function solve() {
+          clearError();
+          resultsBox.classList.add('hidden');
+          resultsBody.innerHTML = '';
+          summaryEl.textContent = '';
+          checkEl.textContent = '';
+          updateFormulas('');
+
+          let a = toNumberOrNull(aInput);
+          let b = toNumberOrNull(bInput);
+          let c = toNumberOrNull(cInput);
+          let alpha = toNumberOrNull(alphaInput);
+          let beta = toNumberOrNull(betaInput);
+          const angleUnit = angleUnitSelect.value;
+
+          const fields = { a, b, c, alpha, beta };
+          const present = {};
+          let countKnown = 0;
+
+          for (const key of Object.keys(fields)) {
+            const v = fields[key];
+            if (v === null) {
+              present[key] = false;
+            } else if (isNaN(v)) {
+              showError('All numeric fields must be valid numbers.');
+              return;
+            } else {
+              if ((key === 'alpha' || key === 'beta') && v <= 0) {
+                showError('Angles must be positive.');
+                return;
+              }
+              if ((key === 'a' || key === 'b' || key === 'c') && v <= 0) {
+                showError('Side lengths must be positive.');
+                return;
+              }
+              present[key] = true;
+              countKnown += 1;
+            }
+          }
+
+          if (countKnown !== 2) {
+            showError('Please enter exactly two of a, b, c, α, β using one of the supported pairs: (a,b), (a,c), (b,c), (c,α), (c,β), (a,α), or (b,β).');
+            return;
+          }
+
+          // Validate angle ranges if provided
+          const maxAngle = angleUnit === 'deg' ? 90 : Math.PI / 2;
+          if (present.alpha && alpha >= maxAngle) {
+            showError('Angle α must be less than 90° (or π/2 rad) in a right triangle.');
+            return;
+          }
+          if (present.beta && beta >= maxAngle) {
+            showError('Angle β must be less than 90° (or π/2 rad) in a right triangle.');
+            return;
+          }
+
+          let alphaRad = null;
+          let betaRad = null;
+          if (present.alpha) {
+            alphaRad = angleUnit === 'deg' ? degToRad(alpha) : alpha;
+          }
+          if (present.beta) {
+            betaRad = angleUnit === 'deg' ? degToRad(beta) : beta;
+          }
+
+          let caseId = '';
+          if (present.a && present.b && !present.c && !present.alpha && !present.beta) {
+            caseId = 'ab';
+          } else if (present.a && present.c && !present.b && !present.alpha && !present.beta) {
+            caseId = 'ac';
+          } else if (present.b && present.c && !present.a && !present.alpha && !present.beta) {
+            caseId = 'bc';
+          } else if (present.c && present.alpha && !present.a && !present.b && !present.beta) {
+            caseId = 'c_alpha';
+          } else if (present.c && present.beta && !present.a && !present.b && !present.alpha) {
+            caseId = 'c_beta';
+          } else if (present.a && present.alpha && !present.b && !present.c && !present.beta) {
+            caseId = 'a_alpha';
+          } else if (present.b && present.beta && !present.a && !present.c && !present.alpha) {
+            caseId = 'b_beta';
+          } else {
+            showError('This combination of inputs is not supported. Use one of: (a,b), (a,c), (b,c), (c,α), (c,β), (a,α), or (b,β).');
+            return;
+          }
+
+          // Solve
+          let formulasUsed = '';
+          try {
+            switch (caseId) {
+              case 'ab':
+                c = Math.sqrt(a*a + b*b);
+                alphaRad = Math.atan2(a, b);
+                betaRad = Math.atan2(b, a);
+                formulasUsed = 'Pythagorean theorem: c = √(a² + b²); angles from tan: α = arctan(a/b), β = arctan(b/a).';
+                break;
+              case 'ac':
+                if (c <= a) {
+                  showError('For a right triangle the hypotenuse c must be longer than leg a.');
+                  return;
+                }
+                b = Math.sqrt(c*c - a*a);
+                alphaRad = Math.asin(a / c);
+                betaRad = Math.PI / 2 - alphaRad;
+                formulasUsed = 'b = √(c² - a²); α = arcsin(a/c); β = 90° − α.';
+                break;
+              case 'bc':
+                if (c <= b) {
+                  showError('For a right triangle the hypotenuse c must be longer than leg b.');
+                  return;
+                }
+                a = Math.sqrt(c*c - b*b);
+                betaRad = Math.asin(b / c);
+                alphaRad = Math.PI / 2 - betaRad;
+                formulasUsed = 'a = √(c² - b²); β = arcsin(b/c); α = 90° − β.';
+                break;
+              case 'c_alpha':
+                // 0 < alpha < 90
+                a = c * Math.sin(alphaRad);
+                b = c * Math.cos(alphaRad);
+                betaRad = Math.PI / 2 - alphaRad;
+                formulasUsed = 'a = c·sin(α); b = c·cos(α); β = 90° − α.';
+                break;
+              case 'c_beta':
+                a = c * Math.cos(betaRad);
+                b = c * Math.sin(betaRad);
+                alphaRad = Math.PI / 2 - betaRad;
+                formulasUsed = 'b = c·sin(β); a = c·cos(β); α = 90° − β.';
+                break;
+              case 'a_alpha':
+                // c = a/sin α, b = a/tan α
+                c = a / Math.sin(alphaRad);
+                b = a / Math.tan(alphaRad);
+                betaRad = Math.PI / 2 - alphaRad;
+                formulasUsed = 'c = a / sin(α); b = a / tan(α); β = 90° − α.';
+                break;
+              case 'b_beta':
+                c = b / Math.sin(betaRad);
+                a = b / Math.tan(betaRad);
+                alphaRad = Math.PI / 2 - betaRad;
+                formulasUsed = 'c = b / sin(β); a = b / tan(β); α = 90° − β.';
+                break;
+            }
+          } catch (e) {
+            showError('Unable to solve the triangle with the given values. Please check that the data is consistent.');
+            return;
+          }
+
+          // Final sanity checks
+          if (!(a > 0 && b > 0 && c > 0)) {
+            showError('Computed side lengths are not positive. The given data may be inconsistent.');
+            return;
+          }
+          if (c <= a || c <= b) {
+            showError('Computed hypotenuse c is not longer than legs a and b. The given data may be inconsistent.');
+            return;
+          }
+
+          const area = 0.5 * a * b;
+          const perimeter = a + b + c;
+          const h_c = (a * b) / c;
+
+          let alphaOut = angleUnit === 'deg' ? radToDeg(alphaRad) : alphaRad;
+          let betaOut = angleUnit === 'deg' ? radToDeg(betaRad) : betaRad;
+
+          const pythLHS = a*a + b*b;
+          const pythRHS = c*c;
+
+          // Populate results table
+          const rows = [
+            ['Leg a', fmt(a) + unitSuffix(1)],
+            ['Leg b', fmt(b) + unitSuffix(1)],
+            ['Hypotenuse c', fmt(c) + unitSuffix(1)],
+            ['Angle α', fmt(alphaOut) + (angleUnit === 'deg' ? ' °' : ' rad')],
+            ['Angle β', fmt(betaOut) + (angleUnit === 'deg' ? ' °' : ' rad')],
+            ['Area A', fmt(area) + unitSuffix(2)],
+            ['Perimeter P', fmt(perimeter) + unitSuffix(1)],
+            ['Altitude to hypotenuse h\u2095', fmt(h_c) + unitSuffix(1)]
+          ];
+
+          resultsBody.innerHTML = '';
+          rows.forEach(([label, value]) => {
+            const tr = document.createElement('tr');
+            const td1 = document.createElement('td');
+            const td2 = document.createElement('td');
+            td1.className = 'px-3 py-2 text-gray-800';
+            td2.className = 'px-3 py-2 text-gray-800';
+            td1.textContent = label;
+            td2.textContent = value;
+            tr.appendChild(td1);
+            tr.appendChild(td2);
+            resultsBody.appendChild(tr);
+          });
+
+          summaryEl.textContent =
+            'Solved right triangle with hypotenuse c and legs a, b using the Pythagorean theorem and basic trigonometry. ' +
+            'All quantities are consistent with a right angle between the legs.';
+
+          checkEl.textContent =
+            'Pythagorean check: a² + b² = ' + fmt(pythLHS) +
+            ', c² = ' + fmt(pythRHS) +
+            '. Small differences are due to rounding.';
+
+          resultsBox.classList.remove('hidden');
+          updateFormulas(formulasUsed);
+        }
+
+        calcBtn.addEventListener('click', solve);
+
+        resetBtn.addEventListener('click', function() {
+          aInput.value = '3';
+          bInput.value = '4';
+          cInput.value = '5';
+          alphaInput.value = '';
+          betaInput.value = '';
+          angleUnitSelect.value = 'deg';
+          unitLabelSelect.value = '';
+          clearError();
+          resultsBox.classList.add('hidden');
+          resultsBody.innerHTML = '';
+          summaryEl.textContent = '';
+          checkEl.textContent = '';
+          updateFormulas('');
+        });
+
+        // Initial state
+        resetBtn.click();
+      })();
+    </script>
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

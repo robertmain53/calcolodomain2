@@ -45,10 +45,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -218,8 +214,6 @@
 <body class="bg-gray-50 text-gray-800">
 
     <!-- BODY_SCRIPTS_INIZIO -->
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
         <div class="flex justify-between items-center">
@@ -732,7 +726,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -799,14 +793,650 @@
 
 
 
+
     
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
     
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      (function() {
+        // Tab handling
+        const tabBases = document.getElementById('tab-bases');
+        const tabText = document.getElementById('tab-text');
+        const panelBases = document.getElementById('panel-bases');
+        const panelText = document.getElementById('panel-text');
+
+        function setTab(active) {
+          if (active === 'bases') {
+            panelBases.classList.remove('hidden');
+            panelText.classList.add('hidden');
+            tabBases.classList.add('tab-button-active');
+            tabBases.classList.remove('tab-button-inactive');
+            tabText.classList.add('tab-button-inactive');
+            tabText.classList.remove('tab-button-active');
+          } else {
+            panelBases.classList.add('hidden');
+            panelText.classList.remove('hidden');
+            tabText.classList.add('tab-button-active');
+            tabText.classList.remove('tab-button-inactive');
+            tabBases.classList.add('tab-button-inactive');
+            tabBases.classList.remove('tab-button-active');
+          }
+        }
+
+        tabBases.addEventListener('click', function() { setTab('bases'); });
+        tabText.addEventListener('click', function() { setTab('text'); });
+
+        // Number base converter
+        const inputBaseSelect = document.getElementById('bin-input-base');
+        const inputValueEl = document.getElementById('bin-input-value');
+        const convertBtn = document.getElementById('bin-convert-btn');
+        const clearBtn = document.getElementById('bin-clear-btn');
+        const exampleBtn = document.getElementById('bin-example-btn');
+        const errorBasesEl = document.getElementById('bin-bases-error');
+        const resultsBasesBox = document.getElementById('bin-bases-results');
+        const resultsBasesBody = document.getElementById('bin-bases-body');
+        const resultsBasesSummary = document.getElementById('bin-bases-summary');
+
+        function showBasesError(msg) {
+          errorBasesEl.textContent = msg;
+          errorBasesEl.classList.remove('hidden');
+          resultsBasesBox.classList.add('hidden');
+        }
+
+        function clearBasesError() {
+          errorBasesEl.textContent = '';
+          errorBasesEl.classList.add('hidden');
+        }
+
+        function fmtGroupedBin(binStr, groupSize) {
+          const s = binStr.replace(/[^01]/g, '');
+          if (!s) return '';
+          const pad = (groupSize - (s.length % groupSize)) % groupSize;
+          const padded = '0'.repeat(pad) + s;
+          const parts = [];
+          for (let i = 0; i < padded.length; i += groupSize) {
+            parts.push(padded.slice(i, i + groupSize));
+          }
+          return parts.join(' ');
+        }
+
+        function fmtNum(n) {
+          if (!Number.isFinite(n)) return '—';
+          const abs = Math.abs(n);
+          if (abs !== 0 && (abs < 1e-6 || abs >= 1e9)) {
+            return n.toExponential(6);
+          }
+          return n.toLocaleString(undefined, { maximumFractionDigits: 12 });
+        }
+
+        function parseIntegerFromInput(raw, baseKey) {
+          if (!raw.trim()) {
+            throw new Error('Please enter a value to convert.');
+          }
+          let s = raw.trim();
+          // Remove common prefixes
+          s = s.replace(/^0b/i, '').replace(/^0x/i, '').replace(/^0o/i, '');
+          let negative = false;
+          if (s.startsWith('-')) {
+            negative = true;
+            s = s.slice(1);
+          }
+          if (!s) {
+            throw new Error('Value is empty after removing prefixes.');
+          }
+
+          let allowedRegex;
+          let base;
+          if (baseKey === 'bin') {
+            allowedRegex = /^[01]+$/;
+            base = 2;
+          } else if (baseKey === 'dec') {
+            allowedRegex = /^[0-9]+$/;
+            base = 10;
+          } else if (baseKey === 'hex') {
+            allowedRegex = /^[0-9a-fA-F]+$/;
+            base = 16;
+          } else if (baseKey === 'oct') {
+            allowedRegex = /^[0-7]+$/;
+            base = 8;
+          } else {
+            throw new Error('Unsupported base: ' + baseKey);
+          }
+
+          if (!allowedRegex.test(s)) {
+            throw new Error('The value is not a valid ' + baseKey.toUpperCase() + ' literal.');
+          }
+
+          let n = parseInt(s, base);
+          if (!Number.isFinite(n)) {
+            throw new Error('The value is out of range for this converter.');
+          }
+          if (negative) n = -n;
+          return n;
+        }
+
+        function convertBases() {
+          clearBasesError();
+          resultsBasesBody.innerHTML = '';
+          resultsBasesSummary.textContent = '';
+          resultsBasesBox.classList.add('hidden');
+
+          const baseKey = inputBaseSelect.value;
+          const raw = inputValueEl.value;
+
+          let n;
+          try {
+            n = parseIntegerFromInput(raw, baseKey);
+          } catch (e) {
+            showBasesError(e.message);
+            return;
+          }
+
+          const isNegative = n < 0;
+          const abs = Math.abs(n);
+
+          const bin = abs.toString(2);
+          const dec = abs.toString(10);
+          const hex = abs.toString(16).toUpperCase();
+          const oct = abs.toString(8);
+
+          function signed(str) {
+            return isNegative ? '-' + str : str;
+          }
+
+          const rows = [
+            ['Binary (plain)', signed(bin)],
+            ['Binary (grouped 4 bits)', signed(fmtGroupedBin(bin, 4))],
+            ['Binary (grouped 8 bits)', signed(fmtGroupedBin(bin, 8))],
+            ['Decimal', signed(dec)],
+            ['Hexadecimal', signed(hex)],
+            ['Octal', signed(oct)]
+          ];
+
+          rows.forEach(([label, value]) => {
+            const tr = document.createElement('tr');
+            const td1 = document.createElement('td');
+            const td2 = document.createElement('td');
+            td1.className = 'px-3 py-2 text-gray-800';
+            td2.className = 'px-3 py-2 text-gray-800 mono';
+            td1.textContent = label;
+            td2.textContent = value;
+            tr.appendChild(td1);
+            tr.appendChild(td2);
+            resultsBasesBody.appendChild(tr);
+          });
+
+          const bitLen = bin.length;
+          const nibbleCount = Math.ceil(bitLen / 4);
+          const byteCount = Math.ceil(bitLen / 8);
+          resultsBasesSummary.textContent =
+            'Magnitude |n| = ' + fmtNum(abs) +
+            ' uses ' + bitLen + ' bit' + (bitLen === 1 ? '' : 's') +
+            ' (' + nibbleCount + ' nibble' + (nibbleCount === 1 ? '' : 's') +
+            ', ' + byteCount + ' byte' + (byteCount === 1 ? '' : 's') + ' when padded).';
+
+          resultsBasesBox.classList.remove('hidden');
+        }
+
+        convertBtn.addEventListener('click', convertBases);
+
+        clearBtn.addEventListener('click', function() {
+          inputValueEl.value = '';
+          clearBasesError();
+          resultsBasesBody.innerHTML = '';
+          resultsBasesSummary.textContent = '';
+          resultsBasesBox.classList.add('hidden');
+        });
+
+        exampleBtn.addEventListener('click', function() {
+          inputBaseSelect.value = 'bin';
+          inputValueEl.value = '101101';
+          clearBasesError();
+          convertBases();
+        });
+
+        // Text ⇄ Binary
+        const textInput = document.getElementById('bin-text-input');
+        const binaryInput = document.getElementById('bin-binary-input');
+        const textToBinaryBtn = document.getElementById('bin-text-to-binary-btn');
+        const binaryToTextBtn = document.getElementById('bin-binary-to-text-btn');
+        const textClearBtn = document.getElementById('bin-text-clear-btn');
+        const textExampleBtn = document.getElementById('bin-text-example-btn');
+        const textErrorEl = document.getElementById('bin-text-error');
+        const textResultsBox = document.getElementById('bin-text-results');
+        const textSummaryEl = document.getElementById('bin-text-summary');
+
+        function showTextError(msg) {
+          textErrorEl.textContent = msg;
+          textErrorEl.classList.remove('hidden');
+          textResultsBox.classList.add('hidden');
+        }
+
+        function clearTextError() {
+          textErrorEl.textContent = '';
+          textErrorEl.classList.add('hidden');
+        }
+
+        function textToBinary() {
+          clearTextError();
+          textSummaryEl.textContent = '';
+          textResultsBox.classList.add('hidden');
+
+          const txt = textInput.value;
+          if (!txt) {
+            showTextError('Please type some text to convert.');
+            return;
+          }
+          const codes = [];
+          const bits = [];
+          for (let i = 0; i < txt.length; i++) {
+            const code = txt.charCodeAt(i);
+            codes.push(code);
+            let b = code.toString(2);
+            b = '00000000'.slice(b.length) + b;
+            bits.push(b);
+          }
+          binaryInput.value = bits.join(' ');
+          textSummaryEl.textContent =
+            'Encoded ' + txt.length + ' character' + (txt.length === 1 ? '' : 's') +
+            ' into ' + bits.length + ' byte' + (bits.length === 1 ? '' : 's') +
+            ' of binary (8 bits per character).';
+          textResultsBox.classList.remove('hidden');
+        }
+
+        function binaryToText() {
+          clearTextError();
+          textSummaryEl.textContent = '';
+          textResultsBox.classList.add('hidden');
+
+          const raw = binaryInput.value;
+          if (!raw.trim()) {
+            showTextError('Please paste one or more 8-bit binary groups.');
+            return;
+          }
+          const tokens = raw
+            .replace(/[\n\r]+/g, ' ')
+            .split(/\s+/)
+            .map(t => t.trim())
+            .filter(Boolean);
+
+          const chars = [];
+          let validCount = 0;
+          for (const t of tokens) {
+            if (!/^[01]{8}$/.test(t)) {
+              continue; // ignore non-8-bit tokens
+            }
+            const code = parseInt(t, 2);
+            chars.push(String.fromCharCode(code));
+            validCount++;
+          }
+
+          if (!validCount) {
+            showTextError('No valid 8-bit groups were found. Each token should look like 01001000.');
+            return;
+          }
+
+          const txt = chars.join('');
+          textInput.value = txt;
+          textSummaryEl.textContent =
+            'Decoded ' + validCount + ' 8-bit group' + (validCount === 1 ? '' : 's') +
+            ' into ' + txt.length + ' character' + (txt.length === 1 ? '' : 's') + '. ' +
+            'Non-8-bit tokens were ignored.';
+          textResultsBox.classList.remove('hidden');
+        }
+
+        textToBinaryBtn.addEventListener('click', textToBinary);
+        binaryToTextBtn.addEventListener('click', binaryToText);
+
+        textClearBtn.addEventListener('click', function() {
+          textInput.value = '';
+          binaryInput.value = '';
+          clearTextError();
+          textResultsBox.classList.add('hidden');
+          textSummaryEl.textContent = '';
+        });
+
+        textExampleBtn.addEventListener('click', function() {
+          textInput.value = 'Hello';
+          clearTextError();
+          textToBinary();
+        });
+
+        // Default: bases tab active, with example loaded for quick UX
+        inputValueEl.value = '101101';
+        convertBases();
+      })();
+    </script>
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      (function() {
+        // Tab handling
+        const tabBases = document.getElementById('tab-bases');
+        const tabText = document.getElementById('tab-text');
+        const panelBases = document.getElementById('panel-bases');
+        const panelText = document.getElementById('panel-text');
+
+        function setTab(active) {
+          if (active === 'bases') {
+            panelBases.classList.remove('hidden');
+            panelText.classList.add('hidden');
+            tabBases.classList.add('tab-button-active');
+            tabBases.classList.remove('tab-button-inactive');
+            tabText.classList.add('tab-button-inactive');
+            tabText.classList.remove('tab-button-active');
+          } else {
+            panelBases.classList.add('hidden');
+            panelText.classList.remove('hidden');
+            tabText.classList.add('tab-button-active');
+            tabText.classList.remove('tab-button-inactive');
+            tabBases.classList.add('tab-button-inactive');
+            tabBases.classList.remove('tab-button-active');
+          }
+        }
+
+        tabBases.addEventListener('click', function() { setTab('bases'); });
+        tabText.addEventListener('click', function() { setTab('text'); });
+
+        // Number base converter
+        const inputBaseSelect = document.getElementById('bin-input-base');
+        const inputValueEl = document.getElementById('bin-input-value');
+        const convertBtn = document.getElementById('bin-convert-btn');
+        const clearBtn = document.getElementById('bin-clear-btn');
+        const exampleBtn = document.getElementById('bin-example-btn');
+        const errorBasesEl = document.getElementById('bin-bases-error');
+        const resultsBasesBox = document.getElementById('bin-bases-results');
+        const resultsBasesBody = document.getElementById('bin-bases-body');
+        const resultsBasesSummary = document.getElementById('bin-bases-summary');
+
+        function showBasesError(msg) {
+          errorBasesEl.textContent = msg;
+          errorBasesEl.classList.remove('hidden');
+          resultsBasesBox.classList.add('hidden');
+        }
+
+        function clearBasesError() {
+          errorBasesEl.textContent = '';
+          errorBasesEl.classList.add('hidden');
+        }
+
+        function fmtGroupedBin(binStr, groupSize) {
+          const s = binStr.replace(/[^01]/g, '');
+          if (!s) return '';
+          const pad = (groupSize - (s.length % groupSize)) % groupSize;
+          const padded = '0'.repeat(pad) + s;
+          const parts = [];
+          for (let i = 0; i < padded.length; i += groupSize) {
+            parts.push(padded.slice(i, i + groupSize));
+          }
+          return parts.join(' ');
+        }
+
+        function fmtNum(n) {
+          if (!Number.isFinite(n)) return '—';
+          const abs = Math.abs(n);
+          if (abs !== 0 && (abs < 1e-6 || abs >= 1e9)) {
+            return n.toExponential(6);
+          }
+          return n.toLocaleString(undefined, { maximumFractionDigits: 12 });
+        }
+
+        function parseIntegerFromInput(raw, baseKey) {
+          if (!raw.trim()) {
+            throw new Error('Please enter a value to convert.');
+          }
+          let s = raw.trim();
+          // Remove common prefixes
+          s = s.replace(/^0b/i, '').replace(/^0x/i, '').replace(/^0o/i, '');
+          let negative = false;
+          if (s.startsWith('-')) {
+            negative = true;
+            s = s.slice(1);
+          }
+          if (!s) {
+            throw new Error('Value is empty after removing prefixes.');
+          }
+
+          let allowedRegex;
+          let base;
+          if (baseKey === 'bin') {
+            allowedRegex = /^[01]+$/;
+            base = 2;
+          } else if (baseKey === 'dec') {
+            allowedRegex = /^[0-9]+$/;
+            base = 10;
+          } else if (baseKey === 'hex') {
+            allowedRegex = /^[0-9a-fA-F]+$/;
+            base = 16;
+          } else if (baseKey === 'oct') {
+            allowedRegex = /^[0-7]+$/;
+            base = 8;
+          } else {
+            throw new Error('Unsupported base: ' + baseKey);
+          }
+
+          if (!allowedRegex.test(s)) {
+            throw new Error('The value is not a valid ' + baseKey.toUpperCase() + ' literal.');
+          }
+
+          let n = parseInt(s, base);
+          if (!Number.isFinite(n)) {
+            throw new Error('The value is out of range for this converter.');
+          }
+          if (negative) n = -n;
+          return n;
+        }
+
+        function convertBases() {
+          clearBasesError();
+          resultsBasesBody.innerHTML = '';
+          resultsBasesSummary.textContent = '';
+          resultsBasesBox.classList.add('hidden');
+
+          const baseKey = inputBaseSelect.value;
+          const raw = inputValueEl.value;
+
+          let n;
+          try {
+            n = parseIntegerFromInput(raw, baseKey);
+          } catch (e) {
+            showBasesError(e.message);
+            return;
+          }
+
+          const isNegative = n < 0;
+          const abs = Math.abs(n);
+
+          const bin = abs.toString(2);
+          const dec = abs.toString(10);
+          const hex = abs.toString(16).toUpperCase();
+          const oct = abs.toString(8);
+
+          function signed(str) {
+            return isNegative ? '-' + str : str;
+          }
+
+          const rows = [
+            ['Binary (plain)', signed(bin)],
+            ['Binary (grouped 4 bits)', signed(fmtGroupedBin(bin, 4))],
+            ['Binary (grouped 8 bits)', signed(fmtGroupedBin(bin, 8))],
+            ['Decimal', signed(dec)],
+            ['Hexadecimal', signed(hex)],
+            ['Octal', signed(oct)]
+          ];
+
+          rows.forEach(([label, value]) => {
+            const tr = document.createElement('tr');
+            const td1 = document.createElement('td');
+            const td2 = document.createElement('td');
+            td1.className = 'px-3 py-2 text-gray-800';
+            td2.className = 'px-3 py-2 text-gray-800 mono';
+            td1.textContent = label;
+            td2.textContent = value;
+            tr.appendChild(td1);
+            tr.appendChild(td2);
+            resultsBasesBody.appendChild(tr);
+          });
+
+          const bitLen = bin.length;
+          const nibbleCount = Math.ceil(bitLen / 4);
+          const byteCount = Math.ceil(bitLen / 8);
+          resultsBasesSummary.textContent =
+            'Magnitude |n| = ' + fmtNum(abs) +
+            ' uses ' + bitLen + ' bit' + (bitLen === 1 ? '' : 's') +
+            ' (' + nibbleCount + ' nibble' + (nibbleCount === 1 ? '' : 's') +
+            ', ' + byteCount + ' byte' + (byteCount === 1 ? '' : 's') + ' when padded).';
+
+          resultsBasesBox.classList.remove('hidden');
+        }
+
+        convertBtn.addEventListener('click', convertBases);
+
+        clearBtn.addEventListener('click', function() {
+          inputValueEl.value = '';
+          clearBasesError();
+          resultsBasesBody.innerHTML = '';
+          resultsBasesSummary.textContent = '';
+          resultsBasesBox.classList.add('hidden');
+        });
+
+        exampleBtn.addEventListener('click', function() {
+          inputBaseSelect.value = 'bin';
+          inputValueEl.value = '101101';
+          clearBasesError();
+          convertBases();
+        });
+
+        // Text ⇄ Binary
+        const textInput = document.getElementById('bin-text-input');
+        const binaryInput = document.getElementById('bin-binary-input');
+        const textToBinaryBtn = document.getElementById('bin-text-to-binary-btn');
+        const binaryToTextBtn = document.getElementById('bin-binary-to-text-btn');
+        const textClearBtn = document.getElementById('bin-text-clear-btn');
+        const textExampleBtn = document.getElementById('bin-text-example-btn');
+        const textErrorEl = document.getElementById('bin-text-error');
+        const textResultsBox = document.getElementById('bin-text-results');
+        const textSummaryEl = document.getElementById('bin-text-summary');
+
+        function showTextError(msg) {
+          textErrorEl.textContent = msg;
+          textErrorEl.classList.remove('hidden');
+          textResultsBox.classList.add('hidden');
+        }
+
+        function clearTextError() {
+          textErrorEl.textContent = '';
+          textErrorEl.classList.add('hidden');
+        }
+
+        function textToBinary() {
+          clearTextError();
+          textSummaryEl.textContent = '';
+          textResultsBox.classList.add('hidden');
+
+          const txt = textInput.value;
+          if (!txt) {
+            showTextError('Please type some text to convert.');
+            return;
+          }
+          const codes = [];
+          const bits = [];
+          for (let i = 0; i < txt.length; i++) {
+            const code = txt.charCodeAt(i);
+            codes.push(code);
+            let b = code.toString(2);
+            b = '00000000'.slice(b.length) + b;
+            bits.push(b);
+          }
+          binaryInput.value = bits.join(' ');
+          textSummaryEl.textContent =
+            'Encoded ' + txt.length + ' character' + (txt.length === 1 ? '' : 's') +
+            ' into ' + bits.length + ' byte' + (bits.length === 1 ? '' : 's') +
+            ' of binary (8 bits per character).';
+          textResultsBox.classList.remove('hidden');
+        }
+
+        function binaryToText() {
+          clearTextError();
+          textSummaryEl.textContent = '';
+          textResultsBox.classList.add('hidden');
+
+          const raw = binaryInput.value;
+          if (!raw.trim()) {
+            showTextError('Please paste one or more 8-bit binary groups.');
+            return;
+          }
+          const tokens = raw
+            .replace(/[\n\r]+/g, ' ')
+            .split(/\s+/)
+            .map(t => t.trim())
+            .filter(Boolean);
+
+          const chars = [];
+          let validCount = 0;
+          for (const t of tokens) {
+            if (!/^[01]{8}$/.test(t)) {
+              continue; // ignore non-8-bit tokens
+            }
+            const code = parseInt(t, 2);
+            chars.push(String.fromCharCode(code));
+            validCount++;
+          }
+
+          if (!validCount) {
+            showTextError('No valid 8-bit groups were found. Each token should look like 01001000.');
+            return;
+          }
+
+          const txt = chars.join('');
+          textInput.value = txt;
+          textSummaryEl.textContent =
+            'Decoded ' + validCount + ' 8-bit group' + (validCount === 1 ? '' : 's') +
+            ' into ' + txt.length + ' character' + (txt.length === 1 ? '' : 's') + '. ' +
+            'Non-8-bit tokens were ignored.';
+          textResultsBox.classList.remove('hidden');
+        }
+
+        textToBinaryBtn.addEventListener('click', textToBinary);
+        binaryToTextBtn.addEventListener('click', binaryToText);
+
+        textClearBtn.addEventListener('click', function() {
+          textInput.value = '';
+          binaryInput.value = '';
+          clearTextError();
+          textResultsBox.classList.add('hidden');
+          textSummaryEl.textContent = '';
+        });
+
+        textExampleBtn.addEventListener('click', function() {
+          textInput.value = 'Hello';
+          clearTextError();
+          textToBinary();
+        });
+
+        // Default: bases tab active, with example loaded for quick UX
+        inputValueEl.value = '101101';
+        convertBases();
+      })();
+    </script>
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

@@ -40,10 +40,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -176,8 +172,6 @@
 </head>
 
 <body class="bg-gray-50 text-gray-800">
-
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
 
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
@@ -581,7 +575,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -649,13 +643,463 @@
 
 
 
+
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
 
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Newton's method calculator logic -->
+    <script>
+      (function() {
+        const fnInput = document.getElementById('function-input');
+        const dfnInput = document.getElementById('derivative-input');
+        const x0Input = document.getElementById('initial-guess-input');
+        const tolInput = document.getElementById('tolerance-input');
+        const maxItInput = document.getElementById('max-iterations-input');
+        const runBtn = document.getElementById('run-newton-btn');
+        const clearBtn = document.getElementById('clear-newton-btn');
+        const errorBox = document.getElementById('newton-error');
+        const summaryBox = document.getElementById('newton-summary');
+        const tableWrapper = document.getElementById('newton-table-wrapper');
+        const tbody = document.getElementById('newton-table-body');
+
+        function showError(msg) {
+          errorBox.textContent = msg;
+          errorBox.classList.remove('hidden');
+          summaryBox.classList.add('hidden');
+          tableWrapper.classList.add('hidden');
+          tbody.innerHTML = '';
+        }
+
+        function clearMessages() {
+          errorBox.classList.add('hidden');
+          errorBox.textContent = '';
+          summaryBox.classList.add('hidden');
+          summaryBox.textContent = '';
+        }
+
+        function formatNumber(value) {
+          if (!isFinite(value)) return String(value);
+          const abs = Math.abs(value);
+          if (abs !== 0 && (abs < 1e-4 || abs >= 1e5)) {
+            return value.toExponential(6);
+          }
+          return value.toFixed(8).replace(/0+$/,'').replace(/\.$/,'');
+        }
+
+        function buildFunction(expr) {
+          let e = expr.trim();
+          if (!e) return null;
+          // basic sanitization & convenience replacements
+          e = e.replace(/\^/g, '**');
+          const map = {
+            'sin': 'Math.sin',
+            'cos': 'Math.cos',
+            'tan': 'Math.tan',
+            'asin': 'Math.asin',
+            'acos': 'Math.acos',
+            'atan': 'Math.atan',
+            'sqrt': 'Math.sqrt',
+            'abs': 'Math.abs',
+            'exp': 'Math.exp',
+            'log': 'Math.log', // natural log
+            'ln': 'Math.log'
+          };
+          Object.keys(map).forEach(fn => {
+            const re = new RegExp('\\b' + fn + '\\(', 'g');
+            e = e.replace(re, map[fn] + '(');
+          });
+          // construct function of x
+          try {
+            // eslint-disable-next-line no-new-func
+            const f = new Function('x', 'return ' + e + ';');
+            // test evaluation at a benign point
+            // If evaluation fails, we'll catch later anyway
+            f(0);
+            return f;
+          } catch (err) {
+            return null;
+          }
+        }
+
+        function runNewton() {
+          clearMessages();
+
+          const fExpr = fnInput.value;
+          const dfExpr = dfnInput.value;
+          const f = buildFunction(fExpr);
+          if (!f) {
+            showError('Could not parse f(x). Please check your function syntax.');
+            return;
+          }
+
+          let df = null;
+          if (dfExpr.trim()) {
+            df = buildFunction(dfExpr);
+            if (!df) {
+              showError('Could not parse f\'(x). Please check your derivative syntax or leave it blank to use a numerical derivative.');
+              return;
+            }
+          }
+
+          let x0 = parseFloat(x0Input.value);
+          if (!isFinite(x0)) {
+            showError('Please enter a valid numeric initial guess x₀.');
+            return;
+          }
+
+          let tol = tolInput.value.trim() ? parseFloat(tolInput.value) : 1e-6;
+          if (!isFinite(tol) || tol <= 0) {
+            showError('Tolerance must be a positive number (e.g. 1e-6).');
+            return;
+          }
+
+          let maxIt = maxItInput.value.trim() ? parseInt(maxItInput.value, 10) : 20;
+          if (!isFinite(maxIt) || maxIt <= 0) {
+            showError('Maximum iterations must be a positive integer (e.g. 20).');
+            return;
+          }
+
+          const h = 1e-6;
+          function numericalDerivative(x) {
+            const fxph = f(x + h);
+            const fxmh = f(x - h);
+            return (fxph - fxmh) / (2 * h);
+          }
+
+          const rows = [];
+          let xPrev = x0;
+          let fxPrev, dfxPrev;
+          let reason = '';
+          let converged = false;
+
+          for (let n = 0; n < maxIt; n++) {
+            let fx, dfx;
+            try {
+              fx = f(xPrev);
+              if (!isFinite(fx)) throw new Error('f(x) not finite');
+            } catch (err) {
+              showError('Error evaluating f(x) at iteration ' + n + '. Check the function and starting value.');
+              return;
+            }
+
+            try {
+              if (df) {
+                dfx = df(xPrev);
+              } else {
+                dfx = numericalDerivative(xPrev);
+              }
+              if (!isFinite(dfx)) throw new Error('f\'(x) not finite');
+            } catch (err) {
+              showError('Error evaluating f\'(x) at iteration ' + n + '. Consider providing an analytical derivative or changing the initial guess.');
+              return;
+            }
+
+            let error = n === 0 ? null : Math.abs(xPrev - rows[n - 1].x);
+            rows.push({ iter: n, x: xPrev, fx: fx, dfx: dfx, error: error });
+
+            if (n > 0 && error !== null && error <= tol) {
+              reason = 'Converged: successive iterates differ by less than the tolerance.';
+              converged = true;
+              break;
+            }
+
+            if (Math.abs(dfx) < 1e-12) {
+              reason = 'Stopped: derivative is too small in magnitude; Newton step would be unstable.';
+              break;
+            }
+
+            const xNext = xPrev - fx / dfx;
+            xPrev = xNext;
+          }
+
+          if (!converged && !reason) {
+            reason = 'Stopped: maximum number of iterations reached without satisfying the tolerance.';
+          }
+
+          // Populate table
+          tbody.innerHTML = '';
+          rows.forEach(r => {
+            const tr = document.createElement('tr');
+            const cells = [
+              r.iter,
+              formatNumber(r.x),
+              formatNumber(r.fx),
+              formatNumber(r.dfx),
+              r.error === null ? '—' : formatNumber(r.error)
+            ];
+            cells.forEach((c, idx) => {
+              const td = document.createElement('td');
+              td.className = 'px-3 py-1.5 border-b text-xs md:text-sm whitespace-nowrap';
+              td.textContent = c;
+              tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+          });
+
+          const last = rows[rows.length - 1];
+          summaryBox.innerHTML =
+            '<p class="mb-1"><strong>Approximate root:</strong> x ≈ ' + formatNumber(last.x) + '</p>' +
+            '<p class="mb-1"><strong>Last function value:</strong> f(x) ≈ ' + formatNumber(last.fx) + '</p>' +
+            '<p class="mb-1"><strong>Iterations used:</strong> ' + rows.length + '</p>' +
+            '<p class="text-xs text-gray-700 mt-1">' + reason + ' Always check the function definition, units, and physical plausibility of the result.</p>';
+
+          summaryBox.classList.remove('hidden');
+          tableWrapper.classList.remove('hidden');
+          errorBox.classList.add('hidden');
+        }
+
+        runBtn.addEventListener('click', runNewton);
+
+        clearBtn.addEventListener('click', function() {
+          fnInput.value = '';
+          dfnInput.value = '';
+          x0Input.value = '';
+          tolInput.value = '';
+          maxItInput.value = '';
+          tbody.innerHTML = '';
+          tableWrapper.classList.add('hidden');
+          clearMessages();
+        });
+      })();
+    </script>
+
+
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Newton's method calculator logic -->
+    <script>
+      (function() {
+        const fnInput = document.getElementById('function-input');
+        const dfnInput = document.getElementById('derivative-input');
+        const x0Input = document.getElementById('initial-guess-input');
+        const tolInput = document.getElementById('tolerance-input');
+        const maxItInput = document.getElementById('max-iterations-input');
+        const runBtn = document.getElementById('run-newton-btn');
+        const clearBtn = document.getElementById('clear-newton-btn');
+        const errorBox = document.getElementById('newton-error');
+        const summaryBox = document.getElementById('newton-summary');
+        const tableWrapper = document.getElementById('newton-table-wrapper');
+        const tbody = document.getElementById('newton-table-body');
+
+        function showError(msg) {
+          errorBox.textContent = msg;
+          errorBox.classList.remove('hidden');
+          summaryBox.classList.add('hidden');
+          tableWrapper.classList.add('hidden');
+          tbody.innerHTML = '';
+        }
+
+        function clearMessages() {
+          errorBox.classList.add('hidden');
+          errorBox.textContent = '';
+          summaryBox.classList.add('hidden');
+          summaryBox.textContent = '';
+        }
+
+        function formatNumber(value) {
+          if (!isFinite(value)) return String(value);
+          const abs = Math.abs(value);
+          if (abs !== 0 && (abs < 1e-4 || abs >= 1e5)) {
+            return value.toExponential(6);
+          }
+          return value.toFixed(8).replace(/0+$/,'').replace(/\.$/,'');
+        }
+
+        function buildFunction(expr) {
+          let e = expr.trim();
+          if (!e) return null;
+          // basic sanitization & convenience replacements
+          e = e.replace(/\^/g, '**');
+          const map = {
+            'sin': 'Math.sin',
+            'cos': 'Math.cos',
+            'tan': 'Math.tan',
+            'asin': 'Math.asin',
+            'acos': 'Math.acos',
+            'atan': 'Math.atan',
+            'sqrt': 'Math.sqrt',
+            'abs': 'Math.abs',
+            'exp': 'Math.exp',
+            'log': 'Math.log', // natural log
+            'ln': 'Math.log'
+          };
+          Object.keys(map).forEach(fn => {
+            const re = new RegExp('\\b' + fn + '\\(', 'g');
+            e = e.replace(re, map[fn] + '(');
+          });
+          // construct function of x
+          try {
+            // eslint-disable-next-line no-new-func
+            const f = new Function('x', 'return ' + e + ';');
+            // test evaluation at a benign point
+            // If evaluation fails, we'll catch later anyway
+            f(0);
+            return f;
+          } catch (err) {
+            return null;
+          }
+        }
+
+        function runNewton() {
+          clearMessages();
+
+          const fExpr = fnInput.value;
+          const dfExpr = dfnInput.value;
+          const f = buildFunction(fExpr);
+          if (!f) {
+            showError('Could not parse f(x). Please check your function syntax.');
+            return;
+          }
+
+          let df = null;
+          if (dfExpr.trim()) {
+            df = buildFunction(dfExpr);
+            if (!df) {
+              showError('Could not parse f\'(x). Please check your derivative syntax or leave it blank to use a numerical derivative.');
+              return;
+            }
+          }
+
+          let x0 = parseFloat(x0Input.value);
+          if (!isFinite(x0)) {
+            showError('Please enter a valid numeric initial guess x₀.');
+            return;
+          }
+
+          let tol = tolInput.value.trim() ? parseFloat(tolInput.value) : 1e-6;
+          if (!isFinite(tol) || tol <= 0) {
+            showError('Tolerance must be a positive number (e.g. 1e-6).');
+            return;
+          }
+
+          let maxIt = maxItInput.value.trim() ? parseInt(maxItInput.value, 10) : 20;
+          if (!isFinite(maxIt) || maxIt <= 0) {
+            showError('Maximum iterations must be a positive integer (e.g. 20).');
+            return;
+          }
+
+          const h = 1e-6;
+          function numericalDerivative(x) {
+            const fxph = f(x + h);
+            const fxmh = f(x - h);
+            return (fxph - fxmh) / (2 * h);
+          }
+
+          const rows = [];
+          let xPrev = x0;
+          let fxPrev, dfxPrev;
+          let reason = '';
+          let converged = false;
+
+          for (let n = 0; n < maxIt; n++) {
+            let fx, dfx;
+            try {
+              fx = f(xPrev);
+              if (!isFinite(fx)) throw new Error('f(x) not finite');
+            } catch (err) {
+              showError('Error evaluating f(x) at iteration ' + n + '. Check the function and starting value.');
+              return;
+            }
+
+            try {
+              if (df) {
+                dfx = df(xPrev);
+              } else {
+                dfx = numericalDerivative(xPrev);
+              }
+              if (!isFinite(dfx)) throw new Error('f\'(x) not finite');
+            } catch (err) {
+              showError('Error evaluating f\'(x) at iteration ' + n + '. Consider providing an analytical derivative or changing the initial guess.');
+              return;
+            }
+
+            let error = n === 0 ? null : Math.abs(xPrev - rows[n - 1].x);
+            rows.push({ iter: n, x: xPrev, fx: fx, dfx: dfx, error: error });
+
+            if (n > 0 && error !== null && error <= tol) {
+              reason = 'Converged: successive iterates differ by less than the tolerance.';
+              converged = true;
+              break;
+            }
+
+            if (Math.abs(dfx) < 1e-12) {
+              reason = 'Stopped: derivative is too small in magnitude; Newton step would be unstable.';
+              break;
+            }
+
+            const xNext = xPrev - fx / dfx;
+            xPrev = xNext;
+          }
+
+          if (!converged && !reason) {
+            reason = 'Stopped: maximum number of iterations reached without satisfying the tolerance.';
+          }
+
+          // Populate table
+          tbody.innerHTML = '';
+          rows.forEach(r => {
+            const tr = document.createElement('tr');
+            const cells = [
+              r.iter,
+              formatNumber(r.x),
+              formatNumber(r.fx),
+              formatNumber(r.dfx),
+              r.error === null ? '—' : formatNumber(r.error)
+            ];
+            cells.forEach((c, idx) => {
+              const td = document.createElement('td');
+              td.className = 'px-3 py-1.5 border-b text-xs md:text-sm whitespace-nowrap';
+              td.textContent = c;
+              tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+          });
+
+          const last = rows[rows.length - 1];
+          summaryBox.innerHTML =
+            '<p class="mb-1"><strong>Approximate root:</strong> x ≈ ' + formatNumber(last.x) + '</p>' +
+            '<p class="mb-1"><strong>Last function value:</strong> f(x) ≈ ' + formatNumber(last.fx) + '</p>' +
+            '<p class="mb-1"><strong>Iterations used:</strong> ' + rows.length + '</p>' +
+            '<p class="text-xs text-gray-700 mt-1">' + reason + ' Always check the function definition, units, and physical plausibility of the result.</p>';
+
+          summaryBox.classList.remove('hidden');
+          tableWrapper.classList.remove('hidden');
+          errorBox.classList.add('hidden');
+        }
+
+        runBtn.addEventListener('click', runNewton);
+
+        clearBtn.addEventListener('click', function() {
+          fnInput.value = '';
+          dfnInput.value = '';
+          x0Input.value = '';
+          tolInput.value = '';
+          maxItInput.value = '';
+          tbody.innerHTML = '';
+          tableWrapper.classList.add('hidden');
+          clearMessages();
+        });
+      })();
+    </script>
+
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

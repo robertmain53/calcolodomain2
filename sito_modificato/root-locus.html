@@ -38,10 +38,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -193,8 +189,6 @@
 </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
-
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
 
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
@@ -621,7 +615,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -688,14 +682,860 @@
 
 
 
+
     
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
     
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Page-specific script: root locus computations -->
+    <script>
+      (function() {
+        "use strict";
+
+        function parseCoefficients(input) {
+          if (!input) return null;
+          var parts = input.split(/[,\\s]+/).filter(function(p) { return p.length > 0; });
+          if (parts.length === 0) return null;
+          var coeffs = [];
+          for (var i = 0; i < parts.length; i++) {
+            var val = Number(parts[i]);
+            if (!isFinite(val)) return null;
+            coeffs.push(val);
+          }
+          return coeffs;
+        }
+
+        function polyEval(coeffs, z) {
+          var re = 0, im = 0;
+          for (var i = 0; i < coeffs.length; i++) {
+            var c = coeffs[i];
+            var tempRe = re * z.re - im * z.im + c;
+            var tempIm = re * z.im + im * z.re;
+            re = tempRe;
+            im = tempIm;
+          }
+          return { re: re, im: im };
+        }
+
+        function cAdd(a, b) {
+          return { re: a.re + b.re, im: a.im + b.im };
+        }
+
+        function cSub(a, b) {
+          return { re: a.re - b.re, im: a.im - b.im };
+        }
+
+        function cMul(a, b) {
+          return { re: a.re * b.re - a.im * b.im, im: a.re * b.im + a.im * b.re };
+        }
+
+        function cDiv(a, b) {
+          var denom = b.re * b.re + b.im * b.im;
+          if (denom === 0) {
+            return { re: 0, im: 0 };
+          }
+          return {
+            re: (a.re * b.re + a.im * b.im) / denom,
+            im: (a.im * b.re - a.re * b.im) / denom
+          };
+        }
+
+        function cAbs(a) {
+          return Math.hypot(a.re, a.im);
+        }
+
+        function rootPolynomial(coeffs) {
+          var degree = coeffs.length - 1;
+          if (degree < 1) return [];
+
+          var a0 = coeffs[0];
+          if (a0 === 0) {
+            var firstNonZero = 0;
+            while (firstNonZero < coeffs.length && coeffs[firstNonZero] === 0) {
+              firstNonZero++;
+            }
+            if (firstNonZero === coeffs.length) return [];
+            coeffs = coeffs.slice(firstNonZero);
+            degree = coeffs.length - 1;
+            a0 = coeffs[0];
+          }
+
+          if (a0 !== 1) {
+            for (var i = 0; i < coeffs.length; i++) {
+              coeffs[i] = coeffs[i] / a0;
+            }
+          }
+
+          var roots = [];
+          var radius = 1;
+          for (var k = 0; k < degree; k++) {
+            var angle = 2 * Math.PI * k / degree;
+            roots.push({ re: radius * Math.cos(angle), im: radius * Math.sin(angle) });
+          }
+
+          var maxIter = 60;
+          var tol = 1e-8;
+
+          for (var iter = 0; iter < maxIter; iter++) {
+            var maxDelta = 0;
+            for (var i = 0; i < degree; i++) {
+              var zi = roots[i];
+              var pzi = polyEval(coeffs, zi);
+              var denom = { re: 1, im: 0 };
+              for (var j = 0; j < degree; j++) {
+                if (j === i) continue;
+                denom = cMul(denom, cSub(zi, roots[j]));
+              }
+              var frac = cDiv(pzi, denom);
+              var newZi = cSub(zi, frac);
+              var delta = cAbs(cSub(newZi, zi));
+              roots[i] = newZi;
+              if (delta > maxDelta) maxDelta = delta;
+            }
+            if (maxDelta < tol) break;
+          }
+
+          return roots;
+        }
+
+        function buildCharacteristicPolynomial(den, num, K) {
+          var len = Math.max(den.length, num.length);
+          var denP = new Array(len).fill(0);
+          var numP = new Array(len).fill(0);
+          for (var i = 0; i < den.length; i++) {
+            denP[len - den.length + i] = den[i];
+          }
+          for (var j = 0; j < num.length; j++) {
+            numP[len - num.length + j] = num[j];
+          }
+          var coeffs = new Array(len);
+          for (var k = 0; k < len; k++) {
+            coeffs[k] = denP[k] + K * numP[k];
+          }
+          return coeffs;
+        }
+
+        var state = {
+          kValues: [],
+          rootsByK: [],
+          minRe: 0,
+          maxRe: 0,
+          minIm: 0,
+          maxIm: 0
+        };
+
+        var canvas = document.getElementById("root-locus-canvas");
+        var ctx = canvas ? canvas.getContext("2d") : null;
+        var kSlider = document.getElementById("k-slider");
+        var kCurrentSpan = document.getElementById("k-current");
+        var polesTableBody = document.getElementById("poles-table-body");
+        var errorEl = document.getElementById("calc-error");
+
+        function computeBounds() {
+          if (!state.rootsByK.length) return;
+
+          var minRe = Infinity, maxRe = -Infinity;
+          var minIm = Infinity, maxIm = -Infinity;
+
+          for (var i = 0; i < state.rootsByK.length; i++) {
+            var roots = state.rootsByK[i];
+            for (var j = 0; j < roots.length; j++) {
+              var r = roots[j];
+              if (!isFinite(r.re) || !isFinite(r.im)) continue;
+              if (r.re < minRe) minRe = r.re;
+              if (r.re > maxRe) maxRe = r.re;
+              if (r.im < minIm) minIm = r.im;
+              if (r.im > maxIm) maxIm = r.im;
+            }
+          }
+
+          if (!isFinite(minRe) || !isFinite(maxRe)) {
+            minRe = -1; maxRe = 1;
+          }
+          if (!isFinite(minIm) || !isFinite(maxIm)) {
+            minIm = -1; maxIm = 1;
+          }
+
+          var dRe = maxRe - minRe;
+          var dIm = maxIm - minIm;
+          if (dRe === 0) { minRe -= 1; maxRe += 1; dRe = 2; }
+          if (dIm === 0) { minIm -= 1; maxIm += 1; dIm = 2; }
+
+          var marginFactor = 0.15;
+          var reMargin = dRe * marginFactor;
+          var imMargin = dIm * marginFactor;
+          state.minRe = minRe - reMargin;
+          state.maxRe = maxRe + reMargin;
+          state.minIm = minIm - imMargin;
+          state.maxIm = maxIm + imMargin;
+        }
+
+        function mapToCanvas(z) {
+          var w = canvas.width;
+          var h = canvas.height;
+          var re = z.re;
+          var im = z.im;
+
+          var x = (re - state.minRe) / (state.maxRe - state.minRe) * w;
+          var y = h - (im - state.minIm) / (state.maxIm - state.minIm) * h;
+          return { x: x, y: y };
+        }
+
+        function drawAxes() {
+          var w = canvas.width;
+          var h = canvas.height;
+          ctx.clearRect(0, 0, w, h);
+
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, w, h);
+
+          ctx.strokeStyle = "#e5e7eb";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(0, 0, w, h);
+
+          var zero = { re: 0, im: 0 };
+          var p0 = mapToCanvas(zero);
+
+          if (state.minIm < 0 && state.maxIm > 0) {
+            ctx.strokeStyle = "#d1d5db";
+            ctx.beginPath();
+            ctx.moveTo(0, p0.y);
+            ctx.lineTo(w, p0.y);
+            ctx.stroke();
+          }
+
+          if (state.minRe < 0 && state.maxRe > 0) {
+            ctx.strokeStyle = "#d1d5db";
+            ctx.beginPath();
+            ctx.moveTo(p0.x, 0);
+            ctx.lineTo(p0.x, h);
+            ctx.stroke();
+          }
+        }
+
+        function drawRootLocus(selectedIndex) {
+          if (!ctx || !state.rootsByK.length) return;
+
+          computeBounds();
+          drawAxes();
+
+          var w = canvas.width;
+          var h = canvas.height;
+
+          ctx.fillStyle = "#111827";
+          ctx.font = "10px Inter, system-ui, sans-serif";
+          ctx.textAlign = "left";
+          ctx.textBaseline = "top";
+          var label = "Re(s): [" + state.minRe.toFixed(2) + ", " + state.maxRe.toFixed(2) +
+                      "], Im(s): [" + state.minIm.toFixed(2) + ", " + state.maxIm.toFixed(2) + "]";
+          ctx.fillText(label, 6, 4);
+
+          ctx.fillStyle = "#3b82f6";
+          for (var i = 0; i < state.rootsByK.length; i++) {
+            var roots = state.rootsByK[i];
+            for (var j = 0; j < roots.length; j++) {
+              var p = mapToCanvas(roots[j]);
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, 2, 0, 2 * Math.PI);
+              ctx.fill();
+            }
+          }
+
+          if (selectedIndex >= 0 && selectedIndex < state.rootsByK.length) {
+            ctx.fillStyle = "#ef4444";
+            var selectedRoots = state.rootsByK[selectedIndex];
+            for (var k = 0; k < selectedRoots.length; k++) {
+              var ps = mapToCanvas(selectedRoots[k]);
+              ctx.beginPath();
+              ctx.arc(ps.x, ps.y, 4, 0, 2 * Math.PI);
+              ctx.fill();
+            }
+          }
+        }
+
+        function updateTable(selectedIndex) {
+          if (!polesTableBody) return;
+
+          while (polesTableBody.firstChild) {
+            polesTableBody.removeChild(polesTableBody.firstChild);
+          }
+
+          if (!state.rootsByK.length || selectedIndex < 0 || selectedIndex >= state.rootsByK.length) {
+            var row = document.createElement("tr");
+            var td = document.createElement("td");
+            td.colSpan = 5;
+            td.className = "px-2 py-2 text-center text-gray-500";
+            td.textContent = "Run the calculator to see the closed-loop poles.";
+            row.appendChild(td);
+            polesTableBody.appendChild(row);
+            return;
+          }
+
+          var roots = state.rootsByK[selectedIndex];
+          for (var i = 0; i < roots.length; i++) {
+            var r = roots[i];
+            var mag = Math.hypot(r.re, r.im);
+            var zeta = null;
+            if (mag > 0) {
+              zeta = -r.re / mag;
+            }
+
+            var tr = document.createElement("tr");
+            var cells = [
+              "#" + (i + 1),
+              r.re.toFixed(4),
+              r.im.toFixed(4),
+              mag.toFixed(4),
+              (zeta !== null && isFinite(zeta)) ? zeta.toFixed(4) : "–"
+            ];
+            for (var c = 0; c < cells.length; c++) {
+              var ctd = document.createElement("td");
+              ctd.className = "px-2 py-1 border-t text-gray-700";
+              ctd.textContent = cells[c];
+              tr.appendChild(ctd);
+            }
+            polesTableBody.appendChild(tr);
+          }
+        }
+
+        function setError(msg) {
+          if (!errorEl) return;
+          if (!msg) {
+            errorEl.textContent = "";
+            errorEl.classList.add("hidden");
+          } else {
+            errorEl.textContent = msg;
+            errorEl.classList.remove("hidden");
+          }
+        }
+
+        function computeRootLocus() {
+          var numeratorInput = document.getElementById("numerator").value;
+          var denominatorInput = document.getElementById("denominator").value;
+          var kMinInput = document.getElementById("k-min").value;
+          var kMaxInput = document.getElementById("k-max").value;
+          var kStepsInput = document.getElementById("k-steps").value;
+
+          setError("");
+
+          var num = parseCoefficients(numeratorInput);
+          var den = parseCoefficients(denominatorInput);
+
+          if (!num || !den) {
+            setError("Please enter valid numerator and denominator coefficients.");
+            return;
+          }
+
+          if (den.length < num.length) {
+            setError("For numerical robustness, the denominator degree should be greater than or equal to the numerator degree.");
+            return;
+          }
+
+          if (den.length > 8) {
+            setError("This tool is intended for polynomials up to degree 7. Please reduce the system order.");
+            return;
+          }
+
+          var kMin = Number(kMinInput);
+          var kMax = Number(kMaxInput);
+          var kSteps = Number(kStepsInput);
+
+          if (!isFinite(kMin) || !isFinite(kMax) || !isFinite(kSteps) || kSteps < 2) {
+            setError("Please provide a valid gain range and at least 2 steps.");
+            return;
+          }
+          if (kMax <= kMin) {
+            setError("Kmax must be greater than Kmin.");
+            return;
+          }
+
+          var kValues = [];
+          var rootsByK = [];
+          var step = (kMax - kMin) / (kSteps - 1);
+
+          for (var i = 0; i < kSteps; i++) {
+            var K = kMin + step * i;
+            kValues.push(K);
+            var charPoly = buildCharacteristicPolynomial(den.slice(), num.slice(), K);
+            var roots = rootPolynomial(charPoly);
+            rootsByK.push(roots);
+          }
+
+          state.kValues = kValues;
+          state.rootsByK = rootsByK;
+
+          kSlider.min = 0;
+          kSlider.max = kValues.length - 1;
+          kSlider.value = 0;
+          kSlider.disabled = false;
+          kCurrentSpan.textContent = kValues[0].toFixed(4);
+
+          drawRootLocus(0);
+          updateTable(0);
+        }
+
+        var plotButton = document.getElementById("plot-button");
+        if (plotButton) {
+          plotButton.addEventListener("click", function() {
+            if (canvas) {
+              canvas.width = canvas.clientWidth || canvas.width;
+            }
+            computeRootLocus();
+          });
+        }
+
+        if (kSlider) {
+          kSlider.addEventListener("input", function() {
+            var idx = Number(kSlider.value);
+            if (!state.kValues.length) return;
+            if (idx < 0 || idx >= state.kValues.length) return;
+            kCurrentSpan.textContent = state.kValues[idx].toFixed(4);
+            drawRootLocus(idx);
+            updateTable(idx);
+          });
+        }
+
+        window.addEventListener("resize", function() {
+          if (!canvas || !state.rootsByK.length) return;
+          canvas.width = canvas.clientWidth || canvas.width;
+          drawRootLocus(Number(kSlider.value || 0));
+        });
+      })();
+    </script>
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Page-specific script: root locus computations -->
+    <script>
+      (function() {
+        "use strict";
+
+        function parseCoefficients(input) {
+          if (!input) return null;
+          var parts = input.split(/[,\\s]+/).filter(function(p) { return p.length > 0; });
+          if (parts.length === 0) return null;
+          var coeffs = [];
+          for (var i = 0; i < parts.length; i++) {
+            var val = Number(parts[i]);
+            if (!isFinite(val)) return null;
+            coeffs.push(val);
+          }
+          return coeffs;
+        }
+
+        function polyEval(coeffs, z) {
+          var re = 0, im = 0;
+          for (var i = 0; i < coeffs.length; i++) {
+            var c = coeffs[i];
+            var tempRe = re * z.re - im * z.im + c;
+            var tempIm = re * z.im + im * z.re;
+            re = tempRe;
+            im = tempIm;
+          }
+          return { re: re, im: im };
+        }
+
+        function cAdd(a, b) {
+          return { re: a.re + b.re, im: a.im + b.im };
+        }
+
+        function cSub(a, b) {
+          return { re: a.re - b.re, im: a.im - b.im };
+        }
+
+        function cMul(a, b) {
+          return { re: a.re * b.re - a.im * b.im, im: a.re * b.im + a.im * b.re };
+        }
+
+        function cDiv(a, b) {
+          var denom = b.re * b.re + b.im * b.im;
+          if (denom === 0) {
+            return { re: 0, im: 0 };
+          }
+          return {
+            re: (a.re * b.re + a.im * b.im) / denom,
+            im: (a.im * b.re - a.re * b.im) / denom
+          };
+        }
+
+        function cAbs(a) {
+          return Math.hypot(a.re, a.im);
+        }
+
+        function rootPolynomial(coeffs) {
+          var degree = coeffs.length - 1;
+          if (degree < 1) return [];
+
+          var a0 = coeffs[0];
+          if (a0 === 0) {
+            var firstNonZero = 0;
+            while (firstNonZero < coeffs.length && coeffs[firstNonZero] === 0) {
+              firstNonZero++;
+            }
+            if (firstNonZero === coeffs.length) return [];
+            coeffs = coeffs.slice(firstNonZero);
+            degree = coeffs.length - 1;
+            a0 = coeffs[0];
+          }
+
+          if (a0 !== 1) {
+            for (var i = 0; i < coeffs.length; i++) {
+              coeffs[i] = coeffs[i] / a0;
+            }
+          }
+
+          var roots = [];
+          var radius = 1;
+          for (var k = 0; k < degree; k++) {
+            var angle = 2 * Math.PI * k / degree;
+            roots.push({ re: radius * Math.cos(angle), im: radius * Math.sin(angle) });
+          }
+
+          var maxIter = 60;
+          var tol = 1e-8;
+
+          for (var iter = 0; iter < maxIter; iter++) {
+            var maxDelta = 0;
+            for (var i = 0; i < degree; i++) {
+              var zi = roots[i];
+              var pzi = polyEval(coeffs, zi);
+              var denom = { re: 1, im: 0 };
+              for (var j = 0; j < degree; j++) {
+                if (j === i) continue;
+                denom = cMul(denom, cSub(zi, roots[j]));
+              }
+              var frac = cDiv(pzi, denom);
+              var newZi = cSub(zi, frac);
+              var delta = cAbs(cSub(newZi, zi));
+              roots[i] = newZi;
+              if (delta > maxDelta) maxDelta = delta;
+            }
+            if (maxDelta < tol) break;
+          }
+
+          return roots;
+        }
+
+        function buildCharacteristicPolynomial(den, num, K) {
+          var len = Math.max(den.length, num.length);
+          var denP = new Array(len).fill(0);
+          var numP = new Array(len).fill(0);
+          for (var i = 0; i < den.length; i++) {
+            denP[len - den.length + i] = den[i];
+          }
+          for (var j = 0; j < num.length; j++) {
+            numP[len - num.length + j] = num[j];
+          }
+          var coeffs = new Array(len);
+          for (var k = 0; k < len; k++) {
+            coeffs[k] = denP[k] + K * numP[k];
+          }
+          return coeffs;
+        }
+
+        var state = {
+          kValues: [],
+          rootsByK: [],
+          minRe: 0,
+          maxRe: 0,
+          minIm: 0,
+          maxIm: 0
+        };
+
+        var canvas = document.getElementById("root-locus-canvas");
+        var ctx = canvas ? canvas.getContext("2d") : null;
+        var kSlider = document.getElementById("k-slider");
+        var kCurrentSpan = document.getElementById("k-current");
+        var polesTableBody = document.getElementById("poles-table-body");
+        var errorEl = document.getElementById("calc-error");
+
+        function computeBounds() {
+          if (!state.rootsByK.length) return;
+
+          var minRe = Infinity, maxRe = -Infinity;
+          var minIm = Infinity, maxIm = -Infinity;
+
+          for (var i = 0; i < state.rootsByK.length; i++) {
+            var roots = state.rootsByK[i];
+            for (var j = 0; j < roots.length; j++) {
+              var r = roots[j];
+              if (!isFinite(r.re) || !isFinite(r.im)) continue;
+              if (r.re < minRe) minRe = r.re;
+              if (r.re > maxRe) maxRe = r.re;
+              if (r.im < minIm) minIm = r.im;
+              if (r.im > maxIm) maxIm = r.im;
+            }
+          }
+
+          if (!isFinite(minRe) || !isFinite(maxRe)) {
+            minRe = -1; maxRe = 1;
+          }
+          if (!isFinite(minIm) || !isFinite(maxIm)) {
+            minIm = -1; maxIm = 1;
+          }
+
+          var dRe = maxRe - minRe;
+          var dIm = maxIm - minIm;
+          if (dRe === 0) { minRe -= 1; maxRe += 1; dRe = 2; }
+          if (dIm === 0) { minIm -= 1; maxIm += 1; dIm = 2; }
+
+          var marginFactor = 0.15;
+          var reMargin = dRe * marginFactor;
+          var imMargin = dIm * marginFactor;
+          state.minRe = minRe - reMargin;
+          state.maxRe = maxRe + reMargin;
+          state.minIm = minIm - imMargin;
+          state.maxIm = maxIm + imMargin;
+        }
+
+        function mapToCanvas(z) {
+          var w = canvas.width;
+          var h = canvas.height;
+          var re = z.re;
+          var im = z.im;
+
+          var x = (re - state.minRe) / (state.maxRe - state.minRe) * w;
+          var y = h - (im - state.minIm) / (state.maxIm - state.minIm) * h;
+          return { x: x, y: y };
+        }
+
+        function drawAxes() {
+          var w = canvas.width;
+          var h = canvas.height;
+          ctx.clearRect(0, 0, w, h);
+
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, w, h);
+
+          ctx.strokeStyle = "#e5e7eb";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(0, 0, w, h);
+
+          var zero = { re: 0, im: 0 };
+          var p0 = mapToCanvas(zero);
+
+          if (state.minIm < 0 && state.maxIm > 0) {
+            ctx.strokeStyle = "#d1d5db";
+            ctx.beginPath();
+            ctx.moveTo(0, p0.y);
+            ctx.lineTo(w, p0.y);
+            ctx.stroke();
+          }
+
+          if (state.minRe < 0 && state.maxRe > 0) {
+            ctx.strokeStyle = "#d1d5db";
+            ctx.beginPath();
+            ctx.moveTo(p0.x, 0);
+            ctx.lineTo(p0.x, h);
+            ctx.stroke();
+          }
+        }
+
+        function drawRootLocus(selectedIndex) {
+          if (!ctx || !state.rootsByK.length) return;
+
+          computeBounds();
+          drawAxes();
+
+          var w = canvas.width;
+          var h = canvas.height;
+
+          ctx.fillStyle = "#111827";
+          ctx.font = "10px Inter, system-ui, sans-serif";
+          ctx.textAlign = "left";
+          ctx.textBaseline = "top";
+          var label = "Re(s): [" + state.minRe.toFixed(2) + ", " + state.maxRe.toFixed(2) +
+                      "], Im(s): [" + state.minIm.toFixed(2) + ", " + state.maxIm.toFixed(2) + "]";
+          ctx.fillText(label, 6, 4);
+
+          ctx.fillStyle = "#3b82f6";
+          for (var i = 0; i < state.rootsByK.length; i++) {
+            var roots = state.rootsByK[i];
+            for (var j = 0; j < roots.length; j++) {
+              var p = mapToCanvas(roots[j]);
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, 2, 0, 2 * Math.PI);
+              ctx.fill();
+            }
+          }
+
+          if (selectedIndex >= 0 && selectedIndex < state.rootsByK.length) {
+            ctx.fillStyle = "#ef4444";
+            var selectedRoots = state.rootsByK[selectedIndex];
+            for (var k = 0; k < selectedRoots.length; k++) {
+              var ps = mapToCanvas(selectedRoots[k]);
+              ctx.beginPath();
+              ctx.arc(ps.x, ps.y, 4, 0, 2 * Math.PI);
+              ctx.fill();
+            }
+          }
+        }
+
+        function updateTable(selectedIndex) {
+          if (!polesTableBody) return;
+
+          while (polesTableBody.firstChild) {
+            polesTableBody.removeChild(polesTableBody.firstChild);
+          }
+
+          if (!state.rootsByK.length || selectedIndex < 0 || selectedIndex >= state.rootsByK.length) {
+            var row = document.createElement("tr");
+            var td = document.createElement("td");
+            td.colSpan = 5;
+            td.className = "px-2 py-2 text-center text-gray-500";
+            td.textContent = "Run the calculator to see the closed-loop poles.";
+            row.appendChild(td);
+            polesTableBody.appendChild(row);
+            return;
+          }
+
+          var roots = state.rootsByK[selectedIndex];
+          for (var i = 0; i < roots.length; i++) {
+            var r = roots[i];
+            var mag = Math.hypot(r.re, r.im);
+            var zeta = null;
+            if (mag > 0) {
+              zeta = -r.re / mag;
+            }
+
+            var tr = document.createElement("tr");
+            var cells = [
+              "#" + (i + 1),
+              r.re.toFixed(4),
+              r.im.toFixed(4),
+              mag.toFixed(4),
+              (zeta !== null && isFinite(zeta)) ? zeta.toFixed(4) : "–"
+            ];
+            for (var c = 0; c < cells.length; c++) {
+              var ctd = document.createElement("td");
+              ctd.className = "px-2 py-1 border-t text-gray-700";
+              ctd.textContent = cells[c];
+              tr.appendChild(ctd);
+            }
+            polesTableBody.appendChild(tr);
+          }
+        }
+
+        function setError(msg) {
+          if (!errorEl) return;
+          if (!msg) {
+            errorEl.textContent = "";
+            errorEl.classList.add("hidden");
+          } else {
+            errorEl.textContent = msg;
+            errorEl.classList.remove("hidden");
+          }
+        }
+
+        function computeRootLocus() {
+          var numeratorInput = document.getElementById("numerator").value;
+          var denominatorInput = document.getElementById("denominator").value;
+          var kMinInput = document.getElementById("k-min").value;
+          var kMaxInput = document.getElementById("k-max").value;
+          var kStepsInput = document.getElementById("k-steps").value;
+
+          setError("");
+
+          var num = parseCoefficients(numeratorInput);
+          var den = parseCoefficients(denominatorInput);
+
+          if (!num || !den) {
+            setError("Please enter valid numerator and denominator coefficients.");
+            return;
+          }
+
+          if (den.length < num.length) {
+            setError("For numerical robustness, the denominator degree should be greater than or equal to the numerator degree.");
+            return;
+          }
+
+          if (den.length > 8) {
+            setError("This tool is intended for polynomials up to degree 7. Please reduce the system order.");
+            return;
+          }
+
+          var kMin = Number(kMinInput);
+          var kMax = Number(kMaxInput);
+          var kSteps = Number(kStepsInput);
+
+          if (!isFinite(kMin) || !isFinite(kMax) || !isFinite(kSteps) || kSteps < 2) {
+            setError("Please provide a valid gain range and at least 2 steps.");
+            return;
+          }
+          if (kMax <= kMin) {
+            setError("Kmax must be greater than Kmin.");
+            return;
+          }
+
+          var kValues = [];
+          var rootsByK = [];
+          var step = (kMax - kMin) / (kSteps - 1);
+
+          for (var i = 0; i < kSteps; i++) {
+            var K = kMin + step * i;
+            kValues.push(K);
+            var charPoly = buildCharacteristicPolynomial(den.slice(), num.slice(), K);
+            var roots = rootPolynomial(charPoly);
+            rootsByK.push(roots);
+          }
+
+          state.kValues = kValues;
+          state.rootsByK = rootsByK;
+
+          kSlider.min = 0;
+          kSlider.max = kValues.length - 1;
+          kSlider.value = 0;
+          kSlider.disabled = false;
+          kCurrentSpan.textContent = kValues[0].toFixed(4);
+
+          drawRootLocus(0);
+          updateTable(0);
+        }
+
+        var plotButton = document.getElementById("plot-button");
+        if (plotButton) {
+          plotButton.addEventListener("click", function() {
+            if (canvas) {
+              canvas.width = canvas.clientWidth || canvas.width;
+            }
+            computeRootLocus();
+          });
+        }
+
+        if (kSlider) {
+          kSlider.addEventListener("input", function() {
+            var idx = Number(kSlider.value);
+            if (!state.kValues.length) return;
+            if (idx < 0 || idx >= state.kValues.length) return;
+            kCurrentSpan.textContent = state.kValues[idx].toFixed(4);
+            drawRootLocus(idx);
+            updateTable(idx);
+          });
+        }
+
+        window.addEventListener("resize", function() {
+          if (!canvas || !state.rootsByK.length) return;
+          canvas.width = canvas.clientWidth || canvas.width;
+          drawRootLocus(Number(kSlider.value || 0));
+        });
+      })();
+    </script>
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>

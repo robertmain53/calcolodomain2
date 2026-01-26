@@ -141,10 +141,6 @@
 
   <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-  <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-  <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-  <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
   <script>
     window.ezstandalone = window.ezstandalone || {};
     ezstandalone.cmd = ezstandalone.cmd || [];
@@ -270,8 +266,6 @@
 
 <body class="bg-gray-50 text-gray-800">
   <!-- BODY_SCRIPTS_INIZIO -->
-  <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
   <header class="bg-white shadow-sm sticky top-0 z-50">
     <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
       <div class="flex justify-between items-center">
@@ -677,7 +671,7 @@
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -745,13 +739,1203 @@
 
 
 
+
   <script src="/assets/js/script_menu.js" defer=""></script>
   <script src="/assets/js/script_faq.js" defer=""></script>
   <script src="search.js" defer=""></script>
 
   <script>
-    window.MathJax = {
-      tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+    window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <script>
+    (function () {
+      function $(id) { return document.getElementById(id); }
+      function show(el) { el.classList.remove('hidden'); }
+      function hide(el) { el.classList.add('hidden'); }
+
+      // Insert helper buttons
+      function attachInsertButtons() {
+        var exprEl = $('bool-expression');
+        var buttons = document.querySelectorAll('.bool-insert');
+        buttons.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var insert = btn.getAttribute('data-insert') || '';
+            var start = exprEl.selectionStart || 0;
+            var end = exprEl.selectionEnd || 0;
+            var v = exprEl.value;
+            exprEl.value = v.slice(0, start) + insert + v.slice(end);
+            var newPos = start + insert.length;
+            exprEl.focus();
+            exprEl.setSelectionRange(newPos, newPos);
+          });
+        });
+      }
+
+      // Tokenizer
+      function tokenize(input) {
+        var s = input;
+        var tokens = [];
+        var i = 0;
+        while (i < s.length) {
+          var c = s[i];
+
+          if (/\s/.test(c)) {
+            i++;
+            continue;
+          }
+
+          if (/[A-Za-z_]/.test(c)) {
+            var start = i;
+            i++;
+            while (i < s.length && /[A-Za-z0-9_]/.test(s[i])) i++;
+            var name = s.slice(start, i);
+            tokens.push({ type: 'VAR', value: name });
+            continue;
+          }
+
+          if (c === '(') {
+            tokens.push({ type: 'LPAREN' });
+            i++;
+            continue;
+          }
+          if (c === ')') {
+            tokens.push({ type: 'RPAREN' });
+            i++;
+            continue;
+          }
+
+          // NOT
+          if (c === '!' || c === '~' || c === '¬') {
+            tokens.push({ type: 'NOT' });
+            i++;
+            continue;
+          }
+          // AND
+          if (c === '&' || c === '*' || c === '·' || c === '∧') {
+            tokens.push({ type: 'AND' });
+            i++;
+            continue;
+          }
+          // OR
+          if (c === '+' || c === '|' || c === '∨') {
+            tokens.push({ type: 'OR' });
+            i++;
+            continue;
+          }
+          // XOR
+          if (c === '^' || c === '⊕') {
+            tokens.push({ type: 'XOR' });
+            i++;
+            continue;
+          }
+
+          throw new Error('Unexpected character "' + c + '" at position ' + (i + 1));
+        }
+        return tokens;
+      }
+
+      // Recursive descent parser with precedence: NOT > AND > XOR > OR
+      function parseExpression(tokens) {
+        var pos = 0;
+
+        function peek() { return tokens[pos] || null; }
+        function consume(type) {
+          var t = tokens[pos];
+          if (!t || t.type !== type) {
+            throw new Error('Expected ' + type + ' but found ' + (t ? t.type : 'end of expression'));
+          }
+          pos++;
+          return t;
+        }
+
+        function parsePrimary() {
+          var t = peek();
+          if (!t) throw new Error('Unexpected end of expression');
+          if (t.type === 'VAR') {
+            consume('VAR');
+            return { kind: 'VAR', name: t.value };
+          }
+          if (t.type === 'LPAREN') {
+            consume('LPAREN');
+            var node = parseOr();
+            if (!peek() || peek().type !== 'RPAREN') {
+              throw new Error('Missing closing parenthesis');
+            }
+            consume('RPAREN');
+            return node;
+          }
+          throw new Error('Unexpected token ' + t.type + ' in primary');
+        }
+
+        function parseUnary() {
+          var t = peek();
+          if (t && t.type === 'NOT') {
+            consume('NOT');
+            return { kind: 'NOT', child: parseUnary() };
+          }
+          return parsePrimary();
+        }
+
+        function parseAnd() {
+          var node = parseUnary();
+          while (true) {
+            var t = peek();
+            if (t && t.type === 'AND') {
+              consume('AND');
+              var right = parseUnary();
+              node = { kind: 'AND', left: node, right: right };
+            } else {
+              break;
+            }
+          }
+          return node;
+        }
+
+        function parseXor() {
+          var node = parseAnd();
+          while (true) {
+            var t = peek();
+            if (t && t.type === 'XOR') {
+              consume('XOR');
+              var right = parseAnd();
+              node = { kind: 'XOR', left: node, right: right };
+            } else {
+              break;
+            }
+          }
+          return node;
+        }
+
+        function parseOr() {
+          var node = parseXor();
+          while (true) {
+            var t = peek();
+            if (t && t.type === 'OR') {
+              consume('OR');
+              var right = parseXor();
+              node = { kind: 'OR', left: node, right: right };
+            } else {
+              break;
+            }
+          }
+          return node;
+        }
+
+        var result = parseOr();
+        if (pos !== tokens.length) {
+          throw new Error('Unexpected token after end of expression');
+        }
+        return result;
+      }
+
+      function collectVars(node, set) {
+        set = set || new Set();
+        if (!node) return set;
+        switch (node.kind) {
+          case 'VAR':
+            set.add(node.name);
+            break;
+          case 'NOT':
+            collectVars(node.child, set);
+            break;
+          case 'AND':
+          case 'OR':
+          case 'XOR':
+            collectVars(node.left, set);
+            collectVars(node.right, set);
+            break;
+        }
+        return set;
+      }
+
+      function evalAst(node, env) {
+        switch (node.kind) {
+          case 'VAR':
+            return !!env[node.name];
+          case 'NOT':
+            return !evalAst(node.child, env);
+          case 'AND':
+            return evalAst(node.left, env) && evalAst(node.right, env);
+          case 'OR':
+            return evalAst(node.left, env) || evalAst(node.right, env);
+          case 'XOR':
+            return !!(evalAst(node.left, env) ^ evalAst(node.right, env));
+          default:
+            return false;
+        }
+      }
+
+      function getAssignments(vars, maxRows) {
+        var n = vars.length;
+        if (n === 0) {
+          return [{ env: {}, value: null }];
+        }
+        var total = Math.pow(2, n);
+        if (total > maxRows) {
+          total = maxRows;
+        }
+        var rows = [];
+        for (var i = 0; i < total; i++) {
+          var env = {};
+          for (var j = 0; j < n; j++) {
+            env[vars[n - 1 - j]] = !!(i & (1 << j));
+          }
+          rows.push(env);
+        }
+        return rows;
+      }
+
+      function buildMinterms(vars, truthRows) {
+        var minterms = [];
+        truthRows.forEach(function (row) {
+          if (row.value) {
+            var termParts = [];
+            vars.forEach(function (v) {
+              termParts.push(row.env[v] ? v : '¬' + v);
+            });
+            minterms.push(termParts.join('·'));
+          }
+        });
+        return minterms;
+      }
+
+      function buildMaxterms(vars, truthRows) {
+        var maxterms = [];
+        truthRows.forEach(function (row) {
+          if (!row.value) {
+            var termParts = [];
+            vars.forEach(function (v) {
+              termParts.push(row.env[v] ? '¬' + v : v);
+            });
+            maxterms.push('(' + termParts.join(' + ') + ')');
+          }
+        });
+        return maxterms;
+      }
+
+      function toLatexSop(vars, minterms) {
+        if (!minterms.length) return 'f = 0';
+        return 'f(' + vars.join(', ') + ') = ' + minterms
+          .map(function (m) {
+            // Convert "¬A·B" into LaTeX
+            return m
+              .replace(/¬([A-Za-z0-9_]+)/g, '\\overline{$1}')
+              .replace(/·/g, ' \\cdot ');
+          })
+          .join(' + ');
+      }
+
+      function toLatexPos(vars, maxterms) {
+        if (!maxterms.length) return 'f = 1';
+        return 'f(' + vars.join(', ') + ') = ' + maxterms
+          .map(function (M) {
+            // M like "(A + ¬B + C)"
+            return M
+              .replace(/¬([A-Za-z0-9_]+)/g, '\\overline{$1}');
+          })
+          .join(' \\cdot ');
+      }
+
+      function fmtBool(b) {
+        return b ? '1' : '0';
+      }
+
+      function renderTokens(tokens) {
+        var container = $('bool-token-list');
+        container.innerHTML = '';
+        if (!tokens.length) return;
+        var label = document.createElement('span');
+        label.textContent = 'Tokens: ';
+        label.className = 'mr-1 text-gray-700';
+        container.appendChild(label);
+        tokens.forEach(function (t) {
+          var span = document.createElement('span');
+          span.className = 'expr-token';
+          span.textContent = t.type === 'VAR' ? t.value : t.type;
+          container.appendChild(span);
+        });
+      }
+
+      function renderVars(vars) {
+        var container = $('bool-vars');
+        container.innerHTML = '';
+        vars.forEach(function (name) {
+          var label = document.createElement('label');
+          label.className = 'toggle-pill';
+          var input = document.createElement('input');
+          input.type = 'checkbox';
+          input.className = 'h-3 w-3 text-blue-600 border-gray-300 rounded';
+          input.checked = false;
+          input.setAttribute('data-var', name);
+          label.appendChild(input);
+          var span = document.createElement('span');
+          span.textContent = name;
+          label.appendChild(span);
+          container.appendChild(label);
+        });
+      }
+
+      function getCurrentEnv(vars) {
+        var env = {};
+        vars.forEach(function (name) {
+          var input = document.querySelector('input[type="checkbox"][data-var="' + name + '"]');
+          env[name] = input ? input.checked : false;
+        });
+        return env;
+      }
+
+      function renderTruthTable(vars, truthRows) {
+        var headEl = $('bool-tt-head');
+        var bodyEl = $('bool-tt-body');
+        headEl.innerHTML = '';
+        bodyEl.innerHTML = '';
+
+        var trHead = document.createElement('tr');
+        vars.forEach(function (v) {
+          var th = document.createElement('th');
+          th.className = 'px-3 py-2 border-b border-gray-200 text-center font-semibold text-gray-700';
+          th.textContent = v;
+          trHead.appendChild(th);
+        });
+        var thF = document.createElement('th');
+        thF.className = 'px-3 py-2 border-b border-gray-200 text-center font-semibold text-gray-700';
+        thF.textContent = 'f';
+        trHead.appendChild(thF);
+        headEl.appendChild(trHead);
+
+        truthRows.forEach(function (row) {
+          var tr = document.createElement('tr');
+          vars.forEach(function (v) {
+            var td = document.createElement('td');
+            td.className = 'px-3 py-1 border-b border-gray-100 text-center text-xs';
+            td.textContent = fmtBool(row.env[v]);
+            tr.appendChild(td);
+          });
+          var tdF = document.createElement('td');
+          tdF.className = 'px-3 py-1 border-b border-gray-100 text-center text-xs';
+          var span = document.createElement('span');
+          span.className = 'bool-badge ' + (row.value ? 'bool-true' : 'bool-false');
+          span.textContent = row.value ? '1 (TRUE)' : '0 (FALSE)';
+          tdF.appendChild(span);
+          tr.appendChild(tdF);
+          bodyEl.appendChild(tr);
+        });
+      }
+
+      function onSubmit(e) {
+        e.preventDefault();
+
+        var err = $('bool-error');
+        var res = $('bool-results');
+        var summaryEl = $('bool-summary');
+        var varsNote = $('bool-vars-note');
+        var evalSection = $('bool-eval-section');
+        var evalResult = $('bool-eval-result');
+        var truthSection = $('bool-truth-section');
+        var truthNote = $('bool-truth-note');
+        var canonicalSection = $('bool-canonical-section');
+        var sopBox = $('bool-sop-box');
+        var posBox = $('bool-pos-box');
+        var sopText = $('bool-sop-text');
+        var sopLatex = $('bool-sop-latex');
+        var posText = $('bool-pos-text');
+        var posLatex = $('bool-pos-latex');
+        var stepsEl = $('bool-steps');
+
+        hide(err);
+        hide(res);
+        hide(evalSection);
+        hide(truthSection);
+        hide(canonicalSection);
+        hide(sopBox);
+        hide(posBox);
+
+        summaryEl.textContent = '';
+        varsNote.textContent = '';
+        evalResult.textContent = '';
+        $('bool-token-list').innerHTML = '';
+        $('bool-vars').innerHTML = '';
+        $('bool-tt-head').innerHTML = '';
+        $('bool-tt-body').innerHTML = '';
+        sopText.textContent = '';
+        sopLatex.textContent = '';
+        posText.textContent = '';
+        posLatex.textContent = '';
+        stepsEl.innerHTML = '';
+
+        var raw = $('bool-expression').value || '';
+        if (!raw.trim()) {
+          err.textContent = 'Please enter a Boolean expression.';
+          show(err);
+          return;
+        }
+
+        var tokens;
+        try {
+          tokens = tokenize(raw);
+        } catch (ex) {
+          err.textContent = ex.message;
+          show(err);
+          return;
+        }
+
+        if (!tokens.length) {
+          err.textContent = 'No valid tokens were found in the expression.';
+          show(err);
+          return;
+        }
+
+        var ast;
+        try {
+          ast = parseExpression(tokens);
+        } catch (ex2) {
+          err.textContent = 'Parse error: ' + ex2.message;
+          show(err);
+          return;
+        }
+
+        var varSet = collectVars(ast);
+        var vars = Array.from(varSet).sort();
+
+        summaryEl.textContent = 'Parsed Boolean expression with ' + vars.length +
+          ' distinct variable' + (vars.length === 1 ? '' : 's') + '.';
+
+        renderTokens(tokens);
+        renderVars(vars);
+
+        if (vars.length === 0) {
+          varsNote.textContent = 'No variables detected: the expression is a constant Boolean value.';
+        } else {
+          varsNote.textContent = 'Toggle the variable values above to evaluate the expression and generate canonical forms.';
+        }
+
+        // Attach change listeners for evaluation
+        document.querySelectorAll('#bool-vars input[type="checkbox"]').forEach(function (input) {
+          input.addEventListener('change', function () {
+            var env = getCurrentEnv(vars);
+            var val = evalAst(ast, env);
+            evalResult.innerHTML = 'For this assignment, the expression evaluates to ' +
+              '<span class="bool-badge ' + (val ? 'bool-true">TRUE' : 'bool-false">FALSE') + '</span>.';
+          });
+        });
+
+        // Initial evaluation for all-FALSE assignment
+        if (vars.length > 0) {
+          var env0 = getCurrentEnv(vars);
+          var val0 = evalAst(ast, env0);
+          evalResult.innerHTML = 'For the current assignment (all variables default to FALSE), the expression evaluates to ' +
+            '<span class="bool-badge ' + (val0 ? 'bool-true">TRUE' : 'bool-false">FALSE') + '</span>.';
+        } else {
+          var constVal = evalAst(ast, {});
+          evalResult.innerHTML = 'Constant expression: value is ' +
+            '<span class="bool-badge ' + (constVal ? 'bool-true">TRUE' : 'bool-false">FALSE') + '</span> for all inputs.';
+        }
+        show(evalSection);
+
+        var maxRows = parseInt($('bool-max-rows').value, 10);
+        if (!Number.isFinite(maxRows) || maxRows <= 0) maxRows = 256;
+        var maxVars = parseInt($('bool-max-vars').value, 10);
+        if (!Number.isFinite(maxVars) || maxVars <= 0) maxVars = 8;
+
+        var showTruth = $('bool-show-truth').checked;
+        var showSop = $('bool-show-sop').checked;
+        var showPos = $('bool-show-pos').checked;
+
+        var truthRows = [];
+        var totalRows = Math.pow(2, vars.length);
+
+        if (vars.length === 0) {
+          truthRows = [{ env: {}, value: evalAst(ast, {}) }];
+        } else if (vars.length <= maxVars && totalRows <= maxRows && showTruth) {
+          var envs = getAssignments(vars, totalRows);
+          truthRows = envs.map(function (env) {
+            return { env: env, value: evalAst(ast, env) };
+          });
+          renderTruthTable(vars, truthRows);
+          truthNote.textContent =
+            'Showing ' + truthRows.length + ' row' + (truthRows.length === 1 ? '' : 's') +
+            ' for ' + vars.length + ' variable' + (vars.length === 1 ? '' : 's') + '.';
+          show(truthSection);
+        } else if (vars.length > 0 && showTruth) {
+          truthNote.textContent =
+            'Full truth table would contain 2^' + vars.length + ' = ' + totalRows +
+            ' rows, which exceeds the configured limits. Increase "Max truth table rows" or reduce the number of variables if you need the full table.';
+          show(truthSection);
+        }
+
+        if ((showSop || showPos) && vars.length > 0) {
+          if (!truthRows.length) {
+            var envs2 = getAssignments(vars, Math.pow(2, vars.length));
+            truthRows = envs2.map(function (env) {
+              return { env: env, value: evalAst(ast, env) };
+            });
+          }
+
+          var minterms = buildMinterms(vars, truthRows);
+          var maxterms = buildMaxterms(vars, truthRows);
+
+          if (showSop) {
+            if (!minterms.length) {
+              sopText.textContent = 'f = 0 (identically false function).';
+              sopLatex.textContent = 'LaTeX: f = 0';
+            } else {
+              sopText.textContent = 'f = ' + minterms.join(' + ');
+              sopLatex.textContent = 'LaTeX: ' + toLatexSop(vars, minterms);
+            }
+            show(sopBox);
+          }
+
+          if (showPos) {
+            if (!maxterms.length) {
+              posText.textContent = 'f = 1 (identically true function).';
+              posLatex.textContent = 'LaTeX: f = 1';
+            } else {
+              posText.textContent = 'f = ' + maxterms.join(' · ');
+              posLatex.textContent = 'LaTeX: ' + toLatexPos(vars, maxterms);
+            }
+            show(posBox);
+          }
+
+          show(canonicalSection);
+        }
+
+        var steps = [];
+        steps.push('1. Tokenise the text input into variables, operators (NOT, AND, OR, XOR) and parentheses, rejecting illegal characters.');
+        steps.push('2. Use a recursive descent parser with precedence NOT > AND > XOR > OR to build an abstract syntax tree (AST) for the Boolean expression.');
+        steps.push('3. Collect all variable names from the AST and initialise an assignment (all FALSE by default).');
+        steps.push('4. For each truth table row (if within limits), evaluate the AST under the corresponding TRUE/FALSE assignment to compute the function value.');
+        steps.push('5. Build canonical sum-of-products from rows where f = 1 (minterms) and canonical product-of-sums from rows where f = 0 (maxterms).');
+        steps.push('6. Optionally render LaTeX-style forms for use in reports and course material.');
+
+        steps.forEach(function (line) {
+          var pEl = document.createElement('p');
+          pEl.textContent = line;
+          stepsEl.appendChild(pEl);
+        });
+
+        show(res);
+
+        if (window.MathJax && window.MathJax.typesetPromise) {
+          window.MathJax.typesetPromise([stepsEl]).catch(function () {});
+        }
+      }
+
+      function onReset() {
+        $('bool-form').reset();
+        $('bool-expression').value = '';
+        hide($('bool-error'));
+        hide($('bool-results'));
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        attachInsertButtons();
+        $('bool-form').addEventListener('submit', onSubmit);
+        $('bool-reset').addEventListener('click', onReset);
+      });
+    })();
+  </script>
+
+
+</body></html>, ',
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+  <script>
+    (function () {
+      function $(id) { return document.getElementById(id); }
+      function show(el) { el.classList.remove('hidden'); }
+      function hide(el) { el.classList.add('hidden'); }
+
+      // Insert helper buttons
+      function attachInsertButtons() {
+        var exprEl = $('bool-expression');
+        var buttons = document.querySelectorAll('.bool-insert');
+        buttons.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var insert = btn.getAttribute('data-insert') || '';
+            var start = exprEl.selectionStart || 0;
+            var end = exprEl.selectionEnd || 0;
+            var v = exprEl.value;
+            exprEl.value = v.slice(0, start) + insert + v.slice(end);
+            var newPos = start + insert.length;
+            exprEl.focus();
+            exprEl.setSelectionRange(newPos, newPos);
+          });
+        });
+      }
+
+      // Tokenizer
+      function tokenize(input) {
+        var s = input;
+        var tokens = [];
+        var i = 0;
+        while (i < s.length) {
+          var c = s[i];
+
+          if (/\s/.test(c)) {
+            i++;
+            continue;
+          }
+
+          if (/[A-Za-z_]/.test(c)) {
+            var start = i;
+            i++;
+            while (i < s.length && /[A-Za-z0-9_]/.test(s[i])) i++;
+            var name = s.slice(start, i);
+            tokens.push({ type: 'VAR', value: name });
+            continue;
+          }
+
+          if (c === '(') {
+            tokens.push({ type: 'LPAREN' });
+            i++;
+            continue;
+          }
+          if (c === ')') {
+            tokens.push({ type: 'RPAREN' });
+            i++;
+            continue;
+          }
+
+          // NOT
+          if (c === '!' || c === '~' || c === '¬') {
+            tokens.push({ type: 'NOT' });
+            i++;
+            continue;
+          }
+          // AND
+          if (c === '&' || c === '*' || c === '·' || c === '∧') {
+            tokens.push({ type: 'AND' });
+            i++;
+            continue;
+          }
+          // OR
+          if (c === '+' || c === '|' || c === '∨') {
+            tokens.push({ type: 'OR' });
+            i++;
+            continue;
+          }
+          // XOR
+          if (c === '^' || c === '⊕') {
+            tokens.push({ type: 'XOR' });
+            i++;
+            continue;
+          }
+
+          throw new Error('Unexpected character "' + c + '" at position ' + (i + 1));
+        }
+        return tokens;
+      }
+
+      // Recursive descent parser with precedence: NOT > AND > XOR > OR
+      function parseExpression(tokens) {
+        var pos = 0;
+
+        function peek() { return tokens[pos] || null; }
+        function consume(type) {
+          var t = tokens[pos];
+          if (!t || t.type !== type) {
+            throw new Error('Expected ' + type + ' but found ' + (t ? t.type : 'end of expression'));
+          }
+          pos++;
+          return t;
+        }
+
+        function parsePrimary() {
+          var t = peek();
+          if (!t) throw new Error('Unexpected end of expression');
+          if (t.type === 'VAR') {
+            consume('VAR');
+            return { kind: 'VAR', name: t.value };
+          }
+          if (t.type === 'LPAREN') {
+            consume('LPAREN');
+            var node = parseOr();
+            if (!peek() || peek().type !== 'RPAREN') {
+              throw new Error('Missing closing parenthesis');
+            }
+            consume('RPAREN');
+            return node;
+          }
+          throw new Error('Unexpected token ' + t.type + ' in primary');
+        }
+
+        function parseUnary() {
+          var t = peek();
+          if (t && t.type === 'NOT') {
+            consume('NOT');
+            return { kind: 'NOT', child: parseUnary() };
+          }
+          return parsePrimary();
+        }
+
+        function parseAnd() {
+          var node = parseUnary();
+          while (true) {
+            var t = peek();
+            if (t && t.type === 'AND') {
+              consume('AND');
+              var right = parseUnary();
+              node = { kind: 'AND', left: node, right: right };
+            } else {
+              break;
+            }
+          }
+          return node;
+        }
+
+        function parseXor() {
+          var node = parseAnd();
+          while (true) {
+            var t = peek();
+            if (t && t.type === 'XOR') {
+              consume('XOR');
+              var right = parseAnd();
+              node = { kind: 'XOR', left: node, right: right };
+            } else {
+              break;
+            }
+          }
+          return node;
+        }
+
+        function parseOr() {
+          var node = parseXor();
+          while (true) {
+            var t = peek();
+            if (t && t.type === 'OR') {
+              consume('OR');
+              var right = parseXor();
+              node = { kind: 'OR', left: node, right: right };
+            } else {
+              break;
+            }
+          }
+          return node;
+        }
+
+        var result = parseOr();
+        if (pos !== tokens.length) {
+          throw new Error('Unexpected token after end of expression');
+        }
+        return result;
+      }
+
+      function collectVars(node, set) {
+        set = set || new Set();
+        if (!node) return set;
+        switch (node.kind) {
+          case 'VAR':
+            set.add(node.name);
+            break;
+          case 'NOT':
+            collectVars(node.child, set);
+            break;
+          case 'AND':
+          case 'OR':
+          case 'XOR':
+            collectVars(node.left, set);
+            collectVars(node.right, set);
+            break;
+        }
+        return set;
+      }
+
+      function evalAst(node, env) {
+        switch (node.kind) {
+          case 'VAR':
+            return !!env[node.name];
+          case 'NOT':
+            return !evalAst(node.child, env);
+          case 'AND':
+            return evalAst(node.left, env) && evalAst(node.right, env);
+          case 'OR':
+            return evalAst(node.left, env) || evalAst(node.right, env);
+          case 'XOR':
+            return !!(evalAst(node.left, env) ^ evalAst(node.right, env));
+          default:
+            return false;
+        }
+      }
+
+      function getAssignments(vars, maxRows) {
+        var n = vars.length;
+        if (n === 0) {
+          return [{ env: {}, value: null }];
+        }
+        var total = Math.pow(2, n);
+        if (total > maxRows) {
+          total = maxRows;
+        }
+        var rows = [];
+        for (var i = 0; i < total; i++) {
+          var env = {};
+          for (var j = 0; j < n; j++) {
+            env[vars[n - 1 - j]] = !!(i & (1 << j));
+          }
+          rows.push(env);
+        }
+        return rows;
+      }
+
+      function buildMinterms(vars, truthRows) {
+        var minterms = [];
+        truthRows.forEach(function (row) {
+          if (row.value) {
+            var termParts = [];
+            vars.forEach(function (v) {
+              termParts.push(row.env[v] ? v : '¬' + v);
+            });
+            minterms.push(termParts.join('·'));
+          }
+        });
+        return minterms;
+      }
+
+      function buildMaxterms(vars, truthRows) {
+        var maxterms = [];
+        truthRows.forEach(function (row) {
+          if (!row.value) {
+            var termParts = [];
+            vars.forEach(function (v) {
+              termParts.push(row.env[v] ? '¬' + v : v);
+            });
+            maxterms.push('(' + termParts.join(' + ') + ')');
+          }
+        });
+        return maxterms;
+      }
+
+      function toLatexSop(vars, minterms) {
+        if (!minterms.length) return 'f = 0';
+        return 'f(' + vars.join(', ') + ') = ' + minterms
+          .map(function (m) {
+            // Convert "¬A·B" into LaTeX
+            return m
+              .replace(/¬([A-Za-z0-9_]+)/g, '\\overline{$1}')
+              .replace(/·/g, ' \\cdot ');
+          })
+          .join(' + ');
+      }
+
+      function toLatexPos(vars, maxterms) {
+        if (!maxterms.length) return 'f = 1';
+        return 'f(' + vars.join(', ') + ') = ' + maxterms
+          .map(function (M) {
+            // M like "(A + ¬B + C)"
+            return M
+              .replace(/¬([A-Za-z0-9_]+)/g, '\\overline{$1}');
+          })
+          .join(' \\cdot ');
+      }
+
+      function fmtBool(b) {
+        return b ? '1' : '0';
+      }
+
+      function renderTokens(tokens) {
+        var container = $('bool-token-list');
+        container.innerHTML = '';
+        if (!tokens.length) return;
+        var label = document.createElement('span');
+        label.textContent = 'Tokens: ';
+        label.className = 'mr-1 text-gray-700';
+        container.appendChild(label);
+        tokens.forEach(function (t) {
+          var span = document.createElement('span');
+          span.className = 'expr-token';
+          span.textContent = t.type === 'VAR' ? t.value : t.type;
+          container.appendChild(span);
+        });
+      }
+
+      function renderVars(vars) {
+        var container = $('bool-vars');
+        container.innerHTML = '';
+        vars.forEach(function (name) {
+          var label = document.createElement('label');
+          label.className = 'toggle-pill';
+          var input = document.createElement('input');
+          input.type = 'checkbox';
+          input.className = 'h-3 w-3 text-blue-600 border-gray-300 rounded';
+          input.checked = false;
+          input.setAttribute('data-var', name);
+          label.appendChild(input);
+          var span = document.createElement('span');
+          span.textContent = name;
+          label.appendChild(span);
+          container.appendChild(label);
+        });
+      }
+
+      function getCurrentEnv(vars) {
+        var env = {};
+        vars.forEach(function (name) {
+          var input = document.querySelector('input[type="checkbox"][data-var="' + name + '"]');
+          env[name] = input ? input.checked : false;
+        });
+        return env;
+      }
+
+      function renderTruthTable(vars, truthRows) {
+        var headEl = $('bool-tt-head');
+        var bodyEl = $('bool-tt-body');
+        headEl.innerHTML = '';
+        bodyEl.innerHTML = '';
+
+        var trHead = document.createElement('tr');
+        vars.forEach(function (v) {
+          var th = document.createElement('th');
+          th.className = 'px-3 py-2 border-b border-gray-200 text-center font-semibold text-gray-700';
+          th.textContent = v;
+          trHead.appendChild(th);
+        });
+        var thF = document.createElement('th');
+        thF.className = 'px-3 py-2 border-b border-gray-200 text-center font-semibold text-gray-700';
+        thF.textContent = 'f';
+        trHead.appendChild(thF);
+        headEl.appendChild(trHead);
+
+        truthRows.forEach(function (row) {
+          var tr = document.createElement('tr');
+          vars.forEach(function (v) {
+            var td = document.createElement('td');
+            td.className = 'px-3 py-1 border-b border-gray-100 text-center text-xs';
+            td.textContent = fmtBool(row.env[v]);
+            tr.appendChild(td);
+          });
+          var tdF = document.createElement('td');
+          tdF.className = 'px-3 py-1 border-b border-gray-100 text-center text-xs';
+          var span = document.createElement('span');
+          span.className = 'bool-badge ' + (row.value ? 'bool-true' : 'bool-false');
+          span.textContent = row.value ? '1 (TRUE)' : '0 (FALSE)';
+          tdF.appendChild(span);
+          tr.appendChild(tdF);
+          bodyEl.appendChild(tr);
+        });
+      }
+
+      function onSubmit(e) {
+        e.preventDefault();
+
+        var err = $('bool-error');
+        var res = $('bool-results');
+        var summaryEl = $('bool-summary');
+        var varsNote = $('bool-vars-note');
+        var evalSection = $('bool-eval-section');
+        var evalResult = $('bool-eval-result');
+        var truthSection = $('bool-truth-section');
+        var truthNote = $('bool-truth-note');
+        var canonicalSection = $('bool-canonical-section');
+        var sopBox = $('bool-sop-box');
+        var posBox = $('bool-pos-box');
+        var sopText = $('bool-sop-text');
+        var sopLatex = $('bool-sop-latex');
+        var posText = $('bool-pos-text');
+        var posLatex = $('bool-pos-latex');
+        var stepsEl = $('bool-steps');
+
+        hide(err);
+        hide(res);
+        hide(evalSection);
+        hide(truthSection);
+        hide(canonicalSection);
+        hide(sopBox);
+        hide(posBox);
+
+        summaryEl.textContent = '';
+        varsNote.textContent = '';
+        evalResult.textContent = '';
+        $('bool-token-list').innerHTML = '';
+        $('bool-vars').innerHTML = '';
+        $('bool-tt-head').innerHTML = '';
+        $('bool-tt-body').innerHTML = '';
+        sopText.textContent = '';
+        sopLatex.textContent = '';
+        posText.textContent = '';
+        posLatex.textContent = '';
+        stepsEl.innerHTML = '';
+
+        var raw = $('bool-expression').value || '';
+        if (!raw.trim()) {
+          err.textContent = 'Please enter a Boolean expression.';
+          show(err);
+          return;
+        }
+
+        var tokens;
+        try {
+          tokens = tokenize(raw);
+        } catch (ex) {
+          err.textContent = ex.message;
+          show(err);
+          return;
+        }
+
+        if (!tokens.length) {
+          err.textContent = 'No valid tokens were found in the expression.';
+          show(err);
+          return;
+        }
+
+        var ast;
+        try {
+          ast = parseExpression(tokens);
+        } catch (ex2) {
+          err.textContent = 'Parse error: ' + ex2.message;
+          show(err);
+          return;
+        }
+
+        var varSet = collectVars(ast);
+        var vars = Array.from(varSet).sort();
+
+        summaryEl.textContent = 'Parsed Boolean expression with ' + vars.length +
+          ' distinct variable' + (vars.length === 1 ? '' : 's') + '.';
+
+        renderTokens(tokens);
+        renderVars(vars);
+
+        if (vars.length === 0) {
+          varsNote.textContent = 'No variables detected: the expression is a constant Boolean value.';
+        } else {
+          varsNote.textContent = 'Toggle the variable values above to evaluate the expression and generate canonical forms.';
+        }
+
+        // Attach change listeners for evaluation
+        document.querySelectorAll('#bool-vars input[type="checkbox"]').forEach(function (input) {
+          input.addEventListener('change', function () {
+            var env = getCurrentEnv(vars);
+            var val = evalAst(ast, env);
+            evalResult.innerHTML = 'For this assignment, the expression evaluates to ' +
+              '<span class="bool-badge ' + (val ? 'bool-true">TRUE' : 'bool-false">FALSE') + '</span>.';
+          });
+        });
+
+        // Initial evaluation for all-FALSE assignment
+        if (vars.length > 0) {
+          var env0 = getCurrentEnv(vars);
+          var val0 = evalAst(ast, env0);
+          evalResult.innerHTML = 'For the current assignment (all variables default to FALSE), the expression evaluates to ' +
+            '<span class="bool-badge ' + (val0 ? 'bool-true">TRUE' : 'bool-false">FALSE') + '</span>.';
+        } else {
+          var constVal = evalAst(ast, {});
+          evalResult.innerHTML = 'Constant expression: value is ' +
+            '<span class="bool-badge ' + (constVal ? 'bool-true">TRUE' : 'bool-false">FALSE') + '</span> for all inputs.';
+        }
+        show(evalSection);
+
+        var maxRows = parseInt($('bool-max-rows').value, 10);
+        if (!Number.isFinite(maxRows) || maxRows <= 0) maxRows = 256;
+        var maxVars = parseInt($('bool-max-vars').value, 10);
+        if (!Number.isFinite(maxVars) || maxVars <= 0) maxVars = 8;
+
+        var showTruth = $('bool-show-truth').checked;
+        var showSop = $('bool-show-sop').checked;
+        var showPos = $('bool-show-pos').checked;
+
+        var truthRows = [];
+        var totalRows = Math.pow(2, vars.length);
+
+        if (vars.length === 0) {
+          truthRows = [{ env: {}, value: evalAst(ast, {}) }];
+        } else if (vars.length <= maxVars && totalRows <= maxRows && showTruth) {
+          var envs = getAssignments(vars, totalRows);
+          truthRows = envs.map(function (env) {
+            return { env: env, value: evalAst(ast, env) };
+          });
+          renderTruthTable(vars, truthRows);
+          truthNote.textContent =
+            'Showing ' + truthRows.length + ' row' + (truthRows.length === 1 ? '' : 's') +
+            ' for ' + vars.length + ' variable' + (vars.length === 1 ? '' : 's') + '.';
+          show(truthSection);
+        } else if (vars.length > 0 && showTruth) {
+          truthNote.textContent =
+            'Full truth table would contain 2^' + vars.length + ' = ' + totalRows +
+            ' rows, which exceeds the configured limits. Increase "Max truth table rows" or reduce the number of variables if you need the full table.';
+          show(truthSection);
+        }
+
+        if ((showSop || showPos) && vars.length > 0) {
+          if (!truthRows.length) {
+            var envs2 = getAssignments(vars, Math.pow(2, vars.length));
+            truthRows = envs2.map(function (env) {
+              return { env: env, value: evalAst(ast, env) };
+            });
+          }
+
+          var minterms = buildMinterms(vars, truthRows);
+          var maxterms = buildMaxterms(vars, truthRows);
+
+          if (showSop) {
+            if (!minterms.length) {
+              sopText.textContent = 'f = 0 (identically false function).';
+              sopLatex.textContent = 'LaTeX: f = 0';
+            } else {
+              sopText.textContent = 'f = ' + minterms.join(' + ');
+              sopLatex.textContent = 'LaTeX: ' + toLatexSop(vars, minterms);
+            }
+            show(sopBox);
+          }
+
+          if (showPos) {
+            if (!maxterms.length) {
+              posText.textContent = 'f = 1 (identically true function).';
+              posLatex.textContent = 'LaTeX: f = 1';
+            } else {
+              posText.textContent = 'f = ' + maxterms.join(' · ');
+              posLatex.textContent = 'LaTeX: ' + toLatexPos(vars, maxterms);
+            }
+            show(posBox);
+          }
+
+          show(canonicalSection);
+        }
+
+        var steps = [];
+        steps.push('1. Tokenise the text input into variables, operators (NOT, AND, OR, XOR) and parentheses, rejecting illegal characters.');
+        steps.push('2. Use a recursive descent parser with precedence NOT > AND > XOR > OR to build an abstract syntax tree (AST) for the Boolean expression.');
+        steps.push('3. Collect all variable names from the AST and initialise an assignment (all FALSE by default).');
+        steps.push('4. For each truth table row (if within limits), evaluate the AST under the corresponding TRUE/FALSE assignment to compute the function value.');
+        steps.push('5. Build canonical sum-of-products from rows where f = 1 (minterms) and canonical product-of-sums from rows where f = 0 (maxterms).');
+        steps.push('6. Optionally render LaTeX-style forms for use in reports and course material.');
+
+        steps.forEach(function (line) {
+          var pEl = document.createElement('p');
+          pEl.textContent = line;
+          stepsEl.appendChild(pEl);
+        });
+
+        show(res);
+
+        if (window.MathJax && window.MathJax.typesetPromise) {
+          window.MathJax.typesetPromise([stepsEl]).catch(function () {});
+        }
+      }
+
+      function onReset() {
+        $('bool-form').reset();
+        $('bool-expression').value = '';
+        hide($('bool-error'));
+        hide($('bool-results'));
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        attachInsertButtons();
+        $('bool-form').addEventListener('submit', onSubmit);
+        $('bool-reset').addEventListener('click', onReset);
+      });
+    })();
+  </script>
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
       svg: { fontCache: 'global' }
     };
   </script>

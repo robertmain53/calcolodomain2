@@ -63,10 +63,6 @@
 
     <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-    <script src="https://cmp.gatekeeperconsent.com/min.js" data-cfasync="false"></script>
-    <script src="https://the.gatekeeperconsent.com/cmp.min.js" data-cfasync="false"></script>
-
-    <script async="" src="//www.ezojs.com/ezoic/sa.min.js"></script>
     <script>
         window.ezstandalone = window.ezstandalone || {};
         ezstandalone.cmd = ezstandalone.cmd || [];
@@ -249,8 +245,6 @@
 <body class="bg-gray-50 text-gray-800">
 
     <!-- BODY_SCRIPTS_INIZIO replacement -->
-    <script async="" src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9476637732224939" crossorigin="anonymous"></script>
-
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
         <div class="flex justify-between items-center">
@@ -741,7 +735,7 @@ e.g. 5.2, 4.8, 6.1"></textarea>
 
       <div>
         <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
+                                                                                                                                                                                                        <ul class="space-y-2">
           <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
           <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction & DIY</a></li>
           <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
@@ -809,13 +803,807 @@ e.g. 5.2, 4.8, 6.1"></textarea>
 
 
 
+
     <script src="/assets/js/script_menu.js" defer=""></script>
     <script src="/assets/js/script_faq.js" defer=""></script>
     <script src="search.js" defer=""></script>
 
     <script>
-      window.MathJax = {
-        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+      window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      (function () {
+        const form = document.getElementById('anova-form');
+        const resetBtn = document.getElementById('anova-reset');
+        const alphaSelect = document.getElementById('alpha');
+
+        const resultsBox = document.getElementById('anova-results');
+        const summaryEl = document.getElementById('anova-summary');
+        const interpretationEl = document.getElementById('anova-interpretation');
+        const tableBodyEl = document.getElementById('anova-table-body');
+        const descBodyEl = document.getElementById('anova-descriptives-body');
+        const grandMeanEl = document.getElementById('anova-grand-mean');
+        const effectSizeEl = document.getElementById('anova-effect-size');
+        const stepsEl = document.getElementById('anova-steps');
+
+        const groupIds = ['group1', 'group2', 'group3', 'group4', 'group5', 'group6'];
+
+        function parseNumericArray(text) {
+          if (!text) return [];
+          const parts = text
+            .split(/[\s,;]+/)
+            .map(function (s) { return s.trim(); })
+            .filter(Boolean);
+          const vals = [];
+          for (let i = 0; i < parts.length; i++) {
+            const v = Number(parts[i].replace(',', '.'));
+            if (!Number.isNaN(v) && Number.isFinite(v)) {
+              vals.push(v);
+            }
+          }
+          return vals;
+        }
+
+        function mean(arr) {
+          if (!arr.length) return NaN;
+          let s = 0;
+          for (let i = 0; i < arr.length; i++) s += arr[i];
+          return s / arr.length;
+        }
+
+        function varianceUnbiased(arr, m) {
+          const n = arr.length;
+          if (n < 2) return NaN;
+          if (!Number.isFinite(m)) m = mean(arr);
+          let s2 = 0;
+          for (let i = 0; i < n; i++) {
+            const d = arr[i] - m;
+            s2 += d * d;
+          }
+          return s2 / (n - 1);
+        }
+
+        function fmt(val, digits) {
+          if (!Number.isFinite(val)) return '—';
+          digits = typeof digits === 'number' ? digits : 4;
+          if (val === 0) return '0';
+          const abs = Math.abs(val);
+          if (abs >= 1e6 || abs < 1e-4) {
+            return val.toExponential(3);
+          }
+          return Number(val.toPrecision(digits));
+        }
+
+        // --- Special functions for F distribution p-value ---
+
+        function logGamma(z) {
+          const p = [
+            676.5203681218851,
+            -1259.1392167224028,
+            771.32342877765313,
+            -176.61502916214059,
+            12.507343278686905,
+            -0.13857109526572012,
+            9.9843695780195716e-6,
+            1.5056327351493116e-7
+          ];
+          const g = 7;
+          if (z < 0.5) {
+            return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - logGamma(1 - z);
+          }
+          z -= 1;
+          let x = 0.99999999999980993;
+          for (let i = 0; i < p.length; i++) {
+            x += p[i] / (z + i + 1);
+          }
+          const t = z + g + 0.5;
+          return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
+        }
+
+        function betacf(a, b, x) {
+          const MAXIT = 200;
+          const EPS = 3e-8;
+          const FPMIN = 1e-30;
+
+          let qab = a + b;
+          let qap = a + 1;
+          let qam = a - 1;
+          let c = 1;
+          let d = 1 - qab * x / qap;
+          if (Math.abs(d) < FPMIN) d = FPMIN;
+          d = 1 / d;
+          let h = d;
+
+          for (let m = 1; m <= MAXIT; m++) {
+            let m2 = 2 * m;
+
+            // even step
+            let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+            d = 1 + aa * d;
+            if (Math.abs(d) < FPMIN) d = FPMIN;
+            c = 1 + aa / c;
+            if (Math.abs(c) < FPMIN) c = FPMIN;
+            d = 1 / d;
+            h *= d * c;
+
+            // odd step
+            aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+            d = 1 + aa * d;
+            if (Math.abs(d) < FPMIN) d = FPMIN;
+            c = 1 + aa / c;
+            if (Math.abs(c) < FPMIN) c = FPMIN;
+            d = 1 / d;
+            const del = d * c;
+            h *= del;
+
+            if (Math.abs(del - 1) < EPS) break;
+          }
+          return h;
+        }
+
+        function betai(a, b, x) {
+          if (x <= 0) return 0;
+          if (x >= 1) return 1;
+
+          const lnBeta = logGamma(a) + logGamma(b) - logGamma(a + b);
+          const front = Math.exp(a * Math.log(x) + b * Math.log(1 - x) - lnBeta);
+
+          let bt;
+          if (x < (a + 1) / (a + b + 2)) {
+            bt = front * betacf(a, b, x) / a;
+            return bt;
+          } else {
+            bt = front * betacf(b, a, 1 - x) / b;
+            return 1 - bt;
+          }
+        }
+
+        function fCdf(x, df1, df2) {
+          // CDF of F(df1, df2) at x
+          if (x <= 0) return 0;
+          const a = df1 / 2;
+          const b = df2 / 2;
+          const xx = (df1 * x) / (df1 * x + df2);
+          return betai(a, b, xx);
+        }
+
+        function upperTailFPValue(F, df1, df2) {
+          if (!Number.isFinite(F) || F < 0) return NaN;
+          const cdf = fCdf(F, df1, df2);
+          return 1 - cdf;
+        }
+
+        function clearResults() {
+          resultsBox.classList.add('hidden');
+          summaryEl.textContent = '';
+          interpretationEl.textContent = '';
+          tableBodyEl.innerHTML = '';
+          descBodyEl.innerHTML = '';
+          grandMeanEl.textContent = '';
+          effectSizeEl.textContent = '';
+          stepsEl.innerHTML = '';
+        }
+
+        function handleSubmit(evt) {
+          evt.preventDefault();
+          clearResults();
+
+          const alpha = Number(alphaSelect.value);
+
+          // Collect groups
+          const groups = [];
+          const steps = [];
+
+          groupIds.forEach(function (id, index) {
+            const textarea = document.getElementById(id);
+            const arr = parseNumericArray(textarea.value);
+            if (arr.length > 0) {
+              groups.push({
+                id: index + 1,
+                label: 'Group ' + (index + 1),
+                data: arr
+              });
+            }
+          });
+
+          if (groups.length < 2) {
+            alert('Please enter data for at least two groups.');
+            return;
+          }
+
+          for (let g = 0; g < groups.length; g++) {
+            if (groups[g].data.length < 2) {
+              alert('Each included group must have at least 2 observations. Group ' + groups[g].label + ' has only ' + groups[g].data.length + '.');
+              return;
+            }
+          }
+
+          const k = groups.length;
+          let N = 0;
+          groups.forEach(function (g) { N += g.data.length; });
+
+          if (N <= k) {
+            alert('Total sample size must exceed the number of groups.');
+            return;
+          }
+
+          // Compute group stats
+          let grandSum = 0;
+          steps.push('1. Number of groups k = ' + k + ', total sample size N = ' + N + '.');
+
+          groups.forEach(function (g) {
+            const n = g.data.length;
+            const m = mean(g.data);
+            const v = varianceUnbiased(g.data, m);
+            g.n = n;
+            g.mean = m;
+            g.var = v;
+            g.sd = Math.sqrt(v);
+            grandSum += m * n;
+          });
+
+          const grandMean = grandSum / N;
+          steps.push('2. Compute each group mean and sample size; grand mean is the weighted average of group means.');
+          steps.push('   Grand mean: ' + fmt(grandMean, 6) + '.');
+
+          // Compute SSB and SSW
+          let SSB = 0;
+          let SSW = 0;
+
+          groups.forEach(function (g) {
+            const diff = g.mean - grandMean;
+            SSB += g.n * diff * diff;
+
+            let sswGroup = 0;
+            for (let i = 0; i < g.data.length; i++) {
+              const d = g.data[i] - g.mean;
+              sswGroup += d * d;
+            }
+            SSW += sswGroup;
+          });
+
+          const SST = SSB + SSW;
+          const dfBetween = k - 1;
+          const dfWithin = N - k;
+          const dfTotal = N - 1;
+          const MSB = SSB / dfBetween;
+          const MSW = SSW / dfWithin;
+          const F = MSB / MSW;
+          const p = upperTailFPValue(F, dfBetween, dfWithin);
+
+          const eta2 = SST > 0 ? SSB / SST : NaN;
+
+          steps.push('3. Between-group SS (SSB) = Σ n_i (ȳ_i − ȳ)^2 = ' + fmt(SSB, 6) + '.');
+          steps.push('4. Within-group SS (SSW) = Σ Σ (y_ij − ȳ_i)^2 = ' + fmt(SSW, 6) + '.');
+          steps.push('5. Total SS (SST) = SSB + SSW = ' + fmt(SST, 6) + '.');
+          steps.push('6. df_between = k − 1 = ' + dfBetween + ', df_within = N − k = ' + dfWithin + '.');
+          steps.push('7. MSB = SSB / df_between = ' + fmt(MSB, 6) + ', MSW = SSW / df_within = ' + fmt(MSW, 6) + '.');
+          steps.push('8. F = MSB / MSW = ' + fmt(F, 6) + '.');
+          if (Number.isFinite(p)) {
+            steps.push('9. p-value = P(F_{' + dfBetween + ',' + dfWithin + '} ≥ ' + fmt(F, 4) + ') ≈ ' + fmt(p, 4) + '.');
+          }
+
+          // Summary & interpretation
+          let decisionText;
+          if (Number.isFinite(p)) {
+            if (p < alpha) {
+              decisionText = 'Since p ≈ ' + fmt(p, 4) + ' < α = ' + alpha + ', there is evidence that at least one group mean differs.';
+            } else {
+              decisionText = 'Since p ≈ ' + fmt(p, 4) + ' ≥ α = ' + alpha + ', there is not enough evidence to conclude that group means differ.';
+            }
+          } else {
+            decisionText = 'p-value could not be computed due to numerical issues; interpret the F statistic using an F table or software.';
+          }
+
+          summaryEl.textContent =
+            'F(' + dfBetween + ', ' + dfWithin + ') = ' + fmt(F, 4) +
+            (Number.isFinite(p) ? ', p ≈ ' + fmt(p, 4) : '') +
+            ', η² ≈ ' + (Number.isFinite(eta2) ? fmt(eta2, 4) : '—') + '.';
+          interpretationEl.textContent = decisionText;
+
+          // ANOVA table
+          tableBodyEl.innerHTML = '';
+
+          function addRow(cells) {
+            const tr = document.createElement('tr');
+            cells.forEach(function (cell) {
+              const td = document.createElement('td');
+              td.className = 'border px-2 py-1 text-xs md:text-sm ' + (cell.align === 'right' ? 'text-right' : 'text-left');
+              td.textContent = cell.text;
+              tr.appendChild(td);
+            });
+            tableBodyEl.appendChild(tr);
+          }
+
+          addRow([
+            { text: 'Between groups', align: 'left' },
+            { text: fmt(SSB, 6), align: 'right' },
+            { text: String(dfBetween), align: 'right' },
+            { text: fmt(MSB, 6), align: 'right' },
+            { text: fmt(F, 6), align: 'right' },
+            { text: Number.isFinite(p) ? fmt(p, 6) : '—', align: 'right' }
+          ]);
+
+          addRow([
+            { text: 'Within groups', align: 'left' },
+            { text: fmt(SSW, 6), align: 'right' },
+            { text: String(dfWithin), align: 'right' },
+            { text: fmt(MSW, 6), align: 'right' },
+            { text: '', align: 'right' },
+            { text: '', align: 'right' }
+          ]);
+
+          addRow([
+            { text: 'Total', align: 'left' },
+            { text: fmt(SST, 6), align: 'right' },
+            { text: String(dfTotal), align: 'right' },
+            { text: '', align: 'right' },
+            { text: '', align: 'right' },
+            { text: '', align: 'right' }
+          ]);
+
+          // Descriptive stats table
+          descBodyEl.innerHTML = '';
+          groups.forEach(function (g) {
+            const tr = document.createElement('tr');
+
+            const td1 = document.createElement('td');
+            td1.className = 'border px-2 py-1 text-left';
+            td1.textContent = g.label;
+            tr.appendChild(td1);
+
+            const td2 = document.createElement('td');
+            td2.className = 'border px-2 py-1 text-right';
+            td2.textContent = g.n;
+            tr.appendChild(td2);
+
+            const td3 = document.createElement('td');
+            td3.className = 'border px-2 py-1 text-right';
+            td3.textContent = fmt(g.mean, 6);
+            tr.appendChild(td3);
+
+            const td4 = document.createElement('td');
+            td4.className = 'border px-2 py-1 text-right';
+            td4.textContent = fmt(g.sd, 6);
+            tr.appendChild(td4);
+
+            descBodyEl.appendChild(tr);
+          });
+
+          grandMeanEl.textContent = 'Grand mean across all groups: ' + fmt(grandMean, 6);
+
+          if (Number.isFinite(eta2)) {
+            effectSizeEl.textContent = 'η² ≈ ' + fmt(eta2, 4) +
+              ' (proportion of total variance explained by group differences).';
+          } else {
+            effectSizeEl.textContent = 'Effect size η² could not be computed (total variance SST = 0).';
+          }
+
+          // Steps
+          stepsEl.innerHTML = '';
+          steps.forEach(function (line) {
+            const pEl = document.createElement('p');
+            pEl.textContent = line;
+            stepsEl.appendChild(pEl);
+          });
+
+          resultsBox.classList.remove('hidden');
+        }
+
+        function handleReset() {
+          form.reset();
+          clearResults();
+        }
+
+        form.addEventListener('submit', handleSubmit);
+        resetBtn.addEventListener('click', handleReset);
+      })();
+    </script>
+
+
+
+</body></html>, ',
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <script>
+      (function () {
+        const form = document.getElementById('anova-form');
+        const resetBtn = document.getElementById('anova-reset');
+        const alphaSelect = document.getElementById('alpha');
+
+        const resultsBox = document.getElementById('anova-results');
+        const summaryEl = document.getElementById('anova-summary');
+        const interpretationEl = document.getElementById('anova-interpretation');
+        const tableBodyEl = document.getElementById('anova-table-body');
+        const descBodyEl = document.getElementById('anova-descriptives-body');
+        const grandMeanEl = document.getElementById('anova-grand-mean');
+        const effectSizeEl = document.getElementById('anova-effect-size');
+        const stepsEl = document.getElementById('anova-steps');
+
+        const groupIds = ['group1', 'group2', 'group3', 'group4', 'group5', 'group6'];
+
+        function parseNumericArray(text) {
+          if (!text) return [];
+          const parts = text
+            .split(/[\s,;]+/)
+            .map(function (s) { return s.trim(); })
+            .filter(Boolean);
+          const vals = [];
+          for (let i = 0; i < parts.length; i++) {
+            const v = Number(parts[i].replace(',', '.'));
+            if (!Number.isNaN(v) && Number.isFinite(v)) {
+              vals.push(v);
+            }
+          }
+          return vals;
+        }
+
+        function mean(arr) {
+          if (!arr.length) return NaN;
+          let s = 0;
+          for (let i = 0; i < arr.length; i++) s += arr[i];
+          return s / arr.length;
+        }
+
+        function varianceUnbiased(arr, m) {
+          const n = arr.length;
+          if (n < 2) return NaN;
+          if (!Number.isFinite(m)) m = mean(arr);
+          let s2 = 0;
+          for (let i = 0; i < n; i++) {
+            const d = arr[i] - m;
+            s2 += d * d;
+          }
+          return s2 / (n - 1);
+        }
+
+        function fmt(val, digits) {
+          if (!Number.isFinite(val)) return '—';
+          digits = typeof digits === 'number' ? digits : 4;
+          if (val === 0) return '0';
+          const abs = Math.abs(val);
+          if (abs >= 1e6 || abs < 1e-4) {
+            return val.toExponential(3);
+          }
+          return Number(val.toPrecision(digits));
+        }
+
+        // --- Special functions for F distribution p-value ---
+
+        function logGamma(z) {
+          const p = [
+            676.5203681218851,
+            -1259.1392167224028,
+            771.32342877765313,
+            -176.61502916214059,
+            12.507343278686905,
+            -0.13857109526572012,
+            9.9843695780195716e-6,
+            1.5056327351493116e-7
+          ];
+          const g = 7;
+          if (z < 0.5) {
+            return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - logGamma(1 - z);
+          }
+          z -= 1;
+          let x = 0.99999999999980993;
+          for (let i = 0; i < p.length; i++) {
+            x += p[i] / (z + i + 1);
+          }
+          const t = z + g + 0.5;
+          return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
+        }
+
+        function betacf(a, b, x) {
+          const MAXIT = 200;
+          const EPS = 3e-8;
+          const FPMIN = 1e-30;
+
+          let qab = a + b;
+          let qap = a + 1;
+          let qam = a - 1;
+          let c = 1;
+          let d = 1 - qab * x / qap;
+          if (Math.abs(d) < FPMIN) d = FPMIN;
+          d = 1 / d;
+          let h = d;
+
+          for (let m = 1; m <= MAXIT; m++) {
+            let m2 = 2 * m;
+
+            // even step
+            let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+            d = 1 + aa * d;
+            if (Math.abs(d) < FPMIN) d = FPMIN;
+            c = 1 + aa / c;
+            if (Math.abs(c) < FPMIN) c = FPMIN;
+            d = 1 / d;
+            h *= d * c;
+
+            // odd step
+            aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+            d = 1 + aa * d;
+            if (Math.abs(d) < FPMIN) d = FPMIN;
+            c = 1 + aa / c;
+            if (Math.abs(c) < FPMIN) c = FPMIN;
+            d = 1 / d;
+            const del = d * c;
+            h *= del;
+
+            if (Math.abs(del - 1) < EPS) break;
+          }
+          return h;
+        }
+
+        function betai(a, b, x) {
+          if (x <= 0) return 0;
+          if (x >= 1) return 1;
+
+          const lnBeta = logGamma(a) + logGamma(b) - logGamma(a + b);
+          const front = Math.exp(a * Math.log(x) + b * Math.log(1 - x) - lnBeta);
+
+          let bt;
+          if (x < (a + 1) / (a + b + 2)) {
+            bt = front * betacf(a, b, x) / a;
+            return bt;
+          } else {
+            bt = front * betacf(b, a, 1 - x) / b;
+            return 1 - bt;
+          }
+        }
+
+        function fCdf(x, df1, df2) {
+          // CDF of F(df1, df2) at x
+          if (x <= 0) return 0;
+          const a = df1 / 2;
+          const b = df2 / 2;
+          const xx = (df1 * x) / (df1 * x + df2);
+          return betai(a, b, xx);
+        }
+
+        function upperTailFPValue(F, df1, df2) {
+          if (!Number.isFinite(F) || F < 0) return NaN;
+          const cdf = fCdf(F, df1, df2);
+          return 1 - cdf;
+        }
+
+        function clearResults() {
+          resultsBox.classList.add('hidden');
+          summaryEl.textContent = '';
+          interpretationEl.textContent = '';
+          tableBodyEl.innerHTML = '';
+          descBodyEl.innerHTML = '';
+          grandMeanEl.textContent = '';
+          effectSizeEl.textContent = '';
+          stepsEl.innerHTML = '';
+        }
+
+        function handleSubmit(evt) {
+          evt.preventDefault();
+          clearResults();
+
+          const alpha = Number(alphaSelect.value);
+
+          // Collect groups
+          const groups = [];
+          const steps = [];
+
+          groupIds.forEach(function (id, index) {
+            const textarea = document.getElementById(id);
+            const arr = parseNumericArray(textarea.value);
+            if (arr.length > 0) {
+              groups.push({
+                id: index + 1,
+                label: 'Group ' + (index + 1),
+                data: arr
+              });
+            }
+          });
+
+          if (groups.length < 2) {
+            alert('Please enter data for at least two groups.');
+            return;
+          }
+
+          for (let g = 0; g < groups.length; g++) {
+            if (groups[g].data.length < 2) {
+              alert('Each included group must have at least 2 observations. Group ' + groups[g].label + ' has only ' + groups[g].data.length + '.');
+              return;
+            }
+          }
+
+          const k = groups.length;
+          let N = 0;
+          groups.forEach(function (g) { N += g.data.length; });
+
+          if (N <= k) {
+            alert('Total sample size must exceed the number of groups.');
+            return;
+          }
+
+          // Compute group stats
+          let grandSum = 0;
+          steps.push('1. Number of groups k = ' + k + ', total sample size N = ' + N + '.');
+
+          groups.forEach(function (g) {
+            const n = g.data.length;
+            const m = mean(g.data);
+            const v = varianceUnbiased(g.data, m);
+            g.n = n;
+            g.mean = m;
+            g.var = v;
+            g.sd = Math.sqrt(v);
+            grandSum += m * n;
+          });
+
+          const grandMean = grandSum / N;
+          steps.push('2. Compute each group mean and sample size; grand mean is the weighted average of group means.');
+          steps.push('   Grand mean: ' + fmt(grandMean, 6) + '.');
+
+          // Compute SSB and SSW
+          let SSB = 0;
+          let SSW = 0;
+
+          groups.forEach(function (g) {
+            const diff = g.mean - grandMean;
+            SSB += g.n * diff * diff;
+
+            let sswGroup = 0;
+            for (let i = 0; i < g.data.length; i++) {
+              const d = g.data[i] - g.mean;
+              sswGroup += d * d;
+            }
+            SSW += sswGroup;
+          });
+
+          const SST = SSB + SSW;
+          const dfBetween = k - 1;
+          const dfWithin = N - k;
+          const dfTotal = N - 1;
+          const MSB = SSB / dfBetween;
+          const MSW = SSW / dfWithin;
+          const F = MSB / MSW;
+          const p = upperTailFPValue(F, dfBetween, dfWithin);
+
+          const eta2 = SST > 0 ? SSB / SST : NaN;
+
+          steps.push('3. Between-group SS (SSB) = Σ n_i (ȳ_i − ȳ)^2 = ' + fmt(SSB, 6) + '.');
+          steps.push('4. Within-group SS (SSW) = Σ Σ (y_ij − ȳ_i)^2 = ' + fmt(SSW, 6) + '.');
+          steps.push('5. Total SS (SST) = SSB + SSW = ' + fmt(SST, 6) + '.');
+          steps.push('6. df_between = k − 1 = ' + dfBetween + ', df_within = N − k = ' + dfWithin + '.');
+          steps.push('7. MSB = SSB / df_between = ' + fmt(MSB, 6) + ', MSW = SSW / df_within = ' + fmt(MSW, 6) + '.');
+          steps.push('8. F = MSB / MSW = ' + fmt(F, 6) + '.');
+          if (Number.isFinite(p)) {
+            steps.push('9. p-value = P(F_{' + dfBetween + ',' + dfWithin + '} ≥ ' + fmt(F, 4) + ') ≈ ' + fmt(p, 4) + '.');
+          }
+
+          // Summary & interpretation
+          let decisionText;
+          if (Number.isFinite(p)) {
+            if (p < alpha) {
+              decisionText = 'Since p ≈ ' + fmt(p, 4) + ' < α = ' + alpha + ', there is evidence that at least one group mean differs.';
+            } else {
+              decisionText = 'Since p ≈ ' + fmt(p, 4) + ' ≥ α = ' + alpha + ', there is not enough evidence to conclude that group means differ.';
+            }
+          } else {
+            decisionText = 'p-value could not be computed due to numerical issues; interpret the F statistic using an F table or software.';
+          }
+
+          summaryEl.textContent =
+            'F(' + dfBetween + ', ' + dfWithin + ') = ' + fmt(F, 4) +
+            (Number.isFinite(p) ? ', p ≈ ' + fmt(p, 4) : '') +
+            ', η² ≈ ' + (Number.isFinite(eta2) ? fmt(eta2, 4) : '—') + '.';
+          interpretationEl.textContent = decisionText;
+
+          // ANOVA table
+          tableBodyEl.innerHTML = '';
+
+          function addRow(cells) {
+            const tr = document.createElement('tr');
+            cells.forEach(function (cell) {
+              const td = document.createElement('td');
+              td.className = 'border px-2 py-1 text-xs md:text-sm ' + (cell.align === 'right' ? 'text-right' : 'text-left');
+              td.textContent = cell.text;
+              tr.appendChild(td);
+            });
+            tableBodyEl.appendChild(tr);
+          }
+
+          addRow([
+            { text: 'Between groups', align: 'left' },
+            { text: fmt(SSB, 6), align: 'right' },
+            { text: String(dfBetween), align: 'right' },
+            { text: fmt(MSB, 6), align: 'right' },
+            { text: fmt(F, 6), align: 'right' },
+            { text: Number.isFinite(p) ? fmt(p, 6) : '—', align: 'right' }
+          ]);
+
+          addRow([
+            { text: 'Within groups', align: 'left' },
+            { text: fmt(SSW, 6), align: 'right' },
+            { text: String(dfWithin), align: 'right' },
+            { text: fmt(MSW, 6), align: 'right' },
+            { text: '', align: 'right' },
+            { text: '', align: 'right' }
+          ]);
+
+          addRow([
+            { text: 'Total', align: 'left' },
+            { text: fmt(SST, 6), align: 'right' },
+            { text: String(dfTotal), align: 'right' },
+            { text: '', align: 'right' },
+            { text: '', align: 'right' },
+            { text: '', align: 'right' }
+          ]);
+
+          // Descriptive stats table
+          descBodyEl.innerHTML = '';
+          groups.forEach(function (g) {
+            const tr = document.createElement('tr');
+
+            const td1 = document.createElement('td');
+            td1.className = 'border px-2 py-1 text-left';
+            td1.textContent = g.label;
+            tr.appendChild(td1);
+
+            const td2 = document.createElement('td');
+            td2.className = 'border px-2 py-1 text-right';
+            td2.textContent = g.n;
+            tr.appendChild(td2);
+
+            const td3 = document.createElement('td');
+            td3.className = 'border px-2 py-1 text-right';
+            td3.textContent = fmt(g.mean, 6);
+            tr.appendChild(td3);
+
+            const td4 = document.createElement('td');
+            td4.className = 'border px-2 py-1 text-right';
+            td4.textContent = fmt(g.sd, 6);
+            tr.appendChild(td4);
+
+            descBodyEl.appendChild(tr);
+          });
+
+          grandMeanEl.textContent = 'Grand mean across all groups: ' + fmt(grandMean, 6);
+
+          if (Number.isFinite(eta2)) {
+            effectSizeEl.textContent = 'η² ≈ ' + fmt(eta2, 4) +
+              ' (proportion of total variance explained by group differences).';
+          } else {
+            effectSizeEl.textContent = 'Effect size η² could not be computed (total variance SST = 0).';
+          }
+
+          // Steps
+          stepsEl.innerHTML = '';
+          steps.forEach(function (line) {
+            const pEl = document.createElement('p');
+            pEl.textContent = line;
+            stepsEl.appendChild(pEl);
+          });
+
+          resultsBox.classList.remove('hidden');
+        }
+
+        function handleReset() {
+          form.reset();
+          clearResults();
+        }
+
+        form.addEventListener('submit', handleSubmit);
+        resetBtn.addEventListener('click', handleReset);
+      })();
+    </script>
+
+
+
+</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
         svg: { fontCache: 'global' }
       };
     </script>
