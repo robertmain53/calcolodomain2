@@ -226,10 +226,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="/assets/js/page-enhancements.js" as="script">
@@ -269,23 +275,46 @@
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
 </style>
 </head>
-<body>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">Wall Framing Calculator</h1>
+    <p class="sub" id="pageSub">Professional wall framing calculator to estimate studs, plates, blocking, and sheathing. Supports Imperial and Metric, stud spacing, openings, waste factor, and board optimization. WCAG 2.1 AA accessible and mobile-first.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<a class="skip-link" href="#main-content">Skip to main content</a>
-<header aria-label="Site header" role="banner">
-<div class="header-wrap">
-CalcDomain
-<form aria-label="Site-wide search" class="site-search" role="search">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><form aria-label="Site-wide search" class="site-search" role="search">
 <label class="sr-only" for="q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Search calculators</label>
 <input aria-label="Search calculators" id="q" name="q" placeholder="Search calculators…" type="search">
 <button aria-label="Submit search" class="btn secondary" type="submit">Search</button>
 </form>
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
+
+<button id="resetBtn" type="button" class="btn btnSecondary">Reset</button>
+</div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
+
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main-content">Skip to main content</a><header aria-label="Site header" role="banner">
+<div class="header-wrap">
+CalcDomain
+
 <nav aria-label="Main navigation">
 <a href="https://calcdomain.com/construction-diy">Construction</a>
 </nav>
 </div>
-</header>
-<main class="container w-full lg:w-2/3" id="main-content" role="main">
+</header><main class="container w-full lg:w-2/3" id="main-content" role="main">
 <h1>Wall Framing Calculator</h1>
 <p>This professional wall framing calculator estimates common studs, king and jack studs for openings, plates, blocking, and sheathing. It’s designed for builders, estimators, and DIYers who need fast, reliable quantities with both Imperial and Metric units, while staying aligned with standard residential framing practices.</p>
 <div class="layout" id="calculator-layout">
@@ -647,377 +676,9 @@ CalcDomain
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
-
-      // Utility: DOM helpers
-      const $ = sel => document.querySelector(sel);
-      const $$ = sel => Array.from(document.querySelectorAll(sel));
-
-      // Elements
-      const unitRadios = $$('input[name="unit"]');
-      const wallLength = $('#wallLength');
-      const wallHeight = $('#wallHeight');
-      const studSpacing = $('#studSpacing');
-      const spacingUnit = $('#spacingUnit');
-      const studSize = $('#studSize');
-      const topPlates = $('#topPlates');
-      const bottomPlates = $('#bottomPlates');
-      const blockingRows = $('#blockingRows');
-      const endExtras = $('#endExtras');
-      const stockLength = $('#stockLength');
-      const sheetSize = $('#sheetSize');
-      const waste = $('#waste');
-
-      const openingsList = $('#openingsList');
-      const addOpeningBtn = $('#addOpeningBtn');
-
-      // Results
-      const resCommon = $('#res-common');
-      const resKings = $('#res-kings');
-      const resJacks = $('#res-jacks');
-      const resCripples = $('#res-cripples');
-      const resExtra = $('#res-extra');
-      const resTotalStuds = $('#res-total-studs');
-      const resPlatesLf = $('#res-plates-lf');
-      const resPlatesBoards = $('#res-plates-boards');
-      const resBlocks = $('#res-blocks');
-      const resBlocksLf = $('#res-blocks-lf');
-      const resArea = $('#res-area');
-      const resSheets = $('#res-sheets');
-
-      // Error fields
-      const errLength = $('#err-length');
-      const errHeight = $('#err-height');
-      const errSpacing = $('#err-spacing');
-
-      // Tooltips
-      $$('.help-btn').forEach(btn=>{
-        btn.addEventListener('click', e=>{
-          const id = btn.getAttribute('aria-controls');
-          const tip = document.getElementById(id);
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          tip.setAttribute('aria-hidden', String(expanded));
-        });
-        btn.addEventListener('keydown', e=>{
-          if(e.key === 'Enter' || e.key === ' '){
-            e.preventDefault();
-            btn.click();
-          }
-        });
-      });
-
-      // State and conversions
-      let unit = 'imp'; // 'imp' or 'met'
-      function toInchesFeetFeet(value, currentUnit){
-        if(isNaN(value) || value<=0) return 0;
-        // Returns length in feet if unit is imp; if metric, convert m to feet
-        if(unit === 'imp'){
-          return value; // already feet
-        } else {
-          return value * 3.280839895; // meters -> feet
-        }
-      }
-      function toInches(value, unitOfSpacing){
-        // spacing value number -> inches
-        if(unitOfSpacing === 'in') return value;
-        // mm to inches
-        return value / 25.4;
-      }
-      function toFeet(valInches){
-        return valInches / 12;
-      }
-      function feetToMeters(ft){ return ft * 0.3048; }
-      function squareFeetToSquareMeters(sf){ return sf * 0.09290304; }
-
-      function studThicknessInches(){
-        if(unit === 'met' && studSize.value === 'metric') return 38/25.4; // 38 mm
-        return 1.5; // nominal thickness for 2x
-      }
-
-      function isMetricStockSelected(){
-        const v = stockLength.value;
-        return v.toString().includes('.');
-      }
-
-      function parseNumber(input, min, errEl, label){
-        const v = Number(input.value);
-        if(!input.value || isNaN(v) || v <= (min ?? 0)){
-          input.setAttribute('aria-invalid', 'true');
-          if(errEl){
-            const msg = !input.value ? `${label} is required.` : `${label} must be greater than ${min ?? 0}.`;
-            errEl.textContent = msg;
-          }
-          return null;
-        }
-        input.setAttribute('aria-invalid','false');
-        if(errEl) errEl.textContent = '';
-        return v;
-      }
-
-      // Validation on blur
-      wallLength.addEventListener('blur', ()=>parseNumber(wallLength, 0, errLength, 'Wall length'));
-      wallHeight.addEventListener('blur', ()=>parseNumber(wallHeight, 0, errHeight, 'Wall height'));
-      studSpacing.addEventListener('blur', ()=>parseNumber(studSpacing, 0, errSpacing, 'Stud spacing'));
-
-      // Unit switching
-      unitRadios.forEach(r=>{
-        r.addEventListener('change', ()=>{
-          unit = r.value;
-          if(unit === 'imp'){
-            spacingUnit.value = 'in';
-            stockLength.value = '12'; // 12 ft default
-            sheetSize.value = '32'; // ft²
-            if(wallLength.placeholder.includes('(m)')) wallLength.placeholder = 'e.g., 12 (ft)';
-            if(wallHeight.placeholder.includes('(m)')) wallHeight.placeholder = 'e.g., 8 (ft)';
-          }else{
-            spacingUnit.value = 'mm';
-            stockLength.value = '3.6'; // 3.6 m default
-            sheetSize.value = '2.976'; // m²
-            wallLength.placeholder = 'e.g., 3.6 (m)';
-            wallHeight.placeholder = 'e.g., 2.4 (m)';
-          }
-          compute();
-        }, {passive:true});
-      });
-
-      spacingUnit.addEventListener('change', compute, {passive:true});
-      [wallLength, wallHeight, studSpacing, studSize, topPlates, bottomPlates, blockingRows, endExtras, stockLength, sheetSize, waste]
-        .forEach(el => el.addEventListener('input', compute, {passive:true}));
-
-      // Openings management
-      function openingRowTemplate(id){
-        // Each opening: type, width, height, jacks per side
-        // Inputs adapt to unit system labels
-        const widthPh = unit === 'imp' ? 'Width (ft)' : 'Width (m)';
-        const heightPh = unit === 'imp' ? 'Height (ft)' : 'Height (m)';
-        return `
-          <div class="opening-row" data-id="${id}">
-            <div>
-              <label for="op-type-${id}" class="sr-only">Opening type</label>
-              <select id="op-type-${id}" class="control" aria-label="Opening type">
-                <option value="door">Door</option>
-                <option value="window" selected>Window</option>
-              </select>
-            </div>
-            <div>
-              <label for="op-width-${id}" class="sr-only">Opening width</label>
-              <input id="op-width-${id}" class="control" type="number" inputmode="decimal" min="0.1" step="0.01" placeholder="${widthPh}" aria-label="Opening width">
-            </div>
-            <div>
-              <label for="op-height-${id}" class="sr-only">Opening height</label>
-              <input id="op-height-${id}" class="control" type="number" inputmode="decimal" min="0.1" step="0.01" placeholder="${heightPh}" aria-label="Opening height">
-            </div>
-            <div>
-              <label for="op-jacks-${id}" class="sr-only">Jacks per side</label>
-              <select id="op-jacks-${id}" class="control" aria-label="Jacks per side">
-                <option value="1" selected>1 jack/side</option>
-                <option value="2">2 jacks/side</option>
-              </select>
-            </div>
-            <div>
-              <button type="button" class="remove" aria-label="Remove opening">✕</button>
-            </div>
-          </div>
-        `;
-      }
-      let openingCounter = 0;
-
-      function addOpening(){
-        const id = ++openingCounter;
-        openingsList.insertAdjacentHTML('beforeend', openingRowTemplate(id));
-        const row = openingsList.querySelector(`.opening-row[data-id="${id}"]`);
-        // Bind events
-        row.querySelectorAll('input,select').forEach(el=>{
-          el.addEventListener('input', compute, {passive:true});
-        });
-        row.querySelector('.remove').addEventListener('click', ()=>{
-          row.remove();
-          compute();
-        });
-      }
-
-      addOpeningBtn.addEventListener('click', addOpening);
-      // Initialize with one window for UX
-      addOpening();
-
-      // Core compute
-      function compute(){
-        // Parse inputs with validation
-        const wl = parseNumber(wallLength, 0, errLength, 'Wall length');
-        const wh = parseNumber(wallHeight, 0, errHeight, 'Wall height');
-        const spVal = parseNumber(studSpacing, 0, errSpacing, 'Stud spacing');
-
-        if(wl === null || wh === null || spVal === null){
-          updateResults(null);
-          return;
-        }
-
-        // Normalize to feet and inches for geometry; keep areas in ft² then convert if metric
-        const length_ft = toInchesFeetFeet(wl); // if imp: feet; if metric: m -> ft
-        const height_ft = toInchesFeetFeet(wh);
-        const spacing_in = toInches(spVal, spacingUnit.value);
-
-        // Compute common studs: ceil(L/S)+1 with L,S in inches
-        const L_in = length_ft * 12;
-        const commonStuds = Math.ceil(L_in / spacing_in) + 1;
-
-        // Openings data
-        const openings = Array.from(openingsList.querySelectorAll('.opening-row')).map(row=>{
-          const type = row.querySelector('select[aria-label="Opening type"]').value;
-          const wRaw = Number(row.querySelector('input[aria-label="Opening width"]').value);
-          const hRaw = Number(row.querySelector('input[aria-label="Opening height"]').value);
-          const jacks = Number(row.querySelector('select[aria-label="Jacks per side"]').value) || 1;
-          const w_ft = unit === 'imp' ? (isNaN(wRaw)?0:wRaw) : feetToMeters(0) || (isNaN(wRaw)?0 : wRaw * 3.280839895); // m to ft
-          const h_ft = unit === 'imp' ? (isNaN(hRaw)?0:hRaw) : (isNaN(hRaw)?0 : hRaw * 3.280839895);
-          return { type, w_ft, h_ft, jacks };
-        });
-
-        // Kings & Jacks
-        const validOpenings = openings.filter(o=>o.w_ft>0 && o.h_ft>0);
-        const nOpen = validOpenings.length;
-        const kingStuds = 2 * nOpen;
-        const jackStuds = validOpenings.reduce((sum,o)=> sum + 2 * o.jacks, 0);
-
-        // Cripples estimate (windows only)
-        const cripples = validOpenings.reduce((sum,o)=>{
-          if(o.type !== 'window') return sum;
-          const w_in = o.w_ft * 12;
-          const est = Math.max(Math.ceil(w_in / spacing_in) - 1, 0);
-          return sum + est;
-        }, 0);
-
-        // Extra end studs
-        const extraEnds = Number(endExtras.value) * 2;
-
-        // Total studs with waste
-        const baseTotalStuds = commonStuds + kingStuds + jackStuds + cripples + extraEnds;
-        const studsWithWaste = Math.ceil(baseTotalStuds * (1 + (Number(waste.value||0)/100)));
-
-        // Plates total length in feet
-        const t = Number(topPlates.value);
-        const b = Number(bottomPlates.value);
-        const plateFeet = length_ft * (t + b);
-        const plateFeetWithWaste = plateFeet * (1 + (Number(waste.value||0)/100));
-
-        // Plate boards count by stock length
-        let stockLenFeet = 12; // default 12 ft
-        const stockSel = stockLength.value;
-        if(stockSel.includes('.')){
-          // metric meters -> feet
-          stockLenFeet = Number(stockSel) * 3.280839895;
-        } else {
-          stockLenFeet = Number(stockSel);
-        }
-        const plateBoards = Math.max(1, Math.ceil(plateFeetWithWaste / stockLenFeet));
-
-        // Blocking
-        const rows = Number(blockingRows.value);
-        const studThkIn = studThicknessInches();
-        const bays = Math.max(0, commonStuds - 1); // number of stud bays
-        const blocksCount = rows * bays;
-        const blockClearIn = Math.max(spacing_in - studThkIn, 0);
-        const blocksLenFeet = (blocksCount * blockClearIn) / 12;
-        const blocksLenFeetWithWaste = blocksLenFeet * (1 + (Number(waste.value||0)/100));
-
-        // Sheathing area (subtract openings)
-        const wallAreaFt2 = length_ft * height_ft;
-        const openingsAreaFt2 = validOpenings.reduce((sum,o)=> sum + (o.w_ft * o.h_ft), 0);
-        const netAreaFt2 = Math.max(0, wallAreaFt2 - openingsAreaFt2);
-        // Sheet size: store ft² or m²; if m² convert to ft²
-        let sheetAreaFt2 = Number(sheetSize.value);
-        if(sheetAreaFt2 < 5){ // treat as m²
-          sheetAreaFt2 = sheetAreaFt2 / 0.09290304;
-        }
-        const sheets = Math.max(0, Math.ceil(netAreaFt2 / sheetAreaFt2));
-
-        // Format values
-        updateResults({
-          commonStuds,
-          kingStuds,
-          jackStuds,
-          cripples,
-          extraEnds,
-          baseTotalStuds,
-          studsWithWaste,
-          plateFeet,
-          plateFeetWithWaste,
-          plateBoards,
-          blocksCount,
-          blocksLenFeet,
-          blocksLenFeetWithWaste,
-          wallAreaFt2,
-          openingsAreaFt2,
-          netAreaFt2,
-          sheets
-        });
-      }
-
-      function fmtLengthFeetFeet(valFt){
-        if(unit === 'imp'){
-          return `${valFt.toFixed(2)} ft`;
-        } else {
-          return `${(feetToMeters(valFt)).toFixed(2)} m`;
-        }
-      }
-      function fmtAreaFt2(valFt2){
-        if(unit === 'imp'){
-          return `${valFt2.toFixed(1)} ft²`;
-        } else {
-          return `${squareFeetToSquareMeters(valFt2).toFixed(2)} m²`;
-        }
-      }
-
-      function updateResults(r){
-        if(!r){
-          resCommon.textContent = '0';
-          resKings.textContent = '0';
-          resJacks.textContent = '0';
-          resCripples.textContent = '0';
-          resExtra.textContent = '0';
-          resTotalStuds.textContent = '0';
-          resPlatesLf.textContent = '0';
-          resPlatesBoards.textContent = '0';
-          resBlocks.textContent = '0';
-          resBlocksLf.textContent = '0';
-          resArea.textContent = '0';
-          resSheets.textContent = '0';
-          return;
-        }
-        resCommon.textContent = r.commonStuds.toString();
-        resKings.textContent = r.kingStuds.toString();
-        resJacks.textContent = r.jackStuds.toString();
-        resCripples.textContent = r.cripples.toString();
-        resExtra.textContent = r.extraEnds.toString();
-        resTotalStuds.textContent = `${r.baseTotalStuds} (≈ ${r.studsWithWaste} with waste)`;
-        resPlatesLf.textContent = `${fmtLengthFeetFeet(r.plateFeet)} (≈ ${fmtLengthFeetFeet(r.plateFeetWithWaste)} with waste)`;
-        resPlatesBoards.textContent = `${r.plateBoards} boards`;
-        resBlocks.textContent = `${r.blocksCount}`;
-        resBlocksLf.textContent = `${fmtLengthFeetFeet(r.blocksLenFeet)} (≈ ${fmtLengthFeetFeet(r.blocksLenFeetWithWaste)} with waste)`;
-        resArea.textContent = `${fmtAreaFt2(r.netAreaFt2)} (wall: ${fmtAreaFt2(r.wallAreaFt2)}, openings: ${fmtAreaFt2(r.openingsAreaFt2)})`;
-        resSheets.textContent = `${r.sheets}`;
-      }
-
-      // Initial compute
-      compute();
-    })();
-  </script>
-
-</body></html>
-, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="/assets/js/page-enhancements.js" as="script">
 
 
-<style>
+</main><link rel="preload" href="/assets/js/mobile-menu.js" as="script"><link rel="preload" href="/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1049,12 +710,7 @@ CalcDomain
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-
-<a class="skip-link" href="#main-content">Skip to main content</a>
-<header aria-label="Site header" role="banner">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><header aria-label="Site header" role="banner">
 <div class="header-wrap">
 CalcDomain
 <form aria-label="Site-wide search" class="site-search" role="search">
@@ -1066,8 +722,7 @@ CalcDomain
 <a href="https://calcdomain.com/construction-diy">Construction</a>
 </nav>
 </div>
-</header>
-<main class="container" id="main-content" role="main">
+</header><main class="container" id="main-content" role="main">
 <h1>Wall Framing Calculator</h1>
 <p>This professional wall framing calculator estimates common studs, king and jack studs for openings, plates, blocking, and sheathing. It’s designed for builders, estimators, and DIYers who need fast, reliable quantities with both Imperial and Metric units, while staying aligned with standard residential framing practices.</p>
 <div class="layout" id="calculator-layout">
@@ -1429,377 +1084,7 @@ CalcDomain
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
-
-      // Utility: DOM helpers
-      const $ = sel => document.querySelector(sel);
-      const $$ = sel => Array.from(document.querySelectorAll(sel));
-
-      // Elements
-      const unitRadios = $$('input[name="unit"]');
-      const wallLength = $('#wallLength');
-      const wallHeight = $('#wallHeight');
-      const studSpacing = $('#studSpacing');
-      const spacingUnit = $('#spacingUnit');
-      const studSize = $('#studSize');
-      const topPlates = $('#topPlates');
-      const bottomPlates = $('#bottomPlates');
-      const blockingRows = $('#blockingRows');
-      const endExtras = $('#endExtras');
-      const stockLength = $('#stockLength');
-      const sheetSize = $('#sheetSize');
-      const waste = $('#waste');
-
-      const openingsList = $('#openingsList');
-      const addOpeningBtn = $('#addOpeningBtn');
-
-      // Results
-      const resCommon = $('#res-common');
-      const resKings = $('#res-kings');
-      const resJacks = $('#res-jacks');
-      const resCripples = $('#res-cripples');
-      const resExtra = $('#res-extra');
-      const resTotalStuds = $('#res-total-studs');
-      const resPlatesLf = $('#res-plates-lf');
-      const resPlatesBoards = $('#res-plates-boards');
-      const resBlocks = $('#res-blocks');
-      const resBlocksLf = $('#res-blocks-lf');
-      const resArea = $('#res-area');
-      const resSheets = $('#res-sheets');
-
-      // Error fields
-      const errLength = $('#err-length');
-      const errHeight = $('#err-height');
-      const errSpacing = $('#err-spacing');
-
-      // Tooltips
-      $$('.help-btn').forEach(btn=>{
-        btn.addEventListener('click', e=>{
-          const id = btn.getAttribute('aria-controls');
-          const tip = document.getElementById(id);
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          tip.setAttribute('aria-hidden', String(expanded));
-        });
-        btn.addEventListener('keydown', e=>{
-          if(e.key === 'Enter' || e.key === ' '){
-            e.preventDefault();
-            btn.click();
-          }
-        });
-      });
-
-      // State and conversions
-      let unit = 'imp'; // 'imp' or 'met'
-      function toInchesFeetFeet(value, currentUnit){
-        if(isNaN(value) || value<=0) return 0;
-        // Returns length in feet if unit is imp; if metric, convert m to feet
-        if(unit === 'imp'){
-          return value; // already feet
-        } else {
-          return value * 3.280839895; // meters -> feet
-        }
-      }
-      function toInches(value, unitOfSpacing){
-        // spacing value number -> inches
-        if(unitOfSpacing === 'in') return value;
-        // mm to inches
-        return value / 25.4;
-      }
-      function toFeet(valInches){
-        return valInches / 12;
-      }
-      function feetToMeters(ft){ return ft * 0.3048; }
-      function squareFeetToSquareMeters(sf){ return sf * 0.09290304; }
-
-      function studThicknessInches(){
-        if(unit === 'met' && studSize.value === 'metric') return 38/25.4; // 38 mm
-        return 1.5; // nominal thickness for 2x
-      }
-
-      function isMetricStockSelected(){
-        const v = stockLength.value;
-        return v.toString().includes('.');
-      }
-
-      function parseNumber(input, min, errEl, label){
-        const v = Number(input.value);
-        if(!input.value || isNaN(v) || v <= (min ?? 0)){
-          input.setAttribute('aria-invalid', 'true');
-          if(errEl){
-            const msg = !input.value ? `${label} is required.` : `${label} must be greater than ${min ?? 0}.`;
-            errEl.textContent = msg;
-          }
-          return null;
-        }
-        input.setAttribute('aria-invalid','false');
-        if(errEl) errEl.textContent = '';
-        return v;
-      }
-
-      // Validation on blur
-      wallLength.addEventListener('blur', ()=>parseNumber(wallLength, 0, errLength, 'Wall length'));
-      wallHeight.addEventListener('blur', ()=>parseNumber(wallHeight, 0, errHeight, 'Wall height'));
-      studSpacing.addEventListener('blur', ()=>parseNumber(studSpacing, 0, errSpacing, 'Stud spacing'));
-
-      // Unit switching
-      unitRadios.forEach(r=>{
-        r.addEventListener('change', ()=>{
-          unit = r.value;
-          if(unit === 'imp'){
-            spacingUnit.value = 'in';
-            stockLength.value = '12'; // 12 ft default
-            sheetSize.value = '32'; // ft²
-            if(wallLength.placeholder.includes('(m)')) wallLength.placeholder = 'e.g., 12 (ft)';
-            if(wallHeight.placeholder.includes('(m)')) wallHeight.placeholder = 'e.g., 8 (ft)';
-          }else{
-            spacingUnit.value = 'mm';
-            stockLength.value = '3.6'; // 3.6 m default
-            sheetSize.value = '2.976'; // m²
-            wallLength.placeholder = 'e.g., 3.6 (m)';
-            wallHeight.placeholder = 'e.g., 2.4 (m)';
-          }
-          compute();
-        }, {passive:true});
-      });
-
-      spacingUnit.addEventListener('change', compute, {passive:true});
-      [wallLength, wallHeight, studSpacing, studSize, topPlates, bottomPlates, blockingRows, endExtras, stockLength, sheetSize, waste]
-        .forEach(el => el.addEventListener('input', compute, {passive:true}));
-
-      // Openings management
-      function openingRowTemplate(id){
-        // Each opening: type, width, height, jacks per side
-        // Inputs adapt to unit system labels
-        const widthPh = unit === 'imp' ? 'Width (ft)' : 'Width (m)';
-        const heightPh = unit === 'imp' ? 'Height (ft)' : 'Height (m)';
-        return `
-          <div class="opening-row" data-id="${id}">
-            <div>
-              <label for="op-type-${id}" class="sr-only">Opening type</label>
-              <select id="op-type-${id}" class="control" aria-label="Opening type">
-                <option value="door">Door</option>
-                <option value="window" selected>Window</option>
-              </select>
-            </div>
-            <div>
-              <label for="op-width-${id}" class="sr-only">Opening width</label>
-              <input id="op-width-${id}" class="control" type="number" inputmode="decimal" min="0.1" step="0.01" placeholder="${widthPh}" aria-label="Opening width">
-            </div>
-            <div>
-              <label for="op-height-${id}" class="sr-only">Opening height</label>
-              <input id="op-height-${id}" class="control" type="number" inputmode="decimal" min="0.1" step="0.01" placeholder="${heightPh}" aria-label="Opening height">
-            </div>
-            <div>
-              <label for="op-jacks-${id}" class="sr-only">Jacks per side</label>
-              <select id="op-jacks-${id}" class="control" aria-label="Jacks per side">
-                <option value="1" selected>1 jack/side</option>
-                <option value="2">2 jacks/side</option>
-              </select>
-            </div>
-            <div>
-              <button type="button" class="remove" aria-label="Remove opening">✕</button>
-            </div>
-          </div>
-        `;
-      }
-      let openingCounter = 0;
-
-      function addOpening(){
-        const id = ++openingCounter;
-        openingsList.insertAdjacentHTML('beforeend', openingRowTemplate(id));
-        const row = openingsList.querySelector(`.opening-row[data-id="${id}"]`);
-        // Bind events
-        row.querySelectorAll('input,select').forEach(el=>{
-          el.addEventListener('input', compute, {passive:true});
-        });
-        row.querySelector('.remove').addEventListener('click', ()=>{
-          row.remove();
-          compute();
-        });
-      }
-
-      addOpeningBtn.addEventListener('click', addOpening);
-      // Initialize with one window for UX
-      addOpening();
-
-      // Core compute
-      function compute(){
-        // Parse inputs with validation
-        const wl = parseNumber(wallLength, 0, errLength, 'Wall length');
-        const wh = parseNumber(wallHeight, 0, errHeight, 'Wall height');
-        const spVal = parseNumber(studSpacing, 0, errSpacing, 'Stud spacing');
-
-        if(wl === null || wh === null || spVal === null){
-          updateResults(null);
-          return;
-        }
-
-        // Normalize to feet and inches for geometry; keep areas in ft² then convert if metric
-        const length_ft = toInchesFeetFeet(wl); // if imp: feet; if metric: m -> ft
-        const height_ft = toInchesFeetFeet(wh);
-        const spacing_in = toInches(spVal, spacingUnit.value);
-
-        // Compute common studs: ceil(L/S)+1 with L,S in inches
-        const L_in = length_ft * 12;
-        const commonStuds = Math.ceil(L_in / spacing_in) + 1;
-
-        // Openings data
-        const openings = Array.from(openingsList.querySelectorAll('.opening-row')).map(row=>{
-          const type = row.querySelector('select[aria-label="Opening type"]').value;
-          const wRaw = Number(row.querySelector('input[aria-label="Opening width"]').value);
-          const hRaw = Number(row.querySelector('input[aria-label="Opening height"]').value);
-          const jacks = Number(row.querySelector('select[aria-label="Jacks per side"]').value) || 1;
-          const w_ft = unit === 'imp' ? (isNaN(wRaw)?0:wRaw) : feetToMeters(0) || (isNaN(wRaw)?0 : wRaw * 3.280839895); // m to ft
-          const h_ft = unit === 'imp' ? (isNaN(hRaw)?0:hRaw) : (isNaN(hRaw)?0 : hRaw * 3.280839895);
-          return { type, w_ft, h_ft, jacks };
-        });
-
-        // Kings & Jacks
-        const validOpenings = openings.filter(o=>o.w_ft>0 && o.h_ft>0);
-        const nOpen = validOpenings.length;
-        const kingStuds = 2 * nOpen;
-        const jackStuds = validOpenings.reduce((sum,o)=> sum + 2 * o.jacks, 0);
-
-        // Cripples estimate (windows only)
-        const cripples = validOpenings.reduce((sum,o)=>{
-          if(o.type !== 'window') return sum;
-          const w_in = o.w_ft * 12;
-          const est = Math.max(Math.ceil(w_in / spacing_in) - 1, 0);
-          return sum + est;
-        }, 0);
-
-        // Extra end studs
-        const extraEnds = Number(endExtras.value) * 2;
-
-        // Total studs with waste
-        const baseTotalStuds = commonStuds + kingStuds + jackStuds + cripples + extraEnds;
-        const studsWithWaste = Math.ceil(baseTotalStuds * (1 + (Number(waste.value||0)/100)));
-
-        // Plates total length in feet
-        const t = Number(topPlates.value);
-        const b = Number(bottomPlates.value);
-        const plateFeet = length_ft * (t + b);
-        const plateFeetWithWaste = plateFeet * (1 + (Number(waste.value||0)/100));
-
-        // Plate boards count by stock length
-        let stockLenFeet = 12; // default 12 ft
-        const stockSel = stockLength.value;
-        if(stockSel.includes('.')){
-          // metric meters -> feet
-          stockLenFeet = Number(stockSel) * 3.280839895;
-        } else {
-          stockLenFeet = Number(stockSel);
-        }
-        const plateBoards = Math.max(1, Math.ceil(plateFeetWithWaste / stockLenFeet));
-
-        // Blocking
-        const rows = Number(blockingRows.value);
-        const studThkIn = studThicknessInches();
-        const bays = Math.max(0, commonStuds - 1); // number of stud bays
-        const blocksCount = rows * bays;
-        const blockClearIn = Math.max(spacing_in - studThkIn, 0);
-        const blocksLenFeet = (blocksCount * blockClearIn) / 12;
-        const blocksLenFeetWithWaste = blocksLenFeet * (1 + (Number(waste.value||0)/100));
-
-        // Sheathing area (subtract openings)
-        const wallAreaFt2 = length_ft * height_ft;
-        const openingsAreaFt2 = validOpenings.reduce((sum,o)=> sum + (o.w_ft * o.h_ft), 0);
-        const netAreaFt2 = Math.max(0, wallAreaFt2 - openingsAreaFt2);
-        // Sheet size: store ft² or m²; if m² convert to ft²
-        let sheetAreaFt2 = Number(sheetSize.value);
-        if(sheetAreaFt2 < 5){ // treat as m²
-          sheetAreaFt2 = sheetAreaFt2 / 0.09290304;
-        }
-        const sheets = Math.max(0, Math.ceil(netAreaFt2 / sheetAreaFt2));
-
-        // Format values
-        updateResults({
-          commonStuds,
-          kingStuds,
-          jackStuds,
-          cripples,
-          extraEnds,
-          baseTotalStuds,
-          studsWithWaste,
-          plateFeet,
-          plateFeetWithWaste,
-          plateBoards,
-          blocksCount,
-          blocksLenFeet,
-          blocksLenFeetWithWaste,
-          wallAreaFt2,
-          openingsAreaFt2,
-          netAreaFt2,
-          sheets
-        });
-      }
-
-      function fmtLengthFeetFeet(valFt){
-        if(unit === 'imp'){
-          return `${valFt.toFixed(2)} ft`;
-        } else {
-          return `${(feetToMeters(valFt)).toFixed(2)} m`;
-        }
-      }
-      function fmtAreaFt2(valFt2){
-        if(unit === 'imp'){
-          return `${valFt2.toFixed(1)} ft²`;
-        } else {
-          return `${squareFeetToSquareMeters(valFt2).toFixed(2)} m²`;
-        }
-      }
-
-      function updateResults(r){
-        if(!r){
-          resCommon.textContent = '0';
-          resKings.textContent = '0';
-          resJacks.textContent = '0';
-          resCripples.textContent = '0';
-          resExtra.textContent = '0';
-          resTotalStuds.textContent = '0';
-          resPlatesLf.textContent = '0';
-          resPlatesBoards.textContent = '0';
-          resBlocks.textContent = '0';
-          resBlocksLf.textContent = '0';
-          resArea.textContent = '0';
-          resSheets.textContent = '0';
-          return;
-        }
-        resCommon.textContent = r.commonStuds.toString();
-        resKings.textContent = r.kingStuds.toString();
-        resJacks.textContent = r.jackStuds.toString();
-        resCripples.textContent = r.cripples.toString();
-        resExtra.textContent = r.extraEnds.toString();
-        resTotalStuds.textContent = `${r.baseTotalStuds} (≈ ${r.studsWithWaste} with waste)`;
-        resPlatesLf.textContent = `${fmtLengthFeetFeet(r.plateFeet)} (≈ ${fmtLengthFeetFeet(r.plateFeetWithWaste)} with waste)`;
-        resPlatesBoards.textContent = `${r.plateBoards} boards`;
-        resBlocks.textContent = `${r.blocksCount}`;
-        resBlocksLf.textContent = `${fmtLengthFeetFeet(r.blocksLenFeet)} (≈ ${fmtLengthFeetFeet(r.blocksLenFeetWithWaste)} with waste)`;
-        resArea.textContent = `${fmtAreaFt2(r.netAreaFt2)} (wall: ${fmtAreaFt2(r.wallAreaFt2)}, openings: ${fmtAreaFt2(r.openingsAreaFt2)})`;
-        resSheets.textContent = `${r.sheets}`;
-      }
-
-      // Initial compute
-      compute();
-    })();
-  </script>
-
-</body></html>
-]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="/assets/js/mobile-menu.js" as="script"><link rel="preload" href="/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1831,12 +1116,7 @@ CalcDomain
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-
-<a class="skip-link" href="#main-content">Skip to main content</a>
-<header aria-label="Site header" role="banner">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><header aria-label="Site header" role="banner">
 <div class="header-wrap">
 CalcDomain
 <form aria-label="Site-wide search" class="site-search" role="search">
@@ -1848,8 +1128,7 @@ CalcDomain
 <a href="https://calcdomain.com/construction-diy">Construction</a>
 </nav>
 </div>
-</header>
-<main class="container" id="main-content" role="main">
+</header><main class="container" id="main-content" role="main">
 <h1>Wall Framing Calculator</h1>
 <p>This professional wall framing calculator estimates common studs, king and jack studs for openings, plates, blocking, and sheathing. It’s designed for builders, estimators, and DIYers who need fast, reliable quantities with both Imperial and Metric units, while staying aligned with standard residential framing practices.</p>
 <div class="layout" id="calculator-layout">
@@ -2211,9 +1490,48 @@ CalcDomain
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
     (function(){
       'use strict';
 
@@ -2569,6 +1887,716 @@ CalcDomain
       // Initial compute
       compute();
     })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
 
-</body></html>
+      // Utility: DOM helpers
+      const $ = sel => document.querySelector(sel);
+      const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+      // Elements
+      const unitRadios = $$('input[name="unit"]');
+      const wallLength = $('#wallLength');
+      const wallHeight = $('#wallHeight');
+      const studSpacing = $('#studSpacing');
+      const spacingUnit = $('#spacingUnit');
+      const studSize = $('#studSize');
+      const topPlates = $('#topPlates');
+      const bottomPlates = $('#bottomPlates');
+      const blockingRows = $('#blockingRows');
+      const endExtras = $('#endExtras');
+      const stockLength = $('#stockLength');
+      const sheetSize = $('#sheetSize');
+      const waste = $('#waste');
+
+      const openingsList = $('#openingsList');
+      const addOpeningBtn = $('#addOpeningBtn');
+
+      // Results
+      const resCommon = $('#res-common');
+      const resKings = $('#res-kings');
+      const resJacks = $('#res-jacks');
+      const resCripples = $('#res-cripples');
+      const resExtra = $('#res-extra');
+      const resTotalStuds = $('#res-total-studs');
+      const resPlatesLf = $('#res-plates-lf');
+      const resPlatesBoards = $('#res-plates-boards');
+      const resBlocks = $('#res-blocks');
+      const resBlocksLf = $('#res-blocks-lf');
+      const resArea = $('#res-area');
+      const resSheets = $('#res-sheets');
+
+      // Error fields
+      const errLength = $('#err-length');
+      const errHeight = $('#err-height');
+      const errSpacing = $('#err-spacing');
+
+      // Tooltips
+      $$('.help-btn').forEach(btn=>{
+        btn.addEventListener('click', e=>{
+          const id = btn.getAttribute('aria-controls');
+          const tip = document.getElementById(id);
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          tip.setAttribute('aria-hidden', String(expanded));
+        });
+        btn.addEventListener('keydown', e=>{
+          if(e.key === 'Enter' || e.key === ' '){
+            e.preventDefault();
+            btn.click();
+          }
+        });
+      });
+
+      // State and conversions
+      let unit = 'imp'; // 'imp' or 'met'
+      function toInchesFeetFeet(value, currentUnit){
+        if(isNaN(value) || value<=0) return 0;
+        // Returns length in feet if unit is imp; if metric, convert m to feet
+        if(unit === 'imp'){
+          return value; // already feet
+        } else {
+          return value * 3.280839895; // meters -> feet
+        }
+      }
+      function toInches(value, unitOfSpacing){
+        // spacing value number -> inches
+        if(unitOfSpacing === 'in') return value;
+        // mm to inches
+        return value / 25.4;
+      }
+      function toFeet(valInches){
+        return valInches / 12;
+      }
+      function feetToMeters(ft){ return ft * 0.3048; }
+      function squareFeetToSquareMeters(sf){ return sf * 0.09290304; }
+
+      function studThicknessInches(){
+        if(unit === 'met' && studSize.value === 'metric') return 38/25.4; // 38 mm
+        return 1.5; // nominal thickness for 2x
+      }
+
+      function isMetricStockSelected(){
+        const v = stockLength.value;
+        return v.toString().includes('.');
+      }
+
+      function parseNumber(input, min, errEl, label){
+        const v = Number(input.value);
+        if(!input.value || isNaN(v) || v <= (min ?? 0)){
+          input.setAttribute('aria-invalid', 'true');
+          if(errEl){
+            const msg = !input.value ? `${label} is required.` : `${label} must be greater than ${min ?? 0}.`;
+            errEl.textContent = msg;
+          }
+          return null;
+        }
+        input.setAttribute('aria-invalid','false');
+        if(errEl) errEl.textContent = '';
+        return v;
+      }
+
+      // Validation on blur
+      wallLength.addEventListener('blur', ()=>parseNumber(wallLength, 0, errLength, 'Wall length'));
+      wallHeight.addEventListener('blur', ()=>parseNumber(wallHeight, 0, errHeight, 'Wall height'));
+      studSpacing.addEventListener('blur', ()=>parseNumber(studSpacing, 0, errSpacing, 'Stud spacing'));
+
+      // Unit switching
+      unitRadios.forEach(r=>{
+        r.addEventListener('change', ()=>{
+          unit = r.value;
+          if(unit === 'imp'){
+            spacingUnit.value = 'in';
+            stockLength.value = '12'; // 12 ft default
+            sheetSize.value = '32'; // ft²
+            if(wallLength.placeholder.includes('(m)')) wallLength.placeholder = 'e.g., 12 (ft)';
+            if(wallHeight.placeholder.includes('(m)')) wallHeight.placeholder = 'e.g., 8 (ft)';
+          }else{
+            spacingUnit.value = 'mm';
+            stockLength.value = '3.6'; // 3.6 m default
+            sheetSize.value = '2.976'; // m²
+            wallLength.placeholder = 'e.g., 3.6 (m)';
+            wallHeight.placeholder = 'e.g., 2.4 (m)';
+          }
+          compute();
+        }, {passive:true});
+      });
+
+      spacingUnit.addEventListener('change', compute, {passive:true});
+      [wallLength, wallHeight, studSpacing, studSize, topPlates, bottomPlates, blockingRows, endExtras, stockLength, sheetSize, waste]
+        .forEach(el => el.addEventListener('input', compute, {passive:true}));
+
+      // Openings management
+      function openingRowTemplate(id){
+        // Each opening: type, width, height, jacks per side
+        // Inputs adapt to unit system labels
+        const widthPh = unit === 'imp' ? 'Width (ft)' : 'Width (m)';
+        const heightPh = unit === 'imp' ? 'Height (ft)' : 'Height (m)';
+        return `
+          <div class="opening-row" data-id="${id}">
+            <div>
+              <label for="op-type-${id}" class="sr-only">Opening type</label>
+              <select id="op-type-${id}" class="control" aria-label="Opening type">
+                <option value="door">Door</option>
+                <option value="window" selected>Window</option>
+              </select>
+            </div>
+            <div>
+              <label for="op-width-${id}" class="sr-only">Opening width</label>
+              <input id="op-width-${id}" class="control" type="number" inputmode="decimal" min="0.1" step="0.01" placeholder="${widthPh}" aria-label="Opening width">
+            </div>
+            <div>
+              <label for="op-height-${id}" class="sr-only">Opening height</label>
+              <input id="op-height-${id}" class="control" type="number" inputmode="decimal" min="0.1" step="0.01" placeholder="${heightPh}" aria-label="Opening height">
+            </div>
+            <div>
+              <label for="op-jacks-${id}" class="sr-only">Jacks per side</label>
+              <select id="op-jacks-${id}" class="control" aria-label="Jacks per side">
+                <option value="1" selected>1 jack/side</option>
+                <option value="2">2 jacks/side</option>
+              </select>
+            </div>
+            <div>
+              <button type="button" class="remove" aria-label="Remove opening">✕</button>
+            </div>
+          </div>
+        `;
+      }
+      let openingCounter = 0;
+
+      function addOpening(){
+        const id = ++openingCounter;
+        openingsList.insertAdjacentHTML('beforeend', openingRowTemplate(id));
+        const row = openingsList.querySelector(`.opening-row[data-id="${id}"]`);
+        // Bind events
+        row.querySelectorAll('input,select').forEach(el=>{
+          el.addEventListener('input', compute, {passive:true});
+        });
+        row.querySelector('.remove').addEventListener('click', ()=>{
+          row.remove();
+          compute();
+        });
+      }
+
+      addOpeningBtn.addEventListener('click', addOpening);
+      // Initialize with one window for UX
+      addOpening();
+
+      // Core compute
+      function compute(){
+        // Parse inputs with validation
+        const wl = parseNumber(wallLength, 0, errLength, 'Wall length');
+        const wh = parseNumber(wallHeight, 0, errHeight, 'Wall height');
+        const spVal = parseNumber(studSpacing, 0, errSpacing, 'Stud spacing');
+
+        if(wl === null || wh === null || spVal === null){
+          updateResults(null);
+          return;
+        }
+
+        // Normalize to feet and inches for geometry; keep areas in ft² then convert if metric
+        const length_ft = toInchesFeetFeet(wl); // if imp: feet; if metric: m -> ft
+        const height_ft = toInchesFeetFeet(wh);
+        const spacing_in = toInches(spVal, spacingUnit.value);
+
+        // Compute common studs: ceil(L/S)+1 with L,S in inches
+        const L_in = length_ft * 12;
+        const commonStuds = Math.ceil(L_in / spacing_in) + 1;
+
+        // Openings data
+        const openings = Array.from(openingsList.querySelectorAll('.opening-row')).map(row=>{
+          const type = row.querySelector('select[aria-label="Opening type"]').value;
+          const wRaw = Number(row.querySelector('input[aria-label="Opening width"]').value);
+          const hRaw = Number(row.querySelector('input[aria-label="Opening height"]').value);
+          const jacks = Number(row.querySelector('select[aria-label="Jacks per side"]').value) || 1;
+          const w_ft = unit === 'imp' ? (isNaN(wRaw)?0:wRaw) : feetToMeters(0) || (isNaN(wRaw)?0 : wRaw * 3.280839895); // m to ft
+          const h_ft = unit === 'imp' ? (isNaN(hRaw)?0:hRaw) : (isNaN(hRaw)?0 : hRaw * 3.280839895);
+          return { type, w_ft, h_ft, jacks };
+        });
+
+        // Kings & Jacks
+        const validOpenings = openings.filter(o=>o.w_ft>0 && o.h_ft>0);
+        const nOpen = validOpenings.length;
+        const kingStuds = 2 * nOpen;
+        const jackStuds = validOpenings.reduce((sum,o)=> sum + 2 * o.jacks, 0);
+
+        // Cripples estimate (windows only)
+        const cripples = validOpenings.reduce((sum,o)=>{
+          if(o.type !== 'window') return sum;
+          const w_in = o.w_ft * 12;
+          const est = Math.max(Math.ceil(w_in / spacing_in) - 1, 0);
+          return sum + est;
+        }, 0);
+
+        // Extra end studs
+        const extraEnds = Number(endExtras.value) * 2;
+
+        // Total studs with waste
+        const baseTotalStuds = commonStuds + kingStuds + jackStuds + cripples + extraEnds;
+        const studsWithWaste = Math.ceil(baseTotalStuds * (1 + (Number(waste.value||0)/100)));
+
+        // Plates total length in feet
+        const t = Number(topPlates.value);
+        const b = Number(bottomPlates.value);
+        const plateFeet = length_ft * (t + b);
+        const plateFeetWithWaste = plateFeet * (1 + (Number(waste.value||0)/100));
+
+        // Plate boards count by stock length
+        let stockLenFeet = 12; // default 12 ft
+        const stockSel = stockLength.value;
+        if(stockSel.includes('.')){
+          // metric meters -> feet
+          stockLenFeet = Number(stockSel) * 3.280839895;
+        } else {
+          stockLenFeet = Number(stockSel);
+        }
+        const plateBoards = Math.max(1, Math.ceil(plateFeetWithWaste / stockLenFeet));
+
+        // Blocking
+        const rows = Number(blockingRows.value);
+        const studThkIn = studThicknessInches();
+        const bays = Math.max(0, commonStuds - 1); // number of stud bays
+        const blocksCount = rows * bays;
+        const blockClearIn = Math.max(spacing_in - studThkIn, 0);
+        const blocksLenFeet = (blocksCount * blockClearIn) / 12;
+        const blocksLenFeetWithWaste = blocksLenFeet * (1 + (Number(waste.value||0)/100));
+
+        // Sheathing area (subtract openings)
+        const wallAreaFt2 = length_ft * height_ft;
+        const openingsAreaFt2 = validOpenings.reduce((sum,o)=> sum + (o.w_ft * o.h_ft), 0);
+        const netAreaFt2 = Math.max(0, wallAreaFt2 - openingsAreaFt2);
+        // Sheet size: store ft² or m²; if m² convert to ft²
+        let sheetAreaFt2 = Number(sheetSize.value);
+        if(sheetAreaFt2 < 5){ // treat as m²
+          sheetAreaFt2 = sheetAreaFt2 / 0.09290304;
+        }
+        const sheets = Math.max(0, Math.ceil(netAreaFt2 / sheetAreaFt2));
+
+        // Format values
+        updateResults({
+          commonStuds,
+          kingStuds,
+          jackStuds,
+          cripples,
+          extraEnds,
+          baseTotalStuds,
+          studsWithWaste,
+          plateFeet,
+          plateFeetWithWaste,
+          plateBoards,
+          blocksCount,
+          blocksLenFeet,
+          blocksLenFeetWithWaste,
+          wallAreaFt2,
+          openingsAreaFt2,
+          netAreaFt2,
+          sheets
+        });
+      }
+
+      function fmtLengthFeetFeet(valFt){
+        if(unit === 'imp'){
+          return `${valFt.toFixed(2)} ft`;
+        } else {
+          return `${(feetToMeters(valFt)).toFixed(2)} m`;
+        }
+      }
+      function fmtAreaFt2(valFt2){
+        if(unit === 'imp'){
+          return `${valFt2.toFixed(1)} ft²`;
+        } else {
+          return `${squareFeetToSquareMeters(valFt2).toFixed(2)} m²`;
+        }
+      }
+
+      function updateResults(r){
+        if(!r){
+          resCommon.textContent = '0';
+          resKings.textContent = '0';
+          resJacks.textContent = '0';
+          resCripples.textContent = '0';
+          resExtra.textContent = '0';
+          resTotalStuds.textContent = '0';
+          resPlatesLf.textContent = '0';
+          resPlatesBoards.textContent = '0';
+          resBlocks.textContent = '0';
+          resBlocksLf.textContent = '0';
+          resArea.textContent = '0';
+          resSheets.textContent = '0';
+          return;
+        }
+        resCommon.textContent = r.commonStuds.toString();
+        resKings.textContent = r.kingStuds.toString();
+        resJacks.textContent = r.jackStuds.toString();
+        resCripples.textContent = r.cripples.toString();
+        resExtra.textContent = r.extraEnds.toString();
+        resTotalStuds.textContent = `${r.baseTotalStuds} (≈ ${r.studsWithWaste} with waste)`;
+        resPlatesLf.textContent = `${fmtLengthFeetFeet(r.plateFeet)} (≈ ${fmtLengthFeetFeet(r.plateFeetWithWaste)} with waste)`;
+        resPlatesBoards.textContent = `${r.plateBoards} boards`;
+        resBlocks.textContent = `${r.blocksCount}`;
+        resBlocksLf.textContent = `${fmtLengthFeetFeet(r.blocksLenFeet)} (≈ ${fmtLengthFeetFeet(r.blocksLenFeetWithWaste)} with waste)`;
+        resArea.textContent = `${fmtAreaFt2(r.netAreaFt2)} (wall: ${fmtAreaFt2(r.wallAreaFt2)}, openings: ${fmtAreaFt2(r.openingsAreaFt2)})`;
+        resSheets.textContent = `${r.sheets}`;
+      }
+
+      // Initial compute
+      compute();
+    })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
+
+      // Utility: DOM helpers
+      const $ = sel => document.querySelector(sel);
+      const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+      // Elements
+      const unitRadios = $$('input[name="unit"]');
+      const wallLength = $('#wallLength');
+      const wallHeight = $('#wallHeight');
+      const studSpacing = $('#studSpacing');
+      const spacingUnit = $('#spacingUnit');
+      const studSize = $('#studSize');
+      const topPlates = $('#topPlates');
+      const bottomPlates = $('#bottomPlates');
+      const blockingRows = $('#blockingRows');
+      const endExtras = $('#endExtras');
+      const stockLength = $('#stockLength');
+      const sheetSize = $('#sheetSize');
+      const waste = $('#waste');
+
+      const openingsList = $('#openingsList');
+      const addOpeningBtn = $('#addOpeningBtn');
+
+      // Results
+      const resCommon = $('#res-common');
+      const resKings = $('#res-kings');
+      const resJacks = $('#res-jacks');
+      const resCripples = $('#res-cripples');
+      const resExtra = $('#res-extra');
+      const resTotalStuds = $('#res-total-studs');
+      const resPlatesLf = $('#res-plates-lf');
+      const resPlatesBoards = $('#res-plates-boards');
+      const resBlocks = $('#res-blocks');
+      const resBlocksLf = $('#res-blocks-lf');
+      const resArea = $('#res-area');
+      const resSheets = $('#res-sheets');
+
+      // Error fields
+      const errLength = $('#err-length');
+      const errHeight = $('#err-height');
+      const errSpacing = $('#err-spacing');
+
+      // Tooltips
+      $$('.help-btn').forEach(btn=>{
+        btn.addEventListener('click', e=>{
+          const id = btn.getAttribute('aria-controls');
+          const tip = document.getElementById(id);
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          tip.setAttribute('aria-hidden', String(expanded));
+        });
+        btn.addEventListener('keydown', e=>{
+          if(e.key === 'Enter' || e.key === ' '){
+            e.preventDefault();
+            btn.click();
+          }
+        });
+      });
+
+      // State and conversions
+      let unit = 'imp'; // 'imp' or 'met'
+      function toInchesFeetFeet(value, currentUnit){
+        if(isNaN(value) || value<=0) return 0;
+        // Returns length in feet if unit is imp; if metric, convert m to feet
+        if(unit === 'imp'){
+          return value; // already feet
+        } else {
+          return value * 3.280839895; // meters -> feet
+        }
+      }
+      function toInches(value, unitOfSpacing){
+        // spacing value number -> inches
+        if(unitOfSpacing === 'in') return value;
+        // mm to inches
+        return value / 25.4;
+      }
+      function toFeet(valInches){
+        return valInches / 12;
+      }
+      function feetToMeters(ft){ return ft * 0.3048; }
+      function squareFeetToSquareMeters(sf){ return sf * 0.09290304; }
+
+      function studThicknessInches(){
+        if(unit === 'met' && studSize.value === 'metric') return 38/25.4; // 38 mm
+        return 1.5; // nominal thickness for 2x
+      }
+
+      function isMetricStockSelected(){
+        const v = stockLength.value;
+        return v.toString().includes('.');
+      }
+
+      function parseNumber(input, min, errEl, label){
+        const v = Number(input.value);
+        if(!input.value || isNaN(v) || v <= (min ?? 0)){
+          input.setAttribute('aria-invalid', 'true');
+          if(errEl){
+            const msg = !input.value ? `${label} is required.` : `${label} must be greater than ${min ?? 0}.`;
+            errEl.textContent = msg;
+          }
+          return null;
+        }
+        input.setAttribute('aria-invalid','false');
+        if(errEl) errEl.textContent = '';
+        return v;
+      }
+
+      // Validation on blur
+      wallLength.addEventListener('blur', ()=>parseNumber(wallLength, 0, errLength, 'Wall length'));
+      wallHeight.addEventListener('blur', ()=>parseNumber(wallHeight, 0, errHeight, 'Wall height'));
+      studSpacing.addEventListener('blur', ()=>parseNumber(studSpacing, 0, errSpacing, 'Stud spacing'));
+
+      // Unit switching
+      unitRadios.forEach(r=>{
+        r.addEventListener('change', ()=>{
+          unit = r.value;
+          if(unit === 'imp'){
+            spacingUnit.value = 'in';
+            stockLength.value = '12'; // 12 ft default
+            sheetSize.value = '32'; // ft²
+            if(wallLength.placeholder.includes('(m)')) wallLength.placeholder = 'e.g., 12 (ft)';
+            if(wallHeight.placeholder.includes('(m)')) wallHeight.placeholder = 'e.g., 8 (ft)';
+          }else{
+            spacingUnit.value = 'mm';
+            stockLength.value = '3.6'; // 3.6 m default
+            sheetSize.value = '2.976'; // m²
+            wallLength.placeholder = 'e.g., 3.6 (m)';
+            wallHeight.placeholder = 'e.g., 2.4 (m)';
+          }
+          compute();
+        }, {passive:true});
+      });
+
+      spacingUnit.addEventListener('change', compute, {passive:true});
+      [wallLength, wallHeight, studSpacing, studSize, topPlates, bottomPlates, blockingRows, endExtras, stockLength, sheetSize, waste]
+        .forEach(el => el.addEventListener('input', compute, {passive:true}));
+
+      // Openings management
+      function openingRowTemplate(id){
+        // Each opening: type, width, height, jacks per side
+        // Inputs adapt to unit system labels
+        const widthPh = unit === 'imp' ? 'Width (ft)' : 'Width (m)';
+        const heightPh = unit === 'imp' ? 'Height (ft)' : 'Height (m)';
+        return `
+          <div class="opening-row" data-id="${id}">
+            <div>
+              <label for="op-type-${id}" class="sr-only">Opening type</label>
+              <select id="op-type-${id}" class="control" aria-label="Opening type">
+                <option value="door">Door</option>
+                <option value="window" selected>Window</option>
+              </select>
+            </div>
+            <div>
+              <label for="op-width-${id}" class="sr-only">Opening width</label>
+              <input id="op-width-${id}" class="control" type="number" inputmode="decimal" min="0.1" step="0.01" placeholder="${widthPh}" aria-label="Opening width">
+            </div>
+            <div>
+              <label for="op-height-${id}" class="sr-only">Opening height</label>
+              <input id="op-height-${id}" class="control" type="number" inputmode="decimal" min="0.1" step="0.01" placeholder="${heightPh}" aria-label="Opening height">
+            </div>
+            <div>
+              <label for="op-jacks-${id}" class="sr-only">Jacks per side</label>
+              <select id="op-jacks-${id}" class="control" aria-label="Jacks per side">
+                <option value="1" selected>1 jack/side</option>
+                <option value="2">2 jacks/side</option>
+              </select>
+            </div>
+            <div>
+              <button type="button" class="remove" aria-label="Remove opening">✕</button>
+            </div>
+          </div>
+        `;
+      }
+      let openingCounter = 0;
+
+      function addOpening(){
+        const id = ++openingCounter;
+        openingsList.insertAdjacentHTML('beforeend', openingRowTemplate(id));
+        const row = openingsList.querySelector(`.opening-row[data-id="${id}"]`);
+        // Bind events
+        row.querySelectorAll('input,select').forEach(el=>{
+          el.addEventListener('input', compute, {passive:true});
+        });
+        row.querySelector('.remove').addEventListener('click', ()=>{
+          row.remove();
+          compute();
+        });
+      }
+
+      addOpeningBtn.addEventListener('click', addOpening);
+      // Initialize with one window for UX
+      addOpening();
+
+      // Core compute
+      function compute(){
+        // Parse inputs with validation
+        const wl = parseNumber(wallLength, 0, errLength, 'Wall length');
+        const wh = parseNumber(wallHeight, 0, errHeight, 'Wall height');
+        const spVal = parseNumber(studSpacing, 0, errSpacing, 'Stud spacing');
+
+        if(wl === null || wh === null || spVal === null){
+          updateResults(null);
+          return;
+        }
+
+        // Normalize to feet and inches for geometry; keep areas in ft² then convert if metric
+        const length_ft = toInchesFeetFeet(wl); // if imp: feet; if metric: m -> ft
+        const height_ft = toInchesFeetFeet(wh);
+        const spacing_in = toInches(spVal, spacingUnit.value);
+
+        // Compute common studs: ceil(L/S)+1 with L,S in inches
+        const L_in = length_ft * 12;
+        const commonStuds = Math.ceil(L_in / spacing_in) + 1;
+
+        // Openings data
+        const openings = Array.from(openingsList.querySelectorAll('.opening-row')).map(row=>{
+          const type = row.querySelector('select[aria-label="Opening type"]').value;
+          const wRaw = Number(row.querySelector('input[aria-label="Opening width"]').value);
+          const hRaw = Number(row.querySelector('input[aria-label="Opening height"]').value);
+          const jacks = Number(row.querySelector('select[aria-label="Jacks per side"]').value) || 1;
+          const w_ft = unit === 'imp' ? (isNaN(wRaw)?0:wRaw) : feetToMeters(0) || (isNaN(wRaw)?0 : wRaw * 3.280839895); // m to ft
+          const h_ft = unit === 'imp' ? (isNaN(hRaw)?0:hRaw) : (isNaN(hRaw)?0 : hRaw * 3.280839895);
+          return { type, w_ft, h_ft, jacks };
+        });
+
+        // Kings & Jacks
+        const validOpenings = openings.filter(o=>o.w_ft>0 && o.h_ft>0);
+        const nOpen = validOpenings.length;
+        const kingStuds = 2 * nOpen;
+        const jackStuds = validOpenings.reduce((sum,o)=> sum + 2 * o.jacks, 0);
+
+        // Cripples estimate (windows only)
+        const cripples = validOpenings.reduce((sum,o)=>{
+          if(o.type !== 'window') return sum;
+          const w_in = o.w_ft * 12;
+          const est = Math.max(Math.ceil(w_in / spacing_in) - 1, 0);
+          return sum + est;
+        }, 0);
+
+        // Extra end studs
+        const extraEnds = Number(endExtras.value) * 2;
+
+        // Total studs with waste
+        const baseTotalStuds = commonStuds + kingStuds + jackStuds + cripples + extraEnds;
+        const studsWithWaste = Math.ceil(baseTotalStuds * (1 + (Number(waste.value||0)/100)));
+
+        // Plates total length in feet
+        const t = Number(topPlates.value);
+        const b = Number(bottomPlates.value);
+        const plateFeet = length_ft * (t + b);
+        const plateFeetWithWaste = plateFeet * (1 + (Number(waste.value||0)/100));
+
+        // Plate boards count by stock length
+        let stockLenFeet = 12; // default 12 ft
+        const stockSel = stockLength.value;
+        if(stockSel.includes('.')){
+          // metric meters -> feet
+          stockLenFeet = Number(stockSel) * 3.280839895;
+        } else {
+          stockLenFeet = Number(stockSel);
+        }
+        const plateBoards = Math.max(1, Math.ceil(plateFeetWithWaste / stockLenFeet));
+
+        // Blocking
+        const rows = Number(blockingRows.value);
+        const studThkIn = studThicknessInches();
+        const bays = Math.max(0, commonStuds - 1); // number of stud bays
+        const blocksCount = rows * bays;
+        const blockClearIn = Math.max(spacing_in - studThkIn, 0);
+        const blocksLenFeet = (blocksCount * blockClearIn) / 12;
+        const blocksLenFeetWithWaste = blocksLenFeet * (1 + (Number(waste.value||0)/100));
+
+        // Sheathing area (subtract openings)
+        const wallAreaFt2 = length_ft * height_ft;
+        const openingsAreaFt2 = validOpenings.reduce((sum,o)=> sum + (o.w_ft * o.h_ft), 0);
+        const netAreaFt2 = Math.max(0, wallAreaFt2 - openingsAreaFt2);
+        // Sheet size: store ft² or m²; if m² convert to ft²
+        let sheetAreaFt2 = Number(sheetSize.value);
+        if(sheetAreaFt2 < 5){ // treat as m²
+          sheetAreaFt2 = sheetAreaFt2 / 0.09290304;
+        }
+        const sheets = Math.max(0, Math.ceil(netAreaFt2 / sheetAreaFt2));
+
+        // Format values
+        updateResults({
+          commonStuds,
+          kingStuds,
+          jackStuds,
+          cripples,
+          extraEnds,
+          baseTotalStuds,
+          studsWithWaste,
+          plateFeet,
+          plateFeetWithWaste,
+          plateBoards,
+          blocksCount,
+          blocksLenFeet,
+          blocksLenFeetWithWaste,
+          wallAreaFt2,
+          openingsAreaFt2,
+          netAreaFt2,
+          sheets
+        });
+      }
+
+      function fmtLengthFeetFeet(valFt){
+        if(unit === 'imp'){
+          return `${valFt.toFixed(2)} ft`;
+        } else {
+          return `${(feetToMeters(valFt)).toFixed(2)} m`;
+        }
+      }
+      function fmtAreaFt2(valFt2){
+        if(unit === 'imp'){
+          return `${valFt2.toFixed(1)} ft²`;
+        } else {
+          return `${squareFeetToSquareMeters(valFt2).toFixed(2)} m²`;
+        }
+      }
+
+      function updateResults(r){
+        if(!r){
+          resCommon.textContent = '0';
+          resKings.textContent = '0';
+          resJacks.textContent = '0';
+          resCripples.textContent = '0';
+          resExtra.textContent = '0';
+          resTotalStuds.textContent = '0';
+          resPlatesLf.textContent = '0';
+          resPlatesBoards.textContent = '0';
+          resBlocks.textContent = '0';
+          resBlocksLf.textContent = '0';
+          resArea.textContent = '0';
+          resSheets.textContent = '0';
+          return;
+        }
+        resCommon.textContent = r.commonStuds.toString();
+        resKings.textContent = r.kingStuds.toString();
+        resJacks.textContent = r.jackStuds.toString();
+        resCripples.textContent = r.cripples.toString();
+        resExtra.textContent = r.extraEnds.toString();
+        resTotalStuds.textContent = `${r.baseTotalStuds} (≈ ${r.studsWithWaste} with waste)`;
+        resPlatesLf.textContent = `${fmtLengthFeetFeet(r.plateFeet)} (≈ ${fmtLengthFeetFeet(r.plateFeetWithWaste)} with waste)`;
+        resPlatesBoards.textContent = `${r.plateBoards} boards`;
+        resBlocks.textContent = `${r.blocksCount}`;
+        resBlocksLf.textContent = `${fmtLengthFeetFeet(r.blocksLenFeet)} (≈ ${fmtLengthFeetFeet(r.blocksLenFeetWithWaste)} with waste)`;
+        resArea.textContent = `${fmtAreaFt2(r.netAreaFt2)} (wall: ${fmtAreaFt2(r.wallAreaFt2)}, openings: ${fmtAreaFt2(r.openingsAreaFt2)})`;
+        resSheets.textContent = `${r.sheets}`;
+      }
+
+      // Initial compute
+      compute();
+    })();
+  </script></body></html>

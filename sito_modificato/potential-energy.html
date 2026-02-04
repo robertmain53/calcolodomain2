@@ -195,10 +195,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
@@ -265,11 +271,23 @@
 }
 </script>
 </head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">Potential Energy Calculator</h1>
+    <p class="sub" id="pageSub">Professional potential energy calculator for physics. Compute gravitational potential energy (m·g·h and −G·m1·m2/r) and elastic spring energy (½·k·x²) with precise unit conversions. Fully accessible, mobile‑first, and optimized for performance.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<main class="container" id="main-content" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main class="container" id="main-content" role="main">
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Potential Energy Calculator</h1>
 <p>This professional-grade tool computes potential energy for three common models: gravitational (near-surface), gravitational (two-body), and elastic (spring). It’s built for students, educators, and engineers who need precise results with transparent methodology, accessible UX, and robust unit conversions.</p>
 <div aria-live="off" class="layout">
@@ -612,251 +630,21 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
+
+
 </main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
 
-      // Elements
-      const qs = (sel, ctx=document) => ctx.querySelector(sel);
-      const qsa = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+<button id="resetBtn" type="button" class="btn btnSecondary">Reset</button>
+</div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-      // Model groups
-      const groups = {
-        mgh: qs('#group-mgh'),
-        'two-body': qs('#group-two-body'),
-        spring: qs('#group-spring')
-      };
-
-      // Inputs - mgh
-      const mass = qs('#mass'), massUnit = qs('#mass-unit');
-      const height = qs('#height'), heightUnit = qs('#height-unit');
-      const body = qs('#body'), g = qs('#g');
-      // two-body
-      const m1 = qs('#m1'), m1Unit = qs('#m1-unit');
-      const m2 = qs('#m2'), m2Unit = qs('#m2-unit');
-      const r = qs('#r'), rUnit = qs('#r-unit');
-      const G = qs('#G');
-      // spring
-      const k = qs('#k'), kUnit = qs('#k-unit');
-      const x = qs('#x'), xUnit = qs('#x-unit');
-
-      // Help tooltips
-      function setupTooltip(btnId, tipId){
-        const btn = qs('#' + btnId);
-        const tip = qs('#' + tipId);
-        if(!btn || !tip) return;
-        btn.addEventListener('click', () => {
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          tip.dataset.open = String(!expanded);
-        });
-      }
-      setupTooltip('height-help','height-tip');
-      setupTooltip('g-help','g-tip');
-      setupTooltip('G-help','G-tip');
-
-      // Validation helpers
-      const errors = {
-        mass: qs('#mass-err'),
-        height: qs('#height-err'),
-        g: qs('#g-err'),
-        m1: qs('#m1-err'),
-        m2: qs('#m2-err'),
-        r: qs('#r-err'),
-        G: qs('#G-err'),
-        k: qs('#k-err'),
-        x: qs('#x-err')
-      };
-
-      function setError(input, msg){
-        const id = input.id + '-err';
-        const el = errors[input.id];
-        if(el){
-          el.textContent = msg || '';
-        }
-        input.setAttribute('aria-invalid', msg ? 'true' : 'false');
-      }
-
-      function parseNum(input){
-        const v = String(input.value).trim();
-        if(v === '') return null;
-        const num = Number(v);
-        return Number.isFinite(num) ? num : NaN;
-      }
-
-      function onBlurPositive(input, allowZero=false){
-        const val = parseNum(input);
-        if(val === null){
-          setError(input, 'Please enter a value.');
-          return false;
-        }
-        if(Number.isNaN(val)){
-          setError(input, 'Invalid number. Use digits like 12.5 or scientific notation 1e3.');
-          return false;
-        }
-        if(allowZero ? (val < 0) : (val <= 0)){
-          setError(input, allowZero ? 'Value must be zero or greater.' : 'Value must be greater than zero.');
-          return false;
-        }
-        setError(input, '');
-        return true;
-      }
-      function onBlurAnyNumber(input){
-        const val = parseNum(input);
-        if(val === null){ setError(input, 'Please enter a value.'); return false; }
-        if(Number.isNaN(val)){ setError(input, 'Invalid number. Use digits like 12.5 or scientific notation 1e3.'); return false; }
-        setError(input, '');
-        return true;
-      }
-
-      // Attach blur validation
-      [
-        [mass, onBlurPositive],[height, onBlurAnyNumber],[g, onBlurPositive],
-        [m1, onBlurPositive],[m2, onBlurPositive],[r, onBlurPositive],
-        [G, onBlurPositive],
-        [k, onBlurPositive],[x, onBlurAnyNumber]
-      ].forEach(([el,fn]) => { if(el) el.addEventListener('blur', () => fn(el)); });
-
-      // Units
-      const massToKg = { kg:1, g:1e-3, lb:0.45359237 };
-      const lenToM = { m:1, cm:0.01, mm:0.001, ft:0.3048, in:0.0254, km:1000, mi:1609.344 };
-      const kToNperM = { 'N/m':1, 'N/mm':1000, 'lb/in':175.126836, 'lb/ft':14.5939029 };
-
-      // Body presets
-      const gPresets = {
-        earth: 9.80665,
-        moon: 1.62,
-        mars: 3.721
-      };
-      body.addEventListener('change', () => {
-        if(body.value === 'custom'){
-          g.removeAttribute('readonly');
-        } else {
-          g.value = gPresets[body.value] ?? 9.80665;
-          g.setAttribute('readonly','readonly');
-          setError(g,'');
-        }
-        compute();
-      });
-
-      // Model switching
-      function setModel(model){
-        Object.entries(groups).forEach(([key, el]) => {
-          const active = key === model;
-          el.classList.toggle('hidden', !active);
-          el.setAttribute('aria-hidden', String(!active));
-          qsa('input,select', el).forEach(inp => inp.disabled = !active);
-        });
-      }
-      qsa('input[name="model"]').forEach(radio=>{
-        radio.addEventListener('change', e => {
-          if(radio.checked){ setModel(radio.value); compute(); }
-        });
-      });
-      setModel('mgh');
-
-      // Results
-      const energyJ = qs('#energyJ'), energyKJ = qs('#energyKJ'), energyKWh = qs('#energyKWh');
-      const resultNote = qs('#result-note');
-
-      function fmt(num, opts={}){
-        if(!Number.isFinite(num)) return '—';
-        const abs = Math.abs(num);
-        const maxFrac = abs >= 1e6 || (abs > 0 && abs < 1e-3) ? 3 : 4;
-        return num.toLocaleString(undefined, { maximumFractionDigits: opts.maxFrac ?? maxFrac });
-      }
-
-      function computeMGH(){
-        const m = parseNum(mass), h = parseNum(height), gv = parseNum(g);
-        if(m === null || Number.isNaN(m) || m <= 0) return null;
-        if(h === null || Number.isNaN(h)) return null;
-        if(gv === null || Number.isNaN(gv) || gv <= 0) return null;
-        const mSI = m * (massToKg[massUnit.value] || 1);
-        const hSI = h * (lenToM[heightUnit.value] || 1);
-        const U = mSI * gv * hSI; // J
-        return { U, note: 'Computed with U = m·g·h (constant g approximation).' };
-      }
-
-      function computeTwoBody(){
-        const m1v = parseNum(m1), m2v = parseNum(m2), rv = parseNum(r), Gv = parseNum(G);
-        if([m1v,m2v,rv,Gv].some(v => v === null || Number.isNaN(v))) return null;
-        if(m1v <= 0 || m2v <= 0 || rv <= 0 || Gv <= 0) return null;
-        const m1SI = m1v * (massToKg[m1Unit.value] || 1);
-        const m2SI = m2v * (massToKg[m2Unit.value] || 1);
-        const rSI = rv * (lenToM[rUnit.value] || 1);
-        const U = - (Gv * m1SI * m2SI) / rSI; // J
-        return { U, note: 'Computed with U = −G·m₁·m₂/r (zero at infinite separation).' };
-      }
-
-      function computeSpring(){
-        const kv = parseNum(k), xv = parseNum(x);
-        if(kv === null || Number.isNaN(kv) || kv <= 0) return null;
-        if(xv === null || Number.isNaN(xv)) return null;
-        const kSI = kv * (kToNperM[kUnit.value] || 1);
-        const xSI = xv * (lenToM[xUnit.value] || 1);
-        const U = 0.5 * kSI * xSI * xSI; // J
-        return { U, note: 'Computed with U = ½·k·x² (ideal linear spring).' };
-      }
-
-      function compute(){
-        const model = qs('input[name="model"]:checked').value;
-        let res = null;
-        if(model === 'mgh') res = computeMGH();
-        else if(model === 'two-body') res = computeTwoBody();
-        else if(model === 'spring') res = computeSpring();
-
-        if(!res){ energyJ.textContent='—'; energyKJ.textContent='—'; energyKWh.textContent='—'; resultNote.textContent=''; return; }
-
-        const U = res.U;
-        energyJ.textContent = fmt(U, {maxFrac:6}) + ' J';
-        energyKJ.textContent = fmt(U / 1000, {maxFrac:6}) + ' kJ';
-        energyKWh.textContent = fmt(U / 3.6e6, {maxFrac:8}) + ' kWh';
-        resultNote.textContent = res.note + (Math.sign(U) < 0 ? ' Note: negative values indicate bound gravitational systems.' : '');
-      }
-
-      // Recompute on input changes (debounced micro)
-      const inputs = qsa('#calculator input, #calculator select');
-      inputs.forEach(el => {
-        el.addEventListener('input', compute, { passive: true });
-        el.addEventListener('change', compute, { passive: true });
-      });
-
-      // Defaults
-      mass.value = '1';
-      height.value = '2';
-      g.value = '9.80665';
-      m1.value = ''; m2.value = ''; r.value = '';
-      k.value = ''; x.value = '';
-
-      // Initial compute
-      compute();
-
-      // Accessibility: ensure aria-describedby includes tooltip and error IDs
-      function ensureDescribedBy(inputId, extraIds){
-        const el = qs('#' + inputId);
-        if(!el) return;
-        const ids = (el.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
-        extraIds.forEach(id => { if(id && !ids.includes(id)) ids.push(id); });
-        el.setAttribute('aria-describedby', ids.join(' '));
-      }
-      ensureDescribedBy('height',['height-tip','height-err']);
-      ensureDescribedBy('g',['g-tip','g-err']);
-      ensureDescribedBy('G',['G-tip','G-err']);
-    })();
-  </script>
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main-content">Skip to main content</a><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -888,40 +676,8 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "General",
-      "item": "https://calcdomain.com/categories/general"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Miscellaneous",
-      "item": "https://calcdomain.com/subcategories/miscellaneous"
-    }
-  ]
-}
-</script>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="container" id="main-content" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="container" id="main-content" role="main">
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Potential Energy Calculator</h1>
 <p>This professional-grade tool computes potential energy for three common models: gravitational (near-surface), gravitational (two-body), and elastic (spring). It’s built for students, educators, and engineers who need precise results with transparent methodology, accessible UX, and robust unit conversions.</p>
 <div aria-live="off" class="layout">
@@ -1264,251 +1020,7 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
-
-      // Elements
-      const qs = (sel, ctx=document) => ctx.querySelector(sel);
-      const qsa = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
-
-      // Model groups
-      const groups = {
-        mgh: qs('#group-mgh'),
-        'two-body': qs('#group-two-body'),
-        spring: qs('#group-spring')
-      };
-
-      // Inputs - mgh
-      const mass = qs('#mass'), massUnit = qs('#mass-unit');
-      const height = qs('#height'), heightUnit = qs('#height-unit');
-      const body = qs('#body'), g = qs('#g');
-      // two-body
-      const m1 = qs('#m1'), m1Unit = qs('#m1-unit');
-      const m2 = qs('#m2'), m2Unit = qs('#m2-unit');
-      const r = qs('#r'), rUnit = qs('#r-unit');
-      const G = qs('#G');
-      // spring
-      const k = qs('#k'), kUnit = qs('#k-unit');
-      const x = qs('#x'), xUnit = qs('#x-unit');
-
-      // Help tooltips
-      function setupTooltip(btnId, tipId){
-        const btn = qs('#' + btnId);
-        const tip = qs('#' + tipId);
-        if(!btn || !tip) return;
-        btn.addEventListener('click', () => {
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          tip.dataset.open = String(!expanded);
-        });
-      }
-      setupTooltip('height-help','height-tip');
-      setupTooltip('g-help','g-tip');
-      setupTooltip('G-help','G-tip');
-
-      // Validation helpers
-      const errors = {
-        mass: qs('#mass-err'),
-        height: qs('#height-err'),
-        g: qs('#g-err'),
-        m1: qs('#m1-err'),
-        m2: qs('#m2-err'),
-        r: qs('#r-err'),
-        G: qs('#G-err'),
-        k: qs('#k-err'),
-        x: qs('#x-err')
-      };
-
-      function setError(input, msg){
-        const id = input.id + '-err';
-        const el = errors[input.id];
-        if(el){
-          el.textContent = msg || '';
-        }
-        input.setAttribute('aria-invalid', msg ? 'true' : 'false');
-      }
-
-      function parseNum(input){
-        const v = String(input.value).trim();
-        if(v === '') return null;
-        const num = Number(v);
-        return Number.isFinite(num) ? num : NaN;
-      }
-
-      function onBlurPositive(input, allowZero=false){
-        const val = parseNum(input);
-        if(val === null){
-          setError(input, 'Please enter a value.');
-          return false;
-        }
-        if(Number.isNaN(val)){
-          setError(input, 'Invalid number. Use digits like 12.5 or scientific notation 1e3.');
-          return false;
-        }
-        if(allowZero ? (val < 0) : (val <= 0)){
-          setError(input, allowZero ? 'Value must be zero or greater.' : 'Value must be greater than zero.');
-          return false;
-        }
-        setError(input, '');
-        return true;
-      }
-      function onBlurAnyNumber(input){
-        const val = parseNum(input);
-        if(val === null){ setError(input, 'Please enter a value.'); return false; }
-        if(Number.isNaN(val)){ setError(input, 'Invalid number. Use digits like 12.5 or scientific notation 1e3.'); return false; }
-        setError(input, '');
-        return true;
-      }
-
-      // Attach blur validation
-      [
-        [mass, onBlurPositive],[height, onBlurAnyNumber],[g, onBlurPositive],
-        [m1, onBlurPositive],[m2, onBlurPositive],[r, onBlurPositive],
-        [G, onBlurPositive],
-        [k, onBlurPositive],[x, onBlurAnyNumber]
-      ].forEach(([el,fn]) => { if(el) el.addEventListener('blur', () => fn(el)); });
-
-      // Units
-      const massToKg = { kg:1, g:1e-3, lb:0.45359237 };
-      const lenToM = { m:1, cm:0.01, mm:0.001, ft:0.3048, in:0.0254, km:1000, mi:1609.344 };
-      const kToNperM = { 'N/m':1, 'N/mm':1000, 'lb/in':175.126836, 'lb/ft':14.5939029 };
-
-      // Body presets
-      const gPresets = {
-        earth: 9.80665,
-        moon: 1.62,
-        mars: 3.721
-      };
-      body.addEventListener('change', () => {
-        if(body.value === 'custom'){
-          g.removeAttribute('readonly');
-        } else {
-          g.value = gPresets[body.value] ?? 9.80665;
-          g.setAttribute('readonly','readonly');
-          setError(g,'');
-        }
-        compute();
-      });
-
-      // Model switching
-      function setModel(model){
-        Object.entries(groups).forEach(([key, el]) => {
-          const active = key === model;
-          el.classList.toggle('hidden', !active);
-          el.setAttribute('aria-hidden', String(!active));
-          qsa('input,select', el).forEach(inp => inp.disabled = !active);
-        });
-      }
-      qsa('input[name="model"]').forEach(radio=>{
-        radio.addEventListener('change', e => {
-          if(radio.checked){ setModel(radio.value); compute(); }
-        });
-      });
-      setModel('mgh');
-
-      // Results
-      const energyJ = qs('#energyJ'), energyKJ = qs('#energyKJ'), energyKWh = qs('#energyKWh');
-      const resultNote = qs('#result-note');
-
-      function fmt(num, opts={}){
-        if(!Number.isFinite(num)) return '—';
-        const abs = Math.abs(num);
-        const maxFrac = abs >= 1e6 || (abs > 0 && abs < 1e-3) ? 3 : 4;
-        return num.toLocaleString(undefined, { maximumFractionDigits: opts.maxFrac ?? maxFrac });
-      }
-
-      function computeMGH(){
-        const m = parseNum(mass), h = parseNum(height), gv = parseNum(g);
-        if(m === null || Number.isNaN(m) || m <= 0) return null;
-        if(h === null || Number.isNaN(h)) return null;
-        if(gv === null || Number.isNaN(gv) || gv <= 0) return null;
-        const mSI = m * (massToKg[massUnit.value] || 1);
-        const hSI = h * (lenToM[heightUnit.value] || 1);
-        const U = mSI * gv * hSI; // J
-        return { U, note: 'Computed with U = m·g·h (constant g approximation).' };
-      }
-
-      function computeTwoBody(){
-        const m1v = parseNum(m1), m2v = parseNum(m2), rv = parseNum(r), Gv = parseNum(G);
-        if([m1v,m2v,rv,Gv].some(v => v === null || Number.isNaN(v))) return null;
-        if(m1v <= 0 || m2v <= 0 || rv <= 0 || Gv <= 0) return null;
-        const m1SI = m1v * (massToKg[m1Unit.value] || 1);
-        const m2SI = m2v * (massToKg[m2Unit.value] || 1);
-        const rSI = rv * (lenToM[rUnit.value] || 1);
-        const U = - (Gv * m1SI * m2SI) / rSI; // J
-        return { U, note: 'Computed with U = −G·m₁·m₂/r (zero at infinite separation).' };
-      }
-
-      function computeSpring(){
-        const kv = parseNum(k), xv = parseNum(x);
-        if(kv === null || Number.isNaN(kv) || kv <= 0) return null;
-        if(xv === null || Number.isNaN(xv)) return null;
-        const kSI = kv * (kToNperM[kUnit.value] || 1);
-        const xSI = xv * (lenToM[xUnit.value] || 1);
-        const U = 0.5 * kSI * xSI * xSI; // J
-        return { U, note: 'Computed with U = ½·k·x² (ideal linear spring).' };
-      }
-
-      function compute(){
-        const model = qs('input[name="model"]:checked').value;
-        let res = null;
-        if(model === 'mgh') res = computeMGH();
-        else if(model === 'two-body') res = computeTwoBody();
-        else if(model === 'spring') res = computeSpring();
-
-        if(!res){ energyJ.textContent='—'; energyKJ.textContent='—'; energyKWh.textContent='—'; resultNote.textContent=''; return; }
-
-        const U = res.U;
-        energyJ.textContent = fmt(U, {maxFrac:6}) + ' J';
-        energyKJ.textContent = fmt(U / 1000, {maxFrac:6}) + ' kJ';
-        energyKWh.textContent = fmt(U / 3.6e6, {maxFrac:8}) + ' kWh';
-        resultNote.textContent = res.note + (Math.sign(U) < 0 ? ' Note: negative values indicate bound gravitational systems.' : '');
-      }
-
-      // Recompute on input changes (debounced micro)
-      const inputs = qsa('#calculator input, #calculator select');
-      inputs.forEach(el => {
-        el.addEventListener('input', compute, { passive: true });
-        el.addEventListener('change', compute, { passive: true });
-      });
-
-      // Defaults
-      mass.value = '1';
-      height.value = '2';
-      g.value = '9.80665';
-      m1.value = ''; m2.value = ''; r.value = '';
-      k.value = ''; x.value = '';
-
-      // Initial compute
-      compute();
-
-      // Accessibility: ensure aria-describedby includes tooltip and error IDs
-      function ensureDescribedBy(inputId, extraIds){
-        const el = qs('#' + inputId);
-        if(!el) return;
-        const ids = (el.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
-        extraIds.forEach(id => { if(id && !ids.includes(id)) ids.push(id); });
-        el.setAttribute('aria-describedby', ids.join(' '));
-      }
-      ensureDescribedBy('height',['height-tip','height-err']);
-      ensureDescribedBy('g',['g-tip','g-err']);
-      ensureDescribedBy('G',['G-tip','G-err']);
-    })();
-  </script>
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1540,40 +1052,8 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "General",
-      "item": "https://calcdomain.com/categories/general"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Miscellaneous",
-      "item": "https://calcdomain.com/subcategories/miscellaneous"
-    }
-  ]
-}
-</script>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="container" id="main-content" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="container" id="main-content" role="main">
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Potential Energy Calculator</h1>
 <p>This professional-grade tool computes potential energy for three common models: gravitational (near-surface), gravitational (two-body), and elastic (spring). It’s built for students, educators, and engineers who need precise results with transparent methodology, accessible UX, and robust unit conversions.</p>
 <div aria-live="off" class="layout">
@@ -1916,9 +1396,48 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
     (function(){
       'use strict';
 
@@ -2149,6 +1668,516 @@
       ensureDescribedBy('g',['g-tip','g-err']);
       ensureDescribedBy('G',['G-tip','G-err']);
     })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "General",
+      "item": "https://calcdomain.com/categories/general"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Miscellaneous",
+      "item": "https://calcdomain.com/subcategories/miscellaneous"
+    }
+  ]
+}
+</script><script defer="">
+    (function(){
+      'use strict';
 
-</body></html>
+      // Elements
+      const qs = (sel, ctx=document) => ctx.querySelector(sel);
+      const qsa = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+
+      // Model groups
+      const groups = {
+        mgh: qs('#group-mgh'),
+        'two-body': qs('#group-two-body'),
+        spring: qs('#group-spring')
+      };
+
+      // Inputs - mgh
+      const mass = qs('#mass'), massUnit = qs('#mass-unit');
+      const height = qs('#height'), heightUnit = qs('#height-unit');
+      const body = qs('#body'), g = qs('#g');
+      // two-body
+      const m1 = qs('#m1'), m1Unit = qs('#m1-unit');
+      const m2 = qs('#m2'), m2Unit = qs('#m2-unit');
+      const r = qs('#r'), rUnit = qs('#r-unit');
+      const G = qs('#G');
+      // spring
+      const k = qs('#k'), kUnit = qs('#k-unit');
+      const x = qs('#x'), xUnit = qs('#x-unit');
+
+      // Help tooltips
+      function setupTooltip(btnId, tipId){
+        const btn = qs('#' + btnId);
+        const tip = qs('#' + tipId);
+        if(!btn || !tip) return;
+        btn.addEventListener('click', () => {
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          tip.dataset.open = String(!expanded);
+        });
+      }
+      setupTooltip('height-help','height-tip');
+      setupTooltip('g-help','g-tip');
+      setupTooltip('G-help','G-tip');
+
+      // Validation helpers
+      const errors = {
+        mass: qs('#mass-err'),
+        height: qs('#height-err'),
+        g: qs('#g-err'),
+        m1: qs('#m1-err'),
+        m2: qs('#m2-err'),
+        r: qs('#r-err'),
+        G: qs('#G-err'),
+        k: qs('#k-err'),
+        x: qs('#x-err')
+      };
+
+      function setError(input, msg){
+        const id = input.id + '-err';
+        const el = errors[input.id];
+        if(el){
+          el.textContent = msg || '';
+        }
+        input.setAttribute('aria-invalid', msg ? 'true' : 'false');
+      }
+
+      function parseNum(input){
+        const v = String(input.value).trim();
+        if(v === '') return null;
+        const num = Number(v);
+        return Number.isFinite(num) ? num : NaN;
+      }
+
+      function onBlurPositive(input, allowZero=false){
+        const val = parseNum(input);
+        if(val === null){
+          setError(input, 'Please enter a value.');
+          return false;
+        }
+        if(Number.isNaN(val)){
+          setError(input, 'Invalid number. Use digits like 12.5 or scientific notation 1e3.');
+          return false;
+        }
+        if(allowZero ? (val < 0) : (val <= 0)){
+          setError(input, allowZero ? 'Value must be zero or greater.' : 'Value must be greater than zero.');
+          return false;
+        }
+        setError(input, '');
+        return true;
+      }
+      function onBlurAnyNumber(input){
+        const val = parseNum(input);
+        if(val === null){ setError(input, 'Please enter a value.'); return false; }
+        if(Number.isNaN(val)){ setError(input, 'Invalid number. Use digits like 12.5 or scientific notation 1e3.'); return false; }
+        setError(input, '');
+        return true;
+      }
+
+      // Attach blur validation
+      [
+        [mass, onBlurPositive],[height, onBlurAnyNumber],[g, onBlurPositive],
+        [m1, onBlurPositive],[m2, onBlurPositive],[r, onBlurPositive],
+        [G, onBlurPositive],
+        [k, onBlurPositive],[x, onBlurAnyNumber]
+      ].forEach(([el,fn]) => { if(el) el.addEventListener('blur', () => fn(el)); });
+
+      // Units
+      const massToKg = { kg:1, g:1e-3, lb:0.45359237 };
+      const lenToM = { m:1, cm:0.01, mm:0.001, ft:0.3048, in:0.0254, km:1000, mi:1609.344 };
+      const kToNperM = { 'N/m':1, 'N/mm':1000, 'lb/in':175.126836, 'lb/ft':14.5939029 };
+
+      // Body presets
+      const gPresets = {
+        earth: 9.80665,
+        moon: 1.62,
+        mars: 3.721
+      };
+      body.addEventListener('change', () => {
+        if(body.value === 'custom'){
+          g.removeAttribute('readonly');
+        } else {
+          g.value = gPresets[body.value] ?? 9.80665;
+          g.setAttribute('readonly','readonly');
+          setError(g,'');
+        }
+        compute();
+      });
+
+      // Model switching
+      function setModel(model){
+        Object.entries(groups).forEach(([key, el]) => {
+          const active = key === model;
+          el.classList.toggle('hidden', !active);
+          el.setAttribute('aria-hidden', String(!active));
+          qsa('input,select', el).forEach(inp => inp.disabled = !active);
+        });
+      }
+      qsa('input[name="model"]').forEach(radio=>{
+        radio.addEventListener('change', e => {
+          if(radio.checked){ setModel(radio.value); compute(); }
+        });
+      });
+      setModel('mgh');
+
+      // Results
+      const energyJ = qs('#energyJ'), energyKJ = qs('#energyKJ'), energyKWh = qs('#energyKWh');
+      const resultNote = qs('#result-note');
+
+      function fmt(num, opts={}){
+        if(!Number.isFinite(num)) return '—';
+        const abs = Math.abs(num);
+        const maxFrac = abs >= 1e6 || (abs > 0 && abs < 1e-3) ? 3 : 4;
+        return num.toLocaleString(undefined, { maximumFractionDigits: opts.maxFrac ?? maxFrac });
+      }
+
+      function computeMGH(){
+        const m = parseNum(mass), h = parseNum(height), gv = parseNum(g);
+        if(m === null || Number.isNaN(m) || m <= 0) return null;
+        if(h === null || Number.isNaN(h)) return null;
+        if(gv === null || Number.isNaN(gv) || gv <= 0) return null;
+        const mSI = m * (massToKg[massUnit.value] || 1);
+        const hSI = h * (lenToM[heightUnit.value] || 1);
+        const U = mSI * gv * hSI; // J
+        return { U, note: 'Computed with U = m·g·h (constant g approximation).' };
+      }
+
+      function computeTwoBody(){
+        const m1v = parseNum(m1), m2v = parseNum(m2), rv = parseNum(r), Gv = parseNum(G);
+        if([m1v,m2v,rv,Gv].some(v => v === null || Number.isNaN(v))) return null;
+        if(m1v <= 0 || m2v <= 0 || rv <= 0 || Gv <= 0) return null;
+        const m1SI = m1v * (massToKg[m1Unit.value] || 1);
+        const m2SI = m2v * (massToKg[m2Unit.value] || 1);
+        const rSI = rv * (lenToM[rUnit.value] || 1);
+        const U = - (Gv * m1SI * m2SI) / rSI; // J
+        return { U, note: 'Computed with U = −G·m₁·m₂/r (zero at infinite separation).' };
+      }
+
+      function computeSpring(){
+        const kv = parseNum(k), xv = parseNum(x);
+        if(kv === null || Number.isNaN(kv) || kv <= 0) return null;
+        if(xv === null || Number.isNaN(xv)) return null;
+        const kSI = kv * (kToNperM[kUnit.value] || 1);
+        const xSI = xv * (lenToM[xUnit.value] || 1);
+        const U = 0.5 * kSI * xSI * xSI; // J
+        return { U, note: 'Computed with U = ½·k·x² (ideal linear spring).' };
+      }
+
+      function compute(){
+        const model = qs('input[name="model"]:checked').value;
+        let res = null;
+        if(model === 'mgh') res = computeMGH();
+        else if(model === 'two-body') res = computeTwoBody();
+        else if(model === 'spring') res = computeSpring();
+
+        if(!res){ energyJ.textContent='—'; energyKJ.textContent='—'; energyKWh.textContent='—'; resultNote.textContent=''; return; }
+
+        const U = res.U;
+        energyJ.textContent = fmt(U, {maxFrac:6}) + ' J';
+        energyKJ.textContent = fmt(U / 1000, {maxFrac:6}) + ' kJ';
+        energyKWh.textContent = fmt(U / 3.6e6, {maxFrac:8}) + ' kWh';
+        resultNote.textContent = res.note + (Math.sign(U) < 0 ? ' Note: negative values indicate bound gravitational systems.' : '');
+      }
+
+      // Recompute on input changes (debounced micro)
+      const inputs = qsa('#calculator input, #calculator select');
+      inputs.forEach(el => {
+        el.addEventListener('input', compute, { passive: true });
+        el.addEventListener('change', compute, { passive: true });
+      });
+
+      // Defaults
+      mass.value = '1';
+      height.value = '2';
+      g.value = '9.80665';
+      m1.value = ''; m2.value = ''; r.value = '';
+      k.value = ''; x.value = '';
+
+      // Initial compute
+      compute();
+
+      // Accessibility: ensure aria-describedby includes tooltip and error IDs
+      function ensureDescribedBy(inputId, extraIds){
+        const el = qs('#' + inputId);
+        if(!el) return;
+        const ids = (el.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+        extraIds.forEach(id => { if(id && !ids.includes(id)) ids.push(id); });
+        el.setAttribute('aria-describedby', ids.join(' '));
+      }
+      ensureDescribedBy('height',['height-tip','height-err']);
+      ensureDescribedBy('g',['g-tip','g-err']);
+      ensureDescribedBy('G',['G-tip','G-err']);
+    })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "General",
+      "item": "https://calcdomain.com/categories/general"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Miscellaneous",
+      "item": "https://calcdomain.com/subcategories/miscellaneous"
+    }
+  ]
+}
+</script><script defer="">
+    (function(){
+      'use strict';
+
+      // Elements
+      const qs = (sel, ctx=document) => ctx.querySelector(sel);
+      const qsa = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+
+      // Model groups
+      const groups = {
+        mgh: qs('#group-mgh'),
+        'two-body': qs('#group-two-body'),
+        spring: qs('#group-spring')
+      };
+
+      // Inputs - mgh
+      const mass = qs('#mass'), massUnit = qs('#mass-unit');
+      const height = qs('#height'), heightUnit = qs('#height-unit');
+      const body = qs('#body'), g = qs('#g');
+      // two-body
+      const m1 = qs('#m1'), m1Unit = qs('#m1-unit');
+      const m2 = qs('#m2'), m2Unit = qs('#m2-unit');
+      const r = qs('#r'), rUnit = qs('#r-unit');
+      const G = qs('#G');
+      // spring
+      const k = qs('#k'), kUnit = qs('#k-unit');
+      const x = qs('#x'), xUnit = qs('#x-unit');
+
+      // Help tooltips
+      function setupTooltip(btnId, tipId){
+        const btn = qs('#' + btnId);
+        const tip = qs('#' + tipId);
+        if(!btn || !tip) return;
+        btn.addEventListener('click', () => {
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          tip.dataset.open = String(!expanded);
+        });
+      }
+      setupTooltip('height-help','height-tip');
+      setupTooltip('g-help','g-tip');
+      setupTooltip('G-help','G-tip');
+
+      // Validation helpers
+      const errors = {
+        mass: qs('#mass-err'),
+        height: qs('#height-err'),
+        g: qs('#g-err'),
+        m1: qs('#m1-err'),
+        m2: qs('#m2-err'),
+        r: qs('#r-err'),
+        G: qs('#G-err'),
+        k: qs('#k-err'),
+        x: qs('#x-err')
+      };
+
+      function setError(input, msg){
+        const id = input.id + '-err';
+        const el = errors[input.id];
+        if(el){
+          el.textContent = msg || '';
+        }
+        input.setAttribute('aria-invalid', msg ? 'true' : 'false');
+      }
+
+      function parseNum(input){
+        const v = String(input.value).trim();
+        if(v === '') return null;
+        const num = Number(v);
+        return Number.isFinite(num) ? num : NaN;
+      }
+
+      function onBlurPositive(input, allowZero=false){
+        const val = parseNum(input);
+        if(val === null){
+          setError(input, 'Please enter a value.');
+          return false;
+        }
+        if(Number.isNaN(val)){
+          setError(input, 'Invalid number. Use digits like 12.5 or scientific notation 1e3.');
+          return false;
+        }
+        if(allowZero ? (val < 0) : (val <= 0)){
+          setError(input, allowZero ? 'Value must be zero or greater.' : 'Value must be greater than zero.');
+          return false;
+        }
+        setError(input, '');
+        return true;
+      }
+      function onBlurAnyNumber(input){
+        const val = parseNum(input);
+        if(val === null){ setError(input, 'Please enter a value.'); return false; }
+        if(Number.isNaN(val)){ setError(input, 'Invalid number. Use digits like 12.5 or scientific notation 1e3.'); return false; }
+        setError(input, '');
+        return true;
+      }
+
+      // Attach blur validation
+      [
+        [mass, onBlurPositive],[height, onBlurAnyNumber],[g, onBlurPositive],
+        [m1, onBlurPositive],[m2, onBlurPositive],[r, onBlurPositive],
+        [G, onBlurPositive],
+        [k, onBlurPositive],[x, onBlurAnyNumber]
+      ].forEach(([el,fn]) => { if(el) el.addEventListener('blur', () => fn(el)); });
+
+      // Units
+      const massToKg = { kg:1, g:1e-3, lb:0.45359237 };
+      const lenToM = { m:1, cm:0.01, mm:0.001, ft:0.3048, in:0.0254, km:1000, mi:1609.344 };
+      const kToNperM = { 'N/m':1, 'N/mm':1000, 'lb/in':175.126836, 'lb/ft':14.5939029 };
+
+      // Body presets
+      const gPresets = {
+        earth: 9.80665,
+        moon: 1.62,
+        mars: 3.721
+      };
+      body.addEventListener('change', () => {
+        if(body.value === 'custom'){
+          g.removeAttribute('readonly');
+        } else {
+          g.value = gPresets[body.value] ?? 9.80665;
+          g.setAttribute('readonly','readonly');
+          setError(g,'');
+        }
+        compute();
+      });
+
+      // Model switching
+      function setModel(model){
+        Object.entries(groups).forEach(([key, el]) => {
+          const active = key === model;
+          el.classList.toggle('hidden', !active);
+          el.setAttribute('aria-hidden', String(!active));
+          qsa('input,select', el).forEach(inp => inp.disabled = !active);
+        });
+      }
+      qsa('input[name="model"]').forEach(radio=>{
+        radio.addEventListener('change', e => {
+          if(radio.checked){ setModel(radio.value); compute(); }
+        });
+      });
+      setModel('mgh');
+
+      // Results
+      const energyJ = qs('#energyJ'), energyKJ = qs('#energyKJ'), energyKWh = qs('#energyKWh');
+      const resultNote = qs('#result-note');
+
+      function fmt(num, opts={}){
+        if(!Number.isFinite(num)) return '—';
+        const abs = Math.abs(num);
+        const maxFrac = abs >= 1e6 || (abs > 0 && abs < 1e-3) ? 3 : 4;
+        return num.toLocaleString(undefined, { maximumFractionDigits: opts.maxFrac ?? maxFrac });
+      }
+
+      function computeMGH(){
+        const m = parseNum(mass), h = parseNum(height), gv = parseNum(g);
+        if(m === null || Number.isNaN(m) || m <= 0) return null;
+        if(h === null || Number.isNaN(h)) return null;
+        if(gv === null || Number.isNaN(gv) || gv <= 0) return null;
+        const mSI = m * (massToKg[massUnit.value] || 1);
+        const hSI = h * (lenToM[heightUnit.value] || 1);
+        const U = mSI * gv * hSI; // J
+        return { U, note: 'Computed with U = m·g·h (constant g approximation).' };
+      }
+
+      function computeTwoBody(){
+        const m1v = parseNum(m1), m2v = parseNum(m2), rv = parseNum(r), Gv = parseNum(G);
+        if([m1v,m2v,rv,Gv].some(v => v === null || Number.isNaN(v))) return null;
+        if(m1v <= 0 || m2v <= 0 || rv <= 0 || Gv <= 0) return null;
+        const m1SI = m1v * (massToKg[m1Unit.value] || 1);
+        const m2SI = m2v * (massToKg[m2Unit.value] || 1);
+        const rSI = rv * (lenToM[rUnit.value] || 1);
+        const U = - (Gv * m1SI * m2SI) / rSI; // J
+        return { U, note: 'Computed with U = −G·m₁·m₂/r (zero at infinite separation).' };
+      }
+
+      function computeSpring(){
+        const kv = parseNum(k), xv = parseNum(x);
+        if(kv === null || Number.isNaN(kv) || kv <= 0) return null;
+        if(xv === null || Number.isNaN(xv)) return null;
+        const kSI = kv * (kToNperM[kUnit.value] || 1);
+        const xSI = xv * (lenToM[xUnit.value] || 1);
+        const U = 0.5 * kSI * xSI * xSI; // J
+        return { U, note: 'Computed with U = ½·k·x² (ideal linear spring).' };
+      }
+
+      function compute(){
+        const model = qs('input[name="model"]:checked').value;
+        let res = null;
+        if(model === 'mgh') res = computeMGH();
+        else if(model === 'two-body') res = computeTwoBody();
+        else if(model === 'spring') res = computeSpring();
+
+        if(!res){ energyJ.textContent='—'; energyKJ.textContent='—'; energyKWh.textContent='—'; resultNote.textContent=''; return; }
+
+        const U = res.U;
+        energyJ.textContent = fmt(U, {maxFrac:6}) + ' J';
+        energyKJ.textContent = fmt(U / 1000, {maxFrac:6}) + ' kJ';
+        energyKWh.textContent = fmt(U / 3.6e6, {maxFrac:8}) + ' kWh';
+        resultNote.textContent = res.note + (Math.sign(U) < 0 ? ' Note: negative values indicate bound gravitational systems.' : '');
+      }
+
+      // Recompute on input changes (debounced micro)
+      const inputs = qsa('#calculator input, #calculator select');
+      inputs.forEach(el => {
+        el.addEventListener('input', compute, { passive: true });
+        el.addEventListener('change', compute, { passive: true });
+      });
+
+      // Defaults
+      mass.value = '1';
+      height.value = '2';
+      g.value = '9.80665';
+      m1.value = ''; m2.value = ''; r.value = '';
+      k.value = ''; x.value = '';
+
+      // Initial compute
+      compute();
+
+      // Accessibility: ensure aria-describedby includes tooltip and error IDs
+      function ensureDescribedBy(inputId, extraIds){
+        const el = qs('#' + inputId);
+        if(!el) return;
+        const ids = (el.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+        extraIds.forEach(id => { if(id && !ids.includes(id)) ids.push(id); });
+        el.setAttribute('aria-describedby', ids.join(' '));
+      }
+      ensureDescribedBy('height',['height-tip','height-err']);
+      ensureDescribedBy('g',['g-tip','g-err']);
+      ensureDescribedBy('G',['G-tip','G-err']);
+    })();
+  </script></body></html>

@@ -285,10 +285,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="/assets/js/page-enhancements.js" as="script">
@@ -328,10 +334,22 @@
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
 </style>
 </head>
-<body>
-<a class="skip-link" href="#main">Skip to main content</a>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">priming sugar calculator 5 gallons</h1>
+    <p class="sub" id="pageSub">Accurately compute priming sugar for 5 gallons of beer. Choose sugar type, target CO₂ volumes, and temperature. WCAG 2.1 AA accessible, mobile-first, and optimized for speed.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<main class="main" id="main" role="main">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main class="main" id="main" role="main">
 <div class="container">
 <nav aria-label="Breadcrumb" class="breadcrumb">
 Home ›
@@ -602,240 +620,21 @@ Home ›
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
+
+
 </main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
 
-      // Elements
-      const unitUSBtn = document.getElementById('unitUS');
-      const unitMetricBtn = document.getElementById('unitMetric');
-      const volumeEl = document.getElementById('volume');
-      const tempEl = document.getElementById('temperature');
-      const targetEl = document.getElementById('targetVolumes');
-      const stylePresetEl = document.getElementById('stylePreset');
-      const sugarEl = document.getElementById('sugarType');
+<button id="resetBtn" type="button" class="btn btnSecondary">Reset</button>
+</div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-      const residualCO2El = document.getElementById('residualCO2');
-      const sugarGramsEl = document.getElementById('sugarGrams');
-      const sugarOuncesEl = document.getElementById('sugarOunces');
-      const perBottleEl = document.getElementById('perBottle');
-      const waterSuggestionEl = document.getElementById('waterSuggestion');
-      const resultNoteEl = document.getElementById('resultNote');
-
-      const volumeError = document.getElementById('volumeError');
-      const tempError = document.getElementById('temperatureError');
-      const targetError = document.getElementById('targetVolumesError');
-      const sugarTypeError = document.getElementById('sugarTypeError');
-
-      // Tooltips
-      function bindTooltip(btnId, tipId){
-        const btn = document.getElementById(btnId);
-        const tip = document.getElementById(tipId);
-        btn.addEventListener('click', () => {
-          const open = tip.getAttribute('data-open') === 'true';
-          tip.setAttribute('data-open', String(!open));
-          btn.setAttribute('aria-expanded', String(!open));
-        });
-        btn.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); }
-        });
-      }
-      bindTooltip('tt-volume-btn','tt-volume');
-      bindTooltip('tt-temp-btn','tt-temp');
-      bindTooltip('tt-co2-btn','tt-co2');
-      bindTooltip('tt-sugar-btn','tt-sugar');
-
-      // State
-      let unit = 'US'; // 'US' or 'METRIC'
-
-      // Helpers
-      const galToL = g => g * 3.785411784;
-      const lToGal = l => l / 3.785411784;
-      const cToF = c => (c * 9/5) + 32;
-      const fToC = f => (f - 32) * 5/9;
-      const gToOz = g => g / 28.349523125;
-
-      // Residual CO2 formula (T in °F)
-      function residualCO2Volumes(tempF){
-        // Vres = 3.0378 − 0.050062*T + 0.00026555*T^2
-        return 3.0378 - 0.050062 * tempF + 0.00026555 * tempF * tempF;
-      }
-
-      // Sugar coefficients (g per L per CO2 volume)
-      const sugarK = {
-        sucrose: 3.82,       // table sugar
-        corn: 4.42,          // dextrose monohydrate
-        glucose: 4.02,       // dextrose anhydrous
-        dme: 6.40            // dry malt extract (approx., brand-dependent)
-      };
-
-      // Validation
-      function setError(el, errEl, message){
-        if(message){
-          errEl.textContent = message;
-          el.setAttribute('aria-invalid','true');
-          return false;
-        } else {
-          errEl.textContent = '';
-          el.removeAttribute('aria-invalid');
-          return true;
-        }
-      }
-
-      function validate(){
-        const vol = Number(volumeEl.value);
-        const temp = Number(tempEl.value);
-        const target = Number(targetEl.value);
-        let ok = true;
-
-        if (!Number.isFinite(vol) || vol <= 0){
-          ok = setError(volumeEl, volumeError, 'Enter a positive batch volume.') && ok;
-        } else {
-          setError(volumeEl, volumeError, '');
-        }
-
-        // Temperature ranges per unit
-        if (unit === 'US'){
-          if (!Number.isFinite(temp) || temp < 32 || temp > 120){
-            ok = setError(tempEl, tempError, 'Enter a realistic temperature in °F (32–120).') && ok;
-          } else {
-            setError(tempEl, tempError, '');
-          }
-        } else {
-          if (!Number.isFinite(temp) || temp < 0 || temp > 49){
-            ok = setError(tempEl, tempError, 'Enter a realistic temperature in °C (0–49).') && ok;
-          } else {
-            setError(tempEl, tempError, '');
-          }
-        }
-
-        if (!Number.isFinite(target) || target < 1.0 || target > 4.5){
-          ok = setError(targetEl, targetError, 'Choose a target between 1.0 and 4.5 volumes CO₂.') && ok;
-        } else {
-          setError(targetEl, targetError, '');
-        }
-
-        if (!sugarEl.value){
-          ok = setError(sugarEl, sugarTypeError, 'Select a priming sugar type.') && ok;
-        } else {
-          setError(sugarEl, sugarTypeError, '');
-        }
-
-        return ok;
-      }
-
-      // Calculation
-      function calculate(){
-        if(!validate()){
-          residualCO2El.textContent = '—';
-          sugarGramsEl.textContent = '—';
-          sugarOuncesEl.textContent = '—';
-       	  perBottleEl.textContent = '—';
-          resultNoteEl.textContent = '';
-          return;
-        }
-
-        const volInput = Number(volumeEl.value);
-        const tempInput = Number(tempEl.value);
-        const target = Number(targetEl.value);
-        const sugar = sugarEl.value;
-
-        const volL = unit === 'US' ? galToL(volInput) : volInput;
-        const tempF = unit === 'US' ? tempInput : cToF(tempInput);
-
-        const vRes = Math.max(0, residualCO2Volumes(tempF));
-        const delta = target - vRes;
-
-        residualCO2El.textContent = vRes.toFixed(2) + ' vol';
-
-        if (delta <= 0){
-          sugarGramsEl.textContent = '0 g';
-          sugarOuncesEl.textContent = '0.00 oz';
-          perBottleEl.textContent = '0 g';
-          resultNoteEl.textContent = 'Your beer already contains equal or higher CO₂ than your target. No priming sugar needed.';
-          return;
-        }
-
-        const k = sugarK[sugar] || sugarK.sucrose;
-        const grams = delta * volL * k;
-        const ounces = gToOz(grams);
-        sugarGramsEl.textContent = grams.toFixed(0) + ' g';
-        sugarOuncesEl.textContent = ounces.toFixed(2) + ' oz';
-
-        // Approx per 12 oz bottle: 5 gal ≈ 48 bottles. Generalize by volume:
-        const bottles = (volL / 0.355); // 355 mL typical 12 oz
-        const perBottle = grams / bottles;
-        perBottleEl.textContent = Math.max(0, perBottle).toFixed(1) + ' g';
-
-        // Suggest water always 240–480 mL for ~5 gal; scale gently:
-        const waterMin = Math.max(180, Math.min(360, volL * 12)); // heuristic bounds
-        const waterMax = Math.max(300, Math.min(600, volL * 24));
-        waterSuggestionEl.textContent = `${Math.round(waterMin)}–${Math.round(waterMax)} mL`;
-
-        resultNoteEl.textContent = 'We recommend weighing sugar and gently mixing a boiled, cooled solution to avoid oxidation and stratification.';
-      }
-
-      // Inline validation on blur
-      volumeEl.addEventListener('blur', calculate);
-      tempEl.addEventListener('blur', calculate);
-      targetEl.addEventListener('blur', calculate);
-      sugarEl.addEventListener('blur', calculate);
-
-      // Live updates
-      [volumeEl, tempEl, targetEl, sugarEl].forEach(el => el.addEventListener('input', calculate));
-      stylePresetEl.addEventListener('change', () => {
-        if (stylePresetEl.value){
-          targetEl.value = stylePresetEl.value;
-        }
-        calculate();
-      });
-
-      // Unit toggles with conversion preserving actual amounts
-      function setUnit(newUnit){
-        if (unit === newUnit) return;
-        if (newUnit === 'METRIC'){
-          // Convert gal -> L; °F -> °C
-          const g = Number(volumeEl.value);
-          const f = Number(tempEl.value);
-          if (Number.isFinite(g)) volumeEl.value = (galToL(g)).toFixed(3);
-          if (Number.isFinite(f)) tempEl.value = (fToC(f)).toFixed(1);
-          unitUSBtn.classList.remove('is-active'); unitUSBtn.setAttribute('aria-pressed','false');
-          unitMetricBtn.classList.add('is-active'); unitMetricBtn.setAttribute('aria-pressed','true');
-        } else {
-          // Convert L -> gal; °C -> °F
-          const l = Number(volumeEl.value);
-          const c = Number(tempEl.value);
-          if (Number.isFinite(l)) volumeEl.value = (lToGal(l)).toFixed(2);
-          if (Number.isFinite(c)) tempEl.value = (cToF(c)).toFixed(1);
-          unitMetricBtn.classList.remove('is-active'); unitMetricBtn.setAttribute('aria-pressed','false');
-          unitUSBtn.classList.add('is-active'); unitUSBtn.setAttribute('aria-pressed','true');
-        }
-        unit = newUnit;
-        calculate();
-      }
-
-      unitUSBtn.addEventListener('click', () => setUnit('US'));
-      unitMetricBtn.addEventListener('click', () => setUnit('METRIC'));
-      unitUSBtn.addEventListener('keydown', e => { if(e.key==='Enter' || e.key===' ') { e.preventDefault(); setUnit('US'); }});
-      unitMetricBtn.addEventListener('keydown', e => { if(e.key==='Enter' || e.key===' ') { e.preventDefault(); setUnit('METRIC'); }});
-
-      // Initial compute
-      calculate();
-    })();
-  </script>
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main">Skip to main content</a><link rel="preload" href="/assets/js/mobile-menu.js" as="script"><link rel="preload" href="/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -867,12 +666,7 @@ Home ›
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main">Skip to main content</a>
-
-<main class="main" id="main" role="main">
+</style><a class="skip-link" href="#main">Skip to main content</a><main class="main" id="main" role="main">
 <div class="container">
 <nav aria-label="Breadcrumb" class="breadcrumb">
 Home ›
@@ -1143,240 +937,7 @@ Home ›
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
-
-      // Elements
-      const unitUSBtn = document.getElementById('unitUS');
-      const unitMetricBtn = document.getElementById('unitMetric');
-      const volumeEl = document.getElementById('volume');
-      const tempEl = document.getElementById('temperature');
-      const targetEl = document.getElementById('targetVolumes');
-      const stylePresetEl = document.getElementById('stylePreset');
-      const sugarEl = document.getElementById('sugarType');
-
-      const residualCO2El = document.getElementById('residualCO2');
-      const sugarGramsEl = document.getElementById('sugarGrams');
-      const sugarOuncesEl = document.getElementById('sugarOunces');
-      const perBottleEl = document.getElementById('perBottle');
-      const waterSuggestionEl = document.getElementById('waterSuggestion');
-      const resultNoteEl = document.getElementById('resultNote');
-
-      const volumeError = document.getElementById('volumeError');
-      const tempError = document.getElementById('temperatureError');
-      const targetError = document.getElementById('targetVolumesError');
-      const sugarTypeError = document.getElementById('sugarTypeError');
-
-      // Tooltips
-      function bindTooltip(btnId, tipId){
-        const btn = document.getElementById(btnId);
-        const tip = document.getElementById(tipId);
-        btn.addEventListener('click', () => {
-          const open = tip.getAttribute('data-open') === 'true';
-          tip.setAttribute('data-open', String(!open));
-          btn.setAttribute('aria-expanded', String(!open));
-        });
-        btn.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); }
-        });
-      }
-      bindTooltip('tt-volume-btn','tt-volume');
-      bindTooltip('tt-temp-btn','tt-temp');
-      bindTooltip('tt-co2-btn','tt-co2');
-      bindTooltip('tt-sugar-btn','tt-sugar');
-
-      // State
-      let unit = 'US'; // 'US' or 'METRIC'
-
-      // Helpers
-      const galToL = g => g * 3.785411784;
-      const lToGal = l => l / 3.785411784;
-      const cToF = c => (c * 9/5) + 32;
-      const fToC = f => (f - 32) * 5/9;
-      const gToOz = g => g / 28.349523125;
-
-      // Residual CO2 formula (T in °F)
-      function residualCO2Volumes(tempF){
-        // Vres = 3.0378 − 0.050062*T + 0.00026555*T^2
-        return 3.0378 - 0.050062 * tempF + 0.00026555 * tempF * tempF;
-      }
-
-      // Sugar coefficients (g per L per CO2 volume)
-      const sugarK = {
-        sucrose: 3.82,       // table sugar
-        corn: 4.42,          // dextrose monohydrate
-        glucose: 4.02,       // dextrose anhydrous
-        dme: 6.40            // dry malt extract (approx., brand-dependent)
-      };
-
-      // Validation
-      function setError(el, errEl, message){
-        if(message){
-          errEl.textContent = message;
-          el.setAttribute('aria-invalid','true');
-          return false;
-        } else {
-          errEl.textContent = '';
-          el.removeAttribute('aria-invalid');
-          return true;
-        }
-      }
-
-      function validate(){
-        const vol = Number(volumeEl.value);
-        const temp = Number(tempEl.value);
-        const target = Number(targetEl.value);
-        let ok = true;
-
-        if (!Number.isFinite(vol) || vol <= 0){
-          ok = setError(volumeEl, volumeError, 'Enter a positive batch volume.') && ok;
-        } else {
-          setError(volumeEl, volumeError, '');
-        }
-
-        // Temperature ranges per unit
-        if (unit === 'US'){
-          if (!Number.isFinite(temp) || temp < 32 || temp > 120){
-            ok = setError(tempEl, tempError, 'Enter a realistic temperature in °F (32–120).') && ok;
-          } else {
-            setError(tempEl, tempError, '');
-          }
-        } else {
-          if (!Number.isFinite(temp) || temp < 0 || temp > 49){
-            ok = setError(tempEl, tempError, 'Enter a realistic temperature in °C (0–49).') && ok;
-          } else {
-            setError(tempEl, tempError, '');
-          }
-        }
-
-        if (!Number.isFinite(target) || target < 1.0 || target > 4.5){
-          ok = setError(targetEl, targetError, 'Choose a target between 1.0 and 4.5 volumes CO₂.') && ok;
-        } else {
-          setError(targetEl, targetError, '');
-        }
-
-        if (!sugarEl.value){
-          ok = setError(sugarEl, sugarTypeError, 'Select a priming sugar type.') && ok;
-        } else {
-          setError(sugarEl, sugarTypeError, '');
-        }
-
-        return ok;
-      }
-
-      // Calculation
-      function calculate(){
-        if(!validate()){
-          residualCO2El.textContent = '—';
-          sugarGramsEl.textContent = '—';
-          sugarOuncesEl.textContent = '—';
-       	  perBottleEl.textContent = '—';
-          resultNoteEl.textContent = '';
-          return;
-        }
-
-        const volInput = Number(volumeEl.value);
-        const tempInput = Number(tempEl.value);
-        const target = Number(targetEl.value);
-        const sugar = sugarEl.value;
-
-        const volL = unit === 'US' ? galToL(volInput) : volInput;
-        const tempF = unit === 'US' ? tempInput : cToF(tempInput);
-
-        const vRes = Math.max(0, residualCO2Volumes(tempF));
-        const delta = target - vRes;
-
-        residualCO2El.textContent = vRes.toFixed(2) + ' vol';
-
-        if (delta <= 0){
-          sugarGramsEl.textContent = '0 g';
-          sugarOuncesEl.textContent = '0.00 oz';
-          perBottleEl.textContent = '0 g';
-          resultNoteEl.textContent = 'Your beer already contains equal or higher CO₂ than your target. No priming sugar needed.';
-          return;
-        }
-
-        const k = sugarK[sugar] || sugarK.sucrose;
-        const grams = delta * volL * k;
-        const ounces = gToOz(grams);
-        sugarGramsEl.textContent = grams.toFixed(0) + ' g';
-        sugarOuncesEl.textContent = ounces.toFixed(2) + ' oz';
-
-        // Approx per 12 oz bottle: 5 gal ≈ 48 bottles. Generalize by volume:
-        const bottles = (volL / 0.355); // 355 mL typical 12 oz
-        const perBottle = grams / bottles;
-        perBottleEl.textContent = Math.max(0, perBottle).toFixed(1) + ' g';
-
-        // Suggest water always 240–480 mL for ~5 gal; scale gently:
-        const waterMin = Math.max(180, Math.min(360, volL * 12)); // heuristic bounds
-        const waterMax = Math.max(300, Math.min(600, volL * 24));
-        waterSuggestionEl.textContent = `${Math.round(waterMin)}–${Math.round(waterMax)} mL`;
-
-        resultNoteEl.textContent = 'We recommend weighing sugar and gently mixing a boiled, cooled solution to avoid oxidation and stratification.';
-      }
-
-      // Inline validation on blur
-      volumeEl.addEventListener('blur', calculate);
-      tempEl.addEventListener('blur', calculate);
-      targetEl.addEventListener('blur', calculate);
-      sugarEl.addEventListener('blur', calculate);
-
-      // Live updates
-      [volumeEl, tempEl, targetEl, sugarEl].forEach(el => el.addEventListener('input', calculate));
-      stylePresetEl.addEventListener('change', () => {
-        if (stylePresetEl.value){
-          targetEl.value = stylePresetEl.value;
-        }
-        calculate();
-      });
-
-      // Unit toggles with conversion preserving actual amounts
-      function setUnit(newUnit){
-        if (unit === newUnit) return;
-        if (newUnit === 'METRIC'){
-          // Convert gal -> L; °F -> °C
-          const g = Number(volumeEl.value);
-          const f = Number(tempEl.value);
-          if (Number.isFinite(g)) volumeEl.value = (galToL(g)).toFixed(3);
-          if (Number.isFinite(f)) tempEl.value = (fToC(f)).toFixed(1);
-          unitUSBtn.classList.remove('is-active'); unitUSBtn.setAttribute('aria-pressed','false');
-          unitMetricBtn.classList.add('is-active'); unitMetricBtn.setAttribute('aria-pressed','true');
-        } else {
-          // Convert L -> gal; °C -> °F
-          const l = Number(volumeEl.value);
-          const c = Number(tempEl.value);
-          if (Number.isFinite(l)) volumeEl.value = (lToGal(l)).toFixed(2);
-          if (Number.isFinite(c)) tempEl.value = (cToF(c)).toFixed(1);
-          unitMetricBtn.classList.remove('is-active'); unitMetricBtn.setAttribute('aria-pressed','false');
-          unitUSBtn.classList.add('is-active'); unitUSBtn.setAttribute('aria-pressed','true');
-        }
-        unit = newUnit;
-        calculate();
-      }
-
-      unitUSBtn.addEventListener('click', () => setUnit('US'));
-      unitMetricBtn.addEventListener('click', () => setUnit('METRIC'));
-      unitUSBtn.addEventListener('keydown', e => { if(e.key==='Enter' || e.key===' ') { e.preventDefault(); setUnit('US'); }});
-      unitMetricBtn.addEventListener('keydown', e => { if(e.key==='Enter' || e.key===' ') { e.preventDefault(); setUnit('METRIC'); }});
-
-      // Initial compute
-      calculate();
-    })();
-  </script>
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="/assets/js/mobile-menu.js" as="script"><link rel="preload" href="/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1408,12 +969,7 @@ Home ›
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main">Skip to main content</a>
-
-<main class="main" id="main" role="main">
+</style><a class="skip-link" href="#main">Skip to main content</a><main class="main" id="main" role="main">
 <div class="container">
 <nav aria-label="Breadcrumb" class="breadcrumb">
 Home ›
@@ -1684,9 +1240,48 @@ Home ›
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
     (function(){
       'use strict';
 
@@ -1906,6 +1501,444 @@ Home ›
       // Initial compute
       calculate();
     })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
 
-</body></html>
+      // Elements
+      const unitUSBtn = document.getElementById('unitUS');
+      const unitMetricBtn = document.getElementById('unitMetric');
+      const volumeEl = document.getElementById('volume');
+      const tempEl = document.getElementById('temperature');
+      const targetEl = document.getElementById('targetVolumes');
+      const stylePresetEl = document.getElementById('stylePreset');
+      const sugarEl = document.getElementById('sugarType');
+
+      const residualCO2El = document.getElementById('residualCO2');
+      const sugarGramsEl = document.getElementById('sugarGrams');
+      const sugarOuncesEl = document.getElementById('sugarOunces');
+      const perBottleEl = document.getElementById('perBottle');
+      const waterSuggestionEl = document.getElementById('waterSuggestion');
+      const resultNoteEl = document.getElementById('resultNote');
+
+      const volumeError = document.getElementById('volumeError');
+      const tempError = document.getElementById('temperatureError');
+      const targetError = document.getElementById('targetVolumesError');
+      const sugarTypeError = document.getElementById('sugarTypeError');
+
+      // Tooltips
+      function bindTooltip(btnId, tipId){
+        const btn = document.getElementById(btnId);
+        const tip = document.getElementById(tipId);
+        btn.addEventListener('click', () => {
+          const open = tip.getAttribute('data-open') === 'true';
+          tip.setAttribute('data-open', String(!open));
+          btn.setAttribute('aria-expanded', String(!open));
+        });
+        btn.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); }
+        });
+      }
+      bindTooltip('tt-volume-btn','tt-volume');
+      bindTooltip('tt-temp-btn','tt-temp');
+      bindTooltip('tt-co2-btn','tt-co2');
+      bindTooltip('tt-sugar-btn','tt-sugar');
+
+      // State
+      let unit = 'US'; // 'US' or 'METRIC'
+
+      // Helpers
+      const galToL = g => g * 3.785411784;
+      const lToGal = l => l / 3.785411784;
+      const cToF = c => (c * 9/5) + 32;
+      const fToC = f => (f - 32) * 5/9;
+      const gToOz = g => g / 28.349523125;
+
+      // Residual CO2 formula (T in °F)
+      function residualCO2Volumes(tempF){
+        // Vres = 3.0378 − 0.050062*T + 0.00026555*T^2
+        return 3.0378 - 0.050062 * tempF + 0.00026555 * tempF * tempF;
+      }
+
+      // Sugar coefficients (g per L per CO2 volume)
+      const sugarK = {
+        sucrose: 3.82,       // table sugar
+        corn: 4.42,          // dextrose monohydrate
+        glucose: 4.02,       // dextrose anhydrous
+        dme: 6.40            // dry malt extract (approx., brand-dependent)
+      };
+
+      // Validation
+      function setError(el, errEl, message){
+        if(message){
+          errEl.textContent = message;
+          el.setAttribute('aria-invalid','true');
+          return false;
+        } else {
+          errEl.textContent = '';
+          el.removeAttribute('aria-invalid');
+          return true;
+        }
+      }
+
+      function validate(){
+        const vol = Number(volumeEl.value);
+        const temp = Number(tempEl.value);
+        const target = Number(targetEl.value);
+        let ok = true;
+
+        if (!Number.isFinite(vol) || vol <= 0){
+          ok = setError(volumeEl, volumeError, 'Enter a positive batch volume.') && ok;
+        } else {
+          setError(volumeEl, volumeError, '');
+        }
+
+        // Temperature ranges per unit
+        if (unit === 'US'){
+          if (!Number.isFinite(temp) || temp < 32 || temp > 120){
+            ok = setError(tempEl, tempError, 'Enter a realistic temperature in °F (32–120).') && ok;
+          } else {
+            setError(tempEl, tempError, '');
+          }
+        } else {
+          if (!Number.isFinite(temp) || temp < 0 || temp > 49){
+            ok = setError(tempEl, tempError, 'Enter a realistic temperature in °C (0–49).') && ok;
+          } else {
+            setError(tempEl, tempError, '');
+          }
+        }
+
+        if (!Number.isFinite(target) || target < 1.0 || target > 4.5){
+          ok = setError(targetEl, targetError, 'Choose a target between 1.0 and 4.5 volumes CO₂.') && ok;
+        } else {
+          setError(targetEl, targetError, '');
+        }
+
+        if (!sugarEl.value){
+          ok = setError(sugarEl, sugarTypeError, 'Select a priming sugar type.') && ok;
+        } else {
+          setError(sugarEl, sugarTypeError, '');
+        }
+
+        return ok;
+      }
+
+      // Calculation
+      function calculate(){
+        if(!validate()){
+          residualCO2El.textContent = '—';
+          sugarGramsEl.textContent = '—';
+          sugarOuncesEl.textContent = '—';
+       	  perBottleEl.textContent = '—';
+          resultNoteEl.textContent = '';
+          return;
+        }
+
+        const volInput = Number(volumeEl.value);
+        const tempInput = Number(tempEl.value);
+        const target = Number(targetEl.value);
+        const sugar = sugarEl.value;
+
+        const volL = unit === 'US' ? galToL(volInput) : volInput;
+        const tempF = unit === 'US' ? tempInput : cToF(tempInput);
+
+        const vRes = Math.max(0, residualCO2Volumes(tempF));
+        const delta = target - vRes;
+
+        residualCO2El.textContent = vRes.toFixed(2) + ' vol';
+
+        if (delta <= 0){
+          sugarGramsEl.textContent = '0 g';
+          sugarOuncesEl.textContent = '0.00 oz';
+          perBottleEl.textContent = '0 g';
+          resultNoteEl.textContent = 'Your beer already contains equal or higher CO₂ than your target. No priming sugar needed.';
+          return;
+        }
+
+        const k = sugarK[sugar] || sugarK.sucrose;
+        const grams = delta * volL * k;
+        const ounces = gToOz(grams);
+        sugarGramsEl.textContent = grams.toFixed(0) + ' g';
+        sugarOuncesEl.textContent = ounces.toFixed(2) + ' oz';
+
+        // Approx per 12 oz bottle: 5 gal ≈ 48 bottles. Generalize by volume:
+        const bottles = (volL / 0.355); // 355 mL typical 12 oz
+        const perBottle = grams / bottles;
+        perBottleEl.textContent = Math.max(0, perBottle).toFixed(1) + ' g';
+
+        // Suggest water always 240–480 mL for ~5 gal; scale gently:
+        const waterMin = Math.max(180, Math.min(360, volL * 12)); // heuristic bounds
+        const waterMax = Math.max(300, Math.min(600, volL * 24));
+        waterSuggestionEl.textContent = `${Math.round(waterMin)}–${Math.round(waterMax)} mL`;
+
+        resultNoteEl.textContent = 'We recommend weighing sugar and gently mixing a boiled, cooled solution to avoid oxidation and stratification.';
+      }
+
+      // Inline validation on blur
+      volumeEl.addEventListener('blur', calculate);
+      tempEl.addEventListener('blur', calculate);
+      targetEl.addEventListener('blur', calculate);
+      sugarEl.addEventListener('blur', calculate);
+
+      // Live updates
+      [volumeEl, tempEl, targetEl, sugarEl].forEach(el => el.addEventListener('input', calculate));
+      stylePresetEl.addEventListener('change', () => {
+        if (stylePresetEl.value){
+          targetEl.value = stylePresetEl.value;
+        }
+        calculate();
+      });
+
+      // Unit toggles with conversion preserving actual amounts
+      function setUnit(newUnit){
+        if (unit === newUnit) return;
+        if (newUnit === 'METRIC'){
+          // Convert gal -> L; °F -> °C
+          const g = Number(volumeEl.value);
+          const f = Number(tempEl.value);
+          if (Number.isFinite(g)) volumeEl.value = (galToL(g)).toFixed(3);
+          if (Number.isFinite(f)) tempEl.value = (fToC(f)).toFixed(1);
+          unitUSBtn.classList.remove('is-active'); unitUSBtn.setAttribute('aria-pressed','false');
+          unitMetricBtn.classList.add('is-active'); unitMetricBtn.setAttribute('aria-pressed','true');
+        } else {
+          // Convert L -> gal; °C -> °F
+          const l = Number(volumeEl.value);
+          const c = Number(tempEl.value);
+          if (Number.isFinite(l)) volumeEl.value = (lToGal(l)).toFixed(2);
+          if (Number.isFinite(c)) tempEl.value = (cToF(c)).toFixed(1);
+          unitMetricBtn.classList.remove('is-active'); unitMetricBtn.setAttribute('aria-pressed','false');
+          unitUSBtn.classList.add('is-active'); unitUSBtn.setAttribute('aria-pressed','true');
+        }
+        unit = newUnit;
+        calculate();
+      }
+
+      unitUSBtn.addEventListener('click', () => setUnit('US'));
+      unitMetricBtn.addEventListener('click', () => setUnit('METRIC'));
+      unitUSBtn.addEventListener('keydown', e => { if(e.key==='Enter' || e.key===' ') { e.preventDefault(); setUnit('US'); }});
+      unitMetricBtn.addEventListener('keydown', e => { if(e.key==='Enter' || e.key===' ') { e.preventDefault(); setUnit('METRIC'); }});
+
+      // Initial compute
+      calculate();
+    })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
+
+      // Elements
+      const unitUSBtn = document.getElementById('unitUS');
+      const unitMetricBtn = document.getElementById('unitMetric');
+      const volumeEl = document.getElementById('volume');
+      const tempEl = document.getElementById('temperature');
+      const targetEl = document.getElementById('targetVolumes');
+      const stylePresetEl = document.getElementById('stylePreset');
+      const sugarEl = document.getElementById('sugarType');
+
+      const residualCO2El = document.getElementById('residualCO2');
+      const sugarGramsEl = document.getElementById('sugarGrams');
+      const sugarOuncesEl = document.getElementById('sugarOunces');
+      const perBottleEl = document.getElementById('perBottle');
+      const waterSuggestionEl = document.getElementById('waterSuggestion');
+      const resultNoteEl = document.getElementById('resultNote');
+
+      const volumeError = document.getElementById('volumeError');
+      const tempError = document.getElementById('temperatureError');
+      const targetError = document.getElementById('targetVolumesError');
+      const sugarTypeError = document.getElementById('sugarTypeError');
+
+      // Tooltips
+      function bindTooltip(btnId, tipId){
+        const btn = document.getElementById(btnId);
+        const tip = document.getElementById(tipId);
+        btn.addEventListener('click', () => {
+          const open = tip.getAttribute('data-open') === 'true';
+          tip.setAttribute('data-open', String(!open));
+          btn.setAttribute('aria-expanded', String(!open));
+        });
+        btn.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); }
+        });
+      }
+      bindTooltip('tt-volume-btn','tt-volume');
+      bindTooltip('tt-temp-btn','tt-temp');
+      bindTooltip('tt-co2-btn','tt-co2');
+      bindTooltip('tt-sugar-btn','tt-sugar');
+
+      // State
+      let unit = 'US'; // 'US' or 'METRIC'
+
+      // Helpers
+      const galToL = g => g * 3.785411784;
+      const lToGal = l => l / 3.785411784;
+      const cToF = c => (c * 9/5) + 32;
+      const fToC = f => (f - 32) * 5/9;
+      const gToOz = g => g / 28.349523125;
+
+      // Residual CO2 formula (T in °F)
+      function residualCO2Volumes(tempF){
+        // Vres = 3.0378 − 0.050062*T + 0.00026555*T^2
+        return 3.0378 - 0.050062 * tempF + 0.00026555 * tempF * tempF;
+      }
+
+      // Sugar coefficients (g per L per CO2 volume)
+      const sugarK = {
+        sucrose: 3.82,       // table sugar
+        corn: 4.42,          // dextrose monohydrate
+        glucose: 4.02,       // dextrose anhydrous
+        dme: 6.40            // dry malt extract (approx., brand-dependent)
+      };
+
+      // Validation
+      function setError(el, errEl, message){
+        if(message){
+          errEl.textContent = message;
+          el.setAttribute('aria-invalid','true');
+          return false;
+        } else {
+          errEl.textContent = '';
+          el.removeAttribute('aria-invalid');
+          return true;
+        }
+      }
+
+      function validate(){
+        const vol = Number(volumeEl.value);
+        const temp = Number(tempEl.value);
+        const target = Number(targetEl.value);
+        let ok = true;
+
+        if (!Number.isFinite(vol) || vol <= 0){
+          ok = setError(volumeEl, volumeError, 'Enter a positive batch volume.') && ok;
+        } else {
+          setError(volumeEl, volumeError, '');
+        }
+
+        // Temperature ranges per unit
+        if (unit === 'US'){
+          if (!Number.isFinite(temp) || temp < 32 || temp > 120){
+            ok = setError(tempEl, tempError, 'Enter a realistic temperature in °F (32–120).') && ok;
+          } else {
+            setError(tempEl, tempError, '');
+          }
+        } else {
+          if (!Number.isFinite(temp) || temp < 0 || temp > 49){
+            ok = setError(tempEl, tempError, 'Enter a realistic temperature in °C (0–49).') && ok;
+          } else {
+            setError(tempEl, tempError, '');
+          }
+        }
+
+        if (!Number.isFinite(target) || target < 1.0 || target > 4.5){
+          ok = setError(targetEl, targetError, 'Choose a target between 1.0 and 4.5 volumes CO₂.') && ok;
+        } else {
+          setError(targetEl, targetError, '');
+        }
+
+        if (!sugarEl.value){
+          ok = setError(sugarEl, sugarTypeError, 'Select a priming sugar type.') && ok;
+        } else {
+          setError(sugarEl, sugarTypeError, '');
+        }
+
+        return ok;
+      }
+
+      // Calculation
+      function calculate(){
+        if(!validate()){
+          residualCO2El.textContent = '—';
+          sugarGramsEl.textContent = '—';
+          sugarOuncesEl.textContent = '—';
+       	  perBottleEl.textContent = '—';
+          resultNoteEl.textContent = '';
+          return;
+        }
+
+        const volInput = Number(volumeEl.value);
+        const tempInput = Number(tempEl.value);
+        const target = Number(targetEl.value);
+        const sugar = sugarEl.value;
+
+        const volL = unit === 'US' ? galToL(volInput) : volInput;
+        const tempF = unit === 'US' ? tempInput : cToF(tempInput);
+
+        const vRes = Math.max(0, residualCO2Volumes(tempF));
+        const delta = target - vRes;
+
+        residualCO2El.textContent = vRes.toFixed(2) + ' vol';
+
+        if (delta <= 0){
+          sugarGramsEl.textContent = '0 g';
+          sugarOuncesEl.textContent = '0.00 oz';
+          perBottleEl.textContent = '0 g';
+          resultNoteEl.textContent = 'Your beer already contains equal or higher CO₂ than your target. No priming sugar needed.';
+          return;
+        }
+
+        const k = sugarK[sugar] || sugarK.sucrose;
+        const grams = delta * volL * k;
+        const ounces = gToOz(grams);
+        sugarGramsEl.textContent = grams.toFixed(0) + ' g';
+        sugarOuncesEl.textContent = ounces.toFixed(2) + ' oz';
+
+        // Approx per 12 oz bottle: 5 gal ≈ 48 bottles. Generalize by volume:
+        const bottles = (volL / 0.355); // 355 mL typical 12 oz
+        const perBottle = grams / bottles;
+        perBottleEl.textContent = Math.max(0, perBottle).toFixed(1) + ' g';
+
+        // Suggest water always 240–480 mL for ~5 gal; scale gently:
+        const waterMin = Math.max(180, Math.min(360, volL * 12)); // heuristic bounds
+        const waterMax = Math.max(300, Math.min(600, volL * 24));
+        waterSuggestionEl.textContent = `${Math.round(waterMin)}–${Math.round(waterMax)} mL`;
+
+        resultNoteEl.textContent = 'We recommend weighing sugar and gently mixing a boiled, cooled solution to avoid oxidation and stratification.';
+      }
+
+      // Inline validation on blur
+      volumeEl.addEventListener('blur', calculate);
+      tempEl.addEventListener('blur', calculate);
+      targetEl.addEventListener('blur', calculate);
+      sugarEl.addEventListener('blur', calculate);
+
+      // Live updates
+      [volumeEl, tempEl, targetEl, sugarEl].forEach(el => el.addEventListener('input', calculate));
+      stylePresetEl.addEventListener('change', () => {
+        if (stylePresetEl.value){
+          targetEl.value = stylePresetEl.value;
+        }
+        calculate();
+      });
+
+      // Unit toggles with conversion preserving actual amounts
+      function setUnit(newUnit){
+        if (unit === newUnit) return;
+        if (newUnit === 'METRIC'){
+          // Convert gal -> L; °F -> °C
+          const g = Number(volumeEl.value);
+          const f = Number(tempEl.value);
+          if (Number.isFinite(g)) volumeEl.value = (galToL(g)).toFixed(3);
+          if (Number.isFinite(f)) tempEl.value = (fToC(f)).toFixed(1);
+          unitUSBtn.classList.remove('is-active'); unitUSBtn.setAttribute('aria-pressed','false');
+          unitMetricBtn.classList.add('is-active'); unitMetricBtn.setAttribute('aria-pressed','true');
+        } else {
+          // Convert L -> gal; °C -> °F
+          const l = Number(volumeEl.value);
+          const c = Number(tempEl.value);
+          if (Number.isFinite(l)) volumeEl.value = (lToGal(l)).toFixed(2);
+          if (Number.isFinite(c)) tempEl.value = (cToF(c)).toFixed(1);
+          unitMetricBtn.classList.remove('is-active'); unitMetricBtn.setAttribute('aria-pressed','false');
+          unitUSBtn.classList.add('is-active'); unitUSBtn.setAttribute('aria-pressed','true');
+        }
+        unit = newUnit;
+        calculate();
+      }
+
+      unitUSBtn.addEventListener('click', () => setUnit('US'));
+      unitMetricBtn.addEventListener('click', () => setUnit('METRIC'));
+      unitUSBtn.addEventListener('keydown', e => { if(e.key==='Enter' || e.key===' ') { e.preventDefault(); setUnit('US'); }});
+      unitMetricBtn.addEventListener('keydown', e => { if(e.key==='Enter' || e.key===' ') { e.preventDefault(); setUnit('METRIC'); }});
+
+      // Initial compute
+      calculate();
+    })();
+  </script></body></html>

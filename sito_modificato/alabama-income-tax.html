@@ -223,10 +223,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
@@ -293,11 +299,23 @@
 }
 </script>
 </head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">Alabama State Income Tax Calculator</h1>
+    <p class="sub" id="pageSub">Authoritative Alabama income tax calculator. Estimate Alabama state income tax by filing status using 2024–2025 marginal rates, effective rate, and after‑tax income. WCAG-accessible, mobile-first, and fast.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<main class="container w-full lg:w-2/3" id="main-content" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main class="container w-full lg:w-2/3" id="main-content" role="main">
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Alabama State Income Tax Calculator</h1>
 <p>This Alabama income tax calculator lets residents and workers quickly estimate state tax owed, effective and marginal rates, and after‑tax income. It’s designed for individuals, families, and professionals who need a fast, accurate, and accessible computation using Alabama’s current marginal rate schedule.</p>
 <div class="calculator-layout" id="calcLayout">
@@ -635,240 +653,21 @@
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
+
+
 </main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
 
-      // Utilities
-      const $ = (sel, root=document) => root.querySelector(sel);
-      const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
-      const fmtCurrency = (v) => new Intl.NumberFormat(undefined,{style:'currency',currency:'USD',maximumFractionDigits:2}).format(v||0);
-      const fmtPct = (v) => `${(v*100).toFixed(2)}%`;
-      const clamp0 = (n) => Math.max(0, Number.isFinite(n)? n : 0);
+<button id="resetBtn" type="button" class="btn btnSecondary">Reset</button>
+</div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-      // Elements
-      const modeTaxable = $("#mode-taxable");
-      const modeEstimate = $("#mode-estimate");
-      const panelTaxable = $("#panel-taxable");
-      const panelEstimate = $("#panel-estimate");
-
-      const taxableIncome = $("#taxableIncome");
-      const errTaxable = $("#err-taxable");
-
-      const grossIncome = $("#grossIncome");
-      const errGross = $("#err-gross");
-      const pretax = $("#pretax");
-      const alAdjustments = $("#alAdjustments");
-      const stdDeduction = $("#stdDeduction");
-      const personalExemption = $("#personalExemption");
-      const dependents = $("#dependents");
-      const depExemptionAmt = $("#depExemptionAmt");
-      const estimatedTaxable = $("#estimatedTaxable");
-
-      // Results
-      const resTaxable = $("#res-taxable");
-      const resTax = $("#res-tax");
-      const resEffRate = $("#res-effRate");
-      const resMarginal = $("#res-marginal");
-      const resAfter = $("#res-after");
-      const resMonthly = $("#res-monthly");
-      const resultsContainer = $(".results-container");
-
-      // Tooltips
-      const tooltipButtons = $$(".help-btn");
-      tooltipButtons.forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          const id = btn.getAttribute('aria-controls');
-          const tip = document.getElementById(id);
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          tip.setAttribute('aria-hidden', String(expanded));
-        });
-        btn.addEventListener('keydown', (e)=>{
-          if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); btn.click(); }
-        });
-      });
-
-      // Validation helpers
-      function validateRequiredPositiveNumber(inputEl, errorEl){
-        const raw = inputEl.value.trim();
-        let valid = true, msg = "";
-        if(raw === ""){
-          valid = false; msg = "Please enter a value.";
-        } else {
-          const val = Number(raw);
-          if(!Number.isFinite(val)){ valid = false; msg = "Please enter a valid number (e.g., 55000)."; }
-          else if(val < 0){ valid = false; msg = "The value cannot be negative."; }
-        }
-        if(!valid){
-          inputEl.setAttribute('aria-invalid','true');
-          errorEl.textContent = msg;
-        } else {
-          inputEl.removeAttribute('aria-invalid');
-          errorEl.textContent = "";
-        }
-        return valid;
-      }
-      function validateNonNegativeNumber(inputEl){
-        const raw = inputEl.value.trim();
-        if(raw === "") return true;
-        const val = Number(raw);
-        if(!Number.isFinite(val) || val < 0){
-          inputEl.setAttribute('aria-invalid','true');
-          return false;
-        }
-        inputEl.removeAttribute('aria-invalid');
-        return true;
-      }
-
-      // Filing status mapping for brackets (Alabama 2024–2025)
-      function getBrackets(filingStatus){
-        // Returns thresholds and rates in order
-        // Single / MFS / HoF: 2% up to 500; 4% next 2,500; 4.95% above 3,000
-        // MFJ: 2% up to 1,000; 4% next 5,000; 4.95% above 6,000
-        if(filingStatus === 'mfj'){
-          return [
-            { cap: 1000, rate: 0.02 },
-            { cap: 6000, rate: 0.04 }, // up to 6,000 total; second layer width 5,000
-            { cap: Infinity, rate: 0.0495 }
-          ];
-        }
-        // single, mfs, hoh
-        return [
-          { cap: 500, rate: 0.02 },
-          { cap: 3000, rate: 0.04 }, // up to 3,000 total; second layer width 2,500
-          { cap: Infinity, rate: 0.0495 }
-        ];
-      }
-
-      function computeAlabamaTax(taxable, filingStatus){
-        taxable = clamp0(taxable);
-        const brackets = getBrackets(filingStatus);
-        let remaining = taxable;
-        let lower = 0;
-        let tax = 0;
-        let marginalRate = 0;
-
-        for(const b of brackets){
-          if(remaining <= 0) break;
-          const width = Math.min(b.cap - lower, remaining);
-          if(width > 0){
-            tax += width * b.rate;
-            marginalRate = b.rate;
-            remaining -= width;
-            lower = b.cap;
-          }
-        }
-        return { tax, marginalRate };
-      }
-
-      function deriveEstimatedTaxable(){
-        const gi = clamp0(Number(grossIncome.value));
-        const pt = clamp0(Number(pretax.value));
-        const adj = clamp0(Number(alAdjustments.value));
-        const ded = clamp0(Number(stdDeduction.value));
-        const pex = clamp0(Number(personalExemption.value));
-        const depCount = clamp0(Number(dependents.value));
-        const depAmt = clamp0(Number(depExemptionAmt.value));
-        const depEx = depCount * depAmt;
-        const ti = Math.max(0, gi - pt - adj - ded - pex - depEx);
-        estimatedTaxable.value = fmtCurrency(ti);
-        return ti;
-      }
-
-      function activeFilingStatus(){
-        return ($("input[name='filingStatus']:checked")?.value) || 'single';
-      }
-
-      function activeMode(){
-        return ($("input[name='inputMode']:checked")?.value) || 'taxable';
-      }
-
-      function currentTaxableIncome(){
-        if(activeMode()==='taxable'){
-          return clamp0(Number(taxableIncome.value));
-        }
-        return deriveEstimatedTaxable();
-      }
-
-      function recompute(){
-        resultsContainer.setAttribute('aria-busy','true');
-        const ti = currentTaxableIncome();
-        const fs = activeFilingStatus();
-        const { tax, marginalRate } = computeAlabamaTax(ti, fs);
-
-        resTaxable.textContent = fmtCurrency(ti);
-        resTax.textContent = fmtCurrency(tax);
-        resEffRate.textContent = ti > 0 ? fmtPct(tax/ti) : "0.00%";
-        resMarginal.textContent = fmtPct(marginalRate);
-        resAfter.textContent = fmtCurrency(Math.max(0, ti - tax));
-        resMonthly.textContent = fmtCurrency(tax/12);
-
-        resultsContainer.setAttribute('aria-busy','false');
-      }
-
-      // Toggle panels
-      function updateModePanels(){
-        const mode = activeMode();
-        if(mode === 'taxable'){
-          panelTaxable.hidden = false;
-          panelEstimate.hidden = true;
-        } else {
-          panelEstimate.hidden = false;
-          panelTaxable.hidden = true;
-          deriveEstimatedTaxable();
-        }
-        recompute();
-      }
-
-      // Event wiring
-      // Mode & filing status changes
-      $$("input[name='inputMode']").forEach(r => r.addEventListener('change', updateModePanels));
-      $$( "input[name='filingStatus']" ).forEach(r => r.addEventListener('change', recompute));
-      $$("input[name='taxYear']").forEach(r => r.addEventListener('change', recompute)); // rate structure same 2024–2025
-
-      // Validation on blur
-      taxableIncome.addEventListener('blur', ()=>{ if(activeMode()==='taxable'){ validateRequiredPositiveNumber(taxableIncome, errTaxable); recompute(); }});
-      grossIncome.addEventListener('blur', ()=>{ if(activeMode()==='estimate'){ validateRequiredPositiveNumber(grossIncome, errGross); recompute(); }});
-
-      // Non-required numeric fields: validate non-negative
-      [pretax, alAdjustments, stdDeduction, personalExemption, dependents, depExemptionAmt].forEach(el=>{
-        el.addEventListener('blur', ()=>{ validateNonNegativeNumber(el); recompute(); });
-      });
-
-      // Recompute on input for responsiveness (accessible and performant)
-      [taxableIncome, grossIncome, pretax, alAdjustments, stdDeduction, personalExemption, dependents, depExemptionAmt].forEach(el=>{
-        el.addEventListener('input', ()=>{ recompute(); });
-      });
-
-      // Initialize defaults for helpful estimation
-      pretax.value = "";
-      alAdjustments.value = "";
-      stdDeduction.value = "";
-      personalExemption.value = "";
-      dependents.value = "0";
-      depExemptionAmt.value = "1000";
-
-      // Initial compute
-      updateModePanels();
-
-      // Prevent form submission from search demo
-      document.querySelector('.site-search')?.addEventListener('submit', (e)=>{ e.preventDefault(); });
-    })();
-  </script>
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main-content">Skip to main content</a><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -900,40 +699,8 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "General",
-      "item": "https://calcdomain.com/categories/general"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Miscellaneous",
-      "item": "https://calcdomain.com/subcategories/miscellaneous"
-    }
-  ]
-}
-</script>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="container" id="main-content" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="container" id="main-content" role="main">
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Alabama State Income Tax Calculator</h1>
 <p>This Alabama income tax calculator lets residents and workers quickly estimate state tax owed, effective and marginal rates, and after‑tax income. It’s designed for individuals, families, and professionals who need a fast, accurate, and accessible computation using Alabama’s current marginal rate schedule.</p>
 <div class="calculator-layout" id="calcLayout">
@@ -1271,240 +1038,7 @@
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
-
-      // Utilities
-      const $ = (sel, root=document) => root.querySelector(sel);
-      const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
-      const fmtCurrency = (v) => new Intl.NumberFormat(undefined,{style:'currency',currency:'USD',maximumFractionDigits:2}).format(v||0);
-      const fmtPct = (v) => `${(v*100).toFixed(2)}%`;
-      const clamp0 = (n) => Math.max(0, Number.isFinite(n)? n : 0);
-
-      // Elements
-      const modeTaxable = $("#mode-taxable");
-      const modeEstimate = $("#mode-estimate");
-      const panelTaxable = $("#panel-taxable");
-      const panelEstimate = $("#panel-estimate");
-
-      const taxableIncome = $("#taxableIncome");
-      const errTaxable = $("#err-taxable");
-
-      const grossIncome = $("#grossIncome");
-      const errGross = $("#err-gross");
-      const pretax = $("#pretax");
-      const alAdjustments = $("#alAdjustments");
-      const stdDeduction = $("#stdDeduction");
-      const personalExemption = $("#personalExemption");
-      const dependents = $("#dependents");
-      const depExemptionAmt = $("#depExemptionAmt");
-      const estimatedTaxable = $("#estimatedTaxable");
-
-      // Results
-      const resTaxable = $("#res-taxable");
-      const resTax = $("#res-tax");
-      const resEffRate = $("#res-effRate");
-      const resMarginal = $("#res-marginal");
-      const resAfter = $("#res-after");
-      const resMonthly = $("#res-monthly");
-      const resultsContainer = $(".results-container");
-
-      // Tooltips
-      const tooltipButtons = $$(".help-btn");
-      tooltipButtons.forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          const id = btn.getAttribute('aria-controls');
-          const tip = document.getElementById(id);
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          tip.setAttribute('aria-hidden', String(expanded));
-        });
-        btn.addEventListener('keydown', (e)=>{
-          if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); btn.click(); }
-        });
-      });
-
-      // Validation helpers
-      function validateRequiredPositiveNumber(inputEl, errorEl){
-        const raw = inputEl.value.trim();
-        let valid = true, msg = "";
-        if(raw === ""){
-          valid = false; msg = "Please enter a value.";
-        } else {
-          const val = Number(raw);
-          if(!Number.isFinite(val)){ valid = false; msg = "Please enter a valid number (e.g., 55000)."; }
-          else if(val < 0){ valid = false; msg = "The value cannot be negative."; }
-        }
-        if(!valid){
-          inputEl.setAttribute('aria-invalid','true');
-          errorEl.textContent = msg;
-        } else {
-          inputEl.removeAttribute('aria-invalid');
-          errorEl.textContent = "";
-        }
-        return valid;
-      }
-      function validateNonNegativeNumber(inputEl){
-        const raw = inputEl.value.trim();
-        if(raw === "") return true;
-        const val = Number(raw);
-        if(!Number.isFinite(val) || val < 0){
-          inputEl.setAttribute('aria-invalid','true');
-          return false;
-        }
-        inputEl.removeAttribute('aria-invalid');
-        return true;
-      }
-
-      // Filing status mapping for brackets (Alabama 2024–2025)
-      function getBrackets(filingStatus){
-        // Returns thresholds and rates in order
-        // Single / MFS / HoF: 2% up to 500; 4% next 2,500; 4.95% above 3,000
-        // MFJ: 2% up to 1,000; 4% next 5,000; 4.95% above 6,000
-        if(filingStatus === 'mfj'){
-          return [
-            { cap: 1000, rate: 0.02 },
-            { cap: 6000, rate: 0.04 }, // up to 6,000 total; second layer width 5,000
-            { cap: Infinity, rate: 0.0495 }
-          ];
-        }
-        // single, mfs, hoh
-        return [
-          { cap: 500, rate: 0.02 },
-          { cap: 3000, rate: 0.04 }, // up to 3,000 total; second layer width 2,500
-          { cap: Infinity, rate: 0.0495 }
-        ];
-      }
-
-      function computeAlabamaTax(taxable, filingStatus){
-        taxable = clamp0(taxable);
-        const brackets = getBrackets(filingStatus);
-        let remaining = taxable;
-        let lower = 0;
-        let tax = 0;
-        let marginalRate = 0;
-
-        for(const b of brackets){
-          if(remaining <= 0) break;
-          const width = Math.min(b.cap - lower, remaining);
-          if(width > 0){
-            tax += width * b.rate;
-            marginalRate = b.rate;
-            remaining -= width;
-            lower = b.cap;
-          }
-        }
-        return { tax, marginalRate };
-      }
-
-      function deriveEstimatedTaxable(){
-        const gi = clamp0(Number(grossIncome.value));
-        const pt = clamp0(Number(pretax.value));
-        const adj = clamp0(Number(alAdjustments.value));
-        const ded = clamp0(Number(stdDeduction.value));
-        const pex = clamp0(Number(personalExemption.value));
-        const depCount = clamp0(Number(dependents.value));
-        const depAmt = clamp0(Number(depExemptionAmt.value));
-        const depEx = depCount * depAmt;
-        const ti = Math.max(0, gi - pt - adj - ded - pex - depEx);
-        estimatedTaxable.value = fmtCurrency(ti);
-        return ti;
-      }
-
-      function activeFilingStatus(){
-        return ($("input[name='filingStatus']:checked")?.value) || 'single';
-      }
-
-      function activeMode(){
-        return ($("input[name='inputMode']:checked")?.value) || 'taxable';
-      }
-
-      function currentTaxableIncome(){
-        if(activeMode()==='taxable'){
-          return clamp0(Number(taxableIncome.value));
-        }
-        return deriveEstimatedTaxable();
-      }
-
-      function recompute(){
-        resultsContainer.setAttribute('aria-busy','true');
-        const ti = currentTaxableIncome();
-        const fs = activeFilingStatus();
-        const { tax, marginalRate } = computeAlabamaTax(ti, fs);
-
-        resTaxable.textContent = fmtCurrency(ti);
-        resTax.textContent = fmtCurrency(tax);
-        resEffRate.textContent = ti > 0 ? fmtPct(tax/ti) : "0.00%";
-        resMarginal.textContent = fmtPct(marginalRate);
-        resAfter.textContent = fmtCurrency(Math.max(0, ti - tax));
-        resMonthly.textContent = fmtCurrency(tax/12);
-
-        resultsContainer.setAttribute('aria-busy','false');
-      }
-
-      // Toggle panels
-      function updateModePanels(){
-        const mode = activeMode();
-        if(mode === 'taxable'){
-          panelTaxable.hidden = false;
-          panelEstimate.hidden = true;
-        } else {
-          panelEstimate.hidden = false;
-          panelTaxable.hidden = true;
-          deriveEstimatedTaxable();
-        }
-        recompute();
-      }
-
-      // Event wiring
-      // Mode & filing status changes
-      $$("input[name='inputMode']").forEach(r => r.addEventListener('change', updateModePanels));
-      $$( "input[name='filingStatus']" ).forEach(r => r.addEventListener('change', recompute));
-      $$("input[name='taxYear']").forEach(r => r.addEventListener('change', recompute)); // rate structure same 2024–2025
-
-      // Validation on blur
-      taxableIncome.addEventListener('blur', ()=>{ if(activeMode()==='taxable'){ validateRequiredPositiveNumber(taxableIncome, errTaxable); recompute(); }});
-      grossIncome.addEventListener('blur', ()=>{ if(activeMode()==='estimate'){ validateRequiredPositiveNumber(grossIncome, errGross); recompute(); }});
-
-      // Non-required numeric fields: validate non-negative
-      [pretax, alAdjustments, stdDeduction, personalExemption, dependents, depExemptionAmt].forEach(el=>{
-        el.addEventListener('blur', ()=>{ validateNonNegativeNumber(el); recompute(); });
-      });
-
-      // Recompute on input for responsiveness (accessible and performant)
-      [taxableIncome, grossIncome, pretax, alAdjustments, stdDeduction, personalExemption, dependents, depExemptionAmt].forEach(el=>{
-        el.addEventListener('input', ()=>{ recompute(); });
-      });
-
-      // Initialize defaults for helpful estimation
-      pretax.value = "";
-      alAdjustments.value = "";
-      stdDeduction.value = "";
-      personalExemption.value = "";
-      dependents.value = "0";
-      depExemptionAmt.value = "1000";
-
-      // Initial compute
-      updateModePanels();
-
-      // Prevent form submission from search demo
-      document.querySelector('.site-search')?.addEventListener('submit', (e)=>{ e.preventDefault(); });
-    })();
-  </script>
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1536,40 +1070,8 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "General",
-      "item": "https://calcdomain.com/categories/general"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Miscellaneous",
-      "item": "https://calcdomain.com/subcategories/miscellaneous"
-    }
-  ]
-}
-</script>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="container" id="main-content" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="container" id="main-content" role="main">
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Alabama State Income Tax Calculator</h1>
 <p>This Alabama income tax calculator lets residents and workers quickly estimate state tax owed, effective and marginal rates, and after‑tax income. It’s designed for individuals, families, and professionals who need a fast, accurate, and accessible computation using Alabama’s current marginal rate schedule.</p>
 <div class="calculator-layout" id="calcLayout">
@@ -1907,9 +1409,48 @@
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
     (function(){
       'use strict';
 
@@ -2129,6 +1670,494 @@
       // Prevent form submission from search demo
       document.querySelector('.site-search')?.addEventListener('submit', (e)=>{ e.preventDefault(); });
     })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "General",
+      "item": "https://calcdomain.com/categories/general"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Miscellaneous",
+      "item": "https://calcdomain.com/subcategories/miscellaneous"
+    }
+  ]
+}
+</script><script defer="">
+    (function(){
+      'use strict';
 
-</body></html>
+      // Utilities
+      const $ = (sel, root=document) => root.querySelector(sel);
+      const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+      const fmtCurrency = (v) => new Intl.NumberFormat(undefined,{style:'currency',currency:'USD',maximumFractionDigits:2}).format(v||0);
+      const fmtPct = (v) => `${(v*100).toFixed(2)}%`;
+      const clamp0 = (n) => Math.max(0, Number.isFinite(n)? n : 0);
+
+      // Elements
+      const modeTaxable = $("#mode-taxable");
+      const modeEstimate = $("#mode-estimate");
+      const panelTaxable = $("#panel-taxable");
+      const panelEstimate = $("#panel-estimate");
+
+      const taxableIncome = $("#taxableIncome");
+      const errTaxable = $("#err-taxable");
+
+      const grossIncome = $("#grossIncome");
+      const errGross = $("#err-gross");
+      const pretax = $("#pretax");
+      const alAdjustments = $("#alAdjustments");
+      const stdDeduction = $("#stdDeduction");
+      const personalExemption = $("#personalExemption");
+      const dependents = $("#dependents");
+      const depExemptionAmt = $("#depExemptionAmt");
+      const estimatedTaxable = $("#estimatedTaxable");
+
+      // Results
+      const resTaxable = $("#res-taxable");
+      const resTax = $("#res-tax");
+      const resEffRate = $("#res-effRate");
+      const resMarginal = $("#res-marginal");
+      const resAfter = $("#res-after");
+      const resMonthly = $("#res-monthly");
+      const resultsContainer = $(".results-container");
+
+      // Tooltips
+      const tooltipButtons = $$(".help-btn");
+      tooltipButtons.forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const id = btn.getAttribute('aria-controls');
+          const tip = document.getElementById(id);
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          tip.setAttribute('aria-hidden', String(expanded));
+        });
+        btn.addEventListener('keydown', (e)=>{
+          if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); btn.click(); }
+        });
+      });
+
+      // Validation helpers
+      function validateRequiredPositiveNumber(inputEl, errorEl){
+        const raw = inputEl.value.trim();
+        let valid = true, msg = "";
+        if(raw === ""){
+          valid = false; msg = "Please enter a value.";
+        } else {
+          const val = Number(raw);
+          if(!Number.isFinite(val)){ valid = false; msg = "Please enter a valid number (e.g., 55000)."; }
+          else if(val < 0){ valid = false; msg = "The value cannot be negative."; }
+        }
+        if(!valid){
+          inputEl.setAttribute('aria-invalid','true');
+          errorEl.textContent = msg;
+        } else {
+          inputEl.removeAttribute('aria-invalid');
+          errorEl.textContent = "";
+        }
+        return valid;
+      }
+      function validateNonNegativeNumber(inputEl){
+        const raw = inputEl.value.trim();
+        if(raw === "") return true;
+        const val = Number(raw);
+        if(!Number.isFinite(val) || val < 0){
+          inputEl.setAttribute('aria-invalid','true');
+          return false;
+        }
+        inputEl.removeAttribute('aria-invalid');
+        return true;
+      }
+
+      // Filing status mapping for brackets (Alabama 2024–2025)
+      function getBrackets(filingStatus){
+        // Returns thresholds and rates in order
+        // Single / MFS / HoF: 2% up to 500; 4% next 2,500; 4.95% above 3,000
+        // MFJ: 2% up to 1,000; 4% next 5,000; 4.95% above 6,000
+        if(filingStatus === 'mfj'){
+          return [
+            { cap: 1000, rate: 0.02 },
+            { cap: 6000, rate: 0.04 }, // up to 6,000 total; second layer width 5,000
+            { cap: Infinity, rate: 0.0495 }
+          ];
+        }
+        // single, mfs, hoh
+        return [
+          { cap: 500, rate: 0.02 },
+          { cap: 3000, rate: 0.04 }, // up to 3,000 total; second layer width 2,500
+          { cap: Infinity, rate: 0.0495 }
+        ];
+      }
+
+      function computeAlabamaTax(taxable, filingStatus){
+        taxable = clamp0(taxable);
+        const brackets = getBrackets(filingStatus);
+        let remaining = taxable;
+        let lower = 0;
+        let tax = 0;
+        let marginalRate = 0;
+
+        for(const b of brackets){
+          if(remaining <= 0) break;
+          const width = Math.min(b.cap - lower, remaining);
+          if(width > 0){
+            tax += width * b.rate;
+            marginalRate = b.rate;
+            remaining -= width;
+            lower = b.cap;
+          }
+        }
+        return { tax, marginalRate };
+      }
+
+      function deriveEstimatedTaxable(){
+        const gi = clamp0(Number(grossIncome.value));
+        const pt = clamp0(Number(pretax.value));
+        const adj = clamp0(Number(alAdjustments.value));
+        const ded = clamp0(Number(stdDeduction.value));
+        const pex = clamp0(Number(personalExemption.value));
+        const depCount = clamp0(Number(dependents.value));
+        const depAmt = clamp0(Number(depExemptionAmt.value));
+        const depEx = depCount * depAmt;
+        const ti = Math.max(0, gi - pt - adj - ded - pex - depEx);
+        estimatedTaxable.value = fmtCurrency(ti);
+        return ti;
+      }
+
+      function activeFilingStatus(){
+        return ($("input[name='filingStatus']:checked")?.value) || 'single';
+      }
+
+      function activeMode(){
+        return ($("input[name='inputMode']:checked")?.value) || 'taxable';
+      }
+
+      function currentTaxableIncome(){
+        if(activeMode()==='taxable'){
+          return clamp0(Number(taxableIncome.value));
+        }
+        return deriveEstimatedTaxable();
+      }
+
+      function recompute(){
+        resultsContainer.setAttribute('aria-busy','true');
+        const ti = currentTaxableIncome();
+        const fs = activeFilingStatus();
+        const { tax, marginalRate } = computeAlabamaTax(ti, fs);
+
+        resTaxable.textContent = fmtCurrency(ti);
+        resTax.textContent = fmtCurrency(tax);
+        resEffRate.textContent = ti > 0 ? fmtPct(tax/ti) : "0.00%";
+        resMarginal.textContent = fmtPct(marginalRate);
+        resAfter.textContent = fmtCurrency(Math.max(0, ti - tax));
+        resMonthly.textContent = fmtCurrency(tax/12);
+
+        resultsContainer.setAttribute('aria-busy','false');
+      }
+
+      // Toggle panels
+      function updateModePanels(){
+        const mode = activeMode();
+        if(mode === 'taxable'){
+          panelTaxable.hidden = false;
+          panelEstimate.hidden = true;
+        } else {
+          panelEstimate.hidden = false;
+          panelTaxable.hidden = true;
+          deriveEstimatedTaxable();
+        }
+        recompute();
+      }
+
+      // Event wiring
+      // Mode & filing status changes
+      $$("input[name='inputMode']").forEach(r => r.addEventListener('change', updateModePanels));
+      $$( "input[name='filingStatus']" ).forEach(r => r.addEventListener('change', recompute));
+      $$("input[name='taxYear']").forEach(r => r.addEventListener('change', recompute)); // rate structure same 2024–2025
+
+      // Validation on blur
+      taxableIncome.addEventListener('blur', ()=>{ if(activeMode()==='taxable'){ validateRequiredPositiveNumber(taxableIncome, errTaxable); recompute(); }});
+      grossIncome.addEventListener('blur', ()=>{ if(activeMode()==='estimate'){ validateRequiredPositiveNumber(grossIncome, errGross); recompute(); }});
+
+      // Non-required numeric fields: validate non-negative
+      [pretax, alAdjustments, stdDeduction, personalExemption, dependents, depExemptionAmt].forEach(el=>{
+        el.addEventListener('blur', ()=>{ validateNonNegativeNumber(el); recompute(); });
+      });
+
+      // Recompute on input for responsiveness (accessible and performant)
+      [taxableIncome, grossIncome, pretax, alAdjustments, stdDeduction, personalExemption, dependents, depExemptionAmt].forEach(el=>{
+        el.addEventListener('input', ()=>{ recompute(); });
+      });
+
+      // Initialize defaults for helpful estimation
+      pretax.value = "";
+      alAdjustments.value = "";
+      stdDeduction.value = "";
+      personalExemption.value = "";
+      dependents.value = "0";
+      depExemptionAmt.value = "1000";
+
+      // Initial compute
+      updateModePanels();
+
+      // Prevent form submission from search demo
+      document.querySelector('.site-search')?.addEventListener('submit', (e)=>{ e.preventDefault(); });
+    })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "General",
+      "item": "https://calcdomain.com/categories/general"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Miscellaneous",
+      "item": "https://calcdomain.com/subcategories/miscellaneous"
+    }
+  ]
+}
+</script><script defer="">
+    (function(){
+      'use strict';
+
+      // Utilities
+      const $ = (sel, root=document) => root.querySelector(sel);
+      const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+      const fmtCurrency = (v) => new Intl.NumberFormat(undefined,{style:'currency',currency:'USD',maximumFractionDigits:2}).format(v||0);
+      const fmtPct = (v) => `${(v*100).toFixed(2)}%`;
+      const clamp0 = (n) => Math.max(0, Number.isFinite(n)? n : 0);
+
+      // Elements
+      const modeTaxable = $("#mode-taxable");
+      const modeEstimate = $("#mode-estimate");
+      const panelTaxable = $("#panel-taxable");
+      const panelEstimate = $("#panel-estimate");
+
+      const taxableIncome = $("#taxableIncome");
+      const errTaxable = $("#err-taxable");
+
+      const grossIncome = $("#grossIncome");
+      const errGross = $("#err-gross");
+      const pretax = $("#pretax");
+      const alAdjustments = $("#alAdjustments");
+      const stdDeduction = $("#stdDeduction");
+      const personalExemption = $("#personalExemption");
+      const dependents = $("#dependents");
+      const depExemptionAmt = $("#depExemptionAmt");
+      const estimatedTaxable = $("#estimatedTaxable");
+
+      // Results
+      const resTaxable = $("#res-taxable");
+      const resTax = $("#res-tax");
+      const resEffRate = $("#res-effRate");
+      const resMarginal = $("#res-marginal");
+      const resAfter = $("#res-after");
+      const resMonthly = $("#res-monthly");
+      const resultsContainer = $(".results-container");
+
+      // Tooltips
+      const tooltipButtons = $$(".help-btn");
+      tooltipButtons.forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const id = btn.getAttribute('aria-controls');
+          const tip = document.getElementById(id);
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          tip.setAttribute('aria-hidden', String(expanded));
+        });
+        btn.addEventListener('keydown', (e)=>{
+          if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); btn.click(); }
+        });
+      });
+
+      // Validation helpers
+      function validateRequiredPositiveNumber(inputEl, errorEl){
+        const raw = inputEl.value.trim();
+        let valid = true, msg = "";
+        if(raw === ""){
+          valid = false; msg = "Please enter a value.";
+        } else {
+          const val = Number(raw);
+          if(!Number.isFinite(val)){ valid = false; msg = "Please enter a valid number (e.g., 55000)."; }
+          else if(val < 0){ valid = false; msg = "The value cannot be negative."; }
+        }
+        if(!valid){
+          inputEl.setAttribute('aria-invalid','true');
+          errorEl.textContent = msg;
+        } else {
+          inputEl.removeAttribute('aria-invalid');
+          errorEl.textContent = "";
+        }
+        return valid;
+      }
+      function validateNonNegativeNumber(inputEl){
+        const raw = inputEl.value.trim();
+        if(raw === "") return true;
+        const val = Number(raw);
+        if(!Number.isFinite(val) || val < 0){
+          inputEl.setAttribute('aria-invalid','true');
+          return false;
+        }
+        inputEl.removeAttribute('aria-invalid');
+        return true;
+      }
+
+      // Filing status mapping for brackets (Alabama 2024–2025)
+      function getBrackets(filingStatus){
+        // Returns thresholds and rates in order
+        // Single / MFS / HoF: 2% up to 500; 4% next 2,500; 4.95% above 3,000
+        // MFJ: 2% up to 1,000; 4% next 5,000; 4.95% above 6,000
+        if(filingStatus === 'mfj'){
+          return [
+            { cap: 1000, rate: 0.02 },
+            { cap: 6000, rate: 0.04 }, // up to 6,000 total; second layer width 5,000
+            { cap: Infinity, rate: 0.0495 }
+          ];
+        }
+        // single, mfs, hoh
+        return [
+          { cap: 500, rate: 0.02 },
+          { cap: 3000, rate: 0.04 }, // up to 3,000 total; second layer width 2,500
+          { cap: Infinity, rate: 0.0495 }
+        ];
+      }
+
+      function computeAlabamaTax(taxable, filingStatus){
+        taxable = clamp0(taxable);
+        const brackets = getBrackets(filingStatus);
+        let remaining = taxable;
+        let lower = 0;
+        let tax = 0;
+        let marginalRate = 0;
+
+        for(const b of brackets){
+          if(remaining <= 0) break;
+          const width = Math.min(b.cap - lower, remaining);
+          if(width > 0){
+            tax += width * b.rate;
+            marginalRate = b.rate;
+            remaining -= width;
+            lower = b.cap;
+          }
+        }
+        return { tax, marginalRate };
+      }
+
+      function deriveEstimatedTaxable(){
+        const gi = clamp0(Number(grossIncome.value));
+        const pt = clamp0(Number(pretax.value));
+        const adj = clamp0(Number(alAdjustments.value));
+        const ded = clamp0(Number(stdDeduction.value));
+        const pex = clamp0(Number(personalExemption.value));
+        const depCount = clamp0(Number(dependents.value));
+        const depAmt = clamp0(Number(depExemptionAmt.value));
+        const depEx = depCount * depAmt;
+        const ti = Math.max(0, gi - pt - adj - ded - pex - depEx);
+        estimatedTaxable.value = fmtCurrency(ti);
+        return ti;
+      }
+
+      function activeFilingStatus(){
+        return ($("input[name='filingStatus']:checked")?.value) || 'single';
+      }
+
+      function activeMode(){
+        return ($("input[name='inputMode']:checked")?.value) || 'taxable';
+      }
+
+      function currentTaxableIncome(){
+        if(activeMode()==='taxable'){
+          return clamp0(Number(taxableIncome.value));
+        }
+        return deriveEstimatedTaxable();
+      }
+
+      function recompute(){
+        resultsContainer.setAttribute('aria-busy','true');
+        const ti = currentTaxableIncome();
+        const fs = activeFilingStatus();
+        const { tax, marginalRate } = computeAlabamaTax(ti, fs);
+
+        resTaxable.textContent = fmtCurrency(ti);
+        resTax.textContent = fmtCurrency(tax);
+        resEffRate.textContent = ti > 0 ? fmtPct(tax/ti) : "0.00%";
+        resMarginal.textContent = fmtPct(marginalRate);
+        resAfter.textContent = fmtCurrency(Math.max(0, ti - tax));
+        resMonthly.textContent = fmtCurrency(tax/12);
+
+        resultsContainer.setAttribute('aria-busy','false');
+      }
+
+      // Toggle panels
+      function updateModePanels(){
+        const mode = activeMode();
+        if(mode === 'taxable'){
+          panelTaxable.hidden = false;
+          panelEstimate.hidden = true;
+        } else {
+          panelEstimate.hidden = false;
+          panelTaxable.hidden = true;
+          deriveEstimatedTaxable();
+        }
+        recompute();
+      }
+
+      // Event wiring
+      // Mode & filing status changes
+      $$("input[name='inputMode']").forEach(r => r.addEventListener('change', updateModePanels));
+      $$( "input[name='filingStatus']" ).forEach(r => r.addEventListener('change', recompute));
+      $$("input[name='taxYear']").forEach(r => r.addEventListener('change', recompute)); // rate structure same 2024–2025
+
+      // Validation on blur
+      taxableIncome.addEventListener('blur', ()=>{ if(activeMode()==='taxable'){ validateRequiredPositiveNumber(taxableIncome, errTaxable); recompute(); }});
+      grossIncome.addEventListener('blur', ()=>{ if(activeMode()==='estimate'){ validateRequiredPositiveNumber(grossIncome, errGross); recompute(); }});
+
+      // Non-required numeric fields: validate non-negative
+      [pretax, alAdjustments, stdDeduction, personalExemption, dependents, depExemptionAmt].forEach(el=>{
+        el.addEventListener('blur', ()=>{ validateNonNegativeNumber(el); recompute(); });
+      });
+
+      // Recompute on input for responsiveness (accessible and performant)
+      [taxableIncome, grossIncome, pretax, alAdjustments, stdDeduction, personalExemption, dependents, depExemptionAmt].forEach(el=>{
+        el.addEventListener('input', ()=>{ recompute(); });
+      });
+
+      // Initialize defaults for helpful estimation
+      pretax.value = "";
+      alAdjustments.value = "";
+      stdDeduction.value = "";
+      personalExemption.value = "";
+      dependents.value = "0";
+      depExemptionAmt.value = "1000";
+
+      // Initial compute
+      updateModePanels();
+
+      // Prevent form submission from search demo
+      document.querySelector('.site-search')?.addEventListener('submit', (e)=>{ e.preventDefault(); });
+    })();
+  </script></body></html>

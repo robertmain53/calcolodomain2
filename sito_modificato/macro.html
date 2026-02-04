@@ -250,10 +250,16 @@ code{font-family:var(--font-monospace); background:#e9ecef; padding:.2em .4em; b
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
@@ -293,20 +299,43 @@ code{font-family:var(--font-monospace); background:#e9ecef; padding:.2em .4em; b
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
 </style>
 </head>
-<body>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">Macro Calculator</h1>
+    <p class="sub" id="pageSub">Accurately calculate your daily calories (TDEE) and macro targets (protein, fat, carbs) based on science-backed formulas. Mobile-first, accessible macro calculator for fat loss, muscle gain, or maintenance.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<a class="skip-link" href="#main">Skip to main content</a>
-<header aria-label="Site header" role="banner">
-<div class="container header-inner">
-CalcDomain
-<form aria-label="Site search" class="site-search" role="search">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><form aria-label="Site search" class="site-search" role="search">
 <label class="sr-only" for="q" style="position:absolute;left:-9999px">Search calculators</label>
 <input aria-label="Search calculators" id="q" inputmode="search" name="q" placeholder="Search calculators…" type="search">
 <button aria-label="Submit search" class="btn" type="submit">Search</button>
 </form>
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
+
+<button id="resetBtn" type="button" class="btn btnSecondary">Reset</button>
 </div>
-</header>
-<main class="container" id="main" tabindex="-1">
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
+
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main">Skip to main content</a><header aria-label="Site header" role="banner">
+<div class="container header-inner">
+CalcDomain
+
+</div>
+</header><main class="container" id="main" tabindex="-1">
 <nav aria-label="Breadcrumb" class="breadcrumb">
 Home / <a href="https://calcdomain.com/health-fitness">Health and Fitness</a> / Nutrition / Macro Calculator
     </nav>
@@ -682,381 +711,9 @@ Home / <a href="https://calcdomain.com/health-fitness">Health and Fitness</a> / 
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-  (function(){
-    'use strict';
-
-    // Utilities
-    const $ = sel => document.querySelector(sel);
-    const $$ = sel => Array.from(document.querySelectorAll(sel));
-    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
-    const toNumber = (v) => {
-      const n = Number(v);
-      return Number.isFinite(n) ? n : NaN;
-    };
-    const formatKcal = n => isFinite(n) ? Math.round(n).toLocaleString() + ' kcal' : '—';
-    const formatGrams = n => isFinite(n) ? Math.round(n) + ' g' : '—';
-    const inchesFromFtIn = (ft, inch) => (ft*12 + inch);
-    const cmFromInches = inches => inches * 2.54;
-    const kgFromLb = lb => lb * 0.45359237;
-    const lbFromKg = kg => kg / 0.45359237;
-
-    // Elements
-    const ageEl = $('#age');
-    const heightCmEl = $('#heightCm');
-    const heightFtEl = $('#heightFt');
-    const heightInEl = $('#heightIn');
-    const weightKgEl = $('#weightKg');
-    const weightLbEl = $('#weightLb');
-    const bodyFatEl = $('#bodyFat');
-    const unitsMetricEl = $('#unitsMetric');
-    const unitsImperialEl = $('#unitsImperial');
-    const heightMetricGroup = $('#heightMetricGroup');
-    const heightImperialGroup = $('#heightImperialGroup');
-    const weightMetricGroup = $('#weightMetricGroup');
-    const weightImperialGroup = $('#weightImperialGroup');
-    const eqMSJ = $('#eqMSJ');
-    const eqKM = $('#eqKM');
-    const equationNote = $('#equationNote');
-    const activityEl = $('#activity');
-    const proteinPerKgEl = $('#proteinPerKg');
-    const proteinBasisEl = $('#proteinBasis');
-    const proteinMirrorEl = $('#proteinMirror');
-    const fatMethodEl = $('#fatMethod');
-    const fatPercentEl = $('#fatPercent');
-    const fatPerKgEl = $('#fatPerKg');
-    const goalRateEl = $('#goalRate');
-    const goalCustomEl = $('#goalCustom');
-
-    const errors = {
-      age: $('#ageError'),
-      height: $('#heightError'),
-      heightImp: $('#heightImpError'),
-      weight: $('#weightError'),
-      weightImp: $('#weightImpError'),
-      bodyFat: $('#bodyFatError'),
-      activity: $('#activityError'),
-      goal: $('#goalError'),
-    };
-
-    const outputs = {
-      bmr: $('#bmrOut'),
-      act: $('#activityOut'),
-      tdee: $('#tdeeOut'),
-      cal: $('#calorieOut'),
-      protein: $('#proteinOut'),
-      fat: $('#fatOut'),
-      carbs: $('#carbOut')
-    };
-
-    // Tooltips
-    $$('[data-tooltip]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('aria-controls');
-        const tip = document.getElementById(id);
-        const expanded = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!expanded));
-        if (tip) tip.hidden = expanded;
-      });
-      btn.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); }
-      });
-    });
-
-    // Units toggle
-    function applyUnitsUI() {
-      const metric = unitsMetricEl.checked;
-      heightMetricGroup.hidden = !metric;
-      heightImperialGroup.hidden = metric;
-      weightMetricGroup.hidden = !metric;
-      weightImperialGroup.hidden = metric;
-    }
-    unitsMetricEl.addEventListener('change', applyUnitsUI);
-    unitsImperialEl.addEventListener('change', applyUnitsUI);
-    applyUnitsUI();
-
-    // Goal handling
-    function syncGoalUI() {
-      const goal = (document.querySelector('input[name="goal"]:checked') || {}).value;
-      if (goal === 'maintain') {
-        goalRateEl.value = '0';
-        goalRateEl.disabled = true;
-        goalCustomEl.hidden = true;
-      } else if (goal === 'custom') {
-        goalRateEl.disabled = true;
-        goalCustomEl.hidden = false;
-      } else if (goal === 'lose') {
-        goalRateEl.disabled = false;
-        goalCustomEl.hidden = true;
-        // Select first negative if not negative
-        if (parseFloat(goalRateEl.value) >= 0) goalRateEl.value = '-0.2';
-      } else if (goal === 'gain') {
-        goalRateEl.disabled = false;
-        goalCustomEl.hidden = true;
-        if (parseFloat(goalRateEl.value) <= 0) goalRateEl.value = '0.1';
-      }
-    }
-    $$('input[name="goal"]').forEach(r => r.addEventListener('change', () => { syncGoalUI(); compute(); }));
-    goalRateEl.addEventListener('change', () => compute());
-    goalCustomEl.addEventListener('input', () => compute());
-    syncGoalUI();
-
-    // Fat method UI
-    function syncFatUI(){
-      const method = fatMethodEl.value;
-      if (method === 'percent') {
-        fatPercentEl.hidden = false;
-        fatPerKgEl.hidden = true;
-      } else {
-        fatPercentEl.hidden = true;
-        fatPerKgEl.hidden = false;
-      }
-    }
-    fatMethodEl.addEventListener('change', () => { syncFatUI(); compute(); });
-    fatPercentEl.addEventListener('input', compute);
-    fatPerKgEl.addEventListener('input', compute);
-    syncFatUI();
-
-    // Protein mirror to per-lb for clarity
-    function updateProteinMirror(){
-      const perKg = toNumber(proteinPerKgEl.value);
-      if (!isFinite(perKg)) {
-        proteinMirrorEl.textContent = '—';
-        return;
-      }
-      const perLb = perKg / 2.2046226218; // g/kg to g/lb
-      proteinMirrorEl.textContent = '≈ ' + (Math.round(perLb*100)/100).toFixed(2) + ' g/lb basis';
-    }
-    proteinPerKgEl.addEventListener('input', () => { updateProteinMirror(); compute(); });
-    proteinBasisEl.addEventListener('change', compute);
-    updateProteinMirror();
-
-    // Validation helpers
-    function setError(el, msg, key){
-      el.setAttribute('aria-invalid', 'true');
-      if (key && errors[key]) errors[key].textContent = msg;
-    }
-    function clearError(el, key){
-      el.removeAttribute('aria-invalid');
-      if (key && errors[key]) errors[key].textContent = '';
-    }
-
-    // Field-level validation (on blur)
-    ageEl.addEventListener('blur', () => {
-      const v = toNumber(ageEl.value);
-      if (!isFinite(v) || v < 10 || v > 100) setError(ageEl, 'Please enter an age between 10 and 100.', 'age'); else clearError(ageEl, 'age');
-    });
-    heightCmEl.addEventListener('blur', () => {
-      const v = toNumber(heightCmEl.value);
-      if (!isFinite(v) || v < 120 || v > 230) setError(heightCmEl, 'Height must be between 120 and 230 cm.', 'height'); else clearError(heightCmEl, 'height');
-    });
-    heightFtEl.addEventListener('blur', () => {
-      const ft = toNumber(heightFtEl.value), inch = toNumber(heightInEl.value);
-      if (!isFinite(ft) || !isFinite(inch) || ft < 4 || ft > 7 || inch < 0 || inch > 11) setError(heightFtEl, 'Enter a valid height between 4’0” and 7’11”.', 'heightImp'); else clearError(heightFtEl, 'heightImp');
-    });
-    heightInEl.addEventListener('blur', () => {
-      const ft = toNumber(heightFtEl.value), inch = toNumber(heightInEl.value);
-      if (!isFinite(ft) || !isFinite(inch) || ft < 4 || ft > 7 || inch < 0 || inch > 11) setError(heightInEl, 'Enter a valid height between 4’0” and 7’11”.', 'heightImp'); else clearError(heightInEl, 'heightImp');
-    });
-    weightKgEl.addEventListener('blur', () => {
-      const v = toNumber(weightKgEl.value);
-      if (!isFinite(v) || v < 30 || v > 300) setError(weightKgEl, 'Weight must be between 30 and 300 kg.', 'weight'); else clearError(weightKgEl, 'weight');
-    });
-    weightLbEl.addEventListener('blur', () => {
-      const v = toNumber(weightLbEl.value);
-      if (!isFinite(v) || v < 66 || v > 660) setError(weightLbEl, 'Weight must be between 66 and 660 lb.', 'weightImp'); else clearError(weightLbEl, 'weightImp');
-    });
-    bodyFatEl.addEventListener('blur', () => {
-      const v = toNumber(bodyFatEl.value);
-      if (bodyFatEl.value === '') { clearError(bodyFatEl, 'bodyFat'); return; }
-      if (!isFinite(v) || v < 3 || v > 60) setError(bodyFatEl, 'Enter body fat between 3% and 60%, or leave empty.', 'bodyFat'); else clearError(bodyFatEl, 'bodyFat');
-    });
-    activityEl.addEventListener('blur', () => {
-      const v = toNumber(activityEl.value);
-      if (!isFinite(v) || v < 1.1 || v > 2.5) setError(activityEl, 'Please select a valid activity level.', 'activity'); else clearError(activityEl, 'activity');
-    });
-
-    // Equation note when Katch requires BF%
-    function checkEquationRequirement(){
-      if (eqKM.checked) {
-        const bf = toNumber(bodyFatEl.value);
-        if (!isFinite(bf)) {
-          equationNote.textContent = 'Katch–McArdle requires a valid body fat percentage.';
-        } else {
-          equationNote.textContent = '';
-        }
-      } else {
-        equationNote.textContent = '';
-      }
-    }
-    eqMSJ.addEventListener('change', () => { checkEquationRequirement(); compute(); });
-    eqKM.addEventListener('change', () => { checkEquationRequirement(); compute(); });
-    bodyFatEl.addEventListener('input', () => { checkEquationRequirement(); compute(); });
-
-    // Input events -> compute
-    [ageEl, heightCmEl, heightFtEl, heightInEl, weightKgEl, weightLbEl, activityEl].forEach(el => {
-      el.addEventListener('input', compute);
-    });
-    $$('input[name="sex"]').forEach(el => el.addEventListener('change', compute));
-    $$('input[name="units"]').forEach(el => el.addEventListener('change', () => { applyUnitsUI(); compute(); }));
-
-    function getInputs(){
-      const metric = unitsMetricEl.checked;
-      const sex = (document.querySelector('input[name="sex"]:checked')||{}).value || 'male';
-      const age = toNumber(ageEl.value);
-      const activity = toNumber(activityEl.value);
-      const equation = eqKM.checked ? 'km' : 'msj';
-
-      let heightCm, weightKg;
-      if (metric) {
-        heightCm = toNumber(heightCmEl.value);
-        weightKg = toNumber(weightKgEl.value);
-      } else {
-        const ft = toNumber(heightFtEl.value);
-        const inch = toNumber(heightInEl.value);
-        const inches = inchesFromFtIn(ft, inch);
-        heightCm = cmFromInches(inches);
-        weightKg = kgFromLb(toNumber(weightLbEl.value));
-      }
-
-      const bf = bodyFatEl.value === '' ? NaN : toNumber(bodyFatEl.value);
-
-      // Goal rate
-      const goal = (document.querySelector('input[name="goal"]:checked') || {}).value || 'maintain';
-      let rate = 0;
-      if (goal === 'custom') {
-        const custom = toNumber(goalCustomEl.value);
-        rate = isFinite(custom) ? clamp(custom, -40, 40) / 100 : 0;
-        if (!isFinite(custom)) errors.goal.textContent = 'Enter a custom percentage between −40 and +40.'; else errors.goal.textContent = '';
-      } else {
-        rate = toNumber(goalRateEl.value);
-      }
-
-      // Macros
-      const pPerKg = toNumber(proteinPerKgEl.value);
-      const pBasis = proteinBasisEl.value; // 'tbw' or 'lbm'
-      const fatMethod = fatMethodEl.value;
-      const fatPercent = toNumber(fatPercentEl.value);
-      const fatPerKg = toNumber(fatPerKgEl.value);
-
-      return { metric, sex, age, heightCm, weightKg, bf, activity, equation, goal, rate, pPerKg, pBasis, fatMethod, fatPercent, fatPerKg };
-    }
-
-    function compute(){
-      const inp = getInputs();
-
-      // Basic validity
-      const validAge = isFinite(inp.age) && inp.age >= 10 && inp.age <= 100;
-      const validH = isFinite(inp.heightCm) && inp.heightCm >= 120 && inp.heightCm <= 230;
-      const validW = isFinite(inp.weightKg) && inp.weightKg >= 30 && inp.weightKg <= 300;
-      const validAct = isFinite(inp.activity) && inp.activity >= 1.1 && inp.activity <= 2.5;
-
-      if (!validAge || !validH || !validW || !validAct) {
-        outputs.bmr.textContent = '—';
-        outputs.tdee.textContent = '—';
-        outputs.act.textContent = '—';
-        outputs.cal.textContent = '—';
-        outputs.protein.textContent = '—';
-        outputs.fat.textContent = '—';
-        outputs.carbs.textContent = '—';
-        return;
-      }
-
-      // BMR
-      let bmr = NaN;
-      if (inp.equation === 'msj') {
-        const s = (inp.sex === 'male') ? 5 : -161;
-        bmr = 10*inp.weightKg + 6.25*inp.heightCm - 5*inp.age + s;
-      } else {
-        const bf = toNumber(inp.bf);
-        if (isFinite(bf)) {
-          const lbm = inp.weightKg * (1 - bf / 100);
-          bmr = 370 + 21.6 * lbm;
-        } else {
-          outputs.bmr.textContent = '—';
-          outputs.tdee.textContent = '—';
-          outputs.act.textContent = '—';
-          outputs.cal.textContent = '—';
-          outputs.protein.textContent = '—';
-          outputs.fat.textContent = '—';
-          outputs.carbs.textContent = '—';
-          return;
-        }
-      }
-
-      const tdee = bmr * inp.activity;
-      const targetCalories = tdee * (1 + inp.rate);
-
-      // Protein grams
-      let kgBasis = inp.weightKg;
-      if (inp.pBasis === 'lbm') {
-        if (isFinite(inp.bf)) {
-          kgBasis = inp.weightKg * (1 - inp.bf / 100);
-        } else {
-          // fall back to TBW if no BF%
-          kgBasis = inp.weightKg;
-        }
-      }
-      const proteinG = Math.max(0, inp.pPerKg * kgBasis);
-
-      // Fat grams
-      let fatG = 0;
-      if (inp.fatMethod === 'percent') {
-        const pct = clamp(isFinite(inp.fatPercent) ? inp.fatPercent : 25, 5, 80) / 100;
-        fatG = (targetCalories * pct) / 9;
-      } else {
-        const perKg = clamp(isFinite(inp.fatPerKg) ? inp.fatPerKg : 0.8, 0.2, 3.0);
-        fatG = perKg * kgBasis;
-      }
-
-      // Carbs grams
-      const remainingKcal = targetCalories - (proteinG * 4) - (fatG * 9);
-      const carbsG = Math.max(0, remainingKcal / 4);
-
-      // Output
-      outputs.bmr.textContent = formatKcal(bmr);
-      outputs.act.textContent = inp.activity.toFixed(2);
-      outputs.tdee.textContent = formatKcal(tdee);
-      outputs.cal.textContent = formatKcal(targetCalories);
-      outputs.protein.textContent = formatGrams(proteinG);
-      outputs.fat.textContent = formatGrams(fatG);
-      outputs.carbs.textContent = formatGrams(carbsG);
-    }
-
-    // Initial compute
-    compute();
-
-    // Footer dates
-    const y = new Date().getFullYear();
-    const review = new Date();
-    $('#year').textContent = y;
-    $('#reviewDate').textContent = review.toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' });
-
-    // Keyboard accessibility for radio "cards"
-    $$('.radio-item input[type="radio"]').forEach(r => {
-      r.addEventListener('keydown', (e) => {
-        if (e.key === ' ' || e.key === 'Enter') {
-          e.preventDefault();
-          r.checked = true;
-          r.dispatchEvent(new Event('change', { bubbles:true }));
-        }
-      });
-    });
-  })();
-  </script>
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
 
 
-<style>
+</main><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1088,12 +745,7 @@ Home / <a href="https://calcdomain.com/health-fitness">Health and Fitness</a> / 
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-
-<a class="skip-link" href="#main">Skip to main content</a>
-<header aria-label="Site header" role="banner">
+</style><a class="skip-link" href="#main">Skip to main content</a><header aria-label="Site header" role="banner">
 <div class="container header-inner">
 CalcDomain
 <form aria-label="Site search" class="site-search" role="search">
@@ -1102,8 +754,7 @@ CalcDomain
 <button aria-label="Submit search" class="btn" type="submit">Search</button>
 </form>
 </div>
-</header>
-<main class="container" id="main" tabindex="-1">
+</header><main class="container" id="main" tabindex="-1">
 <nav aria-label="Breadcrumb" class="breadcrumb">
 Home / <a href="https://calcdomain.com/health-fitness">Health and Fitness</a> / Nutrition / Macro Calculator
     </nav>
@@ -1479,381 +1130,7 @@ Home / <a href="https://calcdomain.com/health-fitness">Health and Fitness</a> / 
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-  (function(){
-    'use strict';
-
-    // Utilities
-    const $ = sel => document.querySelector(sel);
-    const $$ = sel => Array.from(document.querySelectorAll(sel));
-    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
-    const toNumber = (v) => {
-      const n = Number(v);
-      return Number.isFinite(n) ? n : NaN;
-    };
-    const formatKcal = n => isFinite(n) ? Math.round(n).toLocaleString() + ' kcal' : '—';
-    const formatGrams = n => isFinite(n) ? Math.round(n) + ' g' : '—';
-    const inchesFromFtIn = (ft, inch) => (ft*12 + inch);
-    const cmFromInches = inches => inches * 2.54;
-    const kgFromLb = lb => lb * 0.45359237;
-    const lbFromKg = kg => kg / 0.45359237;
-
-    // Elements
-    const ageEl = $('#age');
-    const heightCmEl = $('#heightCm');
-    const heightFtEl = $('#heightFt');
-    const heightInEl = $('#heightIn');
-    const weightKgEl = $('#weightKg');
-    const weightLbEl = $('#weightLb');
-    const bodyFatEl = $('#bodyFat');
-    const unitsMetricEl = $('#unitsMetric');
-    const unitsImperialEl = $('#unitsImperial');
-    const heightMetricGroup = $('#heightMetricGroup');
-    const heightImperialGroup = $('#heightImperialGroup');
-    const weightMetricGroup = $('#weightMetricGroup');
-    const weightImperialGroup = $('#weightImperialGroup');
-    const eqMSJ = $('#eqMSJ');
-    const eqKM = $('#eqKM');
-    const equationNote = $('#equationNote');
-    const activityEl = $('#activity');
-    const proteinPerKgEl = $('#proteinPerKg');
-    const proteinBasisEl = $('#proteinBasis');
-    const proteinMirrorEl = $('#proteinMirror');
-    const fatMethodEl = $('#fatMethod');
-    const fatPercentEl = $('#fatPercent');
-    const fatPerKgEl = $('#fatPerKg');
-    const goalRateEl = $('#goalRate');
-    const goalCustomEl = $('#goalCustom');
-
-    const errors = {
-      age: $('#ageError'),
-      height: $('#heightError'),
-      heightImp: $('#heightImpError'),
-      weight: $('#weightError'),
-      weightImp: $('#weightImpError'),
-      bodyFat: $('#bodyFatError'),
-      activity: $('#activityError'),
-      goal: $('#goalError'),
-    };
-
-    const outputs = {
-      bmr: $('#bmrOut'),
-      act: $('#activityOut'),
-      tdee: $('#tdeeOut'),
-      cal: $('#calorieOut'),
-      protein: $('#proteinOut'),
-      fat: $('#fatOut'),
-      carbs: $('#carbOut')
-    };
-
-    // Tooltips
-    $$('[data-tooltip]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('aria-controls');
-        const tip = document.getElementById(id);
-        const expanded = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!expanded));
-        if (tip) tip.hidden = expanded;
-      });
-      btn.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); }
-      });
-    });
-
-    // Units toggle
-    function applyUnitsUI() {
-      const metric = unitsMetricEl.checked;
-      heightMetricGroup.hidden = !metric;
-      heightImperialGroup.hidden = metric;
-      weightMetricGroup.hidden = !metric;
-      weightImperialGroup.hidden = metric;
-    }
-    unitsMetricEl.addEventListener('change', applyUnitsUI);
-    unitsImperialEl.addEventListener('change', applyUnitsUI);
-    applyUnitsUI();
-
-    // Goal handling
-    function syncGoalUI() {
-      const goal = (document.querySelector('input[name="goal"]:checked') || {}).value;
-      if (goal === 'maintain') {
-        goalRateEl.value = '0';
-        goalRateEl.disabled = true;
-        goalCustomEl.hidden = true;
-      } else if (goal === 'custom') {
-        goalRateEl.disabled = true;
-        goalCustomEl.hidden = false;
-      } else if (goal === 'lose') {
-        goalRateEl.disabled = false;
-        goalCustomEl.hidden = true;
-        // Select first negative if not negative
-        if (parseFloat(goalRateEl.value) >= 0) goalRateEl.value = '-0.2';
-      } else if (goal === 'gain') {
-        goalRateEl.disabled = false;
-        goalCustomEl.hidden = true;
-        if (parseFloat(goalRateEl.value) <= 0) goalRateEl.value = '0.1';
-      }
-    }
-    $$('input[name="goal"]').forEach(r => r.addEventListener('change', () => { syncGoalUI(); compute(); }));
-    goalRateEl.addEventListener('change', () => compute());
-    goalCustomEl.addEventListener('input', () => compute());
-    syncGoalUI();
-
-    // Fat method UI
-    function syncFatUI(){
-      const method = fatMethodEl.value;
-      if (method === 'percent') {
-        fatPercentEl.hidden = false;
-        fatPerKgEl.hidden = true;
-      } else {
-        fatPercentEl.hidden = true;
-        fatPerKgEl.hidden = false;
-      }
-    }
-    fatMethodEl.addEventListener('change', () => { syncFatUI(); compute(); });
-    fatPercentEl.addEventListener('input', compute);
-    fatPerKgEl.addEventListener('input', compute);
-    syncFatUI();
-
-    // Protein mirror to per-lb for clarity
-    function updateProteinMirror(){
-      const perKg = toNumber(proteinPerKgEl.value);
-      if (!isFinite(perKg)) {
-        proteinMirrorEl.textContent = '—';
-        return;
-      }
-      const perLb = perKg / 2.2046226218; // g/kg to g/lb
-      proteinMirrorEl.textContent = '≈ ' + (Math.round(perLb*100)/100).toFixed(2) + ' g/lb basis';
-    }
-    proteinPerKgEl.addEventListener('input', () => { updateProteinMirror(); compute(); });
-    proteinBasisEl.addEventListener('change', compute);
-    updateProteinMirror();
-
-    // Validation helpers
-    function setError(el, msg, key){
-      el.setAttribute('aria-invalid', 'true');
-      if (key && errors[key]) errors[key].textContent = msg;
-    }
-    function clearError(el, key){
-      el.removeAttribute('aria-invalid');
-      if (key && errors[key]) errors[key].textContent = '';
-    }
-
-    // Field-level validation (on blur)
-    ageEl.addEventListener('blur', () => {
-      const v = toNumber(ageEl.value);
-      if (!isFinite(v) || v < 10 || v > 100) setError(ageEl, 'Please enter an age between 10 and 100.', 'age'); else clearError(ageEl, 'age');
-    });
-    heightCmEl.addEventListener('blur', () => {
-      const v = toNumber(heightCmEl.value);
-      if (!isFinite(v) || v < 120 || v > 230) setError(heightCmEl, 'Height must be between 120 and 230 cm.', 'height'); else clearError(heightCmEl, 'height');
-    });
-    heightFtEl.addEventListener('blur', () => {
-      const ft = toNumber(heightFtEl.value), inch = toNumber(heightInEl.value);
-      if (!isFinite(ft) || !isFinite(inch) || ft < 4 || ft > 7 || inch < 0 || inch > 11) setError(heightFtEl, 'Enter a valid height between 4’0” and 7’11”.', 'heightImp'); else clearError(heightFtEl, 'heightImp');
-    });
-    heightInEl.addEventListener('blur', () => {
-      const ft = toNumber(heightFtEl.value), inch = toNumber(heightInEl.value);
-      if (!isFinite(ft) || !isFinite(inch) || ft < 4 || ft > 7 || inch < 0 || inch > 11) setError(heightInEl, 'Enter a valid height between 4’0” and 7’11”.', 'heightImp'); else clearError(heightInEl, 'heightImp');
-    });
-    weightKgEl.addEventListener('blur', () => {
-      const v = toNumber(weightKgEl.value);
-      if (!isFinite(v) || v < 30 || v > 300) setError(weightKgEl, 'Weight must be between 30 and 300 kg.', 'weight'); else clearError(weightKgEl, 'weight');
-    });
-    weightLbEl.addEventListener('blur', () => {
-      const v = toNumber(weightLbEl.value);
-      if (!isFinite(v) || v < 66 || v > 660) setError(weightLbEl, 'Weight must be between 66 and 660 lb.', 'weightImp'); else clearError(weightLbEl, 'weightImp');
-    });
-    bodyFatEl.addEventListener('blur', () => {
-      const v = toNumber(bodyFatEl.value);
-      if (bodyFatEl.value === '') { clearError(bodyFatEl, 'bodyFat'); return; }
-      if (!isFinite(v) || v < 3 || v > 60) setError(bodyFatEl, 'Enter body fat between 3% and 60%, or leave empty.', 'bodyFat'); else clearError(bodyFatEl, 'bodyFat');
-    });
-    activityEl.addEventListener('blur', () => {
-      const v = toNumber(activityEl.value);
-      if (!isFinite(v) || v < 1.1 || v > 2.5) setError(activityEl, 'Please select a valid activity level.', 'activity'); else clearError(activityEl, 'activity');
-    });
-
-    // Equation note when Katch requires BF%
-    function checkEquationRequirement(){
-      if (eqKM.checked) {
-        const bf = toNumber(bodyFatEl.value);
-        if (!isFinite(bf)) {
-          equationNote.textContent = 'Katch–McArdle requires a valid body fat percentage.';
-        } else {
-          equationNote.textContent = '';
-        }
-      } else {
-        equationNote.textContent = '';
-      }
-    }
-    eqMSJ.addEventListener('change', () => { checkEquationRequirement(); compute(); });
-    eqKM.addEventListener('change', () => { checkEquationRequirement(); compute(); });
-    bodyFatEl.addEventListener('input', () => { checkEquationRequirement(); compute(); });
-
-    // Input events -> compute
-    [ageEl, heightCmEl, heightFtEl, heightInEl, weightKgEl, weightLbEl, activityEl].forEach(el => {
-      el.addEventListener('input', compute);
-    });
-    $$('input[name="sex"]').forEach(el => el.addEventListener('change', compute));
-    $$('input[name="units"]').forEach(el => el.addEventListener('change', () => { applyUnitsUI(); compute(); }));
-
-    function getInputs(){
-      const metric = unitsMetricEl.checked;
-      const sex = (document.querySelector('input[name="sex"]:checked')||{}).value || 'male';
-      const age = toNumber(ageEl.value);
-      const activity = toNumber(activityEl.value);
-      const equation = eqKM.checked ? 'km' : 'msj';
-
-      let heightCm, weightKg;
-      if (metric) {
-        heightCm = toNumber(heightCmEl.value);
-        weightKg = toNumber(weightKgEl.value);
-      } else {
-        const ft = toNumber(heightFtEl.value);
-        const inch = toNumber(heightInEl.value);
-        const inches = inchesFromFtIn(ft, inch);
-        heightCm = cmFromInches(inches);
-        weightKg = kgFromLb(toNumber(weightLbEl.value));
-      }
-
-      const bf = bodyFatEl.value === '' ? NaN : toNumber(bodyFatEl.value);
-
-      // Goal rate
-      const goal = (document.querySelector('input[name="goal"]:checked') || {}).value || 'maintain';
-      let rate = 0;
-      if (goal === 'custom') {
-        const custom = toNumber(goalCustomEl.value);
-        rate = isFinite(custom) ? clamp(custom, -40, 40) / 100 : 0;
-        if (!isFinite(custom)) errors.goal.textContent = 'Enter a custom percentage between −40 and +40.'; else errors.goal.textContent = '';
-      } else {
-        rate = toNumber(goalRateEl.value);
-      }
-
-      // Macros
-      const pPerKg = toNumber(proteinPerKgEl.value);
-      const pBasis = proteinBasisEl.value; // 'tbw' or 'lbm'
-      const fatMethod = fatMethodEl.value;
-      const fatPercent = toNumber(fatPercentEl.value);
-      const fatPerKg = toNumber(fatPerKgEl.value);
-
-      return { metric, sex, age, heightCm, weightKg, bf, activity, equation, goal, rate, pPerKg, pBasis, fatMethod, fatPercent, fatPerKg };
-    }
-
-    function compute(){
-      const inp = getInputs();
-
-      // Basic validity
-      const validAge = isFinite(inp.age) && inp.age >= 10 && inp.age <= 100;
-      const validH = isFinite(inp.heightCm) && inp.heightCm >= 120 && inp.heightCm <= 230;
-      const validW = isFinite(inp.weightKg) && inp.weightKg >= 30 && inp.weightKg <= 300;
-      const validAct = isFinite(inp.activity) && inp.activity >= 1.1 && inp.activity <= 2.5;
-
-      if (!validAge || !validH || !validW || !validAct) {
-        outputs.bmr.textContent = '—';
-        outputs.tdee.textContent = '—';
-        outputs.act.textContent = '—';
-        outputs.cal.textContent = '—';
-        outputs.protein.textContent = '—';
-        outputs.fat.textContent = '—';
-        outputs.carbs.textContent = '—';
-        return;
-      }
-
-      // BMR
-      let bmr = NaN;
-      if (inp.equation === 'msj') {
-        const s = (inp.sex === 'male') ? 5 : -161;
-        bmr = 10*inp.weightKg + 6.25*inp.heightCm - 5*inp.age + s;
-      } else {
-        const bf = toNumber(inp.bf);
-        if (isFinite(bf)) {
-          const lbm = inp.weightKg * (1 - bf / 100);
-          bmr = 370 + 21.6 * lbm;
-        } else {
-          outputs.bmr.textContent = '—';
-          outputs.tdee.textContent = '—';
-          outputs.act.textContent = '—';
-          outputs.cal.textContent = '—';
-          outputs.protein.textContent = '—';
-          outputs.fat.textContent = '—';
-          outputs.carbs.textContent = '—';
-          return;
-        }
-      }
-
-      const tdee = bmr * inp.activity;
-      const targetCalories = tdee * (1 + inp.rate);
-
-      // Protein grams
-      let kgBasis = inp.weightKg;
-      if (inp.pBasis === 'lbm') {
-        if (isFinite(inp.bf)) {
-          kgBasis = inp.weightKg * (1 - inp.bf / 100);
-        } else {
-          // fall back to TBW if no BF%
-          kgBasis = inp.weightKg;
-        }
-      }
-      const proteinG = Math.max(0, inp.pPerKg * kgBasis);
-
-      // Fat grams
-      let fatG = 0;
-      if (inp.fatMethod === 'percent') {
-        const pct = clamp(isFinite(inp.fatPercent) ? inp.fatPercent : 25, 5, 80) / 100;
-        fatG = (targetCalories * pct) / 9;
-      } else {
-        const perKg = clamp(isFinite(inp.fatPerKg) ? inp.fatPerKg : 0.8, 0.2, 3.0);
-        fatG = perKg * kgBasis;
-      }
-
-      // Carbs grams
-      const remainingKcal = targetCalories - (proteinG * 4) - (fatG * 9);
-      const carbsG = Math.max(0, remainingKcal / 4);
-
-      // Output
-      outputs.bmr.textContent = formatKcal(bmr);
-      outputs.act.textContent = inp.activity.toFixed(2);
-      outputs.tdee.textContent = formatKcal(tdee);
-      outputs.cal.textContent = formatKcal(targetCalories);
-      outputs.protein.textContent = formatGrams(proteinG);
-      outputs.fat.textContent = formatGrams(fatG);
-      outputs.carbs.textContent = formatGrams(carbsG);
-    }
-
-    // Initial compute
-    compute();
-
-    // Footer dates
-    const y = new Date().getFullYear();
-    const review = new Date();
-    $('#year').textContent = y;
-    $('#reviewDate').textContent = review.toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' });
-
-    // Keyboard accessibility for radio "cards"
-    $$('.radio-item input[type="radio"]').forEach(r => {
-      r.addEventListener('keydown', (e) => {
-        if (e.key === ' ' || e.key === 'Enter') {
-          e.preventDefault();
-          r.checked = true;
-          r.dispatchEvent(new Event('change', { bubbles:true }));
-        }
-      });
-    });
-  })();
-  </script>
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1885,12 +1162,7 @@ Home / <a href="https://calcdomain.com/health-fitness">Health and Fitness</a> / 
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-
-<a class="skip-link" href="#main">Skip to main content</a>
-<header aria-label="Site header" role="banner">
+</style><a class="skip-link" href="#main">Skip to main content</a><header aria-label="Site header" role="banner">
 <div class="container header-inner">
 CalcDomain
 <form aria-label="Site search" class="site-search" role="search">
@@ -1899,8 +1171,7 @@ CalcDomain
 <button aria-label="Submit search" class="btn" type="submit">Search</button>
 </form>
 </div>
-</header>
-<main class="container" id="main" tabindex="-1">
+</header><main class="container" id="main" tabindex="-1">
 <nav aria-label="Breadcrumb" class="breadcrumb">
 Home / <a href="https://calcdomain.com/health-fitness">Health and Fitness</a> / Nutrition / Macro Calculator
     </nav>
@@ -2276,9 +1547,48 @@ Home / <a href="https://calcdomain.com/health-fitness">Health and Fitness</a> / 
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
   (function(){
     'use strict';
 
@@ -2639,6 +1949,726 @@ Home / <a href="https://calcdomain.com/health-fitness">Health and Fitness</a> / 
       });
     });
   })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+  (function(){
+    'use strict';
 
-</body></html>
+    // Utilities
+    const $ = sel => document.querySelector(sel);
+    const $$ = sel => Array.from(document.querySelectorAll(sel));
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+    const toNumber = (v) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : NaN;
+    };
+    const formatKcal = n => isFinite(n) ? Math.round(n).toLocaleString() + ' kcal' : '—';
+    const formatGrams = n => isFinite(n) ? Math.round(n) + ' g' : '—';
+    const inchesFromFtIn = (ft, inch) => (ft*12 + inch);
+    const cmFromInches = inches => inches * 2.54;
+    const kgFromLb = lb => lb * 0.45359237;
+    const lbFromKg = kg => kg / 0.45359237;
+
+    // Elements
+    const ageEl = $('#age');
+    const heightCmEl = $('#heightCm');
+    const heightFtEl = $('#heightFt');
+    const heightInEl = $('#heightIn');
+    const weightKgEl = $('#weightKg');
+    const weightLbEl = $('#weightLb');
+    const bodyFatEl = $('#bodyFat');
+    const unitsMetricEl = $('#unitsMetric');
+    const unitsImperialEl = $('#unitsImperial');
+    const heightMetricGroup = $('#heightMetricGroup');
+    const heightImperialGroup = $('#heightImperialGroup');
+    const weightMetricGroup = $('#weightMetricGroup');
+    const weightImperialGroup = $('#weightImperialGroup');
+    const eqMSJ = $('#eqMSJ');
+    const eqKM = $('#eqKM');
+    const equationNote = $('#equationNote');
+    const activityEl = $('#activity');
+    const proteinPerKgEl = $('#proteinPerKg');
+    const proteinBasisEl = $('#proteinBasis');
+    const proteinMirrorEl = $('#proteinMirror');
+    const fatMethodEl = $('#fatMethod');
+    const fatPercentEl = $('#fatPercent');
+    const fatPerKgEl = $('#fatPerKg');
+    const goalRateEl = $('#goalRate');
+    const goalCustomEl = $('#goalCustom');
+
+    const errors = {
+      age: $('#ageError'),
+      height: $('#heightError'),
+      heightImp: $('#heightImpError'),
+      weight: $('#weightError'),
+      weightImp: $('#weightImpError'),
+      bodyFat: $('#bodyFatError'),
+      activity: $('#activityError'),
+      goal: $('#goalError'),
+    };
+
+    const outputs = {
+      bmr: $('#bmrOut'),
+      act: $('#activityOut'),
+      tdee: $('#tdeeOut'),
+      cal: $('#calorieOut'),
+      protein: $('#proteinOut'),
+      fat: $('#fatOut'),
+      carbs: $('#carbOut')
+    };
+
+    // Tooltips
+    $$('[data-tooltip]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('aria-controls');
+        const tip = document.getElementById(id);
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        if (tip) tip.hidden = expanded;
+      });
+      btn.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); }
+      });
+    });
+
+    // Units toggle
+    function applyUnitsUI() {
+      const metric = unitsMetricEl.checked;
+      heightMetricGroup.hidden = !metric;
+      heightImperialGroup.hidden = metric;
+      weightMetricGroup.hidden = !metric;
+      weightImperialGroup.hidden = metric;
+    }
+    unitsMetricEl.addEventListener('change', applyUnitsUI);
+    unitsImperialEl.addEventListener('change', applyUnitsUI);
+    applyUnitsUI();
+
+    // Goal handling
+    function syncGoalUI() {
+      const goal = (document.querySelector('input[name="goal"]:checked') || {}).value;
+      if (goal === 'maintain') {
+        goalRateEl.value = '0';
+        goalRateEl.disabled = true;
+        goalCustomEl.hidden = true;
+      } else if (goal === 'custom') {
+        goalRateEl.disabled = true;
+        goalCustomEl.hidden = false;
+      } else if (goal === 'lose') {
+        goalRateEl.disabled = false;
+        goalCustomEl.hidden = true;
+        // Select first negative if not negative
+        if (parseFloat(goalRateEl.value) >= 0) goalRateEl.value = '-0.2';
+      } else if (goal === 'gain') {
+        goalRateEl.disabled = false;
+        goalCustomEl.hidden = true;
+        if (parseFloat(goalRateEl.value) <= 0) goalRateEl.value = '0.1';
+      }
+    }
+    $$('input[name="goal"]').forEach(r => r.addEventListener('change', () => { syncGoalUI(); compute(); }));
+    goalRateEl.addEventListener('change', () => compute());
+    goalCustomEl.addEventListener('input', () => compute());
+    syncGoalUI();
+
+    // Fat method UI
+    function syncFatUI(){
+      const method = fatMethodEl.value;
+      if (method === 'percent') {
+        fatPercentEl.hidden = false;
+        fatPerKgEl.hidden = true;
+      } else {
+        fatPercentEl.hidden = true;
+        fatPerKgEl.hidden = false;
+      }
+    }
+    fatMethodEl.addEventListener('change', () => { syncFatUI(); compute(); });
+    fatPercentEl.addEventListener('input', compute);
+    fatPerKgEl.addEventListener('input', compute);
+    syncFatUI();
+
+    // Protein mirror to per-lb for clarity
+    function updateProteinMirror(){
+      const perKg = toNumber(proteinPerKgEl.value);
+      if (!isFinite(perKg)) {
+        proteinMirrorEl.textContent = '—';
+        return;
+      }
+      const perLb = perKg / 2.2046226218; // g/kg to g/lb
+      proteinMirrorEl.textContent = '≈ ' + (Math.round(perLb*100)/100).toFixed(2) + ' g/lb basis';
+    }
+    proteinPerKgEl.addEventListener('input', () => { updateProteinMirror(); compute(); });
+    proteinBasisEl.addEventListener('change', compute);
+    updateProteinMirror();
+
+    // Validation helpers
+    function setError(el, msg, key){
+      el.setAttribute('aria-invalid', 'true');
+      if (key && errors[key]) errors[key].textContent = msg;
+    }
+    function clearError(el, key){
+      el.removeAttribute('aria-invalid');
+      if (key && errors[key]) errors[key].textContent = '';
+    }
+
+    // Field-level validation (on blur)
+    ageEl.addEventListener('blur', () => {
+      const v = toNumber(ageEl.value);
+      if (!isFinite(v) || v < 10 || v > 100) setError(ageEl, 'Please enter an age between 10 and 100.', 'age'); else clearError(ageEl, 'age');
+    });
+    heightCmEl.addEventListener('blur', () => {
+      const v = toNumber(heightCmEl.value);
+      if (!isFinite(v) || v < 120 || v > 230) setError(heightCmEl, 'Height must be between 120 and 230 cm.', 'height'); else clearError(heightCmEl, 'height');
+    });
+    heightFtEl.addEventListener('blur', () => {
+      const ft = toNumber(heightFtEl.value), inch = toNumber(heightInEl.value);
+      if (!isFinite(ft) || !isFinite(inch) || ft < 4 || ft > 7 || inch < 0 || inch > 11) setError(heightFtEl, 'Enter a valid height between 4’0” and 7’11”.', 'heightImp'); else clearError(heightFtEl, 'heightImp');
+    });
+    heightInEl.addEventListener('blur', () => {
+      const ft = toNumber(heightFtEl.value), inch = toNumber(heightInEl.value);
+      if (!isFinite(ft) || !isFinite(inch) || ft < 4 || ft > 7 || inch < 0 || inch > 11) setError(heightInEl, 'Enter a valid height between 4’0” and 7’11”.', 'heightImp'); else clearError(heightInEl, 'heightImp');
+    });
+    weightKgEl.addEventListener('blur', () => {
+      const v = toNumber(weightKgEl.value);
+      if (!isFinite(v) || v < 30 || v > 300) setError(weightKgEl, 'Weight must be between 30 and 300 kg.', 'weight'); else clearError(weightKgEl, 'weight');
+    });
+    weightLbEl.addEventListener('blur', () => {
+      const v = toNumber(weightLbEl.value);
+      if (!isFinite(v) || v < 66 || v > 660) setError(weightLbEl, 'Weight must be between 66 and 660 lb.', 'weightImp'); else clearError(weightLbEl, 'weightImp');
+    });
+    bodyFatEl.addEventListener('blur', () => {
+      const v = toNumber(bodyFatEl.value);
+      if (bodyFatEl.value === '') { clearError(bodyFatEl, 'bodyFat'); return; }
+      if (!isFinite(v) || v < 3 || v > 60) setError(bodyFatEl, 'Enter body fat between 3% and 60%, or leave empty.', 'bodyFat'); else clearError(bodyFatEl, 'bodyFat');
+    });
+    activityEl.addEventListener('blur', () => {
+      const v = toNumber(activityEl.value);
+      if (!isFinite(v) || v < 1.1 || v > 2.5) setError(activityEl, 'Please select a valid activity level.', 'activity'); else clearError(activityEl, 'activity');
+    });
+
+    // Equation note when Katch requires BF%
+    function checkEquationRequirement(){
+      if (eqKM.checked) {
+        const bf = toNumber(bodyFatEl.value);
+        if (!isFinite(bf)) {
+          equationNote.textContent = 'Katch–McArdle requires a valid body fat percentage.';
+        } else {
+          equationNote.textContent = '';
+        }
+      } else {
+        equationNote.textContent = '';
+      }
+    }
+    eqMSJ.addEventListener('change', () => { checkEquationRequirement(); compute(); });
+    eqKM.addEventListener('change', () => { checkEquationRequirement(); compute(); });
+    bodyFatEl.addEventListener('input', () => { checkEquationRequirement(); compute(); });
+
+    // Input events -> compute
+    [ageEl, heightCmEl, heightFtEl, heightInEl, weightKgEl, weightLbEl, activityEl].forEach(el => {
+      el.addEventListener('input', compute);
+    });
+    $$('input[name="sex"]').forEach(el => el.addEventListener('change', compute));
+    $$('input[name="units"]').forEach(el => el.addEventListener('change', () => { applyUnitsUI(); compute(); }));
+
+    function getInputs(){
+      const metric = unitsMetricEl.checked;
+      const sex = (document.querySelector('input[name="sex"]:checked')||{}).value || 'male';
+      const age = toNumber(ageEl.value);
+      const activity = toNumber(activityEl.value);
+      const equation = eqKM.checked ? 'km' : 'msj';
+
+      let heightCm, weightKg;
+      if (metric) {
+        heightCm = toNumber(heightCmEl.value);
+        weightKg = toNumber(weightKgEl.value);
+      } else {
+        const ft = toNumber(heightFtEl.value);
+        const inch = toNumber(heightInEl.value);
+        const inches = inchesFromFtIn(ft, inch);
+        heightCm = cmFromInches(inches);
+        weightKg = kgFromLb(toNumber(weightLbEl.value));
+      }
+
+      const bf = bodyFatEl.value === '' ? NaN : toNumber(bodyFatEl.value);
+
+      // Goal rate
+      const goal = (document.querySelector('input[name="goal"]:checked') || {}).value || 'maintain';
+      let rate = 0;
+      if (goal === 'custom') {
+        const custom = toNumber(goalCustomEl.value);
+        rate = isFinite(custom) ? clamp(custom, -40, 40) / 100 : 0;
+        if (!isFinite(custom)) errors.goal.textContent = 'Enter a custom percentage between −40 and +40.'; else errors.goal.textContent = '';
+      } else {
+        rate = toNumber(goalRateEl.value);
+      }
+
+      // Macros
+      const pPerKg = toNumber(proteinPerKgEl.value);
+      const pBasis = proteinBasisEl.value; // 'tbw' or 'lbm'
+      const fatMethod = fatMethodEl.value;
+      const fatPercent = toNumber(fatPercentEl.value);
+      const fatPerKg = toNumber(fatPerKgEl.value);
+
+      return { metric, sex, age, heightCm, weightKg, bf, activity, equation, goal, rate, pPerKg, pBasis, fatMethod, fatPercent, fatPerKg };
+    }
+
+    function compute(){
+      const inp = getInputs();
+
+      // Basic validity
+      const validAge = isFinite(inp.age) && inp.age >= 10 && inp.age <= 100;
+      const validH = isFinite(inp.heightCm) && inp.heightCm >= 120 && inp.heightCm <= 230;
+      const validW = isFinite(inp.weightKg) && inp.weightKg >= 30 && inp.weightKg <= 300;
+      const validAct = isFinite(inp.activity) && inp.activity >= 1.1 && inp.activity <= 2.5;
+
+      if (!validAge || !validH || !validW || !validAct) {
+        outputs.bmr.textContent = '—';
+        outputs.tdee.textContent = '—';
+        outputs.act.textContent = '—';
+        outputs.cal.textContent = '—';
+        outputs.protein.textContent = '—';
+        outputs.fat.textContent = '—';
+        outputs.carbs.textContent = '—';
+        return;
+      }
+
+      // BMR
+      let bmr = NaN;
+      if (inp.equation === 'msj') {
+        const s = (inp.sex === 'male') ? 5 : -161;
+        bmr = 10*inp.weightKg + 6.25*inp.heightCm - 5*inp.age + s;
+      } else {
+        const bf = toNumber(inp.bf);
+        if (isFinite(bf)) {
+          const lbm = inp.weightKg * (1 - bf / 100);
+          bmr = 370 + 21.6 * lbm;
+        } else {
+          outputs.bmr.textContent = '—';
+          outputs.tdee.textContent = '—';
+          outputs.act.textContent = '—';
+          outputs.cal.textContent = '—';
+          outputs.protein.textContent = '—';
+          outputs.fat.textContent = '—';
+          outputs.carbs.textContent = '—';
+          return;
+        }
+      }
+
+      const tdee = bmr * inp.activity;
+      const targetCalories = tdee * (1 + inp.rate);
+
+      // Protein grams
+      let kgBasis = inp.weightKg;
+      if (inp.pBasis === 'lbm') {
+        if (isFinite(inp.bf)) {
+          kgBasis = inp.weightKg * (1 - inp.bf / 100);
+        } else {
+          // fall back to TBW if no BF%
+          kgBasis = inp.weightKg;
+        }
+      }
+      const proteinG = Math.max(0, inp.pPerKg * kgBasis);
+
+      // Fat grams
+      let fatG = 0;
+      if (inp.fatMethod === 'percent') {
+        const pct = clamp(isFinite(inp.fatPercent) ? inp.fatPercent : 25, 5, 80) / 100;
+        fatG = (targetCalories * pct) / 9;
+      } else {
+        const perKg = clamp(isFinite(inp.fatPerKg) ? inp.fatPerKg : 0.8, 0.2, 3.0);
+        fatG = perKg * kgBasis;
+      }
+
+      // Carbs grams
+      const remainingKcal = targetCalories - (proteinG * 4) - (fatG * 9);
+      const carbsG = Math.max(0, remainingKcal / 4);
+
+      // Output
+      outputs.bmr.textContent = formatKcal(bmr);
+      outputs.act.textContent = inp.activity.toFixed(2);
+      outputs.tdee.textContent = formatKcal(tdee);
+      outputs.cal.textContent = formatKcal(targetCalories);
+      outputs.protein.textContent = formatGrams(proteinG);
+      outputs.fat.textContent = formatGrams(fatG);
+      outputs.carbs.textContent = formatGrams(carbsG);
+    }
+
+    // Initial compute
+    compute();
+
+    // Footer dates
+    const y = new Date().getFullYear();
+    const review = new Date();
+    $('#year').textContent = y;
+    $('#reviewDate').textContent = review.toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' });
+
+    // Keyboard accessibility for radio "cards"
+    $$('.radio-item input[type="radio"]').forEach(r => {
+      r.addEventListener('keydown', (e) => {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          r.checked = true;
+          r.dispatchEvent(new Event('change', { bubbles:true }));
+        }
+      });
+    });
+  })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+  (function(){
+    'use strict';
+
+    // Utilities
+    const $ = sel => document.querySelector(sel);
+    const $$ = sel => Array.from(document.querySelectorAll(sel));
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+    const toNumber = (v) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : NaN;
+    };
+    const formatKcal = n => isFinite(n) ? Math.round(n).toLocaleString() + ' kcal' : '—';
+    const formatGrams = n => isFinite(n) ? Math.round(n) + ' g' : '—';
+    const inchesFromFtIn = (ft, inch) => (ft*12 + inch);
+    const cmFromInches = inches => inches * 2.54;
+    const kgFromLb = lb => lb * 0.45359237;
+    const lbFromKg = kg => kg / 0.45359237;
+
+    // Elements
+    const ageEl = $('#age');
+    const heightCmEl = $('#heightCm');
+    const heightFtEl = $('#heightFt');
+    const heightInEl = $('#heightIn');
+    const weightKgEl = $('#weightKg');
+    const weightLbEl = $('#weightLb');
+    const bodyFatEl = $('#bodyFat');
+    const unitsMetricEl = $('#unitsMetric');
+    const unitsImperialEl = $('#unitsImperial');
+    const heightMetricGroup = $('#heightMetricGroup');
+    const heightImperialGroup = $('#heightImperialGroup');
+    const weightMetricGroup = $('#weightMetricGroup');
+    const weightImperialGroup = $('#weightImperialGroup');
+    const eqMSJ = $('#eqMSJ');
+    const eqKM = $('#eqKM');
+    const equationNote = $('#equationNote');
+    const activityEl = $('#activity');
+    const proteinPerKgEl = $('#proteinPerKg');
+    const proteinBasisEl = $('#proteinBasis');
+    const proteinMirrorEl = $('#proteinMirror');
+    const fatMethodEl = $('#fatMethod');
+    const fatPercentEl = $('#fatPercent');
+    const fatPerKgEl = $('#fatPerKg');
+    const goalRateEl = $('#goalRate');
+    const goalCustomEl = $('#goalCustom');
+
+    const errors = {
+      age: $('#ageError'),
+      height: $('#heightError'),
+      heightImp: $('#heightImpError'),
+      weight: $('#weightError'),
+      weightImp: $('#weightImpError'),
+      bodyFat: $('#bodyFatError'),
+      activity: $('#activityError'),
+      goal: $('#goalError'),
+    };
+
+    const outputs = {
+      bmr: $('#bmrOut'),
+      act: $('#activityOut'),
+      tdee: $('#tdeeOut'),
+      cal: $('#calorieOut'),
+      protein: $('#proteinOut'),
+      fat: $('#fatOut'),
+      carbs: $('#carbOut')
+    };
+
+    // Tooltips
+    $$('[data-tooltip]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('aria-controls');
+        const tip = document.getElementById(id);
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        if (tip) tip.hidden = expanded;
+      });
+      btn.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); }
+      });
+    });
+
+    // Units toggle
+    function applyUnitsUI() {
+      const metric = unitsMetricEl.checked;
+      heightMetricGroup.hidden = !metric;
+      heightImperialGroup.hidden = metric;
+      weightMetricGroup.hidden = !metric;
+      weightImperialGroup.hidden = metric;
+    }
+    unitsMetricEl.addEventListener('change', applyUnitsUI);
+    unitsImperialEl.addEventListener('change', applyUnitsUI);
+    applyUnitsUI();
+
+    // Goal handling
+    function syncGoalUI() {
+      const goal = (document.querySelector('input[name="goal"]:checked') || {}).value;
+      if (goal === 'maintain') {
+        goalRateEl.value = '0';
+        goalRateEl.disabled = true;
+        goalCustomEl.hidden = true;
+      } else if (goal === 'custom') {
+        goalRateEl.disabled = true;
+        goalCustomEl.hidden = false;
+      } else if (goal === 'lose') {
+        goalRateEl.disabled = false;
+        goalCustomEl.hidden = true;
+        // Select first negative if not negative
+        if (parseFloat(goalRateEl.value) >= 0) goalRateEl.value = '-0.2';
+      } else if (goal === 'gain') {
+        goalRateEl.disabled = false;
+        goalCustomEl.hidden = true;
+        if (parseFloat(goalRateEl.value) <= 0) goalRateEl.value = '0.1';
+      }
+    }
+    $$('input[name="goal"]').forEach(r => r.addEventListener('change', () => { syncGoalUI(); compute(); }));
+    goalRateEl.addEventListener('change', () => compute());
+    goalCustomEl.addEventListener('input', () => compute());
+    syncGoalUI();
+
+    // Fat method UI
+    function syncFatUI(){
+      const method = fatMethodEl.value;
+      if (method === 'percent') {
+        fatPercentEl.hidden = false;
+        fatPerKgEl.hidden = true;
+      } else {
+        fatPercentEl.hidden = true;
+        fatPerKgEl.hidden = false;
+      }
+    }
+    fatMethodEl.addEventListener('change', () => { syncFatUI(); compute(); });
+    fatPercentEl.addEventListener('input', compute);
+    fatPerKgEl.addEventListener('input', compute);
+    syncFatUI();
+
+    // Protein mirror to per-lb for clarity
+    function updateProteinMirror(){
+      const perKg = toNumber(proteinPerKgEl.value);
+      if (!isFinite(perKg)) {
+        proteinMirrorEl.textContent = '—';
+        return;
+      }
+      const perLb = perKg / 2.2046226218; // g/kg to g/lb
+      proteinMirrorEl.textContent = '≈ ' + (Math.round(perLb*100)/100).toFixed(2) + ' g/lb basis';
+    }
+    proteinPerKgEl.addEventListener('input', () => { updateProteinMirror(); compute(); });
+    proteinBasisEl.addEventListener('change', compute);
+    updateProteinMirror();
+
+    // Validation helpers
+    function setError(el, msg, key){
+      el.setAttribute('aria-invalid', 'true');
+      if (key && errors[key]) errors[key].textContent = msg;
+    }
+    function clearError(el, key){
+      el.removeAttribute('aria-invalid');
+      if (key && errors[key]) errors[key].textContent = '';
+    }
+
+    // Field-level validation (on blur)
+    ageEl.addEventListener('blur', () => {
+      const v = toNumber(ageEl.value);
+      if (!isFinite(v) || v < 10 || v > 100) setError(ageEl, 'Please enter an age between 10 and 100.', 'age'); else clearError(ageEl, 'age');
+    });
+    heightCmEl.addEventListener('blur', () => {
+      const v = toNumber(heightCmEl.value);
+      if (!isFinite(v) || v < 120 || v > 230) setError(heightCmEl, 'Height must be between 120 and 230 cm.', 'height'); else clearError(heightCmEl, 'height');
+    });
+    heightFtEl.addEventListener('blur', () => {
+      const ft = toNumber(heightFtEl.value), inch = toNumber(heightInEl.value);
+      if (!isFinite(ft) || !isFinite(inch) || ft < 4 || ft > 7 || inch < 0 || inch > 11) setError(heightFtEl, 'Enter a valid height between 4’0” and 7’11”.', 'heightImp'); else clearError(heightFtEl, 'heightImp');
+    });
+    heightInEl.addEventListener('blur', () => {
+      const ft = toNumber(heightFtEl.value), inch = toNumber(heightInEl.value);
+      if (!isFinite(ft) || !isFinite(inch) || ft < 4 || ft > 7 || inch < 0 || inch > 11) setError(heightInEl, 'Enter a valid height between 4’0” and 7’11”.', 'heightImp'); else clearError(heightInEl, 'heightImp');
+    });
+    weightKgEl.addEventListener('blur', () => {
+      const v = toNumber(weightKgEl.value);
+      if (!isFinite(v) || v < 30 || v > 300) setError(weightKgEl, 'Weight must be between 30 and 300 kg.', 'weight'); else clearError(weightKgEl, 'weight');
+    });
+    weightLbEl.addEventListener('blur', () => {
+      const v = toNumber(weightLbEl.value);
+      if (!isFinite(v) || v < 66 || v > 660) setError(weightLbEl, 'Weight must be between 66 and 660 lb.', 'weightImp'); else clearError(weightLbEl, 'weightImp');
+    });
+    bodyFatEl.addEventListener('blur', () => {
+      const v = toNumber(bodyFatEl.value);
+      if (bodyFatEl.value === '') { clearError(bodyFatEl, 'bodyFat'); return; }
+      if (!isFinite(v) || v < 3 || v > 60) setError(bodyFatEl, 'Enter body fat between 3% and 60%, or leave empty.', 'bodyFat'); else clearError(bodyFatEl, 'bodyFat');
+    });
+    activityEl.addEventListener('blur', () => {
+      const v = toNumber(activityEl.value);
+      if (!isFinite(v) || v < 1.1 || v > 2.5) setError(activityEl, 'Please select a valid activity level.', 'activity'); else clearError(activityEl, 'activity');
+    });
+
+    // Equation note when Katch requires BF%
+    function checkEquationRequirement(){
+      if (eqKM.checked) {
+        const bf = toNumber(bodyFatEl.value);
+        if (!isFinite(bf)) {
+          equationNote.textContent = 'Katch–McArdle requires a valid body fat percentage.';
+        } else {
+          equationNote.textContent = '';
+        }
+      } else {
+        equationNote.textContent = '';
+      }
+    }
+    eqMSJ.addEventListener('change', () => { checkEquationRequirement(); compute(); });
+    eqKM.addEventListener('change', () => { checkEquationRequirement(); compute(); });
+    bodyFatEl.addEventListener('input', () => { checkEquationRequirement(); compute(); });
+
+    // Input events -> compute
+    [ageEl, heightCmEl, heightFtEl, heightInEl, weightKgEl, weightLbEl, activityEl].forEach(el => {
+      el.addEventListener('input', compute);
+    });
+    $$('input[name="sex"]').forEach(el => el.addEventListener('change', compute));
+    $$('input[name="units"]').forEach(el => el.addEventListener('change', () => { applyUnitsUI(); compute(); }));
+
+    function getInputs(){
+      const metric = unitsMetricEl.checked;
+      const sex = (document.querySelector('input[name="sex"]:checked')||{}).value || 'male';
+      const age = toNumber(ageEl.value);
+      const activity = toNumber(activityEl.value);
+      const equation = eqKM.checked ? 'km' : 'msj';
+
+      let heightCm, weightKg;
+      if (metric) {
+        heightCm = toNumber(heightCmEl.value);
+        weightKg = toNumber(weightKgEl.value);
+      } else {
+        const ft = toNumber(heightFtEl.value);
+        const inch = toNumber(heightInEl.value);
+        const inches = inchesFromFtIn(ft, inch);
+        heightCm = cmFromInches(inches);
+        weightKg = kgFromLb(toNumber(weightLbEl.value));
+      }
+
+      const bf = bodyFatEl.value === '' ? NaN : toNumber(bodyFatEl.value);
+
+      // Goal rate
+      const goal = (document.querySelector('input[name="goal"]:checked') || {}).value || 'maintain';
+      let rate = 0;
+      if (goal === 'custom') {
+        const custom = toNumber(goalCustomEl.value);
+        rate = isFinite(custom) ? clamp(custom, -40, 40) / 100 : 0;
+        if (!isFinite(custom)) errors.goal.textContent = 'Enter a custom percentage between −40 and +40.'; else errors.goal.textContent = '';
+      } else {
+        rate = toNumber(goalRateEl.value);
+      }
+
+      // Macros
+      const pPerKg = toNumber(proteinPerKgEl.value);
+      const pBasis = proteinBasisEl.value; // 'tbw' or 'lbm'
+      const fatMethod = fatMethodEl.value;
+      const fatPercent = toNumber(fatPercentEl.value);
+      const fatPerKg = toNumber(fatPerKgEl.value);
+
+      return { metric, sex, age, heightCm, weightKg, bf, activity, equation, goal, rate, pPerKg, pBasis, fatMethod, fatPercent, fatPerKg };
+    }
+
+    function compute(){
+      const inp = getInputs();
+
+      // Basic validity
+      const validAge = isFinite(inp.age) && inp.age >= 10 && inp.age <= 100;
+      const validH = isFinite(inp.heightCm) && inp.heightCm >= 120 && inp.heightCm <= 230;
+      const validW = isFinite(inp.weightKg) && inp.weightKg >= 30 && inp.weightKg <= 300;
+      const validAct = isFinite(inp.activity) && inp.activity >= 1.1 && inp.activity <= 2.5;
+
+      if (!validAge || !validH || !validW || !validAct) {
+        outputs.bmr.textContent = '—';
+        outputs.tdee.textContent = '—';
+        outputs.act.textContent = '—';
+        outputs.cal.textContent = '—';
+        outputs.protein.textContent = '—';
+        outputs.fat.textContent = '—';
+        outputs.carbs.textContent = '—';
+        return;
+      }
+
+      // BMR
+      let bmr = NaN;
+      if (inp.equation === 'msj') {
+        const s = (inp.sex === 'male') ? 5 : -161;
+        bmr = 10*inp.weightKg + 6.25*inp.heightCm - 5*inp.age + s;
+      } else {
+        const bf = toNumber(inp.bf);
+        if (isFinite(bf)) {
+          const lbm = inp.weightKg * (1 - bf / 100);
+          bmr = 370 + 21.6 * lbm;
+        } else {
+          outputs.bmr.textContent = '—';
+          outputs.tdee.textContent = '—';
+          outputs.act.textContent = '—';
+          outputs.cal.textContent = '—';
+          outputs.protein.textContent = '—';
+          outputs.fat.textContent = '—';
+          outputs.carbs.textContent = '—';
+          return;
+        }
+      }
+
+      const tdee = bmr * inp.activity;
+      const targetCalories = tdee * (1 + inp.rate);
+
+      // Protein grams
+      let kgBasis = inp.weightKg;
+      if (inp.pBasis === 'lbm') {
+        if (isFinite(inp.bf)) {
+          kgBasis = inp.weightKg * (1 - inp.bf / 100);
+        } else {
+          // fall back to TBW if no BF%
+          kgBasis = inp.weightKg;
+        }
+      }
+      const proteinG = Math.max(0, inp.pPerKg * kgBasis);
+
+      // Fat grams
+      let fatG = 0;
+      if (inp.fatMethod === 'percent') {
+        const pct = clamp(isFinite(inp.fatPercent) ? inp.fatPercent : 25, 5, 80) / 100;
+        fatG = (targetCalories * pct) / 9;
+      } else {
+        const perKg = clamp(isFinite(inp.fatPerKg) ? inp.fatPerKg : 0.8, 0.2, 3.0);
+        fatG = perKg * kgBasis;
+      }
+
+      // Carbs grams
+      const remainingKcal = targetCalories - (proteinG * 4) - (fatG * 9);
+      const carbsG = Math.max(0, remainingKcal / 4);
+
+      // Output
+      outputs.bmr.textContent = formatKcal(bmr);
+      outputs.act.textContent = inp.activity.toFixed(2);
+      outputs.tdee.textContent = formatKcal(tdee);
+      outputs.cal.textContent = formatKcal(targetCalories);
+      outputs.protein.textContent = formatGrams(proteinG);
+      outputs.fat.textContent = formatGrams(fatG);
+      outputs.carbs.textContent = formatGrams(carbsG);
+    }
+
+    // Initial compute
+    compute();
+
+    // Footer dates
+    const y = new Date().getFullYear();
+    const review = new Date();
+    $('#year').textContent = y;
+    $('#reviewDate').textContent = review.toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' });
+
+    // Keyboard accessibility for radio "cards"
+    $$('.radio-item input[type="radio"]').forEach(r => {
+      r.addEventListener('keydown', (e) => {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          r.checked = true;
+          r.dispatchEvent(new Event('change', { bubbles:true }));
+        }
+      });
+    });
+  })();
+  </script></body></html>

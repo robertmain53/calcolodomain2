@@ -247,7 +247,13 @@
 </script>
 <!-- MathJax for LaTeX formulas (deferred) -->
 <script>
-  window.MathJax = { tex: { inlineMath: [['\\(','\\)'], ['</script>
+  (function() {
+
+    'use strict';
+
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)'], ['
+
+  })();</script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="search.js" defer=""></script>
@@ -286,10 +292,22 @@
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
 </style>
 </head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">Pregnancy Conception Date Calculator</h1>
+    <p class="sub" id="pageSub">Estimate your conception date from LMP, due date, ultrasound, or ovulation/IUI/IVF. Get fertile window, gestational age, fetal age, and due date with evidence-based formulas.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<main class="container" id="main-content" role="main">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main class="container" id="main-content" role="main">
 <nav aria-label="Breadcrumb" style="font-size:.95rem; color:#415468; margin-bottom:8px">
 Home › <a href="https://calcdomain.com/health-fitness">Health &amp; Fitness</a> › Pregnancy &amp; Women’s Health › Pregnancy Conception Date Calculator
     </nav>
@@ -632,290 +650,21 @@ Home › <a href="https://calcdomain.com/health-fitness">Health &amp; Fitness</a
 </section>
 <!-- AUDIT_SPINE_END -->
 </article>
+
+
 </main>
-<!-- Standard Footer --> 
-<script defer="">
-  (function(){
-    'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
 
-    // Utilities: Date handling in UTC to avoid TZ shifts
-    const MS_DAY = 24*60*60*1000;
-    const toUTC = (y,m,d)=> new Date(Date.UTC(y, m, d));
-    const parseDateInput = (el) => {
-      const v = el.value;
-      if(!v) return null;
-      const [y,m,d] = v.split('-').map(Number);
-      if(!y || !m || !d) return null;
-      return toUTC(y, m-1, d);
-    };
-    const addDaysUTC = (date, days) => new Date(date.getTime() + days*MS_DAY);
-    const diffDaysUTC = (a, b) => Math.round((a.getTime() - b.getTime())/MS_DAY);
-    const fmt = (date) => date ? date.toLocaleDateString('en-US', {weekday:'short', year:'numeric', month:'short', day:'numeric'}) : '—';
+<button id="resetBtn" type="button" class="btn btnSecondary">Reset</button>
+</div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-    const todayUTC = () => {
-      const t = new Date();
-      return toUTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate());
-    };
-
-    // Elements
-    const methodRadios = [...document.querySelectorAll('input[name="method"]')];
-    const panels = {
-      lmp: document.getElementById('panel-lmp'),
-      edd: document.getElementById('panel-edd'),
-      ultrasound: document.getElementById('panel-us'),
-      ovulation: document.getElementById('panel-ovu')
-    };
-
-    // Inputs
-    const lmpDate = document.getElementById('lmpDate');
-    const cycleLength = document.getElementById('cycleLength');
-
-    const eddDate = document.getElementById('eddDate');
-    const cycleLength2 = document.getElementById('cycleLength2');
-
-    const scanDate = document.getElementById('scanDate');
-    const gaWeeks = document.getElementById('gaWeeks');
-    const gaDays = document.getElementById('gaDays');
-    const cycleLength3 = document.getElementById('cycleLength3');
-
-    const methodType = document.getElementById('methodType');
-    const eventDate = document.getElementById('eventDate');
-    const eventLabel = document.getElementById('eventLabel');
-    const cycleLength4 = document.getElementById('cycleLength4');
-
-    // Tooltip buttons
-    const tipToggles = [
-      {btn:'tip-lmp-btn', panel:'tip-lmp'},
-      {btn:'tip-cycle-btn', panel:'tip-cycle'},
-      {btn:'tip-cycle2-btn', panel:'tip-cycle2'},
-      {btn:'tip-ga-btn', panel:'tip-ga'}
-    ];
-    tipToggles.forEach(({btn,panel})=>{
-      const b = document.getElementById(btn);
-      const p = document.getElementById(panel);
-      if(!b || !p) return;
-      b.addEventListener('click', ()=>{
-        const expanded = b.getAttribute('aria-expanded') === 'true';
-        b.setAttribute('aria-expanded', String(!expanded));
-        p.setAttribute('aria-hidden', String(expanded));
-      });
-    });
-
-    // Error helpers
-    const setError = (inputEl, errorId, message) => {
-      const errEl = document.getElementById(errorId);
-      if(errEl){
-        errEl.textContent = message || '';
-      }
-      inputEl.setAttribute('aria-invalid', message ? 'true' : 'false');
-    };
-
-    // Validation on blur
-    const requireDate = (inputEl, errorId, {notFuture=false}={}) => {
-      const d = parseDateInput(inputEl);
-      if(!d){
-        setError(inputEl, errorId, 'Please enter a valid date.');
-        return null;
-      }
-      if(notFuture && d > todayUTC()){
-        setError(inputEl, errorId, 'Date should not be in the future.');
-        return null;
-      }
-      setError(inputEl, errorId, '');
-      return d;
-    };
-    const requireNumber = (inputEl, errorId, min, max) => {
-      const v = Number(inputEl.value);
-      if(!Number.isFinite(v)){
-        setError(inputEl, errorId, 'Please enter a valid number.');
-        return null;
-      }
-      if(v < min || v > max){
-        setError(inputEl, errorId, `Please enter a value between ${min} and ${max}.`);
-        return null;
-      }
-      setError(inputEl, errorId, '');
-      return v;
-    };
-
-    // Results elements
-    const res = {
-      conception: document.getElementById('res-conception'),
-      fertile: document.getElementById('res-fertile'),
-      edd: document.getElementById('res-edd'),
-      lmp: document.getElementById('res-lmp'),
-      ga: document.getElementById('res-ga'),
-      fa: document.getElementById('res-fa'),
-      trimester: document.getElementById('res-trimester')
-    };
-
-    function renderResults({C=null, E=null, L=null, fertile=null}){
-      // Dates
-      res.conception.textContent = C ? fmt(C) : '—';
-      res.edd.textContent = E ? fmt(E) : '—';
-      res.lmp.textContent = L ? fmt(L) : '—';
-      res.fertile.textContent = fertile ? `${fmt(fertile.start)} – ${fmt(fertile.end)}` : '—';
-
-      // Ages
-      const today = todayUTC();
-      if(L){
-        const gdays = Math.max(0, diffDaysUTC(today, L));
-        const gw = Math.floor(gdays/7);
-        const gd = gdays % 7;
-        res.ga.textContent = `${gw}w ${gd}d`;
-        const tri = (gw < 14) ? '1st trimester' : (gw < 28 ? '2nd trimester' : '3rd trimester');
-        res.trimester.textContent = tri;
-      } else {
-        res.ga.textContent = '—';
-        res.trimester.textContent = '—';
-      }
-      if(C){
-        const fdays = Math.max(0, diffDaysUTC(today, C));
-        const fw = Math.floor(fdays/7);
-        const fd = fdays % 7;
-        res.fa.textContent = `${fw}w ${fd}d`;
-      } else {
-        res.fa.textContent = '—';
-      }
-    }
-
-    function compute(){
-      const method = methodRadios.find(r => r.checked)?.value;
-
-      // reset display
-      let C=null, E=null, L=null, fertile=null;
-
-      if(method === 'lmp'){
-        const LMP = requireDate(lmpDate, 'err-lmpDate', {notFuture:true});
-        const CL = requireNumber(cycleLength, 'err-cycleLength', 20, 45);
-        if(!LMP || !CL) { renderResults({}); return; }
-        C = addDaysUTC(LMP, (CL - 14));
-        E = addDaysUTC(C, 266);
-        L = LMP;
-        fertile = { start: addDaysUTC(C, -5), end: addDaysUTC(C, +1) };
-      }
-      else if(method === 'edd'){
-        const EDD = requireDate(eddDate, 'err-eddDate', {notFuture:false});
-        const CL = Number(cycleLength2.value) || 28;
-        // no validation error for optional cycle length, but clamp
-        const clampedCL = Math.min(45, Math.max(20, CL));
-        if(!EDD){ renderResults({}); return; }
-        C = addDaysUTC(EDD, -266);
-        E = EDD;
-        L = addDaysUTC(C, -(clampedCL - 14));
-        // fertile window only for natural/IUI context; with EDD source we can't know,
-        // but we can still illustrate based on implied ovulation C.
-        fertile = { start: addDaysUTC(C, -5), end: addDaysUTC(C, +1) };
-      }
-      else if(method === 'ultrasound'){
-        const U = requireDate(scanDate, 'err-scanDate', {notFuture:false});
-        const W = requireNumber(gaWeeks, 'err-ga', 0, 42);
-        const D = requireNumber(gaDays, 'err-ga', 0, 6);
-        const CL = Number(cycleLength3.value) || 28;
-        if(!U || W===null || D===null){ renderResults({}); return; }
-        if(W === 0 && D === 0){
-          setError(gaWeeks, 'err-ga', 'Gestational age cannot be 0w 0d. Enter weeks and/or days.');
-          renderResults({}); return;
-        } else {
-          setError(gaWeeks, 'err-ga', '');
-        }
-        const GA = W*7 + D;
-        L = addDaysUTC(U, -GA);
-        C = addDaysUTC(L, (Math.min(45, Math.max(20, CL)) - 14));
-        E = addDaysUTC(C, 266);
-        fertile = { start: addDaysUTC(C, -5), end: addDaysUTC(C, +1) };
-      }
-      else if(method === 'ovulation'){
-        const type = methodType.value;
-        const EV = requireDate(eventDate, 'err-eventDate', {notFuture:false});
-        if(!type){ setError(methodType, 'err-type', 'Please select an event type.'); }
-        else setError(methodType, 'err-type', '');
-        if(!EV){ renderResults({}); return; }
-
-        if(type === 'ovulation' || type === 'iui'){
-          C = EV; // conception within ~24h of ovulation/IUI
-          const CL = Number(cycleLength4.value) || 28;
-          L = addDaysUTC(C, -(Math.min(45, Math.max(20, CL)) - 14));
-          E = addDaysUTC(C, 266);
-          fertile = { start: addDaysUTC(C, -5), end: addDaysUTC(C, +1) };
-        } else if(type === 'ivf5'){
-          // day-5 embryo transfer
-          C = addDaysUTC(EV, -5);
-          E = addDaysUTC(EV, 261);
-          const CL = Number(cycleLength4.value) || 28;
-          L = addDaysUTC(C, -(Math.min(45, Math.max(20, CL)) - 14));
-          fertile = null; // not applicable
-        } else if(type === 'ivf3'){
-          C = addDaysUTC(EV, -3);
-          E = addDaysUTC(EV, 263);
-          const CL = Number(cycleLength4.value) || 28;
-          L = addDaysUTC(C, -(Math.min(45, Math.max(20, CL)) - 14));
-          fertile = null;
-        }
-      }
-
-      renderResults({C, E, L, fertile});
-    }
-
-    // Switch panels
-    function showPanel(which){
-      Object.entries(panels).forEach(([key, el])=>{
-        const active = key === which;
-        el.hidden = !active;
-      });
-      compute();
-    }
-    methodRadios.forEach(r=>{
-      r.addEventListener('change', ()=> showPanel(r.value));
-    });
-
-    // Dynamic label for event type
-    methodType.addEventListener('change', ()=>{
-      const v = methodType.value;
-      if(v === 'ovulation') eventLabel.textContent = 'Ovulation date';
-      else if(v === 'iui') eventLabel.textContent = 'IUI procedure date';
-      else if(v === 'ivf5' || v === 'ivf3') eventLabel.textContent = 'Embryo transfer date';
-      compute();
-    });
-
-    // Validate on blur
-    lmpDate.addEventListener('blur', ()=> requireDate(lmpDate, 'err-lmpDate', {notFuture:true}));
-    cycleLength.addEventListener('blur', ()=> requireNumber(cycleLength, 'err-cycleLength', 20, 45));
-
-    eddDate.addEventListener('blur', ()=> requireDate(eddDate, 'err-eddDate'));
-    // cycleLength2 optional
-
-    scanDate.addEventListener('blur', ()=> requireDate(scanDate, 'err-scanDate'));
-    gaWeeks.addEventListener('blur', ()=> requireNumber(gaWeeks, 'err-ga', 0, 42));
-    gaDays.addEventListener('blur', ()=> requireNumber(gaDays, 'err-ga', 0, 6));
-
-    eventDate.addEventListener('blur', ()=> requireDate(eventDate, 'err-eventDate'));
-
-    // Recompute on input
-    [lmpDate, cycleLength, eddDate, cycleLength2, scanDate, gaWeeks, gaDays, cycleLength3, methodType, eventDate, cycleLength4]
-      .forEach(el => el && el.addEventListener('input', compute));
-
-    // Initialize
-    showPanel('lmp');
-    compute();
-
-    // Author review date
-    const rd = document.getElementById('reviewDate');
-    if(rd){
-      const t = todayUTC();
-      rd.textContent = t.toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'});
-    }
-  })();
-  </script>
-
-<script defer="" src="/assets/js/mobile-menu.js"></script>
-<script defer="" src="/assets/js/page-enhancements.js"></script>
-</body></html>, '</script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="search.js" defer=""></script>
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main-content">Skip to main content</a><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -947,12 +696,7 @@ Home › <a href="https://calcdomain.com/health-fitness">Health &amp; Fitness</a
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="container" id="main-content" role="main">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="container" id="main-content" role="main">
 <nav aria-label="Breadcrumb" style="font-size:.95rem; color:#415468; margin-bottom:8px">
 Home › <a href="https://calcdomain.com/health-fitness">Health &amp; Fitness</a> › Pregnancy &amp; Women’s Health › Pregnancy Conception Date Calculator
     </nav>
@@ -1295,292 +1039,7 @@ Home › <a href="https://calcdomain.com/health-fitness">Health &amp; Fitness</a
 </section>
 <!-- AUDIT_SPINE_END -->
 </article>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-  (function(){
-    'use strict';
-
-    // Utilities: Date handling in UTC to avoid TZ shifts
-    const MS_DAY = 24*60*60*1000;
-    const toUTC = (y,m,d)=> new Date(Date.UTC(y, m, d));
-    const parseDateInput = (el) => {
-      const v = el.value;
-      if(!v) return null;
-      const [y,m,d] = v.split('-').map(Number);
-      if(!y || !m || !d) return null;
-      return toUTC(y, m-1, d);
-    };
-    const addDaysUTC = (date, days) => new Date(date.getTime() + days*MS_DAY);
-    const diffDaysUTC = (a, b) => Math.round((a.getTime() - b.getTime())/MS_DAY);
-    const fmt = (date) => date ? date.toLocaleDateString('en-US', {weekday:'short', year:'numeric', month:'short', day:'numeric'}) : '—';
-
-    const todayUTC = () => {
-      const t = new Date();
-      return toUTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate());
-    };
-
-    // Elements
-    const methodRadios = [...document.querySelectorAll('input[name="method"]')];
-    const panels = {
-      lmp: document.getElementById('panel-lmp'),
-      edd: document.getElementById('panel-edd'),
-      ultrasound: document.getElementById('panel-us'),
-      ovulation: document.getElementById('panel-ovu')
-    };
-
-    // Inputs
-    const lmpDate = document.getElementById('lmpDate');
-    const cycleLength = document.getElementById('cycleLength');
-
-    const eddDate = document.getElementById('eddDate');
-    const cycleLength2 = document.getElementById('cycleLength2');
-
-    const scanDate = document.getElementById('scanDate');
-    const gaWeeks = document.getElementById('gaWeeks');
-    const gaDays = document.getElementById('gaDays');
-    const cycleLength3 = document.getElementById('cycleLength3');
-
-    const methodType = document.getElementById('methodType');
-    const eventDate = document.getElementById('eventDate');
-    const eventLabel = document.getElementById('eventLabel');
-    const cycleLength4 = document.getElementById('cycleLength4');
-
-    // Tooltip buttons
-    const tipToggles = [
-      {btn:'tip-lmp-btn', panel:'tip-lmp'},
-      {btn:'tip-cycle-btn', panel:'tip-cycle'},
-      {btn:'tip-cycle2-btn', panel:'tip-cycle2'},
-      {btn:'tip-ga-btn', panel:'tip-ga'}
-    ];
-    tipToggles.forEach(({btn,panel})=>{
-      const b = document.getElementById(btn);
-      const p = document.getElementById(panel);
-      if(!b || !p) return;
-      b.addEventListener('click', ()=>{
-        const expanded = b.getAttribute('aria-expanded') === 'true';
-        b.setAttribute('aria-expanded', String(!expanded));
-        p.setAttribute('aria-hidden', String(expanded));
-      });
-    });
-
-    // Error helpers
-    const setError = (inputEl, errorId, message) => {
-      const errEl = document.getElementById(errorId);
-      if(errEl){
-        errEl.textContent = message || '';
-      }
-      inputEl.setAttribute('aria-invalid', message ? 'true' : 'false');
-    };
-
-    // Validation on blur
-    const requireDate = (inputEl, errorId, {notFuture=false}={}) => {
-      const d = parseDateInput(inputEl);
-      if(!d){
-        setError(inputEl, errorId, 'Please enter a valid date.');
-        return null;
-      }
-      if(notFuture && d > todayUTC()){
-        setError(inputEl, errorId, 'Date should not be in the future.');
-        return null;
-      }
-      setError(inputEl, errorId, '');
-      return d;
-    };
-    const requireNumber = (inputEl, errorId, min, max) => {
-      const v = Number(inputEl.value);
-      if(!Number.isFinite(v)){
-        setError(inputEl, errorId, 'Please enter a valid number.');
-        return null;
-      }
-      if(v < min || v > max){
-        setError(inputEl, errorId, `Please enter a value between ${min} and ${max}.`);
-        return null;
-      }
-      setError(inputEl, errorId, '');
-      return v;
-    };
-
-    // Results elements
-    const res = {
-      conception: document.getElementById('res-conception'),
-      fertile: document.getElementById('res-fertile'),
-      edd: document.getElementById('res-edd'),
-      lmp: document.getElementById('res-lmp'),
-      ga: document.getElementById('res-ga'),
-      fa: document.getElementById('res-fa'),
-      trimester: document.getElementById('res-trimester')
-    };
-
-    function renderResults({C=null, E=null, L=null, fertile=null}){
-      // Dates
-      res.conception.textContent = C ? fmt(C) : '—';
-      res.edd.textContent = E ? fmt(E) : '—';
-      res.lmp.textContent = L ? fmt(L) : '—';
-      res.fertile.textContent = fertile ? `${fmt(fertile.start)} – ${fmt(fertile.end)}` : '—';
-
-      // Ages
-      const today = todayUTC();
-      if(L){
-        const gdays = Math.max(0, diffDaysUTC(today, L));
-        const gw = Math.floor(gdays/7);
-        const gd = gdays % 7;
-        res.ga.textContent = `${gw}w ${gd}d`;
-        const tri = (gw < 14) ? '1st trimester' : (gw < 28 ? '2nd trimester' : '3rd trimester');
-        res.trimester.textContent = tri;
-      } else {
-        res.ga.textContent = '—';
-        res.trimester.textContent = '—';
-      }
-      if(C){
-        const fdays = Math.max(0, diffDaysUTC(today, C));
-        const fw = Math.floor(fdays/7);
-        const fd = fdays % 7;
-        res.fa.textContent = `${fw}w ${fd}d`;
-      } else {
-        res.fa.textContent = '—';
-      }
-    }
-
-    function compute(){
-      const method = methodRadios.find(r => r.checked)?.value;
-
-      // reset display
-      let C=null, E=null, L=null, fertile=null;
-
-      if(method === 'lmp'){
-        const LMP = requireDate(lmpDate, 'err-lmpDate', {notFuture:true});
-        const CL = requireNumber(cycleLength, 'err-cycleLength', 20, 45);
-        if(!LMP || !CL) { renderResults({}); return; }
-        C = addDaysUTC(LMP, (CL - 14));
-        E = addDaysUTC(C, 266);
-        L = LMP;
-        fertile = { start: addDaysUTC(C, -5), end: addDaysUTC(C, +1) };
-      }
-      else if(method === 'edd'){
-        const EDD = requireDate(eddDate, 'err-eddDate', {notFuture:false});
-        const CL = Number(cycleLength2.value) || 28;
-        // no validation error for optional cycle length, but clamp
-        const clampedCL = Math.min(45, Math.max(20, CL));
-        if(!EDD){ renderResults({}); return; }
-        C = addDaysUTC(EDD, -266);
-        E = EDD;
-        L = addDaysUTC(C, -(clampedCL - 14));
-        // fertile window only for natural/IUI context; with EDD source we can't know,
-        // but we can still illustrate based on implied ovulation C.
-        fertile = { start: addDaysUTC(C, -5), end: addDaysUTC(C, +1) };
-      }
-      else if(method === 'ultrasound'){
-        const U = requireDate(scanDate, 'err-scanDate', {notFuture:false});
-        const W = requireNumber(gaWeeks, 'err-ga', 0, 42);
-        const D = requireNumber(gaDays, 'err-ga', 0, 6);
-        const CL = Number(cycleLength3.value) || 28;
-        if(!U || W===null || D===null){ renderResults({}); return; }
-        if(W === 0 && D === 0){
-          setError(gaWeeks, 'err-ga', 'Gestational age cannot be 0w 0d. Enter weeks and/or days.');
-          renderResults({}); return;
-        } else {
-          setError(gaWeeks, 'err-ga', '');
-        }
-        const GA = W*7 + D;
-        L = addDaysUTC(U, -GA);
-        C = addDaysUTC(L, (Math.min(45, Math.max(20, CL)) - 14));
-        E = addDaysUTC(C, 266);
-        fertile = { start: addDaysUTC(C, -5), end: addDaysUTC(C, +1) };
-      }
-      else if(method === 'ovulation'){
-        const type = methodType.value;
-        const EV = requireDate(eventDate, 'err-eventDate', {notFuture:false});
-        if(!type){ setError(methodType, 'err-type', 'Please select an event type.'); }
-        else setError(methodType, 'err-type', '');
-        if(!EV){ renderResults({}); return; }
-
-        if(type === 'ovulation' || type === 'iui'){
-          C = EV; // conception within ~24h of ovulation/IUI
-          const CL = Number(cycleLength4.value) || 28;
-          L = addDaysUTC(C, -(Math.min(45, Math.max(20, CL)) - 14));
-          E = addDaysUTC(C, 266);
-          fertile = { start: addDaysUTC(C, -5), end: addDaysUTC(C, +1) };
-        } else if(type === 'ivf5'){
-          // day-5 embryo transfer
-          C = addDaysUTC(EV, -5);
-          E = addDaysUTC(EV, 261);
-          const CL = Number(cycleLength4.value) || 28;
-          L = addDaysUTC(C, -(Math.min(45, Math.max(20, CL)) - 14));
-          fertile = null; // not applicable
-        } else if(type === 'ivf3'){
-          C = addDaysUTC(EV, -3);
-          E = addDaysUTC(EV, 263);
-          const CL = Number(cycleLength4.value) || 28;
-          L = addDaysUTC(C, -(Math.min(45, Math.max(20, CL)) - 14));
-          fertile = null;
-        }
-      }
-
-      renderResults({C, E, L, fertile});
-    }
-
-    // Switch panels
-    function showPanel(which){
-      Object.entries(panels).forEach(([key, el])=>{
-        const active = key === which;
-        el.hidden = !active;
-      });
-      compute();
-    }
-    methodRadios.forEach(r=>{
-      r.addEventListener('change', ()=> showPanel(r.value));
-    });
-
-    // Dynamic label for event type
-    methodType.addEventListener('change', ()=>{
-      const v = methodType.value;
-      if(v === 'ovulation') eventLabel.textContent = 'Ovulation date';
-      else if(v === 'iui') eventLabel.textContent = 'IUI procedure date';
-      else if(v === 'ivf5' || v === 'ivf3') eventLabel.textContent = 'Embryo transfer date';
-      compute();
-    });
-
-    // Validate on blur
-    lmpDate.addEventListener('blur', ()=> requireDate(lmpDate, 'err-lmpDate', {notFuture:true}));
-    cycleLength.addEventListener('blur', ()=> requireNumber(cycleLength, 'err-cycleLength', 20, 45));
-
-    eddDate.addEventListener('blur', ()=> requireDate(eddDate, 'err-eddDate'));
-    // cycleLength2 optional
-
-    scanDate.addEventListener('blur', ()=> requireDate(scanDate, 'err-scanDate'));
-    gaWeeks.addEventListener('blur', ()=> requireNumber(gaWeeks, 'err-ga', 0, 42));
-    gaDays.addEventListener('blur', ()=> requireNumber(gaDays, 'err-ga', 0, 6));
-
-    eventDate.addEventListener('blur', ()=> requireDate(eventDate, 'err-eventDate'));
-
-    // Recompute on input
-    [lmpDate, cycleLength, eddDate, cycleLength2, scanDate, gaWeeks, gaDays, cycleLength3, methodType, eventDate, cycleLength4]
-      .forEach(el => el && el.addEventListener('input', compute));
-
-    // Initialize
-    showPanel('lmp');
-    compute();
-
-    // Author review date
-    const rd = document.getElementById('reviewDate');
-    if(rd){
-      const t = todayUTC();
-      rd.textContent = t.toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'});
-    }
-  })();
-  </script>
-
-<script defer="" src="/assets/js/mobile-menu.js"></script>
-<script defer="" src="/assets/js/page-enhancements.js"></script>
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };
-</script>
-<script defer="" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="search.js" defer=""></script>
-
-<style>
+</main><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1612,12 +1071,7 @@ Home › <a href="https://calcdomain.com/health-fitness">Health &amp; Fitness</a
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="container" id="main-content" role="main">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="container" id="main-content" role="main">
 <nav aria-label="Breadcrumb" style="font-size:.95rem; color:#415468; margin-bottom:8px">
 Home › <a href="https://calcdomain.com/health-fitness">Health &amp; Fitness</a> › Pregnancy &amp; Women’s Health › Pregnancy Conception Date Calculator
     </nav>
@@ -1960,9 +1414,48 @@ Home › <a href="https://calcdomain.com/health-fitness">Health &amp; Fitness</a
 </section>
 <!-- AUDIT_SPINE_END -->
 </article>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
   (function(){
     'use strict';
 
@@ -2234,8 +1727,548 @@ Home › <a href="https://calcdomain.com/health-fitness">Health &amp; Fitness</a
       rd.textContent = t.toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'});
     }
   })();
-  </script>
+  </script><script defer="" src="/assets/js/mobile-menu.js"></script><script defer="" src="/assets/js/page-enhancements.js"></script><script src="https://cdn.tailwindcss.com"></script><script src="search.js" defer=""></script><script defer="">
+  (function(){
+    'use strict';
 
-<script defer="" src="/assets/js/mobile-menu.js"></script>
-<script defer="" src="/assets/js/page-enhancements.js"></script>
-</body></html>
+    // Utilities: Date handling in UTC to avoid TZ shifts
+    const MS_DAY = 24*60*60*1000;
+    const toUTC = (y,m,d)=> new Date(Date.UTC(y, m, d));
+    const parseDateInput = (el) => {
+      const v = el.value;
+      if(!v) return null;
+      const [y,m,d] = v.split('-').map(Number);
+      if(!y || !m || !d) return null;
+      return toUTC(y, m-1, d);
+    };
+    const addDaysUTC = (date, days) => new Date(date.getTime() + days*MS_DAY);
+    const diffDaysUTC = (a, b) => Math.round((a.getTime() - b.getTime())/MS_DAY);
+    const fmt = (date) => date ? date.toLocaleDateString('en-US', {weekday:'short', year:'numeric', month:'short', day:'numeric'}) : '—';
+
+    const todayUTC = () => {
+      const t = new Date();
+      return toUTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate());
+    };
+
+    // Elements
+    const methodRadios = [...document.querySelectorAll('input[name="method"]')];
+    const panels = {
+      lmp: document.getElementById('panel-lmp'),
+      edd: document.getElementById('panel-edd'),
+      ultrasound: document.getElementById('panel-us'),
+      ovulation: document.getElementById('panel-ovu')
+    };
+
+    // Inputs
+    const lmpDate = document.getElementById('lmpDate');
+    const cycleLength = document.getElementById('cycleLength');
+
+    const eddDate = document.getElementById('eddDate');
+    const cycleLength2 = document.getElementById('cycleLength2');
+
+    const scanDate = document.getElementById('scanDate');
+    const gaWeeks = document.getElementById('gaWeeks');
+    const gaDays = document.getElementById('gaDays');
+    const cycleLength3 = document.getElementById('cycleLength3');
+
+    const methodType = document.getElementById('methodType');
+    const eventDate = document.getElementById('eventDate');
+    const eventLabel = document.getElementById('eventLabel');
+    const cycleLength4 = document.getElementById('cycleLength4');
+
+    // Tooltip buttons
+    const tipToggles = [
+      {btn:'tip-lmp-btn', panel:'tip-lmp'},
+      {btn:'tip-cycle-btn', panel:'tip-cycle'},
+      {btn:'tip-cycle2-btn', panel:'tip-cycle2'},
+      {btn:'tip-ga-btn', panel:'tip-ga'}
+    ];
+    tipToggles.forEach(({btn,panel})=>{
+      const b = document.getElementById(btn);
+      const p = document.getElementById(panel);
+      if(!b || !p) return;
+      b.addEventListener('click', ()=>{
+        const expanded = b.getAttribute('aria-expanded') === 'true';
+        b.setAttribute('aria-expanded', String(!expanded));
+        p.setAttribute('aria-hidden', String(expanded));
+      });
+    });
+
+    // Error helpers
+    const setError = (inputEl, errorId, message) => {
+      const errEl = document.getElementById(errorId);
+      if(errEl){
+        errEl.textContent = message || '';
+      }
+      inputEl.setAttribute('aria-invalid', message ? 'true' : 'false');
+    };
+
+    // Validation on blur
+    const requireDate = (inputEl, errorId, {notFuture=false}={}) => {
+      const d = parseDateInput(inputEl);
+      if(!d){
+        setError(inputEl, errorId, 'Please enter a valid date.');
+        return null;
+      }
+      if(notFuture && d > todayUTC()){
+        setError(inputEl, errorId, 'Date should not be in the future.');
+        return null;
+      }
+      setError(inputEl, errorId, '');
+      return d;
+    };
+    const requireNumber = (inputEl, errorId, min, max) => {
+      const v = Number(inputEl.value);
+      if(!Number.isFinite(v)){
+        setError(inputEl, errorId, 'Please enter a valid number.');
+        return null;
+      }
+      if(v < min || v > max){
+        setError(inputEl, errorId, `Please enter a value between ${min} and ${max}.`);
+        return null;
+      }
+      setError(inputEl, errorId, '');
+      return v;
+    };
+
+    // Results elements
+    const res = {
+      conception: document.getElementById('res-conception'),
+      fertile: document.getElementById('res-fertile'),
+      edd: document.getElementById('res-edd'),
+      lmp: document.getElementById('res-lmp'),
+      ga: document.getElementById('res-ga'),
+      fa: document.getElementById('res-fa'),
+      trimester: document.getElementById('res-trimester')
+    };
+
+    function renderResults({C=null, E=null, L=null, fertile=null}){
+      // Dates
+      res.conception.textContent = C ? fmt(C) : '—';
+      res.edd.textContent = E ? fmt(E) : '—';
+      res.lmp.textContent = L ? fmt(L) : '—';
+      res.fertile.textContent = fertile ? `${fmt(fertile.start)} – ${fmt(fertile.end)}` : '—';
+
+      // Ages
+      const today = todayUTC();
+      if(L){
+        const gdays = Math.max(0, diffDaysUTC(today, L));
+        const gw = Math.floor(gdays/7);
+        const gd = gdays % 7;
+        res.ga.textContent = `${gw}w ${gd}d`;
+        const tri = (gw < 14) ? '1st trimester' : (gw < 28 ? '2nd trimester' : '3rd trimester');
+        res.trimester.textContent = tri;
+      } else {
+        res.ga.textContent = '—';
+        res.trimester.textContent = '—';
+      }
+      if(C){
+        const fdays = Math.max(0, diffDaysUTC(today, C));
+        const fw = Math.floor(fdays/7);
+        const fd = fdays % 7;
+        res.fa.textContent = `${fw}w ${fd}d`;
+      } else {
+        res.fa.textContent = '—';
+      }
+    }
+
+    function compute(){
+      const method = methodRadios.find(r => r.checked)?.value;
+
+      // reset display
+      let C=null, E=null, L=null, fertile=null;
+
+      if(method === 'lmp'){
+        const LMP = requireDate(lmpDate, 'err-lmpDate', {notFuture:true});
+        const CL = requireNumber(cycleLength, 'err-cycleLength', 20, 45);
+        if(!LMP || !CL) { renderResults({}); return; }
+        C = addDaysUTC(LMP, (CL - 14));
+        E = addDaysUTC(C, 266);
+        L = LMP;
+        fertile = { start: addDaysUTC(C, -5), end: addDaysUTC(C, +1) };
+      }
+      else if(method === 'edd'){
+        const EDD = requireDate(eddDate, 'err-eddDate', {notFuture:false});
+        const CL = Number(cycleLength2.value) || 28;
+        // no validation error for optional cycle length, but clamp
+        const clampedCL = Math.min(45, Math.max(20, CL));
+        if(!EDD){ renderResults({}); return; }
+        C = addDaysUTC(EDD, -266);
+        E = EDD;
+        L = addDaysUTC(C, -(clampedCL - 14));
+        // fertile window only for natural/IUI context; with EDD source we can't know,
+        // but we can still illustrate based on implied ovulation C.
+        fertile = { start: addDaysUTC(C, -5), end: addDaysUTC(C, +1) };
+      }
+      else if(method === 'ultrasound'){
+        const U = requireDate(scanDate, 'err-scanDate', {notFuture:false});
+        const W = requireNumber(gaWeeks, 'err-ga', 0, 42);
+        const D = requireNumber(gaDays, 'err-ga', 0, 6);
+        const CL = Number(cycleLength3.value) || 28;
+        if(!U || W===null || D===null){ renderResults({}); return; }
+        if(W === 0 && D === 0){
+          setError(gaWeeks, 'err-ga', 'Gestational age cannot be 0w 0d. Enter weeks and/or days.');
+          renderResults({}); return;
+        } else {
+          setError(gaWeeks, 'err-ga', '');
+        }
+        const GA = W*7 + D;
+        L = addDaysUTC(U, -GA);
+        C = addDaysUTC(L, (Math.min(45, Math.max(20, CL)) - 14));
+        E = addDaysUTC(C, 266);
+        fertile = { start: addDaysUTC(C, -5), end: addDaysUTC(C, +1) };
+      }
+      else if(method === 'ovulation'){
+        const type = methodType.value;
+        const EV = requireDate(eventDate, 'err-eventDate', {notFuture:false});
+        if(!type){ setError(methodType, 'err-type', 'Please select an event type.'); }
+        else setError(methodType, 'err-type', '');
+        if(!EV){ renderResults({}); return; }
+
+        if(type === 'ovulation' || type === 'iui'){
+          C = EV; // conception within ~24h of ovulation/IUI
+          const CL = Number(cycleLength4.value) || 28;
+          L = addDaysUTC(C, -(Math.min(45, Math.max(20, CL)) - 14));
+          E = addDaysUTC(C, 266);
+          fertile = { start: addDaysUTC(C, -5), end: addDaysUTC(C, +1) };
+        } else if(type === 'ivf5'){
+          // day-5 embryo transfer
+          C = addDaysUTC(EV, -5);
+          E = addDaysUTC(EV, 261);
+          const CL = Number(cycleLength4.value) || 28;
+          L = addDaysUTC(C, -(Math.min(45, Math.max(20, CL)) - 14));
+          fertile = null; // not applicable
+        } else if(type === 'ivf3'){
+          C = addDaysUTC(EV, -3);
+          E = addDaysUTC(EV, 263);
+          const CL = Number(cycleLength4.value) || 28;
+          L = addDaysUTC(C, -(Math.min(45, Math.max(20, CL)) - 14));
+          fertile = null;
+        }
+      }
+
+      renderResults({C, E, L, fertile});
+    }
+
+    // Switch panels
+    function showPanel(which){
+      Object.entries(panels).forEach(([key, el])=>{
+        const active = key === which;
+        el.hidden = !active;
+      });
+      compute();
+    }
+    methodRadios.forEach(r=>{
+      r.addEventListener('change', ()=> showPanel(r.value));
+    });
+
+    // Dynamic label for event type
+    methodType.addEventListener('change', ()=>{
+      const v = methodType.value;
+      if(v === 'ovulation') eventLabel.textContent = 'Ovulation date';
+      else if(v === 'iui') eventLabel.textContent = 'IUI procedure date';
+      else if(v === 'ivf5' || v === 'ivf3') eventLabel.textContent = 'Embryo transfer date';
+      compute();
+    });
+
+    // Validate on blur
+    lmpDate.addEventListener('blur', ()=> requireDate(lmpDate, 'err-lmpDate', {notFuture:true}));
+    cycleLength.addEventListener('blur', ()=> requireNumber(cycleLength, 'err-cycleLength', 20, 45));
+
+    eddDate.addEventListener('blur', ()=> requireDate(eddDate, 'err-eddDate'));
+    // cycleLength2 optional
+
+    scanDate.addEventListener('blur', ()=> requireDate(scanDate, 'err-scanDate'));
+    gaWeeks.addEventListener('blur', ()=> requireNumber(gaWeeks, 'err-ga', 0, 42));
+    gaDays.addEventListener('blur', ()=> requireNumber(gaDays, 'err-ga', 0, 6));
+
+    eventDate.addEventListener('blur', ()=> requireDate(eventDate, 'err-eventDate'));
+
+    // Recompute on input
+    [lmpDate, cycleLength, eddDate, cycleLength2, scanDate, gaWeeks, gaDays, cycleLength3, methodType, eventDate, cycleLength4]
+      .forEach(el => el && el.addEventListener('input', compute));
+
+    // Initialize
+    showPanel('lmp');
+    compute();
+
+    // Author review date
+    const rd = document.getElementById('reviewDate');
+    if(rd){
+      const t = todayUTC();
+      rd.textContent = t.toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'});
+    }
+  })();
+  </script><script defer="" src="/assets/js/mobile-menu.js"></script><script defer="" src="/assets/js/page-enhancements.js"></script><script defer="" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script src="https://cdn.tailwindcss.com"></script><script src="search.js" defer=""></script><script defer="">
+  (function(){
+    'use strict';
+
+    // Utilities: Date handling in UTC to avoid TZ shifts
+    const MS_DAY = 24*60*60*1000;
+    const toUTC = (y,m,d)=> new Date(Date.UTC(y, m, d));
+    const parseDateInput = (el) => {
+      const v = el.value;
+      if(!v) return null;
+      const [y,m,d] = v.split('-').map(Number);
+      if(!y || !m || !d) return null;
+      return toUTC(y, m-1, d);
+    };
+    const addDaysUTC = (date, days) => new Date(date.getTime() + days*MS_DAY);
+    const diffDaysUTC = (a, b) => Math.round((a.getTime() - b.getTime())/MS_DAY);
+    const fmt = (date) => date ? date.toLocaleDateString('en-US', {weekday:'short', year:'numeric', month:'short', day:'numeric'}) : '—';
+
+    const todayUTC = () => {
+      const t = new Date();
+      return toUTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate());
+    };
+
+    // Elements
+    const methodRadios = [...document.querySelectorAll('input[name="method"]')];
+    const panels = {
+      lmp: document.getElementById('panel-lmp'),
+      edd: document.getElementById('panel-edd'),
+      ultrasound: document.getElementById('panel-us'),
+      ovulation: document.getElementById('panel-ovu')
+    };
+
+    // Inputs
+    const lmpDate = document.getElementById('lmpDate');
+    const cycleLength = document.getElementById('cycleLength');
+
+    const eddDate = document.getElementById('eddDate');
+    const cycleLength2 = document.getElementById('cycleLength2');
+
+    const scanDate = document.getElementById('scanDate');
+    const gaWeeks = document.getElementById('gaWeeks');
+    const gaDays = document.getElementById('gaDays');
+    const cycleLength3 = document.getElementById('cycleLength3');
+
+    const methodType = document.getElementById('methodType');
+    const eventDate = document.getElementById('eventDate');
+    const eventLabel = document.getElementById('eventLabel');
+    const cycleLength4 = document.getElementById('cycleLength4');
+
+    // Tooltip buttons
+    const tipToggles = [
+      {btn:'tip-lmp-btn', panel:'tip-lmp'},
+      {btn:'tip-cycle-btn', panel:'tip-cycle'},
+      {btn:'tip-cycle2-btn', panel:'tip-cycle2'},
+      {btn:'tip-ga-btn', panel:'tip-ga'}
+    ];
+    tipToggles.forEach(({btn,panel})=>{
+      const b = document.getElementById(btn);
+      const p = document.getElementById(panel);
+      if(!b || !p) return;
+      b.addEventListener('click', ()=>{
+        const expanded = b.getAttribute('aria-expanded') === 'true';
+        b.setAttribute('aria-expanded', String(!expanded));
+        p.setAttribute('aria-hidden', String(expanded));
+      });
+    });
+
+    // Error helpers
+    const setError = (inputEl, errorId, message) => {
+      const errEl = document.getElementById(errorId);
+      if(errEl){
+        errEl.textContent = message || '';
+      }
+      inputEl.setAttribute('aria-invalid', message ? 'true' : 'false');
+    };
+
+    // Validation on blur
+    const requireDate = (inputEl, errorId, {notFuture=false}={}) => {
+      const d = parseDateInput(inputEl);
+      if(!d){
+        setError(inputEl, errorId, 'Please enter a valid date.');
+        return null;
+      }
+      if(notFuture && d > todayUTC()){
+        setError(inputEl, errorId, 'Date should not be in the future.');
+        return null;
+      }
+      setError(inputEl, errorId, '');
+      return d;
+    };
+    const requireNumber = (inputEl, errorId, min, max) => {
+      const v = Number(inputEl.value);
+      if(!Number.isFinite(v)){
+        setError(inputEl, errorId, 'Please enter a valid number.');
+        return null;
+      }
+      if(v < min || v > max){
+        setError(inputEl, errorId, `Please enter a value between ${min} and ${max}.`);
+        return null;
+      }
+      setError(inputEl, errorId, '');
+      return v;
+    };
+
+    // Results elements
+    const res = {
+      conception: document.getElementById('res-conception'),
+      fertile: document.getElementById('res-fertile'),
+      edd: document.getElementById('res-edd'),
+      lmp: document.getElementById('res-lmp'),
+      ga: document.getElementById('res-ga'),
+      fa: document.getElementById('res-fa'),
+      trimester: document.getElementById('res-trimester')
+    };
+
+    function renderResults({C=null, E=null, L=null, fertile=null}){
+      // Dates
+      res.conception.textContent = C ? fmt(C) : '—';
+      res.edd.textContent = E ? fmt(E) : '—';
+      res.lmp.textContent = L ? fmt(L) : '—';
+      res.fertile.textContent = fertile ? `${fmt(fertile.start)} – ${fmt(fertile.end)}` : '—';
+
+      // Ages
+      const today = todayUTC();
+      if(L){
+        const gdays = Math.max(0, diffDaysUTC(today, L));
+        const gw = Math.floor(gdays/7);
+        const gd = gdays % 7;
+        res.ga.textContent = `${gw}w ${gd}d`;
+        const tri = (gw < 14) ? '1st trimester' : (gw < 28 ? '2nd trimester' : '3rd trimester');
+        res.trimester.textContent = tri;
+      } else {
+        res.ga.textContent = '—';
+        res.trimester.textContent = '—';
+      }
+      if(C){
+        const fdays = Math.max(0, diffDaysUTC(today, C));
+        const fw = Math.floor(fdays/7);
+        const fd = fdays % 7;
+        res.fa.textContent = `${fw}w ${fd}d`;
+      } else {
+        res.fa.textContent = '—';
+      }
+    }
+
+    function compute(){
+      const method = methodRadios.find(r => r.checked)?.value;
+
+      // reset display
+      let C=null, E=null, L=null, fertile=null;
+
+      if(method === 'lmp'){
+        const LMP = requireDate(lmpDate, 'err-lmpDate', {notFuture:true});
+        const CL = requireNumber(cycleLength, 'err-cycleLength', 20, 45);
+        if(!LMP || !CL) { renderResults({}); return; }
+        C = addDaysUTC(LMP, (CL - 14));
+        E = addDaysUTC(C, 266);
+        L = LMP;
+        fertile = { start: addDaysUTC(C, -5), end: addDaysUTC(C, +1) };
+      }
+      else if(method === 'edd'){
+        const EDD = requireDate(eddDate, 'err-eddDate', {notFuture:false});
+        const CL = Number(cycleLength2.value) || 28;
+        // no validation error for optional cycle length, but clamp
+        const clampedCL = Math.min(45, Math.max(20, CL));
+        if(!EDD){ renderResults({}); return; }
+        C = addDaysUTC(EDD, -266);
+        E = EDD;
+        L = addDaysUTC(C, -(clampedCL - 14));
+        // fertile window only for natural/IUI context; with EDD source we can't know,
+        // but we can still illustrate based on implied ovulation C.
+        fertile = { start: addDaysUTC(C, -5), end: addDaysUTC(C, +1) };
+      }
+      else if(method === 'ultrasound'){
+        const U = requireDate(scanDate, 'err-scanDate', {notFuture:false});
+        const W = requireNumber(gaWeeks, 'err-ga', 0, 42);
+        const D = requireNumber(gaDays, 'err-ga', 0, 6);
+        const CL = Number(cycleLength3.value) || 28;
+        if(!U || W===null || D===null){ renderResults({}); return; }
+        if(W === 0 && D === 0){
+          setError(gaWeeks, 'err-ga', 'Gestational age cannot be 0w 0d. Enter weeks and/or days.');
+          renderResults({}); return;
+        } else {
+          setError(gaWeeks, 'err-ga', '');
+        }
+        const GA = W*7 + D;
+        L = addDaysUTC(U, -GA);
+        C = addDaysUTC(L, (Math.min(45, Math.max(20, CL)) - 14));
+        E = addDaysUTC(C, 266);
+        fertile = { start: addDaysUTC(C, -5), end: addDaysUTC(C, +1) };
+      }
+      else if(method === 'ovulation'){
+        const type = methodType.value;
+        const EV = requireDate(eventDate, 'err-eventDate', {notFuture:false});
+        if(!type){ setError(methodType, 'err-type', 'Please select an event type.'); }
+        else setError(methodType, 'err-type', '');
+        if(!EV){ renderResults({}); return; }
+
+        if(type === 'ovulation' || type === 'iui'){
+          C = EV; // conception within ~24h of ovulation/IUI
+          const CL = Number(cycleLength4.value) || 28;
+          L = addDaysUTC(C, -(Math.min(45, Math.max(20, CL)) - 14));
+          E = addDaysUTC(C, 266);
+          fertile = { start: addDaysUTC(C, -5), end: addDaysUTC(C, +1) };
+        } else if(type === 'ivf5'){
+          // day-5 embryo transfer
+          C = addDaysUTC(EV, -5);
+          E = addDaysUTC(EV, 261);
+          const CL = Number(cycleLength4.value) || 28;
+          L = addDaysUTC(C, -(Math.min(45, Math.max(20, CL)) - 14));
+          fertile = null; // not applicable
+        } else if(type === 'ivf3'){
+          C = addDaysUTC(EV, -3);
+          E = addDaysUTC(EV, 263);
+          const CL = Number(cycleLength4.value) || 28;
+          L = addDaysUTC(C, -(Math.min(45, Math.max(20, CL)) - 14));
+          fertile = null;
+        }
+      }
+
+      renderResults({C, E, L, fertile});
+    }
+
+    // Switch panels
+    function showPanel(which){
+      Object.entries(panels).forEach(([key, el])=>{
+        const active = key === which;
+        el.hidden = !active;
+      });
+      compute();
+    }
+    methodRadios.forEach(r=>{
+      r.addEventListener('change', ()=> showPanel(r.value));
+    });
+
+    // Dynamic label for event type
+    methodType.addEventListener('change', ()=>{
+      const v = methodType.value;
+      if(v === 'ovulation') eventLabel.textContent = 'Ovulation date';
+      else if(v === 'iui') eventLabel.textContent = 'IUI procedure date';
+      else if(v === 'ivf5' || v === 'ivf3') eventLabel.textContent = 'Embryo transfer date';
+      compute();
+    });
+
+    // Validate on blur
+    lmpDate.addEventListener('blur', ()=> requireDate(lmpDate, 'err-lmpDate', {notFuture:true}));
+    cycleLength.addEventListener('blur', ()=> requireNumber(cycleLength, 'err-cycleLength', 20, 45));
+
+    eddDate.addEventListener('blur', ()=> requireDate(eddDate, 'err-eddDate'));
+    // cycleLength2 optional
+
+    scanDate.addEventListener('blur', ()=> requireDate(scanDate, 'err-scanDate'));
+    gaWeeks.addEventListener('blur', ()=> requireNumber(gaWeeks, 'err-ga', 0, 42));
+    gaDays.addEventListener('blur', ()=> requireNumber(gaDays, 'err-ga', 0, 6));
+
+    eventDate.addEventListener('blur', ()=> requireDate(eventDate, 'err-eventDate'));
+
+    // Recompute on input
+    [lmpDate, cycleLength, eddDate, cycleLength2, scanDate, gaWeeks, gaDays, cycleLength3, methodType, eventDate, cycleLength4]
+      .forEach(el => el && el.addEventListener('input', compute));
+
+    // Initialize
+    showPanel('lmp');
+    compute();
+
+    // Author review date
+    const rd = document.getElementById('reviewDate');
+    if(rd){
+      const t = todayUTC();
+      rd.textContent = t.toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'});
+    }
+  })();
+  </script><script defer="" src="/assets/js/mobile-menu.js"></script><script defer="" src="/assets/js/page-enhancements.js"></script></body></html>

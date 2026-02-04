@@ -285,7 +285,13 @@
 <!-- MathJax for LaTeX rendering (async, non-blocking) -->
 <script defer="" src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
 <script>
-  window.MathJax = { tex: { inlineMath: [['\\(','\\)'], ['</script>
+  (function() {
+
+    'use strict';
+
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)'], ['
+
+  })();</script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="search.js" defer=""></script>
@@ -324,10 +330,22 @@
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
 </style>
 </head>
-<body>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">Allele Frequency Calculator</h1>
+    <p class="sub" id="pageSub">Allele frequency calculator for biology and population genetics. Compute p and q, expected genotype frequencies under Hardy–Weinberg equilibrium, heterozygosity, MAF, chi-square HWE test, and 95% CI.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<a class="skip-link" href="#main-content">Skip to main content</a>
-<main class="container" id="main-content" role="main">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main class="container" id="main-content" role="main">
 <h1>Allele Frequency Calculator</h1>
 <p>
       This professional-grade allele frequency calculator helps students, educators, and researchers compute allele frequencies (p and q), expected genotype frequencies under Hardy–Weinberg equilibrium (HWE), heterozygosity, minor allele frequency (MAF), a chi-square HWE test (when genotype counts are provided), and 95% confidence intervals — all with WCAG-compliant, mobile-first UX.
@@ -636,310 +654,21 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
+
+
 </main>
-<script defer="">
-    (function(){
-      'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
 
-      // Utility functions
-      function clamp(x, min, max){ return Math.min(Math.max(x, min), max); }
-      function formatFloat(x, digits=4){ return Number.isFinite(x) ? x.toFixed(digits) : '—'; }
-      function formatInt(x){ return Number.isFinite(x) ? Math.round(x).toString() : '—'; }
+<button id="resetBtn" type="button" class="btn btnSecondary">Reset</button>
+</div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-      // Error helpers
-      function setError(inputEl, errEl, msg){
-        if(!inputEl || !errEl) return;
-        inputEl.setAttribute('aria-invalid', msg ? 'true' : 'false');
-        errEl.textContent = msg || '';
-      }
-
-      // Show/hide mode groups
-      const modeRadios = Array.from(document.querySelectorAll('input[name="mode"]'));
-      const groups = {
-        genotype: document.getElementById('group-genotype'),
-        allele: document.getElementById('group-allele'),
-        p: document.getElementById('group-p')
-      };
-
-      function switchMode(mode){
-        Object.keys(groups).forEach(key=>{
-          const g = groups[key];
-          const active = key === mode;
-          if(active){
-            g.hidden = false;
-            g.setAttribute('aria-hidden','false');
-            Array.from(g.querySelectorAll('input')).forEach(i=>i.disabled=false);
-          }else{
-            g.hidden = true;
-            g.setAttribute('aria-hidden','true');
-            Array.from(g.querySelectorAll('input')).forEach(i=>i.disabled=true);
-          }
-        });
-        // Update interpretation for non-genotype modes
-        if(mode !== 'genotype'){
-          setResultText('resObserved','—');
-          setResultText('resChi2','—');
-          setResultText('resInterpret','Provide genotype counts to test HWE.');
-        }
-        calculate(); // recalc immediately
-      }
-
-      modeRadios.forEach(r=>{
-        r.addEventListener('change', e=> switchMode(e.target.value));
-      });
-
-      // Tooltip toggles
-      function initTooltips(){
-        const buttons = document.querySelectorAll('.help-btn');
-        buttons.forEach(btn=>{
-          const id = btn.getAttribute('aria-controls');
-          const tip = document.getElementById(id);
-          if(!tip) return;
-          btn.addEventListener('click', ()=>{
-            const expanded = btn.getAttribute('aria-expanded') === 'true';
-            btn.setAttribute('aria-expanded', (!expanded).toString());
-            tip.setAttribute('aria-hidden', expanded ? 'true' : 'false');
-          });
-          btn.addEventListener('keydown', (e)=>{
-            if(e.key === 'Enter' || e.key === ' '){
-              e.preventDefault(); btn.click();
-            }
-          });
-        });
-      }
-
-      // Inputs and validation
-      const inputAA = document.getElementById('inputAA');
-      const inputAa = document.getElementById('inputAa');
-      const inputaa = document.getElementById('inputaa');
-
-      const errAA = document.getElementById('errAA');
-      const errAa = document.getElementById('errAa');
-      const erraa = document.getElementById('erraa');
-
-      const inputCountA = document.getElementById('inputCountA');
-      const inputCounta = document.getElementById('inputCounta');
-      const errCountA = document.getElementById('errCountA');
-      const errCounta = document.getElementById('errCounta');
-
-      const inputP = document.getElementById('inputP');
-      const inputN = document.getElementById('inputN');
-      const errP = document.getElementById('errP');
-      const errN = document.getElementById('errN');
-
-      function parseIntSafe(el){ const v = Number(el.value); return Number.isFinite(v) ? Math.floor(v) : NaN; }
-      function parseFloatSafe(el){ const v = Number(el.value); return Number.isFinite(v) ? v : NaN; }
-
-      function validateGenotypes(){
-        let ok = true;
-        const AA = parseIntSafe(inputAA);
-        const Aa = parseIntSafe(inputAa);
-        const aa = parseIntSafe(inputaa);
-
-        if(inputAA.value === '' || isNaN(AA) || AA < 0){ setError(inputAA, errAA, 'Please enter a non-negative integer.'); ok = false; } else setError(inputAA, errAA, '');
-        if(inputAa.value === '' || isNaN(Aa) || Aa < 0){ setError(inputAa, errAa, 'Please enter a non-negative integer.'); ok = false; } else setError(inputAa, errAa, '');
-        if(inputaa.value === '' || isNaN(aa) || aa < 0){ setError(inputaa, erraa, 'Please enter a non-negative integer.'); ok = false; } else setError(inputaa, erraa, '');
-
-        const N = (!isNaN(AA) && !isNaN(Aa) && !isNaN(aa)) ? (AA + Aa + aa) : 0;
-        if(ok && N === 0){ setError(inputAA, errAA, 'At least one count must be > 0.'); ok = false; }
-        return ok;
-      }
-
-      function validateAlleleCounts(){
-        let ok = true;
-        const A = parseIntSafe(inputCountA);
-        const a = parseIntSafe(inputCounta);
-
-        if(inputCountA.value === '' || isNaN(A) || A < 0){ setError(inputCountA, errCountA, 'Enter a non-negative integer.'); ok = false; } else setError(inputCountA, errCountA, '');
-        if(inputCounta.value === '' || isNaN(a) || a < 0){ setError(inputCounta, errCounta, 'Enter a non-negative integer.'); ok = false; } else setError(inputCounta, errCounta, '');
-
-        const total = (!isNaN(A) && !isNaN(a)) ? (A + a) : 0;
-        if(ok && total === 0){ setError(inputCountA, errCountA, 'A + a must be > 0.'); ok = false; }
-        if(ok && total % 2 !== 0){ setError(inputCounta, errCounta, 'For diploids, A + a must be even (2×N).'); ok = false; }
-        return ok;
-      }
-
-      function validateKnownP(){
-        let ok = true;
-        const p = parseFloatSafe(inputP);
-        const N = parseIntSafe(inputN);
-
-        if(inputP.value === '' || isNaN(p) || p < 0 || p > 1){
-          setError(inputP, errP, 'Enter a value between 0 and 1.');
-          ok = false;
-        } else { setError(inputP, errP, ''); }
-
-        if(inputN.value === '' || isNaN(N) || N < 1){
-          setError(inputN, errN, 'Enter a positive integer.');
-          ok = false;
-        } else { setError(inputN, errN, ''); }
-
-        return ok;
-      }
-
-      [inputAA,inputAa,inputaa,inputCountA,inputCounta,inputP,inputN].forEach(el=>{
-        if(!el) return;
-        el.addEventListener('blur', ()=>calculate());
-        el.addEventListener('input', ()=>{/* live update for responsiveness */});
-      });
-
-      // Results setters
-      function setResultText(id, text){ const el = document.getElementById(id); if(el) el.textContent = text; }
-
-      // Math functions
-      function heterozygosity(p){ return 2*p*(1-p); }
-      function chiSquarePValueDf1(chi2){
-        if(!(chi2 >= 0)) return NaN;
-        const t = Math.sqrt(chi2/2);
-        // erfc approximation
-        return erfc(t);
-      }
-      // Numerical approx for erfc
-      function erfc(x){
-        // Abramowitz & Stegun 7.1.26
-        const z = Math.abs(x);
-        const t = 1 / (1 + 0.5*z);
-        const ans = t * Math.exp(-z*z - 1.26551223 + t*(1.00002368 + t*(0.37409196 +
-          t*(0.09678418 + t*(-0.18628806 + t*(0.27886807 +
-          t*(-1.13520398 + t*(1.48851587 + t*(-0.82215223 + t*0.17087277)))))))))
-        return x >= 0 ? ans : 2 - ans;
-      }
-
-      function wilsonCI(k, n, z=1.96){
-        if(!(n > 0)) return [NaN, NaN];
-        const phat = k / n;
-        const z2n = (z*z)/n;
-        const denom = 1 + z2n;
-        const center = (phat + (z*z)/(2*n)) / denom;
-        const margin = (z/denom) * Math.sqrt( (phat*(1-phat)/n) + ((z*z)/(4*n*n)) );
-        let lo = center - margin, hi = center + margin;
-        lo = Math.max(0, lo); hi = Math.min(1, hi);
-        return [lo, hi];
-      }
-
-      // Main calculation
-      function calculate(){
-        const mode = (document.querySelector('input[name="mode"]:checked')||{}).value || 'genotype';
-
-        let N = NaN, p = NaN, q = NaN, MAF = NaN, H = NaN;
-        let EAA = NaN, EAa = NaN, Eaa = NaN;
-        let OAA = NaN, OAa = NaN, Oaa = NaN;
-        let chi2 = NaN, pval = NaN;
-        let ciLo = NaN, ciHi = NaN;
-
-        if(mode === 'genotype'){
-          if(!validateGenotypes()){
-            setOutputsBlank();
-            return;
-          }
-          OAA = parseIntSafe(inputAA);
-          OAa = parseIntSafe(inputAa);
-          Oaa = parseIntSafe(inputaa);
-          N = OAA + OAa + Oaa;
-          const kA = 2*OAA + OAa; // number of A alleles
-          const nAlleles = 2*N;
-          p = kA / nAlleles; q = 1 - p;
-          H = heterozygosity(p);
-          EAA = N * p*p; EAa = N * (2*p*q); Eaa = N * q*q;
-          // Chi-square with df=1 if all expected > 0
-          if(EAA > 0 && EAa > 0 && Eaa > 0){
-            chi2 = ((OAA-EAA)**2)/EAA + ((OAa-EAa)**2)/EAa + ((Oaa-Eaa)**2)/Eaa;
-            pval = chiSquarePValueDf1(chi2);
-          }
-          const [lo, hi] = wilsonCI(kA, nAlleles, 1.96);
-          ciLo = lo; ciHi = hi;
-          MAF = Math.min(p, q);
-        } else if(mode === 'allele'){
-          if(!validateAlleleCounts()){
-            setOutputsBlank();
-            return;
-          }
-          const A = parseIntSafe(inputCountA);
-          const a = parseIntSafe(inputCounta);
-          const total = A + a;
-          N = total / 2;
-          p = A / total; q = 1 - p;
-          H = heterozygosity(p);
-          EAA = N * p*p; EAa = N * (2*p*q); Eaa = N * q*q;
-          const [lo, hi] = wilsonCI(A, total, 1.96);
-          ciLo = lo; ciHi = hi;
-          MAF = Math.min(p, q);
-        } else { // known p
-          if(!validateKnownP()){
-            setOutputsBlank();
-            return;
-          }
-          p = parseFloatSafe(inputP);
-          q = 1 - p;
-          N = parseIntSafe(inputN);
-          H = heterozygosity(p);
-          EAA = N * p*p; EAa = N * (2*p*q); Eaa = N * q*q;
-          // CI cannot be computed without allele counts
-          ciLo = NaN; ciHi = NaN;
-          MAF = Math.min(p, q);
-        }
-
-        // Display
-        setResultText('resN', Number.isFinite(N) ? formatInt(N) : '—');
-        setResultText('resp', Number.isFinite(p) ? formatFloat(p,4) : '—');
-        setResultText('resq', Number.isFinite(q) ? formatFloat(q,4) : '—');
-        setResultText('resMAF', Number.isFinite(MAF) ? formatFloat(MAF,4) : '—');
-        setResultText('resExpected', (Number.isFinite(EAA)&&Number.isFinite(EAa)&&Number.isFinite(Eaa)) ? `${formatFloat(EAA,2)}, ${formatFloat(EAa,2)}, ${formatFloat(Eaa,2)}` : '—');
-        setResultText('resObserved', (Number.isFinite(OAA)||Number.isFinite(OAa)||Number.isFinite(Oaa)) && !isNaN(OAA) ? `${formatInt(OAA)}, ${formatInt(OAa)}, ${formatInt(Oaa)}` : '—');
-        setResultText('resH', Number.isFinite(H) ? formatFloat(H,4) : '—');
-        setResultText('resCI', (Number.isFinite(ciLo)&&Number.isFinite(ciHi)) ? `[${formatFloat(ciLo,4)}, ${formatFloat(ciHi,4)}]` : '—');
-        if(Number.isFinite(chi2) && Number.isFinite(pval)){
-          setResultText('resChi2', `${formatFloat(chi2,4)}, p = ${formatFloat(pval,4)}`);
-          const interp = (pval < 0.05) ? 'Evidence of deviation from HWE (p < 0.05).' : 'No evidence of deviation from HWE (p ≥ 0.05).';
-          setResultText('resInterpret', interp);
-        } else {
-          setResultText('resChi2', '—');
-          if((document.querySelector('input[name="mode"]:checked')||{}).value === 'genotype'){
-            setResultText('resInterpret', 'Insufficient expected counts to compute chi-square or invalid inputs.');
-          } else {
-            setResultText('resInterpret', 'Provide genotype counts to test HWE.');
-          }
-        }
-      }
-
-      function setOutputsBlank(){
-        setResultText('resN','—');
-        setResultText('resp','—');
-        setResultText('resq','—');
-        setResultText('resMAF','—');
-        setResultText('resExpected','—');
-        setResultText('resObserved','—');
-        setResultText('resH','—');
-        setResultText('resCI','—');
-        setResultText('resChi2','—');
-        setResultText('resInterpret','Check inputs; errors are highlighted above.');
-      }
-
-      // Bind buttons
-      document.getElementById('btnCalculate').addEventListener('click', calculate);
-      document.getElementById('btnReset').addEventListener('click', ()=>{
-        [inputAA,inputAa,inputaa,inputCountA,inputCounta,inputP,inputN].forEach(el=>{ if(el){ el.value=''; el.setAttribute('aria-invalid','false'); } });
-        [errAA,errAa,erraa,errCountA,errCounta,errP,errN].forEach(e=>{ if(e){ e.textContent=''; } });
-        setOutputsBlank();
-      });
-
-      // Initialize
-      initTooltips();
-      switchMode('genotype');
-      // Provide example defaults for instant demo (optional – comment out if undesired)
-      inputAA.value = '36'; inputAa.value = '48'; inputaa.value = '16'; calculate();
-    })();
-  </script>
-
-
-<script defer="" src="https://calcdomain.com/assets/js/mobile-menu.js"></script>
-<script defer="" src="https://calcdomain.com/assets/js/page-enhancements.js"></script>
-</body></html>, '</script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="search.js" defer=""></script>
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main-content">Skip to main content</a><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -971,12 +700,7 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-
-<a class="skip-link" href="#main-content">Skip to main content</a>
-<main class="container" id="main-content" role="main">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="container" id="main-content" role="main">
 <h1>Allele Frequency Calculator</h1>
 <p>
       This professional-grade allele frequency calculator helps students, educators, and researchers compute allele frequencies (p and q), expected genotype frequencies under Hardy–Weinberg equilibrium (HWE), heterozygosity, minor allele frequency (MAF), a chi-square HWE test (when genotype counts are provided), and 95% confidence intervals — all with WCAG-compliant, mobile-first UX.
@@ -1285,312 +1009,7 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<script defer="">
-    (function(){
-      'use strict';
-
-      // Utility functions
-      function clamp(x, min, max){ return Math.min(Math.max(x, min), max); }
-      function formatFloat(x, digits=4){ return Number.isFinite(x) ? x.toFixed(digits) : '—'; }
-      function formatInt(x){ return Number.isFinite(x) ? Math.round(x).toString() : '—'; }
-
-      // Error helpers
-      function setError(inputEl, errEl, msg){
-        if(!inputEl || !errEl) return;
-        inputEl.setAttribute('aria-invalid', msg ? 'true' : 'false');
-        errEl.textContent = msg || '';
-      }
-
-      // Show/hide mode groups
-      const modeRadios = Array.from(document.querySelectorAll('input[name="mode"]'));
-      const groups = {
-        genotype: document.getElementById('group-genotype'),
-        allele: document.getElementById('group-allele'),
-        p: document.getElementById('group-p')
-      };
-
-      function switchMode(mode){
-        Object.keys(groups).forEach(key=>{
-          const g = groups[key];
-          const active = key === mode;
-          if(active){
-            g.hidden = false;
-            g.setAttribute('aria-hidden','false');
-            Array.from(g.querySelectorAll('input')).forEach(i=>i.disabled=false);
-          }else{
-            g.hidden = true;
-            g.setAttribute('aria-hidden','true');
-            Array.from(g.querySelectorAll('input')).forEach(i=>i.disabled=true);
-          }
-        });
-        // Update interpretation for non-genotype modes
-        if(mode !== 'genotype'){
-          setResultText('resObserved','—');
-          setResultText('resChi2','—');
-          setResultText('resInterpret','Provide genotype counts to test HWE.');
-        }
-        calculate(); // recalc immediately
-      }
-
-      modeRadios.forEach(r=>{
-        r.addEventListener('change', e=> switchMode(e.target.value));
-      });
-
-      // Tooltip toggles
-      function initTooltips(){
-        const buttons = document.querySelectorAll('.help-btn');
-        buttons.forEach(btn=>{
-          const id = btn.getAttribute('aria-controls');
-          const tip = document.getElementById(id);
-          if(!tip) return;
-          btn.addEventListener('click', ()=>{
-            const expanded = btn.getAttribute('aria-expanded') === 'true';
-            btn.setAttribute('aria-expanded', (!expanded).toString());
-            tip.setAttribute('aria-hidden', expanded ? 'true' : 'false');
-          });
-          btn.addEventListener('keydown', (e)=>{
-            if(e.key === 'Enter' || e.key === ' '){
-              e.preventDefault(); btn.click();
-            }
-          });
-        });
-      }
-
-      // Inputs and validation
-      const inputAA = document.getElementById('inputAA');
-      const inputAa = document.getElementById('inputAa');
-      const inputaa = document.getElementById('inputaa');
-
-      const errAA = document.getElementById('errAA');
-      const errAa = document.getElementById('errAa');
-      const erraa = document.getElementById('erraa');
-
-      const inputCountA = document.getElementById('inputCountA');
-      const inputCounta = document.getElementById('inputCounta');
-      const errCountA = document.getElementById('errCountA');
-      const errCounta = document.getElementById('errCounta');
-
-      const inputP = document.getElementById('inputP');
-      const inputN = document.getElementById('inputN');
-      const errP = document.getElementById('errP');
-      const errN = document.getElementById('errN');
-
-      function parseIntSafe(el){ const v = Number(el.value); return Number.isFinite(v) ? Math.floor(v) : NaN; }
-      function parseFloatSafe(el){ const v = Number(el.value); return Number.isFinite(v) ? v : NaN; }
-
-      function validateGenotypes(){
-        let ok = true;
-        const AA = parseIntSafe(inputAA);
-        const Aa = parseIntSafe(inputAa);
-        const aa = parseIntSafe(inputaa);
-
-        if(inputAA.value === '' || isNaN(AA) || AA < 0){ setError(inputAA, errAA, 'Please enter a non-negative integer.'); ok = false; } else setError(inputAA, errAA, '');
-        if(inputAa.value === '' || isNaN(Aa) || Aa < 0){ setError(inputAa, errAa, 'Please enter a non-negative integer.'); ok = false; } else setError(inputAa, errAa, '');
-        if(inputaa.value === '' || isNaN(aa) || aa < 0){ setError(inputaa, erraa, 'Please enter a non-negative integer.'); ok = false; } else setError(inputaa, erraa, '');
-
-        const N = (!isNaN(AA) && !isNaN(Aa) && !isNaN(aa)) ? (AA + Aa + aa) : 0;
-        if(ok && N === 0){ setError(inputAA, errAA, 'At least one count must be > 0.'); ok = false; }
-        return ok;
-      }
-
-      function validateAlleleCounts(){
-        let ok = true;
-        const A = parseIntSafe(inputCountA);
-        const a = parseIntSafe(inputCounta);
-
-        if(inputCountA.value === '' || isNaN(A) || A < 0){ setError(inputCountA, errCountA, 'Enter a non-negative integer.'); ok = false; } else setError(inputCountA, errCountA, '');
-        if(inputCounta.value === '' || isNaN(a) || a < 0){ setError(inputCounta, errCounta, 'Enter a non-negative integer.'); ok = false; } else setError(inputCounta, errCounta, '');
-
-        const total = (!isNaN(A) && !isNaN(a)) ? (A + a) : 0;
-        if(ok && total === 0){ setError(inputCountA, errCountA, 'A + a must be > 0.'); ok = false; }
-        if(ok && total % 2 !== 0){ setError(inputCounta, errCounta, 'For diploids, A + a must be even (2×N).'); ok = false; }
-        return ok;
-      }
-
-      function validateKnownP(){
-        let ok = true;
-        const p = parseFloatSafe(inputP);
-        const N = parseIntSafe(inputN);
-
-        if(inputP.value === '' || isNaN(p) || p < 0 || p > 1){
-          setError(inputP, errP, 'Enter a value between 0 and 1.');
-          ok = false;
-        } else { setError(inputP, errP, ''); }
-
-        if(inputN.value === '' || isNaN(N) || N < 1){
-          setError(inputN, errN, 'Enter a positive integer.');
-          ok = false;
-        } else { setError(inputN, errN, ''); }
-
-        return ok;
-      }
-
-      [inputAA,inputAa,inputaa,inputCountA,inputCounta,inputP,inputN].forEach(el=>{
-        if(!el) return;
-        el.addEventListener('blur', ()=>calculate());
-        el.addEventListener('input', ()=>{/* live update for responsiveness */});
-      });
-
-      // Results setters
-      function setResultText(id, text){ const el = document.getElementById(id); if(el) el.textContent = text; }
-
-      // Math functions
-      function heterozygosity(p){ return 2*p*(1-p); }
-      function chiSquarePValueDf1(chi2){
-        if(!(chi2 >= 0)) return NaN;
-        const t = Math.sqrt(chi2/2);
-        // erfc approximation
-        return erfc(t);
-      }
-      // Numerical approx for erfc
-      function erfc(x){
-        // Abramowitz & Stegun 7.1.26
-        const z = Math.abs(x);
-        const t = 1 / (1 + 0.5*z);
-        const ans = t * Math.exp(-z*z - 1.26551223 + t*(1.00002368 + t*(0.37409196 +
-          t*(0.09678418 + t*(-0.18628806 + t*(0.27886807 +
-          t*(-1.13520398 + t*(1.48851587 + t*(-0.82215223 + t*0.17087277)))))))))
-        return x >= 0 ? ans : 2 - ans;
-      }
-
-      function wilsonCI(k, n, z=1.96){
-        if(!(n > 0)) return [NaN, NaN];
-        const phat = k / n;
-        const z2n = (z*z)/n;
-        const denom = 1 + z2n;
-        const center = (phat + (z*z)/(2*n)) / denom;
-        const margin = (z/denom) * Math.sqrt( (phat*(1-phat)/n) + ((z*z)/(4*n*n)) );
-        let lo = center - margin, hi = center + margin;
-        lo = Math.max(0, lo); hi = Math.min(1, hi);
-        return [lo, hi];
-      }
-
-      // Main calculation
-      function calculate(){
-        const mode = (document.querySelector('input[name="mode"]:checked')||{}).value || 'genotype';
-
-        let N = NaN, p = NaN, q = NaN, MAF = NaN, H = NaN;
-        let EAA = NaN, EAa = NaN, Eaa = NaN;
-        let OAA = NaN, OAa = NaN, Oaa = NaN;
-        let chi2 = NaN, pval = NaN;
-        let ciLo = NaN, ciHi = NaN;
-
-        if(mode === 'genotype'){
-          if(!validateGenotypes()){
-            setOutputsBlank();
-            return;
-          }
-          OAA = parseIntSafe(inputAA);
-          OAa = parseIntSafe(inputAa);
-          Oaa = parseIntSafe(inputaa);
-          N = OAA + OAa + Oaa;
-          const kA = 2*OAA + OAa; // number of A alleles
-          const nAlleles = 2*N;
-          p = kA / nAlleles; q = 1 - p;
-          H = heterozygosity(p);
-          EAA = N * p*p; EAa = N * (2*p*q); Eaa = N * q*q;
-          // Chi-square with df=1 if all expected > 0
-          if(EAA > 0 && EAa > 0 && Eaa > 0){
-            chi2 = ((OAA-EAA)**2)/EAA + ((OAa-EAa)**2)/EAa + ((Oaa-Eaa)**2)/Eaa;
-            pval = chiSquarePValueDf1(chi2);
-          }
-          const [lo, hi] = wilsonCI(kA, nAlleles, 1.96);
-          ciLo = lo; ciHi = hi;
-          MAF = Math.min(p, q);
-        } else if(mode === 'allele'){
-          if(!validateAlleleCounts()){
-            setOutputsBlank();
-            return;
-          }
-          const A = parseIntSafe(inputCountA);
-          const a = parseIntSafe(inputCounta);
-          const total = A + a;
-          N = total / 2;
-          p = A / total; q = 1 - p;
-          H = heterozygosity(p);
-          EAA = N * p*p; EAa = N * (2*p*q); Eaa = N * q*q;
-          const [lo, hi] = wilsonCI(A, total, 1.96);
-          ciLo = lo; ciHi = hi;
-          MAF = Math.min(p, q);
-        } else { // known p
-          if(!validateKnownP()){
-            setOutputsBlank();
-            return;
-          }
-          p = parseFloatSafe(inputP);
-          q = 1 - p;
-          N = parseIntSafe(inputN);
-          H = heterozygosity(p);
-          EAA = N * p*p; EAa = N * (2*p*q); Eaa = N * q*q;
-          // CI cannot be computed without allele counts
-          ciLo = NaN; ciHi = NaN;
-          MAF = Math.min(p, q);
-        }
-
-        // Display
-        setResultText('resN', Number.isFinite(N) ? formatInt(N) : '—');
-        setResultText('resp', Number.isFinite(p) ? formatFloat(p,4) : '—');
-        setResultText('resq', Number.isFinite(q) ? formatFloat(q,4) : '—');
-        setResultText('resMAF', Number.isFinite(MAF) ? formatFloat(MAF,4) : '—');
-        setResultText('resExpected', (Number.isFinite(EAA)&&Number.isFinite(EAa)&&Number.isFinite(Eaa)) ? `${formatFloat(EAA,2)}, ${formatFloat(EAa,2)}, ${formatFloat(Eaa,2)}` : '—');
-        setResultText('resObserved', (Number.isFinite(OAA)||Number.isFinite(OAa)||Number.isFinite(Oaa)) && !isNaN(OAA) ? `${formatInt(OAA)}, ${formatInt(OAa)}, ${formatInt(Oaa)}` : '—');
-        setResultText('resH', Number.isFinite(H) ? formatFloat(H,4) : '—');
-        setResultText('resCI', (Number.isFinite(ciLo)&&Number.isFinite(ciHi)) ? `[${formatFloat(ciLo,4)}, ${formatFloat(ciHi,4)}]` : '—');
-        if(Number.isFinite(chi2) && Number.isFinite(pval)){
-          setResultText('resChi2', `${formatFloat(chi2,4)}, p = ${formatFloat(pval,4)}`);
-          const interp = (pval < 0.05) ? 'Evidence of deviation from HWE (p < 0.05).' : 'No evidence of deviation from HWE (p ≥ 0.05).';
-          setResultText('resInterpret', interp);
-        } else {
-          setResultText('resChi2', '—');
-          if((document.querySelector('input[name="mode"]:checked')||{}).value === 'genotype'){
-            setResultText('resInterpret', 'Insufficient expected counts to compute chi-square or invalid inputs.');
-          } else {
-            setResultText('resInterpret', 'Provide genotype counts to test HWE.');
-          }
-        }
-      }
-
-      function setOutputsBlank(){
-        setResultText('resN','—');
-        setResultText('resp','—');
-        setResultText('resq','—');
-        setResultText('resMAF','—');
-        setResultText('resExpected','—');
-        setResultText('resObserved','—');
-        setResultText('resH','—');
-        setResultText('resCI','—');
-        setResultText('resChi2','—');
-        setResultText('resInterpret','Check inputs; errors are highlighted above.');
-      }
-
-      // Bind buttons
-      document.getElementById('btnCalculate').addEventListener('click', calculate);
-      document.getElementById('btnReset').addEventListener('click', ()=>{
-        [inputAA,inputAa,inputaa,inputCountA,inputCounta,inputP,inputN].forEach(el=>{ if(el){ el.value=''; el.setAttribute('aria-invalid','false'); } });
-        [errAA,errAa,erraa,errCountA,errCounta,errP,errN].forEach(e=>{ if(e){ e.textContent=''; } });
-        setOutputsBlank();
-      });
-
-      // Initialize
-      initTooltips();
-      switchMode('genotype');
-      // Provide example defaults for instant demo (optional – comment out if undesired)
-      inputAA.value = '36'; inputAa.value = '48'; inputaa.value = '16'; calculate();
-    })();
-  </script>
-
-
-<script defer="" src="https://calcdomain.com/assets/js/mobile-menu.js"></script>
-<script defer="" src="https://calcdomain.com/assets/js/page-enhancements.js"></script>
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };
-</script>
-<script async="" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="search.js" defer=""></script>
-
-<style>
+</main><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1622,12 +1041,7 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-
-<a class="skip-link" href="#main-content">Skip to main content</a>
-<main class="container" id="main-content" role="main">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="container" id="main-content" role="main">
 <h1>Allele Frequency Calculator</h1>
 <p>
       This professional-grade allele frequency calculator helps students, educators, and researchers compute allele frequencies (p and q), expected genotype frequencies under Hardy–Weinberg equilibrium (HWE), heterozygosity, minor allele frequency (MAF), a chi-square HWE test (when genotype counts are provided), and 95% confidence intervals — all with WCAG-compliant, mobile-first UX.
@@ -1936,8 +1350,48 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
     (function(){
       'use strict';
 
@@ -2229,9 +1683,588 @@
       // Provide example defaults for instant demo (optional – comment out if undesired)
       inputAA.value = '36'; inputAa.value = '48'; inputaa.value = '16'; calculate();
     })();
-  </script>
+  </script><script defer="" src="https://calcdomain.com/assets/js/mobile-menu.js"></script><script defer="" src="https://calcdomain.com/assets/js/page-enhancements.js"></script><script src="https://cdn.tailwindcss.com"></script><script src="search.js" defer=""></script><script defer="">
+    (function(){
+      'use strict';
 
+      // Utility functions
+      function clamp(x, min, max){ return Math.min(Math.max(x, min), max); }
+      function formatFloat(x, digits=4){ return Number.isFinite(x) ? x.toFixed(digits) : '—'; }
+      function formatInt(x){ return Number.isFinite(x) ? Math.round(x).toString() : '—'; }
 
-<script defer="" src="https://calcdomain.com/assets/js/mobile-menu.js"></script>
-<script defer="" src="https://calcdomain.com/assets/js/page-enhancements.js"></script>
-</body></html>
+      // Error helpers
+      function setError(inputEl, errEl, msg){
+        if(!inputEl || !errEl) return;
+        inputEl.setAttribute('aria-invalid', msg ? 'true' : 'false');
+        errEl.textContent = msg || '';
+      }
+
+      // Show/hide mode groups
+      const modeRadios = Array.from(document.querySelectorAll('input[name="mode"]'));
+      const groups = {
+        genotype: document.getElementById('group-genotype'),
+        allele: document.getElementById('group-allele'),
+        p: document.getElementById('group-p')
+      };
+
+      function switchMode(mode){
+        Object.keys(groups).forEach(key=>{
+          const g = groups[key];
+          const active = key === mode;
+          if(active){
+            g.hidden = false;
+            g.setAttribute('aria-hidden','false');
+            Array.from(g.querySelectorAll('input')).forEach(i=>i.disabled=false);
+          }else{
+            g.hidden = true;
+            g.setAttribute('aria-hidden','true');
+            Array.from(g.querySelectorAll('input')).forEach(i=>i.disabled=true);
+          }
+        });
+        // Update interpretation for non-genotype modes
+        if(mode !== 'genotype'){
+          setResultText('resObserved','—');
+          setResultText('resChi2','—');
+          setResultText('resInterpret','Provide genotype counts to test HWE.');
+        }
+        calculate(); // recalc immediately
+      }
+
+      modeRadios.forEach(r=>{
+        r.addEventListener('change', e=> switchMode(e.target.value));
+      });
+
+      // Tooltip toggles
+      function initTooltips(){
+        const buttons = document.querySelectorAll('.help-btn');
+        buttons.forEach(btn=>{
+          const id = btn.getAttribute('aria-controls');
+          const tip = document.getElementById(id);
+          if(!tip) return;
+          btn.addEventListener('click', ()=>{
+            const expanded = btn.getAttribute('aria-expanded') === 'true';
+            btn.setAttribute('aria-expanded', (!expanded).toString());
+            tip.setAttribute('aria-hidden', expanded ? 'true' : 'false');
+          });
+          btn.addEventListener('keydown', (e)=>{
+            if(e.key === 'Enter' || e.key === ' '){
+              e.preventDefault(); btn.click();
+            }
+          });
+        });
+      }
+
+      // Inputs and validation
+      const inputAA = document.getElementById('inputAA');
+      const inputAa = document.getElementById('inputAa');
+      const inputaa = document.getElementById('inputaa');
+
+      const errAA = document.getElementById('errAA');
+      const errAa = document.getElementById('errAa');
+      const erraa = document.getElementById('erraa');
+
+      const inputCountA = document.getElementById('inputCountA');
+      const inputCounta = document.getElementById('inputCounta');
+      const errCountA = document.getElementById('errCountA');
+      const errCounta = document.getElementById('errCounta');
+
+      const inputP = document.getElementById('inputP');
+      const inputN = document.getElementById('inputN');
+      const errP = document.getElementById('errP');
+      const errN = document.getElementById('errN');
+
+      function parseIntSafe(el){ const v = Number(el.value); return Number.isFinite(v) ? Math.floor(v) : NaN; }
+      function parseFloatSafe(el){ const v = Number(el.value); return Number.isFinite(v) ? v : NaN; }
+
+      function validateGenotypes(){
+        let ok = true;
+        const AA = parseIntSafe(inputAA);
+        const Aa = parseIntSafe(inputAa);
+        const aa = parseIntSafe(inputaa);
+
+        if(inputAA.value === '' || isNaN(AA) || AA < 0){ setError(inputAA, errAA, 'Please enter a non-negative integer.'); ok = false; } else setError(inputAA, errAA, '');
+        if(inputAa.value === '' || isNaN(Aa) || Aa < 0){ setError(inputAa, errAa, 'Please enter a non-negative integer.'); ok = false; } else setError(inputAa, errAa, '');
+        if(inputaa.value === '' || isNaN(aa) || aa < 0){ setError(inputaa, erraa, 'Please enter a non-negative integer.'); ok = false; } else setError(inputaa, erraa, '');
+
+        const N = (!isNaN(AA) && !isNaN(Aa) && !isNaN(aa)) ? (AA + Aa + aa) : 0;
+        if(ok && N === 0){ setError(inputAA, errAA, 'At least one count must be > 0.'); ok = false; }
+        return ok;
+      }
+
+      function validateAlleleCounts(){
+        let ok = true;
+        const A = parseIntSafe(inputCountA);
+        const a = parseIntSafe(inputCounta);
+
+        if(inputCountA.value === '' || isNaN(A) || A < 0){ setError(inputCountA, errCountA, 'Enter a non-negative integer.'); ok = false; } else setError(inputCountA, errCountA, '');
+        if(inputCounta.value === '' || isNaN(a) || a < 0){ setError(inputCounta, errCounta, 'Enter a non-negative integer.'); ok = false; } else setError(inputCounta, errCounta, '');
+
+        const total = (!isNaN(A) && !isNaN(a)) ? (A + a) : 0;
+        if(ok && total === 0){ setError(inputCountA, errCountA, 'A + a must be > 0.'); ok = false; }
+        if(ok && total % 2 !== 0){ setError(inputCounta, errCounta, 'For diploids, A + a must be even (2×N).'); ok = false; }
+        return ok;
+      }
+
+      function validateKnownP(){
+        let ok = true;
+        const p = parseFloatSafe(inputP);
+        const N = parseIntSafe(inputN);
+
+        if(inputP.value === '' || isNaN(p) || p < 0 || p > 1){
+          setError(inputP, errP, 'Enter a value between 0 and 1.');
+          ok = false;
+        } else { setError(inputP, errP, ''); }
+
+        if(inputN.value === '' || isNaN(N) || N < 1){
+          setError(inputN, errN, 'Enter a positive integer.');
+          ok = false;
+        } else { setError(inputN, errN, ''); }
+
+        return ok;
+      }
+
+      [inputAA,inputAa,inputaa,inputCountA,inputCounta,inputP,inputN].forEach(el=>{
+        if(!el) return;
+        el.addEventListener('blur', ()=>calculate());
+        el.addEventListener('input', ()=>{/* live update for responsiveness */});
+      });
+
+      // Results setters
+      function setResultText(id, text){ const el = document.getElementById(id); if(el) el.textContent = text; }
+
+      // Math functions
+      function heterozygosity(p){ return 2*p*(1-p); }
+      function chiSquarePValueDf1(chi2){
+        if(!(chi2 >= 0)) return NaN;
+        const t = Math.sqrt(chi2/2);
+        // erfc approximation
+        return erfc(t);
+      }
+      // Numerical approx for erfc
+      function erfc(x){
+        // Abramowitz & Stegun 7.1.26
+        const z = Math.abs(x);
+        const t = 1 / (1 + 0.5*z);
+        const ans = t * Math.exp(-z*z - 1.26551223 + t*(1.00002368 + t*(0.37409196 +
+          t*(0.09678418 + t*(-0.18628806 + t*(0.27886807 +
+          t*(-1.13520398 + t*(1.48851587 + t*(-0.82215223 + t*0.17087277)))))))))
+        return x >= 0 ? ans : 2 - ans;
+      }
+
+      function wilsonCI(k, n, z=1.96){
+        if(!(n > 0)) return [NaN, NaN];
+        const phat = k / n;
+        const z2n = (z*z)/n;
+        const denom = 1 + z2n;
+        const center = (phat + (z*z)/(2*n)) / denom;
+        const margin = (z/denom) * Math.sqrt( (phat*(1-phat)/n) + ((z*z)/(4*n*n)) );
+        let lo = center - margin, hi = center + margin;
+        lo = Math.max(0, lo); hi = Math.min(1, hi);
+        return [lo, hi];
+      }
+
+      // Main calculation
+      function calculate(){
+        const mode = (document.querySelector('input[name="mode"]:checked')||{}).value || 'genotype';
+
+        let N = NaN, p = NaN, q = NaN, MAF = NaN, H = NaN;
+        let EAA = NaN, EAa = NaN, Eaa = NaN;
+        let OAA = NaN, OAa = NaN, Oaa = NaN;
+        let chi2 = NaN, pval = NaN;
+        let ciLo = NaN, ciHi = NaN;
+
+        if(mode === 'genotype'){
+          if(!validateGenotypes()){
+            setOutputsBlank();
+            return;
+          }
+          OAA = parseIntSafe(inputAA);
+          OAa = parseIntSafe(inputAa);
+          Oaa = parseIntSafe(inputaa);
+          N = OAA + OAa + Oaa;
+          const kA = 2*OAA + OAa; // number of A alleles
+          const nAlleles = 2*N;
+          p = kA / nAlleles; q = 1 - p;
+          H = heterozygosity(p);
+          EAA = N * p*p; EAa = N * (2*p*q); Eaa = N * q*q;
+          // Chi-square with df=1 if all expected > 0
+          if(EAA > 0 && EAa > 0 && Eaa > 0){
+            chi2 = ((OAA-EAA)**2)/EAA + ((OAa-EAa)**2)/EAa + ((Oaa-Eaa)**2)/Eaa;
+            pval = chiSquarePValueDf1(chi2);
+          }
+          const [lo, hi] = wilsonCI(kA, nAlleles, 1.96);
+          ciLo = lo; ciHi = hi;
+          MAF = Math.min(p, q);
+        } else if(mode === 'allele'){
+          if(!validateAlleleCounts()){
+            setOutputsBlank();
+            return;
+          }
+          const A = parseIntSafe(inputCountA);
+          const a = parseIntSafe(inputCounta);
+          const total = A + a;
+          N = total / 2;
+          p = A / total; q = 1 - p;
+          H = heterozygosity(p);
+          EAA = N * p*p; EAa = N * (2*p*q); Eaa = N * q*q;
+          const [lo, hi] = wilsonCI(A, total, 1.96);
+          ciLo = lo; ciHi = hi;
+          MAF = Math.min(p, q);
+        } else { // known p
+          if(!validateKnownP()){
+            setOutputsBlank();
+            return;
+          }
+          p = parseFloatSafe(inputP);
+          q = 1 - p;
+          N = parseIntSafe(inputN);
+          H = heterozygosity(p);
+          EAA = N * p*p; EAa = N * (2*p*q); Eaa = N * q*q;
+          // CI cannot be computed without allele counts
+          ciLo = NaN; ciHi = NaN;
+          MAF = Math.min(p, q);
+        }
+
+        // Display
+        setResultText('resN', Number.isFinite(N) ? formatInt(N) : '—');
+        setResultText('resp', Number.isFinite(p) ? formatFloat(p,4) : '—');
+        setResultText('resq', Number.isFinite(q) ? formatFloat(q,4) : '—');
+        setResultText('resMAF', Number.isFinite(MAF) ? formatFloat(MAF,4) : '—');
+        setResultText('resExpected', (Number.isFinite(EAA)&&Number.isFinite(EAa)&&Number.isFinite(Eaa)) ? `${formatFloat(EAA,2)}, ${formatFloat(EAa,2)}, ${formatFloat(Eaa,2)}` : '—');
+        setResultText('resObserved', (Number.isFinite(OAA)||Number.isFinite(OAa)||Number.isFinite(Oaa)) && !isNaN(OAA) ? `${formatInt(OAA)}, ${formatInt(OAa)}, ${formatInt(Oaa)}` : '—');
+        setResultText('resH', Number.isFinite(H) ? formatFloat(H,4) : '—');
+        setResultText('resCI', (Number.isFinite(ciLo)&&Number.isFinite(ciHi)) ? `[${formatFloat(ciLo,4)}, ${formatFloat(ciHi,4)}]` : '—');
+        if(Number.isFinite(chi2) && Number.isFinite(pval)){
+          setResultText('resChi2', `${formatFloat(chi2,4)}, p = ${formatFloat(pval,4)}`);
+          const interp = (pval < 0.05) ? 'Evidence of deviation from HWE (p < 0.05).' : 'No evidence of deviation from HWE (p ≥ 0.05).';
+          setResultText('resInterpret', interp);
+        } else {
+          setResultText('resChi2', '—');
+          if((document.querySelector('input[name="mode"]:checked')||{}).value === 'genotype'){
+            setResultText('resInterpret', 'Insufficient expected counts to compute chi-square or invalid inputs.');
+          } else {
+            setResultText('resInterpret', 'Provide genotype counts to test HWE.');
+          }
+        }
+      }
+
+      function setOutputsBlank(){
+        setResultText('resN','—');
+        setResultText('resp','—');
+        setResultText('resq','—');
+        setResultText('resMAF','—');
+        setResultText('resExpected','—');
+        setResultText('resObserved','—');
+        setResultText('resH','—');
+        setResultText('resCI','—');
+        setResultText('resChi2','—');
+        setResultText('resInterpret','Check inputs; errors are highlighted above.');
+      }
+
+      // Bind buttons
+      document.getElementById('btnCalculate').addEventListener('click', calculate);
+      document.getElementById('btnReset').addEventListener('click', ()=>{
+        [inputAA,inputAa,inputaa,inputCountA,inputCounta,inputP,inputN].forEach(el=>{ if(el){ el.value=''; el.setAttribute('aria-invalid','false'); } });
+        [errAA,errAa,erraa,errCountA,errCounta,errP,errN].forEach(e=>{ if(e){ e.textContent=''; } });
+        setOutputsBlank();
+      });
+
+      // Initialize
+      initTooltips();
+      switchMode('genotype');
+      // Provide example defaults for instant demo (optional – comment out if undesired)
+      inputAA.value = '36'; inputAa.value = '48'; inputaa.value = '16'; calculate();
+    })();
+  </script><script defer="" src="https://calcdomain.com/assets/js/mobile-menu.js"></script><script defer="" src="https://calcdomain.com/assets/js/page-enhancements.js"></script><script async="" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script src="https://cdn.tailwindcss.com"></script><script src="search.js" defer=""></script><script defer="">
+    (function(){
+      'use strict';
+
+      // Utility functions
+      function clamp(x, min, max){ return Math.min(Math.max(x, min), max); }
+      function formatFloat(x, digits=4){ return Number.isFinite(x) ? x.toFixed(digits) : '—'; }
+      function formatInt(x){ return Number.isFinite(x) ? Math.round(x).toString() : '—'; }
+
+      // Error helpers
+      function setError(inputEl, errEl, msg){
+        if(!inputEl || !errEl) return;
+        inputEl.setAttribute('aria-invalid', msg ? 'true' : 'false');
+        errEl.textContent = msg || '';
+      }
+
+      // Show/hide mode groups
+      const modeRadios = Array.from(document.querySelectorAll('input[name="mode"]'));
+      const groups = {
+        genotype: document.getElementById('group-genotype'),
+        allele: document.getElementById('group-allele'),
+        p: document.getElementById('group-p')
+      };
+
+      function switchMode(mode){
+        Object.keys(groups).forEach(key=>{
+          const g = groups[key];
+          const active = key === mode;
+          if(active){
+            g.hidden = false;
+            g.setAttribute('aria-hidden','false');
+            Array.from(g.querySelectorAll('input')).forEach(i=>i.disabled=false);
+          }else{
+            g.hidden = true;
+            g.setAttribute('aria-hidden','true');
+            Array.from(g.querySelectorAll('input')).forEach(i=>i.disabled=true);
+          }
+        });
+        // Update interpretation for non-genotype modes
+        if(mode !== 'genotype'){
+          setResultText('resObserved','—');
+          setResultText('resChi2','—');
+          setResultText('resInterpret','Provide genotype counts to test HWE.');
+        }
+        calculate(); // recalc immediately
+      }
+
+      modeRadios.forEach(r=>{
+        r.addEventListener('change', e=> switchMode(e.target.value));
+      });
+
+      // Tooltip toggles
+      function initTooltips(){
+        const buttons = document.querySelectorAll('.help-btn');
+        buttons.forEach(btn=>{
+          const id = btn.getAttribute('aria-controls');
+          const tip = document.getElementById(id);
+          if(!tip) return;
+          btn.addEventListener('click', ()=>{
+            const expanded = btn.getAttribute('aria-expanded') === 'true';
+            btn.setAttribute('aria-expanded', (!expanded).toString());
+            tip.setAttribute('aria-hidden', expanded ? 'true' : 'false');
+          });
+          btn.addEventListener('keydown', (e)=>{
+            if(e.key === 'Enter' || e.key === ' '){
+              e.preventDefault(); btn.click();
+            }
+          });
+        });
+      }
+
+      // Inputs and validation
+      const inputAA = document.getElementById('inputAA');
+      const inputAa = document.getElementById('inputAa');
+      const inputaa = document.getElementById('inputaa');
+
+      const errAA = document.getElementById('errAA');
+      const errAa = document.getElementById('errAa');
+      const erraa = document.getElementById('erraa');
+
+      const inputCountA = document.getElementById('inputCountA');
+      const inputCounta = document.getElementById('inputCounta');
+      const errCountA = document.getElementById('errCountA');
+      const errCounta = document.getElementById('errCounta');
+
+      const inputP = document.getElementById('inputP');
+      const inputN = document.getElementById('inputN');
+      const errP = document.getElementById('errP');
+      const errN = document.getElementById('errN');
+
+      function parseIntSafe(el){ const v = Number(el.value); return Number.isFinite(v) ? Math.floor(v) : NaN; }
+      function parseFloatSafe(el){ const v = Number(el.value); return Number.isFinite(v) ? v : NaN; }
+
+      function validateGenotypes(){
+        let ok = true;
+        const AA = parseIntSafe(inputAA);
+        const Aa = parseIntSafe(inputAa);
+        const aa = parseIntSafe(inputaa);
+
+        if(inputAA.value === '' || isNaN(AA) || AA < 0){ setError(inputAA, errAA, 'Please enter a non-negative integer.'); ok = false; } else setError(inputAA, errAA, '');
+        if(inputAa.value === '' || isNaN(Aa) || Aa < 0){ setError(inputAa, errAa, 'Please enter a non-negative integer.'); ok = false; } else setError(inputAa, errAa, '');
+        if(inputaa.value === '' || isNaN(aa) || aa < 0){ setError(inputaa, erraa, 'Please enter a non-negative integer.'); ok = false; } else setError(inputaa, erraa, '');
+
+        const N = (!isNaN(AA) && !isNaN(Aa) && !isNaN(aa)) ? (AA + Aa + aa) : 0;
+        if(ok && N === 0){ setError(inputAA, errAA, 'At least one count must be > 0.'); ok = false; }
+        return ok;
+      }
+
+      function validateAlleleCounts(){
+        let ok = true;
+        const A = parseIntSafe(inputCountA);
+        const a = parseIntSafe(inputCounta);
+
+        if(inputCountA.value === '' || isNaN(A) || A < 0){ setError(inputCountA, errCountA, 'Enter a non-negative integer.'); ok = false; } else setError(inputCountA, errCountA, '');
+        if(inputCounta.value === '' || isNaN(a) || a < 0){ setError(inputCounta, errCounta, 'Enter a non-negative integer.'); ok = false; } else setError(inputCounta, errCounta, '');
+
+        const total = (!isNaN(A) && !isNaN(a)) ? (A + a) : 0;
+        if(ok && total === 0){ setError(inputCountA, errCountA, 'A + a must be > 0.'); ok = false; }
+        if(ok && total % 2 !== 0){ setError(inputCounta, errCounta, 'For diploids, A + a must be even (2×N).'); ok = false; }
+        return ok;
+      }
+
+      function validateKnownP(){
+        let ok = true;
+        const p = parseFloatSafe(inputP);
+        const N = parseIntSafe(inputN);
+
+        if(inputP.value === '' || isNaN(p) || p < 0 || p > 1){
+          setError(inputP, errP, 'Enter a value between 0 and 1.');
+          ok = false;
+        } else { setError(inputP, errP, ''); }
+
+        if(inputN.value === '' || isNaN(N) || N < 1){
+          setError(inputN, errN, 'Enter a positive integer.');
+          ok = false;
+        } else { setError(inputN, errN, ''); }
+
+        return ok;
+      }
+
+      [inputAA,inputAa,inputaa,inputCountA,inputCounta,inputP,inputN].forEach(el=>{
+        if(!el) return;
+        el.addEventListener('blur', ()=>calculate());
+        el.addEventListener('input', ()=>{/* live update for responsiveness */});
+      });
+
+      // Results setters
+      function setResultText(id, text){ const el = document.getElementById(id); if(el) el.textContent = text; }
+
+      // Math functions
+      function heterozygosity(p){ return 2*p*(1-p); }
+      function chiSquarePValueDf1(chi2){
+        if(!(chi2 >= 0)) return NaN;
+        const t = Math.sqrt(chi2/2);
+        // erfc approximation
+        return erfc(t);
+      }
+      // Numerical approx for erfc
+      function erfc(x){
+        // Abramowitz & Stegun 7.1.26
+        const z = Math.abs(x);
+        const t = 1 / (1 + 0.5*z);
+        const ans = t * Math.exp(-z*z - 1.26551223 + t*(1.00002368 + t*(0.37409196 +
+          t*(0.09678418 + t*(-0.18628806 + t*(0.27886807 +
+          t*(-1.13520398 + t*(1.48851587 + t*(-0.82215223 + t*0.17087277)))))))))
+        return x >= 0 ? ans : 2 - ans;
+      }
+
+      function wilsonCI(k, n, z=1.96){
+        if(!(n > 0)) return [NaN, NaN];
+        const phat = k / n;
+        const z2n = (z*z)/n;
+        const denom = 1 + z2n;
+        const center = (phat + (z*z)/(2*n)) / denom;
+        const margin = (z/denom) * Math.sqrt( (phat*(1-phat)/n) + ((z*z)/(4*n*n)) );
+        let lo = center - margin, hi = center + margin;
+        lo = Math.max(0, lo); hi = Math.min(1, hi);
+        return [lo, hi];
+      }
+
+      // Main calculation
+      function calculate(){
+        const mode = (document.querySelector('input[name="mode"]:checked')||{}).value || 'genotype';
+
+        let N = NaN, p = NaN, q = NaN, MAF = NaN, H = NaN;
+        let EAA = NaN, EAa = NaN, Eaa = NaN;
+        let OAA = NaN, OAa = NaN, Oaa = NaN;
+        let chi2 = NaN, pval = NaN;
+        let ciLo = NaN, ciHi = NaN;
+
+        if(mode === 'genotype'){
+          if(!validateGenotypes()){
+            setOutputsBlank();
+            return;
+          }
+          OAA = parseIntSafe(inputAA);
+          OAa = parseIntSafe(inputAa);
+          Oaa = parseIntSafe(inputaa);
+          N = OAA + OAa + Oaa;
+          const kA = 2*OAA + OAa; // number of A alleles
+          const nAlleles = 2*N;
+          p = kA / nAlleles; q = 1 - p;
+          H = heterozygosity(p);
+          EAA = N * p*p; EAa = N * (2*p*q); Eaa = N * q*q;
+          // Chi-square with df=1 if all expected > 0
+          if(EAA > 0 && EAa > 0 && Eaa > 0){
+            chi2 = ((OAA-EAA)**2)/EAA + ((OAa-EAa)**2)/EAa + ((Oaa-Eaa)**2)/Eaa;
+            pval = chiSquarePValueDf1(chi2);
+          }
+          const [lo, hi] = wilsonCI(kA, nAlleles, 1.96);
+          ciLo = lo; ciHi = hi;
+          MAF = Math.min(p, q);
+        } else if(mode === 'allele'){
+          if(!validateAlleleCounts()){
+            setOutputsBlank();
+            return;
+          }
+          const A = parseIntSafe(inputCountA);
+          const a = parseIntSafe(inputCounta);
+          const total = A + a;
+          N = total / 2;
+          p = A / total; q = 1 - p;
+          H = heterozygosity(p);
+          EAA = N * p*p; EAa = N * (2*p*q); Eaa = N * q*q;
+          const [lo, hi] = wilsonCI(A, total, 1.96);
+          ciLo = lo; ciHi = hi;
+          MAF = Math.min(p, q);
+        } else { // known p
+          if(!validateKnownP()){
+            setOutputsBlank();
+            return;
+          }
+          p = parseFloatSafe(inputP);
+          q = 1 - p;
+          N = parseIntSafe(inputN);
+          H = heterozygosity(p);
+          EAA = N * p*p; EAa = N * (2*p*q); Eaa = N * q*q;
+          // CI cannot be computed without allele counts
+          ciLo = NaN; ciHi = NaN;
+          MAF = Math.min(p, q);
+        }
+
+        // Display
+        setResultText('resN', Number.isFinite(N) ? formatInt(N) : '—');
+        setResultText('resp', Number.isFinite(p) ? formatFloat(p,4) : '—');
+        setResultText('resq', Number.isFinite(q) ? formatFloat(q,4) : '—');
+        setResultText('resMAF', Number.isFinite(MAF) ? formatFloat(MAF,4) : '—');
+        setResultText('resExpected', (Number.isFinite(EAA)&&Number.isFinite(EAa)&&Number.isFinite(Eaa)) ? `${formatFloat(EAA,2)}, ${formatFloat(EAa,2)}, ${formatFloat(Eaa,2)}` : '—');
+        setResultText('resObserved', (Number.isFinite(OAA)||Number.isFinite(OAa)||Number.isFinite(Oaa)) && !isNaN(OAA) ? `${formatInt(OAA)}, ${formatInt(OAa)}, ${formatInt(Oaa)}` : '—');
+        setResultText('resH', Number.isFinite(H) ? formatFloat(H,4) : '—');
+        setResultText('resCI', (Number.isFinite(ciLo)&&Number.isFinite(ciHi)) ? `[${formatFloat(ciLo,4)}, ${formatFloat(ciHi,4)}]` : '—');
+        if(Number.isFinite(chi2) && Number.isFinite(pval)){
+          setResultText('resChi2', `${formatFloat(chi2,4)}, p = ${formatFloat(pval,4)}`);
+          const interp = (pval < 0.05) ? 'Evidence of deviation from HWE (p < 0.05).' : 'No evidence of deviation from HWE (p ≥ 0.05).';
+          setResultText('resInterpret', interp);
+        } else {
+          setResultText('resChi2', '—');
+          if((document.querySelector('input[name="mode"]:checked')||{}).value === 'genotype'){
+            setResultText('resInterpret', 'Insufficient expected counts to compute chi-square or invalid inputs.');
+          } else {
+            setResultText('resInterpret', 'Provide genotype counts to test HWE.');
+          }
+        }
+      }
+
+      function setOutputsBlank(){
+        setResultText('resN','—');
+        setResultText('resp','—');
+        setResultText('resq','—');
+        setResultText('resMAF','—');
+        setResultText('resExpected','—');
+        setResultText('resObserved','—');
+        setResultText('resH','—');
+        setResultText('resCI','—');
+        setResultText('resChi2','—');
+        setResultText('resInterpret','Check inputs; errors are highlighted above.');
+      }
+
+      // Bind buttons
+      document.getElementById('btnCalculate').addEventListener('click', calculate);
+      document.getElementById('btnReset').addEventListener('click', ()=>{
+        [inputAA,inputAa,inputaa,inputCountA,inputCounta,inputP,inputN].forEach(el=>{ if(el){ el.value=''; el.setAttribute('aria-invalid','false'); } });
+        [errAA,errAa,erraa,errCountA,errCounta,errP,errN].forEach(e=>{ if(e){ e.textContent=''; } });
+        setOutputsBlank();
+      });
+
+      // Initialize
+      initTooltips();
+      switchMode('genotype');
+      // Provide example defaults for instant demo (optional – comment out if undesired)
+      inputAA.value = '36'; inputAa.value = '48'; inputaa.value = '16'; calculate();
+    })();
+  </script><script defer="" src="https://calcdomain.com/assets/js/mobile-menu.js"></script><script defer="" src="https://calcdomain.com/assets/js/page-enhancements.js"></script></body></html>

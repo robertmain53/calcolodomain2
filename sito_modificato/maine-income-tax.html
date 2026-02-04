@@ -258,10 +258,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
@@ -328,20 +334,43 @@
 }
 </script>
 </head>
-<body>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">Maine State Income Tax Calculator</h1>
+    <p class="sub" id="pageSub">Maine income tax calculator: instantly estimate your Maine state income tax using up-to-date brackets. Calculate tax due, effective rate, marginal rate, and after‑tax income by filing status.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<a class="skip-link" href="#main">Skip to main content</a>
-<header role="banner">
-<div class="wrap header-inner">
-CalcDomain
-<form action="https://calcdomain.com/search" aria-label="Sitewide" method="get" role="search">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><form action="https://calcdomain.com/search" aria-label="Sitewide" method="get" role="search">
 <label class="sr-only" for="q">Search calculators</label>
 <input aria-label="Search calculators" class="input" id="q" name="q" placeholder="Search calculators…" style="min-width:240px;" type="search">
 </form>
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
+
+<button id="resetBtn" type="button" class="btn btnSecondary">Reset</button>
 </div>
-</header>
-<main class="wrap w-full lg:w-2/3" id="main" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
+
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main">Skip to main content</a><header role="banner">
+<div class="wrap header-inner">
+CalcDomain
+
+</div>
+</header><main class="wrap w-full lg:w-2/3" id="main" role="main">
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Maine State Income Tax Calculator</h1>
 <p class="lead">Use this professional-grade calculator to estimate your Maine state income tax. Choose your filing status, enter income, and instantly see your tax due, effective and marginal rates, and a bracket-by-bracket breakdown. Designed for residents, new movers, and planners who need clarity and confidence.</p>
 <div class="layout" id="calculator-layout">
@@ -662,261 +691,9 @@ CalcDomain
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      "use strict";
-
-      // Configuration (Tax Year 2024). Thresholds are upper bounds for each tier (U1, U2, ∞).
-      const TAX_YEAR = 2024;
-
-      // Maine 2024 brackets (assumed from Maine Revenue Services publications).
-      // Single: 5.8% to 24,500; 6.75% to 58,050; 7.15% over
-      // Married Filing Jointly: 5.8% to 49,050; 6.75% to 116,100; 7.15% over
-      // Head of Household: 5.8% to 36,750; 6.75% to 87,100; 7.15% over
-      const BRACKETS = {
-        single:  [
-          { upTo: 24500,  rate: 0.058 },
-          { upTo: 58050,  rate: 0.0675 },
-          { upTo: Infinity, rate: 0.0715 }
-        ],
-        married: [
-          { upTo: 49050,  rate: 0.058 },
-          { upTo: 116100, rate: 0.0675 },
-          { upTo: Infinity, rate: 0.0715 }
-        ],
-        hoh:     [
-          { upTo: 36750,  rate: 0.058 },
-          { upTo: 87100,  rate: 0.0675 },
-          { upTo: Infinity, rate: 0.0715 }
-        ]
-      };
-
-      // Federal standard deductions (2024) for quick gross->taxable estimate
-      const STD_DED = {
-        single: 14600,
-        married: 29200,
-        hoh: 21900
-      };
-
-      // Frequency divisors
-      const FREQ = {
-        annual: 1,
-        monthly: 12,
-        semimonthly: 24,
-        biweekly: 26,
-        weekly: 52
-      };
-
-      // Elements
-      const filingRadios = Array.from(document.querySelectorAll('input[name="filing"]'));
-      const modeSel = document.getElementById('mode');
-      const freqSel = document.getElementById('frequency');
-      const incomeInput = document.getElementById('income');
-      const incomeLabel = document.getElementById('incomeLabel');
-      const otherDedRow = document.getElementById('deductionsRow');
-      const otherDedInput = document.getElementById('otherDeductions');
-
-      const modeHelpBtn = document.getElementById('modeHelpBtn');
-      const modeHelp = document.getElementById('modeHelp');
-      const dedHelpBtn = document.getElementById('dedHelpBtn');
-      const dedHelp = document.getElementById('dedHelp');
-
-      const incomeErr = document.getElementById('incomeErr');
-      const dedErr = document.getElementById('dedErr');
-
-      // Results
-      const resTaxable = document.getElementById('resTaxable');
-      const resTax = document.getElementById('resTax');
-      const resAfter = document.getElementById('resAfter');
-      const resEffRate = document.getElementById('resEffRate');
-      const resMargRate = document.getElementById('resMargRate');
-      const resPerTax = document.getElementById('resPerTax');
-
-      const bdRows = document.getElementById('bd-rows');
-      const bdTaxable = document.getElementById('bd-taxable');
-      const bdTotal = document.getElementById('bd-total');
-
-      // Formatting
-      const fmtMoney = (v)=> new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits:2 }).format(v || 0);
-      const fmtPct = (v)=> (v*100).toFixed(2) + '%';
-
-      function currentFiling(){
-        const r = filingRadios.find(r => r.checked);
-        return r ? r.value : 'single';
-      }
-
-      function toggleHelp(btn, panel){
-        const expanded = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!expanded));
-        panel.setAttribute('aria-hidden', String(expanded));
-      }
-
-      function setModeUI(){
-        const mode = modeSel.value;
-        if(mode === 'gross'){
-          incomeLabel.textContent = 'Annual income (gross)';
-          otherDedRow.hidden = false;
-        }else{
-          incomeLabel.textContent = 'Annual income (taxable)';
-          otherDedRow.hidden = true;
-        }
-      }
-
-      function validate(){
-        let ok = true;
-        // Income validation
-        const inc = Number(incomeInput.value);
-        if(isNaN(inc) || inc < 0){
-          incomeErr.textContent = 'Please enter a valid non‑negative income amount.';
-          incomeInput.setAttribute('aria-invalid', 'true');
-          ok = false;
-        }else{
-          incomeErr.textContent = '';
-          incomeInput.setAttribute('aria-invalid', 'false');
-        }
-
-        // Deductions validation (if visible)
-        if(!otherDedRow.hidden){
-          const d = Number(otherDedInput.value || 0);
-          if(isNaN(d) || d < 0){
-            dedErr.textContent = 'Enter deductions as a non‑negative number or leave blank.';
-            otherDedInput.setAttribute('aria-invalid', 'true');
-            ok = false;
-          }else{
-            dedErr.textContent = '';
-            otherDedInput.setAttribute('aria-invalid', 'false');
-          }
-        }else{
-          dedErr.textContent = '';
-          otherDedInput.setAttribute('aria-invalid', 'false');
-        }
-        return ok;
-      }
-
-      function computeTaxable(grossOrTaxable, filing, mode){
-        let y = Number(grossOrTaxable) || 0;
-        if(mode === 'gross'){
-          const sd = STD_DED[filing] || 0;
-          const other = Math.max(0, Number(otherDedInput.value || 0));
-          y = Math.max(0, y - sd - other);
-        }
-        return y;
-      }
-
-      function computeTax(y, filing){
-        const tiers = BRACKETS[filing] || BRACKETS.single;
-        let lower = 0;
-        let totalTax = 0;
-        const rows = [];
-        let marginal = 0;
-
-        for(let i=0;i<tiers.length;i++){
-          const { upTo, rate } = tiers[i];
-          const taxableAtTier = Math.max(0, Math.min(y, upTo) - lower);
-          const tax = taxableAtTier * rate;
-          if(taxableAtTier > 0){ marginal = rate; }
-          rows.push({
-            label: `Tier ${i+1}${Number.isFinite(upTo)?` (≤ ${fmtMoney(upTo)})`:' (over)'}`,
-            amount: taxableAtTier,
-            rate,
-            tax
-          });
-          totalTax += tax;
-          lower = upTo;
-          if(y <= upTo) break;
-        }
-        return { rows, totalTax, marginal };
-      }
-
-      function fillBreakdown(rows, taxable, totalTax){
-        bdRows.innerHTML = '';
-        if(!rows.length){
-          bdRows.innerHTML = '<tr><td>—</td><td>$0.00</td><td>—</td><td>$0.00</td></tr>';
-        }else{
-          rows.forEach(r=>{
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${r.label}</td><td>${fmtMoney(r.amount)}</td><td>${(r.rate*100).toFixed(2)}%</td><td>${fmtMoney(r.tax)}</td>`;
-            bdRows.appendChild(tr);
-          });
-        }
-        bdTaxable.textContent = fmtMoney(taxable);
-        bdTotal.textContent = fmtMoney(totalTax);
-      }
-
-      function frequencyDivisor(){
-        return FREQ[freqSel.value] || 1;
-      }
-
-      function recalc(){
-        if(!validate()) return;
-
-        const filing = currentFiling();
-        const mode = modeSel.value;
-        const income = Number(incomeInput.value || 0);
-
-        const taxable = computeTaxable(income, filing, mode);
-        const { rows, totalTax, marginal } = computeTax(taxable, filing);
-
-        // Populate metrics
-        resTaxable.textContent = fmtMoney(taxable);
-        resTax.textContent = fmtMoney(totalTax);
-        const after = Math.max(0, taxable - totalTax);
-        resAfter.textContent = fmtMoney(after);
-        const eff = taxable > 0 ? (totalTax / taxable) : 0;
-        resEffRate.textContent = (eff*100).toFixed(2) + '%';
-        resMargRate.textContent = (marginal*100).toFixed(2) + '%';
-
-        const div = frequencyDivisor();
-        resPerTax.textContent = fmtMoney(totalTax / div);
-
-        // Breakdown table
-        fillBreakdown(rows, taxable, totalTax);
-      }
-
-      // Events
-      filingRadios.forEach(r => {
-        r.addEventListener('change', recalc);
-        r.addEventListener('keyup', (e)=>{ if(e.key === 'Enter' || e.key === ' ') { r.checked = true; recalc(); }});
-      });
-      modeSel.addEventListener('change', ()=>{ setModeUI(); recalc(); });
-      freqSel.addEventListener('change', recalc);
-      incomeInput.addEventListener('input', recalc);
-      incomeInput.addEventListener('blur', validate);
-      otherDedInput.addEventListener('input', recalc);
-      otherDedInput.addEventListener('blur', validate);
-
-      modeHelpBtn.addEventListener('click', ()=> toggleHelp(modeHelpBtn, modeHelp));
-      modeHelpBtn.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); toggleHelp(modeHelpBtn, modeHelp); }});
-      if(dedHelpBtn){
-        dedHelpBtn.addEventListener('click', ()=> toggleHelp(dedHelpBtn, dedHelp));
-        dedHelpBtn.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); toggleHelp(dedHelpBtn, dedHelp); }});
-      }
-
-      // Init
-      setModeUI();
-      recalc();
-
-      // Improve performance by deferring heavy reflows during resize (no layout jank)
-      let rAF = null;
-      window.addEventListener('resize', ()=>{
-        if(rAF) cancelAnimationFrame(rAF);
-        rAF = requestAnimationFrame(()=>{ /* No-op: reserved for responsive hooks if needed */ });
-      }, { passive:true });
-    })();
-  </script>
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
 
 
-<style>
+</main><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -948,39 +725,7 @@ CalcDomain
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "General",
-      "item": "https://calcdomain.com/categories/general"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Miscellaneous",
-      "item": "https://calcdomain.com/subcategories/miscellaneous"
-    }
-  ]
-}
-</script>
-</head>
-<body>
-
-<a class="skip-link" href="#main">Skip to main content</a>
-<header role="banner">
+</style><a class="skip-link" href="#main">Skip to main content</a><header role="banner">
 <div class="wrap header-inner">
 CalcDomain
 <form action="https://calcdomain.com/search" aria-label="Sitewide" method="get" role="search">
@@ -988,9 +733,8 @@ CalcDomain
 <input aria-label="Search calculators" class="input" id="q" name="q" placeholder="Search calculators…" style="min-width:240px;" type="search">
 </form>
 </div>
-</header>
-<main class="wrap" id="main" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+</header><main class="wrap" id="main" role="main">
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Maine State Income Tax Calculator</h1>
 <p class="lead">Use this professional-grade calculator to estimate your Maine state income tax. Choose your filing status, enter income, and instantly see your tax due, effective and marginal rates, and a bracket-by-bracket breakdown. Designed for residents, new movers, and planners who need clarity and confidence.</p>
 <div class="layout" id="calculator-layout">
@@ -1311,261 +1055,7 @@ CalcDomain
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      "use strict";
-
-      // Configuration (Tax Year 2024). Thresholds are upper bounds for each tier (U1, U2, ∞).
-      const TAX_YEAR = 2024;
-
-      // Maine 2024 brackets (assumed from Maine Revenue Services publications).
-      // Single: 5.8% to 24,500; 6.75% to 58,050; 7.15% over
-      // Married Filing Jointly: 5.8% to 49,050; 6.75% to 116,100; 7.15% over
-      // Head of Household: 5.8% to 36,750; 6.75% to 87,100; 7.15% over
-      const BRACKETS = {
-        single:  [
-          { upTo: 24500,  rate: 0.058 },
-          { upTo: 58050,  rate: 0.0675 },
-          { upTo: Infinity, rate: 0.0715 }
-        ],
-        married: [
-          { upTo: 49050,  rate: 0.058 },
-          { upTo: 116100, rate: 0.0675 },
-          { upTo: Infinity, rate: 0.0715 }
-        ],
-        hoh:     [
-          { upTo: 36750,  rate: 0.058 },
-          { upTo: 87100,  rate: 0.0675 },
-          { upTo: Infinity, rate: 0.0715 }
-        ]
-      };
-
-      // Federal standard deductions (2024) for quick gross->taxable estimate
-      const STD_DED = {
-        single: 14600,
-        married: 29200,
-        hoh: 21900
-      };
-
-      // Frequency divisors
-      const FREQ = {
-        annual: 1,
-        monthly: 12,
-        semimonthly: 24,
-        biweekly: 26,
-        weekly: 52
-      };
-
-      // Elements
-      const filingRadios = Array.from(document.querySelectorAll('input[name="filing"]'));
-      const modeSel = document.getElementById('mode');
-      const freqSel = document.getElementById('frequency');
-      const incomeInput = document.getElementById('income');
-      const incomeLabel = document.getElementById('incomeLabel');
-      const otherDedRow = document.getElementById('deductionsRow');
-      const otherDedInput = document.getElementById('otherDeductions');
-
-      const modeHelpBtn = document.getElementById('modeHelpBtn');
-      const modeHelp = document.getElementById('modeHelp');
-      const dedHelpBtn = document.getElementById('dedHelpBtn');
-      const dedHelp = document.getElementById('dedHelp');
-
-      const incomeErr = document.getElementById('incomeErr');
-      const dedErr = document.getElementById('dedErr');
-
-      // Results
-      const resTaxable = document.getElementById('resTaxable');
-      const resTax = document.getElementById('resTax');
-      const resAfter = document.getElementById('resAfter');
-      const resEffRate = document.getElementById('resEffRate');
-      const resMargRate = document.getElementById('resMargRate');
-      const resPerTax = document.getElementById('resPerTax');
-
-      const bdRows = document.getElementById('bd-rows');
-      const bdTaxable = document.getElementById('bd-taxable');
-      const bdTotal = document.getElementById('bd-total');
-
-      // Formatting
-      const fmtMoney = (v)=> new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits:2 }).format(v || 0);
-      const fmtPct = (v)=> (v*100).toFixed(2) + '%';
-
-      function currentFiling(){
-        const r = filingRadios.find(r => r.checked);
-        return r ? r.value : 'single';
-      }
-
-      function toggleHelp(btn, panel){
-        const expanded = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!expanded));
-        panel.setAttribute('aria-hidden', String(expanded));
-      }
-
-      function setModeUI(){
-        const mode = modeSel.value;
-        if(mode === 'gross'){
-          incomeLabel.textContent = 'Annual income (gross)';
-          otherDedRow.hidden = false;
-        }else{
-          incomeLabel.textContent = 'Annual income (taxable)';
-          otherDedRow.hidden = true;
-        }
-      }
-
-      function validate(){
-        let ok = true;
-        // Income validation
-        const inc = Number(incomeInput.value);
-        if(isNaN(inc) || inc < 0){
-          incomeErr.textContent = 'Please enter a valid non‑negative income amount.';
-          incomeInput.setAttribute('aria-invalid', 'true');
-          ok = false;
-        }else{
-          incomeErr.textContent = '';
-          incomeInput.setAttribute('aria-invalid', 'false');
-        }
-
-        // Deductions validation (if visible)
-        if(!otherDedRow.hidden){
-          const d = Number(otherDedInput.value || 0);
-          if(isNaN(d) || d < 0){
-            dedErr.textContent = 'Enter deductions as a non‑negative number or leave blank.';
-            otherDedInput.setAttribute('aria-invalid', 'true');
-            ok = false;
-          }else{
-            dedErr.textContent = '';
-            otherDedInput.setAttribute('aria-invalid', 'false');
-          }
-        }else{
-          dedErr.textContent = '';
-          otherDedInput.setAttribute('aria-invalid', 'false');
-        }
-        return ok;
-      }
-
-      function computeTaxable(grossOrTaxable, filing, mode){
-        let y = Number(grossOrTaxable) || 0;
-        if(mode === 'gross'){
-          const sd = STD_DED[filing] || 0;
-          const other = Math.max(0, Number(otherDedInput.value || 0));
-          y = Math.max(0, y - sd - other);
-        }
-        return y;
-      }
-
-      function computeTax(y, filing){
-        const tiers = BRACKETS[filing] || BRACKETS.single;
-        let lower = 0;
-        let totalTax = 0;
-        const rows = [];
-        let marginal = 0;
-
-        for(let i=0;i<tiers.length;i++){
-          const { upTo, rate } = tiers[i];
-          const taxableAtTier = Math.max(0, Math.min(y, upTo) - lower);
-          const tax = taxableAtTier * rate;
-          if(taxableAtTier > 0){ marginal = rate; }
-          rows.push({
-            label: `Tier ${i+1}${Number.isFinite(upTo)?` (≤ ${fmtMoney(upTo)})`:' (over)'}`,
-            amount: taxableAtTier,
-            rate,
-            tax
-          });
-          totalTax += tax;
-          lower = upTo;
-          if(y <= upTo) break;
-        }
-        return { rows, totalTax, marginal };
-      }
-
-      function fillBreakdown(rows, taxable, totalTax){
-        bdRows.innerHTML = '';
-        if(!rows.length){
-          bdRows.innerHTML = '<tr><td>—</td><td>$0.00</td><td>—</td><td>$0.00</td></tr>';
-        }else{
-          rows.forEach(r=>{
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${r.label}</td><td>${fmtMoney(r.amount)}</td><td>${(r.rate*100).toFixed(2)}%</td><td>${fmtMoney(r.tax)}</td>`;
-            bdRows.appendChild(tr);
-          });
-        }
-        bdTaxable.textContent = fmtMoney(taxable);
-        bdTotal.textContent = fmtMoney(totalTax);
-      }
-
-      function frequencyDivisor(){
-        return FREQ[freqSel.value] || 1;
-      }
-
-      function recalc(){
-        if(!validate()) return;
-
-        const filing = currentFiling();
-        const mode = modeSel.value;
-        const income = Number(incomeInput.value || 0);
-
-        const taxable = computeTaxable(income, filing, mode);
-        const { rows, totalTax, marginal } = computeTax(taxable, filing);
-
-        // Populate metrics
-        resTaxable.textContent = fmtMoney(taxable);
-        resTax.textContent = fmtMoney(totalTax);
-        const after = Math.max(0, taxable - totalTax);
-        resAfter.textContent = fmtMoney(after);
-        const eff = taxable > 0 ? (totalTax / taxable) : 0;
-        resEffRate.textContent = (eff*100).toFixed(2) + '%';
-        resMargRate.textContent = (marginal*100).toFixed(2) + '%';
-
-        const div = frequencyDivisor();
-        resPerTax.textContent = fmtMoney(totalTax / div);
-
-        // Breakdown table
-        fillBreakdown(rows, taxable, totalTax);
-      }
-
-      // Events
-      filingRadios.forEach(r => {
-        r.addEventListener('change', recalc);
-        r.addEventListener('keyup', (e)=>{ if(e.key === 'Enter' || e.key === ' ') { r.checked = true; recalc(); }});
-      });
-      modeSel.addEventListener('change', ()=>{ setModeUI(); recalc(); });
-      freqSel.addEventListener('change', recalc);
-      incomeInput.addEventListener('input', recalc);
-      incomeInput.addEventListener('blur', validate);
-      otherDedInput.addEventListener('input', recalc);
-      otherDedInput.addEventListener('blur', validate);
-
-      modeHelpBtn.addEventListener('click', ()=> toggleHelp(modeHelpBtn, modeHelp));
-      modeHelpBtn.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); toggleHelp(modeHelpBtn, modeHelp); }});
-      if(dedHelpBtn){
-        dedHelpBtn.addEventListener('click', ()=> toggleHelp(dedHelpBtn, dedHelp));
-        dedHelpBtn.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); toggleHelp(dedHelpBtn, dedHelp); }});
-      }
-
-      // Init
-      setModeUI();
-      recalc();
-
-      // Improve performance by deferring heavy reflows during resize (no layout jank)
-      let rAF = null;
-      window.addEventListener('resize', ()=>{
-        if(rAF) cancelAnimationFrame(rAF);
-        rAF = requestAnimationFrame(()=>{ /* No-op: reserved for responsive hooks if needed */ });
-      }, { passive:true });
-    })();
-  </script>
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1597,39 +1087,7 @@ CalcDomain
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "General",
-      "item": "https://calcdomain.com/categories/general"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Miscellaneous",
-      "item": "https://calcdomain.com/subcategories/miscellaneous"
-    }
-  ]
-}
-</script>
-</head>
-<body>
-
-<a class="skip-link" href="#main">Skip to main content</a>
-<header role="banner">
+</style><a class="skip-link" href="#main">Skip to main content</a><header role="banner">
 <div class="wrap header-inner">
 CalcDomain
 <form action="https://calcdomain.com/search" aria-label="Sitewide" method="get" role="search">
@@ -1637,9 +1095,8 @@ CalcDomain
 <input aria-label="Search calculators" class="input" id="q" name="q" placeholder="Search calculators…" style="min-width:240px;" type="search">
 </form>
 </div>
-</header>
-<main class="wrap" id="main" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+</header><main class="wrap" id="main" role="main">
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Maine State Income Tax Calculator</h1>
 <p class="lead">Use this professional-grade calculator to estimate your Maine state income tax. Choose your filing status, enter income, and instantly see your tax due, effective and marginal rates, and a bracket-by-bracket breakdown. Designed for residents, new movers, and planners who need clarity and confidence.</p>
 <div class="layout" id="calculator-layout">
@@ -1960,9 +1417,48 @@ CalcDomain
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
     (function(){
       "use strict";
 
@@ -2203,6 +1699,536 @@ CalcDomain
         rAF = requestAnimationFrame(()=>{ /* No-op: reserved for responsive hooks if needed */ });
       }, { passive:true });
     })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "General",
+      "item": "https://calcdomain.com/categories/general"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Miscellaneous",
+      "item": "https://calcdomain.com/subcategories/miscellaneous"
+    }
+  ]
+}
+</script><script defer="">
+    (function(){
+      "use strict";
 
-</body></html>
+      // Configuration (Tax Year 2024). Thresholds are upper bounds for each tier (U1, U2, ∞).
+      const TAX_YEAR = 2024;
+
+      // Maine 2024 brackets (assumed from Maine Revenue Services publications).
+      // Single: 5.8% to 24,500; 6.75% to 58,050; 7.15% over
+      // Married Filing Jointly: 5.8% to 49,050; 6.75% to 116,100; 7.15% over
+      // Head of Household: 5.8% to 36,750; 6.75% to 87,100; 7.15% over
+      const BRACKETS = {
+        single:  [
+          { upTo: 24500,  rate: 0.058 },
+          { upTo: 58050,  rate: 0.0675 },
+          { upTo: Infinity, rate: 0.0715 }
+        ],
+        married: [
+          { upTo: 49050,  rate: 0.058 },
+          { upTo: 116100, rate: 0.0675 },
+          { upTo: Infinity, rate: 0.0715 }
+        ],
+        hoh:     [
+          { upTo: 36750,  rate: 0.058 },
+          { upTo: 87100,  rate: 0.0675 },
+          { upTo: Infinity, rate: 0.0715 }
+        ]
+      };
+
+      // Federal standard deductions (2024) for quick gross->taxable estimate
+      const STD_DED = {
+        single: 14600,
+        married: 29200,
+        hoh: 21900
+      };
+
+      // Frequency divisors
+      const FREQ = {
+        annual: 1,
+        monthly: 12,
+        semimonthly: 24,
+        biweekly: 26,
+        weekly: 52
+      };
+
+      // Elements
+      const filingRadios = Array.from(document.querySelectorAll('input[name="filing"]'));
+      const modeSel = document.getElementById('mode');
+      const freqSel = document.getElementById('frequency');
+      const incomeInput = document.getElementById('income');
+      const incomeLabel = document.getElementById('incomeLabel');
+      const otherDedRow = document.getElementById('deductionsRow');
+      const otherDedInput = document.getElementById('otherDeductions');
+
+      const modeHelpBtn = document.getElementById('modeHelpBtn');
+      const modeHelp = document.getElementById('modeHelp');
+      const dedHelpBtn = document.getElementById('dedHelpBtn');
+      const dedHelp = document.getElementById('dedHelp');
+
+      const incomeErr = document.getElementById('incomeErr');
+      const dedErr = document.getElementById('dedErr');
+
+      // Results
+      const resTaxable = document.getElementById('resTaxable');
+      const resTax = document.getElementById('resTax');
+      const resAfter = document.getElementById('resAfter');
+      const resEffRate = document.getElementById('resEffRate');
+      const resMargRate = document.getElementById('resMargRate');
+      const resPerTax = document.getElementById('resPerTax');
+
+      const bdRows = document.getElementById('bd-rows');
+      const bdTaxable = document.getElementById('bd-taxable');
+      const bdTotal = document.getElementById('bd-total');
+
+      // Formatting
+      const fmtMoney = (v)=> new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits:2 }).format(v || 0);
+      const fmtPct = (v)=> (v*100).toFixed(2) + '%';
+
+      function currentFiling(){
+        const r = filingRadios.find(r => r.checked);
+        return r ? r.value : 'single';
+      }
+
+      function toggleHelp(btn, panel){
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        panel.setAttribute('aria-hidden', String(expanded));
+      }
+
+      function setModeUI(){
+        const mode = modeSel.value;
+        if(mode === 'gross'){
+          incomeLabel.textContent = 'Annual income (gross)';
+          otherDedRow.hidden = false;
+        }else{
+          incomeLabel.textContent = 'Annual income (taxable)';
+          otherDedRow.hidden = true;
+        }
+      }
+
+      function validate(){
+        let ok = true;
+        // Income validation
+        const inc = Number(incomeInput.value);
+        if(isNaN(inc) || inc < 0){
+          incomeErr.textContent = 'Please enter a valid non‑negative income amount.';
+          incomeInput.setAttribute('aria-invalid', 'true');
+          ok = false;
+        }else{
+          incomeErr.textContent = '';
+          incomeInput.setAttribute('aria-invalid', 'false');
+        }
+
+        // Deductions validation (if visible)
+        if(!otherDedRow.hidden){
+          const d = Number(otherDedInput.value || 0);
+          if(isNaN(d) || d < 0){
+            dedErr.textContent = 'Enter deductions as a non‑negative number or leave blank.';
+            otherDedInput.setAttribute('aria-invalid', 'true');
+            ok = false;
+          }else{
+            dedErr.textContent = '';
+            otherDedInput.setAttribute('aria-invalid', 'false');
+          }
+        }else{
+          dedErr.textContent = '';
+          otherDedInput.setAttribute('aria-invalid', 'false');
+        }
+        return ok;
+      }
+
+      function computeTaxable(grossOrTaxable, filing, mode){
+        let y = Number(grossOrTaxable) || 0;
+        if(mode === 'gross'){
+          const sd = STD_DED[filing] || 0;
+          const other = Math.max(0, Number(otherDedInput.value || 0));
+          y = Math.max(0, y - sd - other);
+        }
+        return y;
+      }
+
+      function computeTax(y, filing){
+        const tiers = BRACKETS[filing] || BRACKETS.single;
+        let lower = 0;
+        let totalTax = 0;
+        const rows = [];
+        let marginal = 0;
+
+        for(let i=0;i<tiers.length;i++){
+          const { upTo, rate } = tiers[i];
+          const taxableAtTier = Math.max(0, Math.min(y, upTo) - lower);
+          const tax = taxableAtTier * rate;
+          if(taxableAtTier > 0){ marginal = rate; }
+          rows.push({
+            label: `Tier ${i+1}${Number.isFinite(upTo)?` (≤ ${fmtMoney(upTo)})`:' (over)'}`,
+            amount: taxableAtTier,
+            rate,
+            tax
+          });
+          totalTax += tax;
+          lower = upTo;
+          if(y <= upTo) break;
+        }
+        return { rows, totalTax, marginal };
+      }
+
+      function fillBreakdown(rows, taxable, totalTax){
+        bdRows.innerHTML = '';
+        if(!rows.length){
+          bdRows.innerHTML = '<tr><td>—</td><td>$0.00</td><td>—</td><td>$0.00</td></tr>';
+        }else{
+          rows.forEach(r=>{
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${r.label}</td><td>${fmtMoney(r.amount)}</td><td>${(r.rate*100).toFixed(2)}%</td><td>${fmtMoney(r.tax)}</td>`;
+            bdRows.appendChild(tr);
+          });
+        }
+        bdTaxable.textContent = fmtMoney(taxable);
+        bdTotal.textContent = fmtMoney(totalTax);
+      }
+
+      function frequencyDivisor(){
+        return FREQ[freqSel.value] || 1;
+      }
+
+      function recalc(){
+        if(!validate()) return;
+
+        const filing = currentFiling();
+        const mode = modeSel.value;
+        const income = Number(incomeInput.value || 0);
+
+        const taxable = computeTaxable(income, filing, mode);
+        const { rows, totalTax, marginal } = computeTax(taxable, filing);
+
+        // Populate metrics
+        resTaxable.textContent = fmtMoney(taxable);
+        resTax.textContent = fmtMoney(totalTax);
+        const after = Math.max(0, taxable - totalTax);
+        resAfter.textContent = fmtMoney(after);
+        const eff = taxable > 0 ? (totalTax / taxable) : 0;
+        resEffRate.textContent = (eff*100).toFixed(2) + '%';
+        resMargRate.textContent = (marginal*100).toFixed(2) + '%';
+
+        const div = frequencyDivisor();
+        resPerTax.textContent = fmtMoney(totalTax / div);
+
+        // Breakdown table
+        fillBreakdown(rows, taxable, totalTax);
+      }
+
+      // Events
+      filingRadios.forEach(r => {
+        r.addEventListener('change', recalc);
+        r.addEventListener('keyup', (e)=>{ if(e.key === 'Enter' || e.key === ' ') { r.checked = true; recalc(); }});
+      });
+      modeSel.addEventListener('change', ()=>{ setModeUI(); recalc(); });
+      freqSel.addEventListener('change', recalc);
+      incomeInput.addEventListener('input', recalc);
+      incomeInput.addEventListener('blur', validate);
+      otherDedInput.addEventListener('input', recalc);
+      otherDedInput.addEventListener('blur', validate);
+
+      modeHelpBtn.addEventListener('click', ()=> toggleHelp(modeHelpBtn, modeHelp));
+      modeHelpBtn.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); toggleHelp(modeHelpBtn, modeHelp); }});
+      if(dedHelpBtn){
+        dedHelpBtn.addEventListener('click', ()=> toggleHelp(dedHelpBtn, dedHelp));
+        dedHelpBtn.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); toggleHelp(dedHelpBtn, dedHelp); }});
+      }
+
+      // Init
+      setModeUI();
+      recalc();
+
+      // Improve performance by deferring heavy reflows during resize (no layout jank)
+      let rAF = null;
+      window.addEventListener('resize', ()=>{
+        if(rAF) cancelAnimationFrame(rAF);
+        rAF = requestAnimationFrame(()=>{ /* No-op: reserved for responsive hooks if needed */ });
+      }, { passive:true });
+    })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "General",
+      "item": "https://calcdomain.com/categories/general"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Miscellaneous",
+      "item": "https://calcdomain.com/subcategories/miscellaneous"
+    }
+  ]
+}
+</script><script defer="">
+    (function(){
+      "use strict";
+
+      // Configuration (Tax Year 2024). Thresholds are upper bounds for each tier (U1, U2, ∞).
+      const TAX_YEAR = 2024;
+
+      // Maine 2024 brackets (assumed from Maine Revenue Services publications).
+      // Single: 5.8% to 24,500; 6.75% to 58,050; 7.15% over
+      // Married Filing Jointly: 5.8% to 49,050; 6.75% to 116,100; 7.15% over
+      // Head of Household: 5.8% to 36,750; 6.75% to 87,100; 7.15% over
+      const BRACKETS = {
+        single:  [
+          { upTo: 24500,  rate: 0.058 },
+          { upTo: 58050,  rate: 0.0675 },
+          { upTo: Infinity, rate: 0.0715 }
+        ],
+        married: [
+          { upTo: 49050,  rate: 0.058 },
+          { upTo: 116100, rate: 0.0675 },
+          { upTo: Infinity, rate: 0.0715 }
+        ],
+        hoh:     [
+          { upTo: 36750,  rate: 0.058 },
+          { upTo: 87100,  rate: 0.0675 },
+          { upTo: Infinity, rate: 0.0715 }
+        ]
+      };
+
+      // Federal standard deductions (2024) for quick gross->taxable estimate
+      const STD_DED = {
+        single: 14600,
+        married: 29200,
+        hoh: 21900
+      };
+
+      // Frequency divisors
+      const FREQ = {
+        annual: 1,
+        monthly: 12,
+        semimonthly: 24,
+        biweekly: 26,
+        weekly: 52
+      };
+
+      // Elements
+      const filingRadios = Array.from(document.querySelectorAll('input[name="filing"]'));
+      const modeSel = document.getElementById('mode');
+      const freqSel = document.getElementById('frequency');
+      const incomeInput = document.getElementById('income');
+      const incomeLabel = document.getElementById('incomeLabel');
+      const otherDedRow = document.getElementById('deductionsRow');
+      const otherDedInput = document.getElementById('otherDeductions');
+
+      const modeHelpBtn = document.getElementById('modeHelpBtn');
+      const modeHelp = document.getElementById('modeHelp');
+      const dedHelpBtn = document.getElementById('dedHelpBtn');
+      const dedHelp = document.getElementById('dedHelp');
+
+      const incomeErr = document.getElementById('incomeErr');
+      const dedErr = document.getElementById('dedErr');
+
+      // Results
+      const resTaxable = document.getElementById('resTaxable');
+      const resTax = document.getElementById('resTax');
+      const resAfter = document.getElementById('resAfter');
+      const resEffRate = document.getElementById('resEffRate');
+      const resMargRate = document.getElementById('resMargRate');
+      const resPerTax = document.getElementById('resPerTax');
+
+      const bdRows = document.getElementById('bd-rows');
+      const bdTaxable = document.getElementById('bd-taxable');
+      const bdTotal = document.getElementById('bd-total');
+
+      // Formatting
+      const fmtMoney = (v)=> new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits:2 }).format(v || 0);
+      const fmtPct = (v)=> (v*100).toFixed(2) + '%';
+
+      function currentFiling(){
+        const r = filingRadios.find(r => r.checked);
+        return r ? r.value : 'single';
+      }
+
+      function toggleHelp(btn, panel){
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        panel.setAttribute('aria-hidden', String(expanded));
+      }
+
+      function setModeUI(){
+        const mode = modeSel.value;
+        if(mode === 'gross'){
+          incomeLabel.textContent = 'Annual income (gross)';
+          otherDedRow.hidden = false;
+        }else{
+          incomeLabel.textContent = 'Annual income (taxable)';
+          otherDedRow.hidden = true;
+        }
+      }
+
+      function validate(){
+        let ok = true;
+        // Income validation
+        const inc = Number(incomeInput.value);
+        if(isNaN(inc) || inc < 0){
+          incomeErr.textContent = 'Please enter a valid non‑negative income amount.';
+          incomeInput.setAttribute('aria-invalid', 'true');
+          ok = false;
+        }else{
+          incomeErr.textContent = '';
+          incomeInput.setAttribute('aria-invalid', 'false');
+        }
+
+        // Deductions validation (if visible)
+        if(!otherDedRow.hidden){
+          const d = Number(otherDedInput.value || 0);
+          if(isNaN(d) || d < 0){
+            dedErr.textContent = 'Enter deductions as a non‑negative number or leave blank.';
+            otherDedInput.setAttribute('aria-invalid', 'true');
+            ok = false;
+          }else{
+            dedErr.textContent = '';
+            otherDedInput.setAttribute('aria-invalid', 'false');
+          }
+        }else{
+          dedErr.textContent = '';
+          otherDedInput.setAttribute('aria-invalid', 'false');
+        }
+        return ok;
+      }
+
+      function computeTaxable(grossOrTaxable, filing, mode){
+        let y = Number(grossOrTaxable) || 0;
+        if(mode === 'gross'){
+          const sd = STD_DED[filing] || 0;
+          const other = Math.max(0, Number(otherDedInput.value || 0));
+          y = Math.max(0, y - sd - other);
+        }
+        return y;
+      }
+
+      function computeTax(y, filing){
+        const tiers = BRACKETS[filing] || BRACKETS.single;
+        let lower = 0;
+        let totalTax = 0;
+        const rows = [];
+        let marginal = 0;
+
+        for(let i=0;i<tiers.length;i++){
+          const { upTo, rate } = tiers[i];
+          const taxableAtTier = Math.max(0, Math.min(y, upTo) - lower);
+          const tax = taxableAtTier * rate;
+          if(taxableAtTier > 0){ marginal = rate; }
+          rows.push({
+            label: `Tier ${i+1}${Number.isFinite(upTo)?` (≤ ${fmtMoney(upTo)})`:' (over)'}`,
+            amount: taxableAtTier,
+            rate,
+            tax
+          });
+          totalTax += tax;
+          lower = upTo;
+          if(y <= upTo) break;
+        }
+        return { rows, totalTax, marginal };
+      }
+
+      function fillBreakdown(rows, taxable, totalTax){
+        bdRows.innerHTML = '';
+        if(!rows.length){
+          bdRows.innerHTML = '<tr><td>—</td><td>$0.00</td><td>—</td><td>$0.00</td></tr>';
+        }else{
+          rows.forEach(r=>{
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${r.label}</td><td>${fmtMoney(r.amount)}</td><td>${(r.rate*100).toFixed(2)}%</td><td>${fmtMoney(r.tax)}</td>`;
+            bdRows.appendChild(tr);
+          });
+        }
+        bdTaxable.textContent = fmtMoney(taxable);
+        bdTotal.textContent = fmtMoney(totalTax);
+      }
+
+      function frequencyDivisor(){
+        return FREQ[freqSel.value] || 1;
+      }
+
+      function recalc(){
+        if(!validate()) return;
+
+        const filing = currentFiling();
+        const mode = modeSel.value;
+        const income = Number(incomeInput.value || 0);
+
+        const taxable = computeTaxable(income, filing, mode);
+        const { rows, totalTax, marginal } = computeTax(taxable, filing);
+
+        // Populate metrics
+        resTaxable.textContent = fmtMoney(taxable);
+        resTax.textContent = fmtMoney(totalTax);
+        const after = Math.max(0, taxable - totalTax);
+        resAfter.textContent = fmtMoney(after);
+        const eff = taxable > 0 ? (totalTax / taxable) : 0;
+        resEffRate.textContent = (eff*100).toFixed(2) + '%';
+        resMargRate.textContent = (marginal*100).toFixed(2) + '%';
+
+        const div = frequencyDivisor();
+        resPerTax.textContent = fmtMoney(totalTax / div);
+
+        // Breakdown table
+        fillBreakdown(rows, taxable, totalTax);
+      }
+
+      // Events
+      filingRadios.forEach(r => {
+        r.addEventListener('change', recalc);
+        r.addEventListener('keyup', (e)=>{ if(e.key === 'Enter' || e.key === ' ') { r.checked = true; recalc(); }});
+      });
+      modeSel.addEventListener('change', ()=>{ setModeUI(); recalc(); });
+      freqSel.addEventListener('change', recalc);
+      incomeInput.addEventListener('input', recalc);
+      incomeInput.addEventListener('blur', validate);
+      otherDedInput.addEventListener('input', recalc);
+      otherDedInput.addEventListener('blur', validate);
+
+      modeHelpBtn.addEventListener('click', ()=> toggleHelp(modeHelpBtn, modeHelp));
+      modeHelpBtn.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); toggleHelp(modeHelpBtn, modeHelp); }});
+      if(dedHelpBtn){
+        dedHelpBtn.addEventListener('click', ()=> toggleHelp(dedHelpBtn, dedHelp));
+        dedHelpBtn.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); toggleHelp(dedHelpBtn, dedHelp); }});
+      }
+
+      // Init
+      setModeUI();
+      recalc();
+
+      // Improve performance by deferring heavy reflows during resize (no layout jank)
+      let rAF = null;
+      window.addEventListener('resize', ()=>{
+        if(rAF) cancelAnimationFrame(rAF);
+        rAF = requestAnimationFrame(()=>{ /* No-op: reserved for responsive hooks if needed */ });
+      }, { passive:true });
+    })();
+  </script></body></html>

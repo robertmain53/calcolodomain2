@@ -224,10 +224,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
@@ -267,10 +273,22 @@
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
 </style>
 </head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">Federal Income Tax Calculator (Head of Household)</h1>
+    <p class="sub" id="pageSub">Authoritative, WCAG-compliant federal income tax calculator for Head of Household filers. Estimate your 2024–2025 U.S. federal tax, taxable income, marginal bracket, and effective tax rate with transparent math and IRS-sourced data.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<main class="main-content w-full lg:w-2/3" id="main-content" role="main">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main class="main-content w-full lg:w-2/3" id="main-content" role="main">
 <div class="container">
 <nav aria-label="Breadcrumb" class="breadcrumb">
 Home / <a href="https://calcdomain.com/finance">Finance</a> / Federal Income Tax Calculator (Head of Household)
@@ -382,7 +400,7 @@ Home / <a href="https://calcdomain.com/finance">Finance</a> / Federal Income Tax
 </div>
 <div class="actions">
 <button class="btn" id="calcBtn" type="button">Calculate</button>
-<button class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button class="btn secondary btnSecondary" id="resetBtn" type="button">Reset</button>
 </div>
 </aside>
 <section aria-labelledby="results-heading" class="card">
@@ -608,258 +626,17 @@ Home / <a href="https://calcdomain.com/finance">Finance</a> / Federal Income Tax
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
+
+
 </main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;"></div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-      // Data: Head of Household brackets and standard deductions
-      const DATA = {
-        '2024': {
-          stdDeduction: { hoh: 21900, addUnmarried: 1950 }, // additional per each of 65+ or blind
-          // HOH brackets (upper bound inclusive for readability)
-          brackets: [
-            { upTo: 16550, rate: 0.10 },
-            { upTo: 63100, rate: 0.12 },
-            { upTo: 100500, rate: 0.22 },
-            { upTo: 191950, rate: 0.24 },
-            { upTo: 243700, rate: 0.32 },
-            { upTo: 609350, rate: 0.35 },
-            { upTo: Infinity, rate: 0.37 }
-          ],
-          ctcPhaseoutStartHOH: 200000
-        },
-        '2025': {
-          stdDeduction: { hoh: 22950, addUnmarried: 2000 }, // IRS inflation-adjusted (approx.)
-          brackets: [
-            { upTo: 16950, rate: 0.10 },
-            { upTo: 64200, rate: 0.12 },
-            { upTo: 102450, rate: 0.22 },
-            { upTo: 195950, rate: 0.24 },
-            { upTo: 248300, rate: 0.32 },
-            { upTo: 621850, rate: 0.35 },
-            { upTo: Infinity, rate: 0.37 }
-          ],
-          ctcPhaseoutStartHOH: 200000
-        }
-      };
-
-      // Elements
-      const el = id => document.getElementById(id);
-      const taxYear = el('taxYear');
-      const totalIncome = el('totalIncome');
-      const adjustments = el('adjustments');
-      const dedStandard = el('dedStandard');
-      const dedItemized = el('dedItemized');
-      const itemizedGroup = el('itemizedGroup');
-      const stdExtras = el('stdExtras');
-      const itemizedAmount = el('itemizedAmount');
-      const is65 = el('is65');
-      const isBlind = el('isBlind');
-      const childrenU17 = el('childrenU17');
-      const otherDeps = el('otherDeps');
-
-      const agiOut = el('agiOut');
-      const deductionOut = el('deductionOut');
-      const deductionTypeOut = el('deductionTypeOut');
-      const taxableOut = el('taxableOut');
-      const preCreditTaxOut = el('preCreditTaxOut');
-      const creditsOut = el('creditsOut');
-      const finalTaxOut = el('finalTaxOut');
-      const marginalRateOut = el('marginalRateOut');
-      const effectiveRateOut = el('effectiveRateOut');
-      const breakdownList = el('breakdownList');
-
-      const errors = {
-        taxYear: el('taxYearError'),
-        income: el('incomeError'),
-        adjustments: el('adjError'),
-        itemized: el('itemizedError'),
-        child: el('childError'),
-        odep: el('odepError')
-      };
-
-      // Tooltips
-      function setupTooltip(btnId, tipId){
-        const btn = el(btnId);
-        const tip = el(tipId);
-        btn?.addEventListener('click', () => {
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          tip.setAttribute('aria-hidden', String(expanded));
-        });
-      }
-      setupTooltip('statusHelpBtn','statusHelp');
-      setupTooltip('incomeTipBtn','incomeTip');
-      setupTooltip('adjTipBtn','adjTip');
-      setupTooltip('itemTipBtn','itemTip');
-      setupTooltip('childTipBtn','childTip');
-      setupTooltip('odepTipBtn','odepTip');
-
-      // Helpers
-      const fmtUSD = v => v.toLocaleString(undefined, { style:'currency', currency:'USD', maximumFractionDigits:0 });
-      const clampNonNeg = v => isFinite(v) && v > 0 ? v : 0;
-
-      function validateNumber(inputEl, errorEl, { required=false, min=0 } = {}){
-        const raw = inputEl.value.trim();
-        let num = raw === '' ? NaN : Number(raw);
-        let msg = '';
-        if(required && (raw === '' || isNaN(num))){
-          msg = 'Please enter a valid number.';
-        } else if (!isNaN(num) && num < min){
-          msg = `Value must be at least ${min}.`;
-        }
-        if(msg){
-          inputEl.setAttribute('aria-invalid','true');
-          errorEl.textContent = msg;
-        } else {
-          inputEl.removeAttribute('aria-invalid');
-          errorEl.textContent = '';
-        }
-        return msg === '';
-      }
-
-      // Show/hide deduction controls
-      function toggleDeductionControls(){
-        const isItem = dedItemized.checked;
-        itemizedGroup.hidden = !isItem;
-        stdExtras.hidden = isItem;
-      }
-
-      dedStandard.addEventListener('change', toggleDeductionControls);
-      dedItemized.addEventListener('change', toggleDeductionControls);
-      toggleDeductionControls();
-
-      // Validation on blur
-      totalIncome.addEventListener('blur', () => validateNumber(totalIncome, errors.income, { required:true, min:0 }));
-      adjustments.addEventListener('blur', () => validateNumber(adjustments, errors.adjustments, { required:false, min:0 }));
-      itemizedAmount.addEventListener('blur', () => {
-        if(!itemizedGroup.hidden){
-          validateNumber(itemizedAmount, errors.itemized, { required:true, min:0 });
-        } else {
-          errors.itemized.textContent = '';
-          itemizedAmount.removeAttribute('aria-invalid');
-        }
-      });
-      childrenU17.addEventListener('blur', () => validateNumber(childrenU17, errors.child, { required:false, min:0 }));
-      otherDeps.addEventListener('blur', () => validateNumber(otherDeps, errors.odep, { required:false, min:0 }));
-
-      // Core tax engine
-      function computeTax(){
-        // Basic validation gate
-        const vIncome = validateNumber(totalIncome, errors.income, { required:true, min:0 });
-        const vAdj = validateNumber(adjustments, errors.adjustments, { required:false, min:0 });
-        const vItem = itemizedGroup.hidden ? true : validateNumber(itemizedAmount, errors.itemized, { required:true, min:0 });
-        const vChild = validateNumber(childrenU17, errors.child, { required:false, min:0 });
-        const vOdep = validateNumber(otherDeps, errors.odep, { required:false, min:0 });
-        if(!(vIncome && vAdj && vItem && vChild && vOdep)) return;
-
-        const year = taxYear.value;
-        const conf = DATA[year];
-
-        const income = clampNonNeg(Number(totalIncome.value));
-        const adj = clampNonNeg(Number(adjustments.value));
-        const agi = Math.max(0, income - adj);
-
-        // Deduction
-        let deduction = 0;
-        let dedTypeLabel = '';
-        if(dedStandard.checked){
-          const extras = (is65.checked ? conf.stdDeduction.addUnmarried : 0) + (isBlind.checked ? conf.stdDeduction.addUnmarried : 0);
-          deduction = conf.stdDeduction.hoh + extras;
-          dedTypeLabel = `Standard (HOH ${fmtUSD(conf.stdDeduction.hoh)} + extras ${fmtUSD(extras)})`;
-        } else {
-          deduction = clampNonNeg(Number(itemizedAmount.value));
-          dedTypeLabel = 'Itemized';
-        }
-
-        const taxable = Math.max(0, agi - deduction);
-
-        // Tax by progressive brackets
-        let remaining = taxable;
-        let lower = 0;
-        let tax = 0;
-        let marginal = 0;
-        let breakdownLines = [];
-        for(const b of conf.brackets){
-          if(remaining <= 0) break;
-          const upper = b.upTo;
-          const span = Math.max(0, Math.min(remaining, upper - lower));
-          const chunkTax = span * b.rate;
-          if(span > 0){
-            breakdownLines.push(`${fmtUSD(lower)}–${upper === Infinity ? '∞' : fmtUSD(upper)} @ ${(b.rate*100).toFixed(0)}% → ${fmtUSD(chunkTax)}`);
-            tax += chunkTax;
-            marginal = b.rate;
-            remaining -= span;
-            lower = upper;
-          }
-        }
-
-        // Credits (simplified nonrefundable CTC + ODC)
-        const kids = Math.floor(clampNonNeg(Number(childrenU17.value)));
-        const odep = Math.floor(clampNonNeg(Number(otherDeps.value)));
-        const baseCredit = (kids * 2000) + (odep * 500);
-        const phaseStart = conf.ctcPhaseoutStartHOH;
-        const excess = Math.max(0, agi - phaseStart);
-        const phaseout = excess > 0 ? 50 * Math.ceil(excess / 1000) : 0;
-        const availCredit = Math.max(0, baseCredit - phaseout);
-        const creditApplied = Math.min(availCredit, tax);
-        const finalTax = Math.max(0, tax - creditApplied);
-
-        // Outputs
-        agiOut.textContent = fmtUSD(Math.round(agi));
-        deductionOut.textContent = fmtUSD(Math.round(deduction));
-        deductionTypeOut.textContent = dedTypeLabel;
-        taxableOut.textContent = fmtUSD(Math.round(taxable));
-        preCreditTaxOut.textContent = fmtUSD(Math.round(tax));
-        creditsOut.textContent = fmtUSD(Math.round(creditApplied));
-        finalTaxOut.textContent = fmtUSD(Math.round(finalTax));
-        marginalRateOut.textContent = taxable > 0 ? (marginal*100).toFixed(0) + '%' : '—';
-        effectiveRateOut.textContent = agi > 0 ? ((finalTax/agi)*100).toFixed(2) + '%' : '—';
-        breakdownList.innerHTML = breakdownLines.length ? breakdownLines.map(l => `• ${l}`).join('<br>') : 'No taxable income.';
-
-      }
-
-      // Event wiring
-      [
-        taxYear,totalIncome,adjustments,itemizedAmount,is65,isBlind,childrenU17,otherDeps,dedStandard,dedItemized
-      ].forEach(ctrl => ctrl.addEventListener('input', computeTax));
-
-      // Buttons
-      el('calcBtn').addEventListener('click', computeTax);
-      el('resetBtn').addEventListener('click', () => {
-        taxYear.value = '2024';
-        totalIncome.value = '';
-        adjustments.value = '';
-        dedStandard.checked = true;
-        dedItemized.checked = false;
-        toggleDeductionControls();
-        itemizedAmount.value = '';
-        is65.checked = false;
-        isBlind.checked = false;
-        childrenU17.value = '0';
-        otherDeps.value = '0';
-        Object.values(errors).forEach(e => e.textContent = '');
-        [totalIncome, adjustments, itemizedAmount].forEach(i => i.removeAttribute('aria-invalid'));
-        computeTax();
-      });
-
-      // Initialize
-      computeTax();
-    })();
-  </script>
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main-content">Skip to main content</a><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -891,12 +668,7 @@ Home / <a href="https://calcdomain.com/finance">Finance</a> / Federal Income Tax
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="main-content" id="main-content" role="main">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="main-content" id="main-content" role="main">
 <div class="container">
 <nav aria-label="Breadcrumb" class="breadcrumb">
 Home / <a href="https://calcdomain.com/finance">Finance</a> / Federal Income Tax Calculator (Head of Household)
@@ -1007,8 +779,8 @@ Home / <a href="https://calcdomain.com/finance">Finance</a> / Federal Income Tax
 <div aria-live="polite" class="error" id="odepError" role="alert"></div>
 </div>
 <div class="actions">
-<button class="btn" id="calcBtn" type="button">Calculate</button>
-<button class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button class="btn" id="calcBtn__dup2" type="button">Calculate</button>
+<button class="btn secondary" id="resetBtn__dup2" type="button">Reset</button>
 </div>
 </aside>
 <section aria-labelledby="results-heading" class="card">
@@ -1234,258 +1006,7 @@ Home / <a href="https://calcdomain.com/finance">Finance</a> / Federal Income Tax
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
-
-      // Data: Head of Household brackets and standard deductions
-      const DATA = {
-        '2024': {
-          stdDeduction: { hoh: 21900, addUnmarried: 1950 }, // additional per each of 65+ or blind
-          // HOH brackets (upper bound inclusive for readability)
-          brackets: [
-            { upTo: 16550, rate: 0.10 },
-            { upTo: 63100, rate: 0.12 },
-            { upTo: 100500, rate: 0.22 },
-            { upTo: 191950, rate: 0.24 },
-            { upTo: 243700, rate: 0.32 },
-            { upTo: 609350, rate: 0.35 },
-            { upTo: Infinity, rate: 0.37 }
-          ],
-          ctcPhaseoutStartHOH: 200000
-        },
-        '2025': {
-          stdDeduction: { hoh: 22950, addUnmarried: 2000 }, // IRS inflation-adjusted (approx.)
-          brackets: [
-            { upTo: 16950, rate: 0.10 },
-            { upTo: 64200, rate: 0.12 },
-            { upTo: 102450, rate: 0.22 },
-            { upTo: 195950, rate: 0.24 },
-            { upTo: 248300, rate: 0.32 },
-            { upTo: 621850, rate: 0.35 },
-            { upTo: Infinity, rate: 0.37 }
-          ],
-          ctcPhaseoutStartHOH: 200000
-        }
-      };
-
-      // Elements
-      const el = id => document.getElementById(id);
-      const taxYear = el('taxYear');
-      const totalIncome = el('totalIncome');
-      const adjustments = el('adjustments');
-      const dedStandard = el('dedStandard');
-      const dedItemized = el('dedItemized');
-      const itemizedGroup = el('itemizedGroup');
-      const stdExtras = el('stdExtras');
-      const itemizedAmount = el('itemizedAmount');
-      const is65 = el('is65');
-      const isBlind = el('isBlind');
-      const childrenU17 = el('childrenU17');
-      const otherDeps = el('otherDeps');
-
-      const agiOut = el('agiOut');
-      const deductionOut = el('deductionOut');
-      const deductionTypeOut = el('deductionTypeOut');
-      const taxableOut = el('taxableOut');
-      const preCreditTaxOut = el('preCreditTaxOut');
-      const creditsOut = el('creditsOut');
-      const finalTaxOut = el('finalTaxOut');
-      const marginalRateOut = el('marginalRateOut');
-      const effectiveRateOut = el('effectiveRateOut');
-      const breakdownList = el('breakdownList');
-
-      const errors = {
-        taxYear: el('taxYearError'),
-        income: el('incomeError'),
-        adjustments: el('adjError'),
-        itemized: el('itemizedError'),
-        child: el('childError'),
-        odep: el('odepError')
-      };
-
-      // Tooltips
-      function setupTooltip(btnId, tipId){
-        const btn = el(btnId);
-        const tip = el(tipId);
-        btn?.addEventListener('click', () => {
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          tip.setAttribute('aria-hidden', String(expanded));
-        });
-      }
-      setupTooltip('statusHelpBtn','statusHelp');
-      setupTooltip('incomeTipBtn','incomeTip');
-      setupTooltip('adjTipBtn','adjTip');
-      setupTooltip('itemTipBtn','itemTip');
-      setupTooltip('childTipBtn','childTip');
-      setupTooltip('odepTipBtn','odepTip');
-
-      // Helpers
-      const fmtUSD = v => v.toLocaleString(undefined, { style:'currency', currency:'USD', maximumFractionDigits:0 });
-      const clampNonNeg = v => isFinite(v) && v > 0 ? v : 0;
-
-      function validateNumber(inputEl, errorEl, { required=false, min=0 } = {}){
-        const raw = inputEl.value.trim();
-        let num = raw === '' ? NaN : Number(raw);
-        let msg = '';
-        if(required && (raw === '' || isNaN(num))){
-          msg = 'Please enter a valid number.';
-        } else if (!isNaN(num) && num < min){
-          msg = `Value must be at least ${min}.`;
-        }
-        if(msg){
-          inputEl.setAttribute('aria-invalid','true');
-          errorEl.textContent = msg;
-        } else {
-          inputEl.removeAttribute('aria-invalid');
-          errorEl.textContent = '';
-        }
-        return msg === '';
-      }
-
-      // Show/hide deduction controls
-      function toggleDeductionControls(){
-        const isItem = dedItemized.checked;
-        itemizedGroup.hidden = !isItem;
-        stdExtras.hidden = isItem;
-      }
-
-      dedStandard.addEventListener('change', toggleDeductionControls);
-      dedItemized.addEventListener('change', toggleDeductionControls);
-      toggleDeductionControls();
-
-      // Validation on blur
-      totalIncome.addEventListener('blur', () => validateNumber(totalIncome, errors.income, { required:true, min:0 }));
-      adjustments.addEventListener('blur', () => validateNumber(adjustments, errors.adjustments, { required:false, min:0 }));
-      itemizedAmount.addEventListener('blur', () => {
-        if(!itemizedGroup.hidden){
-          validateNumber(itemizedAmount, errors.itemized, { required:true, min:0 });
-        } else {
-          errors.itemized.textContent = '';
-          itemizedAmount.removeAttribute('aria-invalid');
-        }
-      });
-      childrenU17.addEventListener('blur', () => validateNumber(childrenU17, errors.child, { required:false, min:0 }));
-      otherDeps.addEventListener('blur', () => validateNumber(otherDeps, errors.odep, { required:false, min:0 }));
-
-      // Core tax engine
-      function computeTax(){
-        // Basic validation gate
-        const vIncome = validateNumber(totalIncome, errors.income, { required:true, min:0 });
-        const vAdj = validateNumber(adjustments, errors.adjustments, { required:false, min:0 });
-        const vItem = itemizedGroup.hidden ? true : validateNumber(itemizedAmount, errors.itemized, { required:true, min:0 });
-        const vChild = validateNumber(childrenU17, errors.child, { required:false, min:0 });
-        const vOdep = validateNumber(otherDeps, errors.odep, { required:false, min:0 });
-        if(!(vIncome && vAdj && vItem && vChild && vOdep)) return;
-
-        const year = taxYear.value;
-        const conf = DATA[year];
-
-        const income = clampNonNeg(Number(totalIncome.value));
-        const adj = clampNonNeg(Number(adjustments.value));
-        const agi = Math.max(0, income - adj);
-
-        // Deduction
-        let deduction = 0;
-        let dedTypeLabel = '';
-        if(dedStandard.checked){
-          const extras = (is65.checked ? conf.stdDeduction.addUnmarried : 0) + (isBlind.checked ? conf.stdDeduction.addUnmarried : 0);
-          deduction = conf.stdDeduction.hoh + extras;
-          dedTypeLabel = `Standard (HOH ${fmtUSD(conf.stdDeduction.hoh)} + extras ${fmtUSD(extras)})`;
-        } else {
-          deduction = clampNonNeg(Number(itemizedAmount.value));
-          dedTypeLabel = 'Itemized';
-        }
-
-        const taxable = Math.max(0, agi - deduction);
-
-        // Tax by progressive brackets
-        let remaining = taxable;
-        let lower = 0;
-        let tax = 0;
-        let marginal = 0;
-        let breakdownLines = [];
-        for(const b of conf.brackets){
-          if(remaining <= 0) break;
-          const upper = b.upTo;
-          const span = Math.max(0, Math.min(remaining, upper - lower));
-          const chunkTax = span * b.rate;
-          if(span > 0){
-            breakdownLines.push(`${fmtUSD(lower)}–${upper === Infinity ? '∞' : fmtUSD(upper)} @ ${(b.rate*100).toFixed(0)}% → ${fmtUSD(chunkTax)}`);
-            tax += chunkTax;
-            marginal = b.rate;
-            remaining -= span;
-            lower = upper;
-          }
-        }
-
-        // Credits (simplified nonrefundable CTC + ODC)
-        const kids = Math.floor(clampNonNeg(Number(childrenU17.value)));
-        const odep = Math.floor(clampNonNeg(Number(otherDeps.value)));
-        const baseCredit = (kids * 2000) + (odep * 500);
-        const phaseStart = conf.ctcPhaseoutStartHOH;
-        const excess = Math.max(0, agi - phaseStart);
-        const phaseout = excess > 0 ? 50 * Math.ceil(excess / 1000) : 0;
-        const availCredit = Math.max(0, baseCredit - phaseout);
-        const creditApplied = Math.min(availCredit, tax);
-        const finalTax = Math.max(0, tax - creditApplied);
-
-        // Outputs
-        agiOut.textContent = fmtUSD(Math.round(agi));
-        deductionOut.textContent = fmtUSD(Math.round(deduction));
-        deductionTypeOut.textContent = dedTypeLabel;
-        taxableOut.textContent = fmtUSD(Math.round(taxable));
-        preCreditTaxOut.textContent = fmtUSD(Math.round(tax));
-        creditsOut.textContent = fmtUSD(Math.round(creditApplied));
-        finalTaxOut.textContent = fmtUSD(Math.round(finalTax));
-        marginalRateOut.textContent = taxable > 0 ? (marginal*100).toFixed(0) + '%' : '—';
-        effectiveRateOut.textContent = agi > 0 ? ((finalTax/agi)*100).toFixed(2) + '%' : '—';
-        breakdownList.innerHTML = breakdownLines.length ? breakdownLines.map(l => `• ${l}`).join('<br>') : 'No taxable income.';
-
-      }
-
-      // Event wiring
-      [
-        taxYear,totalIncome,adjustments,itemizedAmount,is65,isBlind,childrenU17,otherDeps,dedStandard,dedItemized
-      ].forEach(ctrl => ctrl.addEventListener('input', computeTax));
-
-      // Buttons
-      el('calcBtn').addEventListener('click', computeTax);
-      el('resetBtn').addEventListener('click', () => {
-        taxYear.value = '2024';
-        totalIncome.value = '';
-        adjustments.value = '';
-        dedStandard.checked = true;
-        dedItemized.checked = false;
-        toggleDeductionControls();
-        itemizedAmount.value = '';
-        is65.checked = false;
-        isBlind.checked = false;
-        childrenU17.value = '0';
-        otherDeps.value = '0';
-        Object.values(errors).forEach(e => e.textContent = '');
-        [totalIncome, adjustments, itemizedAmount].forEach(i => i.removeAttribute('aria-invalid'));
-        computeTax();
-      });
-
-      // Initialize
-      computeTax();
-    })();
-  </script>
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1517,12 +1038,7 @@ Home / <a href="https://calcdomain.com/finance">Finance</a> / Federal Income Tax
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="main-content" id="main-content" role="main">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="main-content" id="main-content" role="main">
 <div class="container">
 <nav aria-label="Breadcrumb" class="breadcrumb">
 Home / <a href="https://calcdomain.com/finance">Finance</a> / Federal Income Tax Calculator (Head of Household)
@@ -1633,8 +1149,8 @@ Home / <a href="https://calcdomain.com/finance">Finance</a> / Federal Income Tax
 <div aria-live="polite" class="error" id="odepError" role="alert"></div>
 </div>
 <div class="actions">
-<button class="btn" id="calcBtn" type="button">Calculate</button>
-<button class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button class="btn" id="calcBtn__dup3" type="button">Calculate</button>
+<button class="btn secondary" id="resetBtn__dup3" type="button">Reset</button>
 </div>
 </aside>
 <section aria-labelledby="results-heading" class="card">
@@ -1860,9 +1376,48 @@ Home / <a href="https://calcdomain.com/finance">Finance</a> / Federal Income Tax
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
     (function(){
       'use strict';
 
@@ -2100,6 +1655,480 @@ Home / <a href="https://calcdomain.com/finance">Finance</a> / Federal Income Tax
       // Initialize
       computeTax();
     })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
 
-</body></html>
+      // Data: Head of Household brackets and standard deductions
+      const DATA = {
+        '2024': {
+          stdDeduction: { hoh: 21900, addUnmarried: 1950 }, // additional per each of 65+ or blind
+          // HOH brackets (upper bound inclusive for readability)
+          brackets: [
+            { upTo: 16550, rate: 0.10 },
+            { upTo: 63100, rate: 0.12 },
+            { upTo: 100500, rate: 0.22 },
+            { upTo: 191950, rate: 0.24 },
+            { upTo: 243700, rate: 0.32 },
+            { upTo: 609350, rate: 0.35 },
+            { upTo: Infinity, rate: 0.37 }
+          ],
+          ctcPhaseoutStartHOH: 200000
+        },
+        '2025': {
+          stdDeduction: { hoh: 22950, addUnmarried: 2000 }, // IRS inflation-adjusted (approx.)
+          brackets: [
+            { upTo: 16950, rate: 0.10 },
+            { upTo: 64200, rate: 0.12 },
+            { upTo: 102450, rate: 0.22 },
+            { upTo: 195950, rate: 0.24 },
+            { upTo: 248300, rate: 0.32 },
+            { upTo: 621850, rate: 0.35 },
+            { upTo: Infinity, rate: 0.37 }
+          ],
+          ctcPhaseoutStartHOH: 200000
+        }
+      };
+
+      // Elements
+      const el = id => document.getElementById(id);
+      const taxYear = el('taxYear');
+      const totalIncome = el('totalIncome');
+      const adjustments = el('adjustments');
+      const dedStandard = el('dedStandard');
+      const dedItemized = el('dedItemized');
+      const itemizedGroup = el('itemizedGroup');
+      const stdExtras = el('stdExtras');
+      const itemizedAmount = el('itemizedAmount');
+      const is65 = el('is65');
+      const isBlind = el('isBlind');
+      const childrenU17 = el('childrenU17');
+      const otherDeps = el('otherDeps');
+
+      const agiOut = el('agiOut');
+      const deductionOut = el('deductionOut');
+      const deductionTypeOut = el('deductionTypeOut');
+      const taxableOut = el('taxableOut');
+      const preCreditTaxOut = el('preCreditTaxOut');
+      const creditsOut = el('creditsOut');
+      const finalTaxOut = el('finalTaxOut');
+      const marginalRateOut = el('marginalRateOut');
+      const effectiveRateOut = el('effectiveRateOut');
+      const breakdownList = el('breakdownList');
+
+      const errors = {
+        taxYear: el('taxYearError'),
+        income: el('incomeError'),
+        adjustments: el('adjError'),
+        itemized: el('itemizedError'),
+        child: el('childError'),
+        odep: el('odepError')
+      };
+
+      // Tooltips
+      function setupTooltip(btnId, tipId){
+        const btn = el(btnId);
+        const tip = el(tipId);
+        btn?.addEventListener('click', () => {
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          tip.setAttribute('aria-hidden', String(expanded));
+        });
+      }
+      setupTooltip('statusHelpBtn','statusHelp');
+      setupTooltip('incomeTipBtn','incomeTip');
+      setupTooltip('adjTipBtn','adjTip');
+      setupTooltip('itemTipBtn','itemTip');
+      setupTooltip('childTipBtn','childTip');
+      setupTooltip('odepTipBtn','odepTip');
+
+      // Helpers
+      const fmtUSD = v => v.toLocaleString(undefined, { style:'currency', currency:'USD', maximumFractionDigits:0 });
+      const clampNonNeg = v => isFinite(v) && v > 0 ? v : 0;
+
+      function validateNumber(inputEl, errorEl, { required=false, min=0 } = {}){
+        const raw = inputEl.value.trim();
+        let num = raw === '' ? NaN : Number(raw);
+        let msg = '';
+        if(required && (raw === '' || isNaN(num))){
+          msg = 'Please enter a valid number.';
+        } else if (!isNaN(num) && num < min){
+          msg = `Value must be at least ${min}.`;
+        }
+        if(msg){
+          inputEl.setAttribute('aria-invalid','true');
+          errorEl.textContent = msg;
+        } else {
+          inputEl.removeAttribute('aria-invalid');
+          errorEl.textContent = '';
+        }
+        return msg === '';
+      }
+
+      // Show/hide deduction controls
+      function toggleDeductionControls(){
+        const isItem = dedItemized.checked;
+        itemizedGroup.hidden = !isItem;
+        stdExtras.hidden = isItem;
+      }
+
+      dedStandard.addEventListener('change', toggleDeductionControls);
+      dedItemized.addEventListener('change', toggleDeductionControls);
+      toggleDeductionControls();
+
+      // Validation on blur
+      totalIncome.addEventListener('blur', () => validateNumber(totalIncome, errors.income, { required:true, min:0 }));
+      adjustments.addEventListener('blur', () => validateNumber(adjustments, errors.adjustments, { required:false, min:0 }));
+      itemizedAmount.addEventListener('blur', () => {
+        if(!itemizedGroup.hidden){
+          validateNumber(itemizedAmount, errors.itemized, { required:true, min:0 });
+        } else {
+          errors.itemized.textContent = '';
+          itemizedAmount.removeAttribute('aria-invalid');
+        }
+      });
+      childrenU17.addEventListener('blur', () => validateNumber(childrenU17, errors.child, { required:false, min:0 }));
+      otherDeps.addEventListener('blur', () => validateNumber(otherDeps, errors.odep, { required:false, min:0 }));
+
+      // Core tax engine
+      function computeTax(){
+        // Basic validation gate
+        const vIncome = validateNumber(totalIncome, errors.income, { required:true, min:0 });
+        const vAdj = validateNumber(adjustments, errors.adjustments, { required:false, min:0 });
+        const vItem = itemizedGroup.hidden ? true : validateNumber(itemizedAmount, errors.itemized, { required:true, min:0 });
+        const vChild = validateNumber(childrenU17, errors.child, { required:false, min:0 });
+        const vOdep = validateNumber(otherDeps, errors.odep, { required:false, min:0 });
+        if(!(vIncome && vAdj && vItem && vChild && vOdep)) return;
+
+        const year = taxYear.value;
+        const conf = DATA[year];
+
+        const income = clampNonNeg(Number(totalIncome.value));
+        const adj = clampNonNeg(Number(adjustments.value));
+        const agi = Math.max(0, income - adj);
+
+        // Deduction
+        let deduction = 0;
+        let dedTypeLabel = '';
+        if(dedStandard.checked){
+          const extras = (is65.checked ? conf.stdDeduction.addUnmarried : 0) + (isBlind.checked ? conf.stdDeduction.addUnmarried : 0);
+          deduction = conf.stdDeduction.hoh + extras;
+          dedTypeLabel = `Standard (HOH ${fmtUSD(conf.stdDeduction.hoh)} + extras ${fmtUSD(extras)})`;
+        } else {
+          deduction = clampNonNeg(Number(itemizedAmount.value));
+          dedTypeLabel = 'Itemized';
+        }
+
+        const taxable = Math.max(0, agi - deduction);
+
+        // Tax by progressive brackets
+        let remaining = taxable;
+        let lower = 0;
+        let tax = 0;
+        let marginal = 0;
+        let breakdownLines = [];
+        for(const b of conf.brackets){
+          if(remaining <= 0) break;
+          const upper = b.upTo;
+          const span = Math.max(0, Math.min(remaining, upper - lower));
+          const chunkTax = span * b.rate;
+          if(span > 0){
+            breakdownLines.push(`${fmtUSD(lower)}–${upper === Infinity ? '∞' : fmtUSD(upper)} @ ${(b.rate*100).toFixed(0)}% → ${fmtUSD(chunkTax)}`);
+            tax += chunkTax;
+            marginal = b.rate;
+            remaining -= span;
+            lower = upper;
+          }
+        }
+
+        // Credits (simplified nonrefundable CTC + ODC)
+        const kids = Math.floor(clampNonNeg(Number(childrenU17.value)));
+        const odep = Math.floor(clampNonNeg(Number(otherDeps.value)));
+        const baseCredit = (kids * 2000) + (odep * 500);
+        const phaseStart = conf.ctcPhaseoutStartHOH;
+        const excess = Math.max(0, agi - phaseStart);
+        const phaseout = excess > 0 ? 50 * Math.ceil(excess / 1000) : 0;
+        const availCredit = Math.max(0, baseCredit - phaseout);
+        const creditApplied = Math.min(availCredit, tax);
+        const finalTax = Math.max(0, tax - creditApplied);
+
+        // Outputs
+        agiOut.textContent = fmtUSD(Math.round(agi));
+        deductionOut.textContent = fmtUSD(Math.round(deduction));
+        deductionTypeOut.textContent = dedTypeLabel;
+        taxableOut.textContent = fmtUSD(Math.round(taxable));
+        preCreditTaxOut.textContent = fmtUSD(Math.round(tax));
+        creditsOut.textContent = fmtUSD(Math.round(creditApplied));
+        finalTaxOut.textContent = fmtUSD(Math.round(finalTax));
+        marginalRateOut.textContent = taxable > 0 ? (marginal*100).toFixed(0) + '%' : '—';
+        effectiveRateOut.textContent = agi > 0 ? ((finalTax/agi)*100).toFixed(2) + '%' : '—';
+        breakdownList.innerHTML = breakdownLines.length ? breakdownLines.map(l => `• ${l}`).join('<br>') : 'No taxable income.';
+
+      }
+
+      // Event wiring
+      [
+        taxYear,totalIncome,adjustments,itemizedAmount,is65,isBlind,childrenU17,otherDeps,dedStandard,dedItemized
+      ].forEach(ctrl => ctrl.addEventListener('input', computeTax));
+
+      // Buttons
+      el('calcBtn').addEventListener('click', computeTax);
+      el('resetBtn').addEventListener('click', () => {
+        taxYear.value = '2024';
+        totalIncome.value = '';
+        adjustments.value = '';
+        dedStandard.checked = true;
+        dedItemized.checked = false;
+        toggleDeductionControls();
+        itemizedAmount.value = '';
+        is65.checked = false;
+        isBlind.checked = false;
+        childrenU17.value = '0';
+        otherDeps.value = '0';
+        Object.values(errors).forEach(e => e.textContent = '');
+        [totalIncome, adjustments, itemizedAmount].forEach(i => i.removeAttribute('aria-invalid'));
+        computeTax();
+      });
+
+      // Initialize
+      computeTax();
+    })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
+
+      // Data: Head of Household brackets and standard deductions
+      const DATA = {
+        '2024': {
+          stdDeduction: { hoh: 21900, addUnmarried: 1950 }, // additional per each of 65+ or blind
+          // HOH brackets (upper bound inclusive for readability)
+          brackets: [
+            { upTo: 16550, rate: 0.10 },
+            { upTo: 63100, rate: 0.12 },
+            { upTo: 100500, rate: 0.22 },
+            { upTo: 191950, rate: 0.24 },
+            { upTo: 243700, rate: 0.32 },
+            { upTo: 609350, rate: 0.35 },
+            { upTo: Infinity, rate: 0.37 }
+          ],
+          ctcPhaseoutStartHOH: 200000
+        },
+        '2025': {
+          stdDeduction: { hoh: 22950, addUnmarried: 2000 }, // IRS inflation-adjusted (approx.)
+          brackets: [
+            { upTo: 16950, rate: 0.10 },
+            { upTo: 64200, rate: 0.12 },
+            { upTo: 102450, rate: 0.22 },
+            { upTo: 195950, rate: 0.24 },
+            { upTo: 248300, rate: 0.32 },
+            { upTo: 621850, rate: 0.35 },
+            { upTo: Infinity, rate: 0.37 }
+          ],
+          ctcPhaseoutStartHOH: 200000
+        }
+      };
+
+      // Elements
+      const el = id => document.getElementById(id);
+      const taxYear = el('taxYear');
+      const totalIncome = el('totalIncome');
+      const adjustments = el('adjustments');
+      const dedStandard = el('dedStandard');
+      const dedItemized = el('dedItemized');
+      const itemizedGroup = el('itemizedGroup');
+      const stdExtras = el('stdExtras');
+      const itemizedAmount = el('itemizedAmount');
+      const is65 = el('is65');
+      const isBlind = el('isBlind');
+      const childrenU17 = el('childrenU17');
+      const otherDeps = el('otherDeps');
+
+      const agiOut = el('agiOut');
+      const deductionOut = el('deductionOut');
+      const deductionTypeOut = el('deductionTypeOut');
+      const taxableOut = el('taxableOut');
+      const preCreditTaxOut = el('preCreditTaxOut');
+      const creditsOut = el('creditsOut');
+      const finalTaxOut = el('finalTaxOut');
+      const marginalRateOut = el('marginalRateOut');
+      const effectiveRateOut = el('effectiveRateOut');
+      const breakdownList = el('breakdownList');
+
+      const errors = {
+        taxYear: el('taxYearError'),
+        income: el('incomeError'),
+        adjustments: el('adjError'),
+        itemized: el('itemizedError'),
+        child: el('childError'),
+        odep: el('odepError')
+      };
+
+      // Tooltips
+      function setupTooltip(btnId, tipId){
+        const btn = el(btnId);
+        const tip = el(tipId);
+        btn?.addEventListener('click', () => {
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          tip.setAttribute('aria-hidden', String(expanded));
+        });
+      }
+      setupTooltip('statusHelpBtn','statusHelp');
+      setupTooltip('incomeTipBtn','incomeTip');
+      setupTooltip('adjTipBtn','adjTip');
+      setupTooltip('itemTipBtn','itemTip');
+      setupTooltip('childTipBtn','childTip');
+      setupTooltip('odepTipBtn','odepTip');
+
+      // Helpers
+      const fmtUSD = v => v.toLocaleString(undefined, { style:'currency', currency:'USD', maximumFractionDigits:0 });
+      const clampNonNeg = v => isFinite(v) && v > 0 ? v : 0;
+
+      function validateNumber(inputEl, errorEl, { required=false, min=0 } = {}){
+        const raw = inputEl.value.trim();
+        let num = raw === '' ? NaN : Number(raw);
+        let msg = '';
+        if(required && (raw === '' || isNaN(num))){
+          msg = 'Please enter a valid number.';
+        } else if (!isNaN(num) && num < min){
+          msg = `Value must be at least ${min}.`;
+        }
+        if(msg){
+          inputEl.setAttribute('aria-invalid','true');
+          errorEl.textContent = msg;
+        } else {
+          inputEl.removeAttribute('aria-invalid');
+          errorEl.textContent = '';
+        }
+        return msg === '';
+      }
+
+      // Show/hide deduction controls
+      function toggleDeductionControls(){
+        const isItem = dedItemized.checked;
+        itemizedGroup.hidden = !isItem;
+        stdExtras.hidden = isItem;
+      }
+
+      dedStandard.addEventListener('change', toggleDeductionControls);
+      dedItemized.addEventListener('change', toggleDeductionControls);
+      toggleDeductionControls();
+
+      // Validation on blur
+      totalIncome.addEventListener('blur', () => validateNumber(totalIncome, errors.income, { required:true, min:0 }));
+      adjustments.addEventListener('blur', () => validateNumber(adjustments, errors.adjustments, { required:false, min:0 }));
+      itemizedAmount.addEventListener('blur', () => {
+        if(!itemizedGroup.hidden){
+          validateNumber(itemizedAmount, errors.itemized, { required:true, min:0 });
+        } else {
+          errors.itemized.textContent = '';
+          itemizedAmount.removeAttribute('aria-invalid');
+        }
+      });
+      childrenU17.addEventListener('blur', () => validateNumber(childrenU17, errors.child, { required:false, min:0 }));
+      otherDeps.addEventListener('blur', () => validateNumber(otherDeps, errors.odep, { required:false, min:0 }));
+
+      // Core tax engine
+      function computeTax(){
+        // Basic validation gate
+        const vIncome = validateNumber(totalIncome, errors.income, { required:true, min:0 });
+        const vAdj = validateNumber(adjustments, errors.adjustments, { required:false, min:0 });
+        const vItem = itemizedGroup.hidden ? true : validateNumber(itemizedAmount, errors.itemized, { required:true, min:0 });
+        const vChild = validateNumber(childrenU17, errors.child, { required:false, min:0 });
+        const vOdep = validateNumber(otherDeps, errors.odep, { required:false, min:0 });
+        if(!(vIncome && vAdj && vItem && vChild && vOdep)) return;
+
+        const year = taxYear.value;
+        const conf = DATA[year];
+
+        const income = clampNonNeg(Number(totalIncome.value));
+        const adj = clampNonNeg(Number(adjustments.value));
+        const agi = Math.max(0, income - adj);
+
+        // Deduction
+        let deduction = 0;
+        let dedTypeLabel = '';
+        if(dedStandard.checked){
+          const extras = (is65.checked ? conf.stdDeduction.addUnmarried : 0) + (isBlind.checked ? conf.stdDeduction.addUnmarried : 0);
+          deduction = conf.stdDeduction.hoh + extras;
+          dedTypeLabel = `Standard (HOH ${fmtUSD(conf.stdDeduction.hoh)} + extras ${fmtUSD(extras)})`;
+        } else {
+          deduction = clampNonNeg(Number(itemizedAmount.value));
+          dedTypeLabel = 'Itemized';
+        }
+
+        const taxable = Math.max(0, agi - deduction);
+
+        // Tax by progressive brackets
+        let remaining = taxable;
+        let lower = 0;
+        let tax = 0;
+        let marginal = 0;
+        let breakdownLines = [];
+        for(const b of conf.brackets){
+          if(remaining <= 0) break;
+          const upper = b.upTo;
+          const span = Math.max(0, Math.min(remaining, upper - lower));
+          const chunkTax = span * b.rate;
+          if(span > 0){
+            breakdownLines.push(`${fmtUSD(lower)}–${upper === Infinity ? '∞' : fmtUSD(upper)} @ ${(b.rate*100).toFixed(0)}% → ${fmtUSD(chunkTax)}`);
+            tax += chunkTax;
+            marginal = b.rate;
+            remaining -= span;
+            lower = upper;
+          }
+        }
+
+        // Credits (simplified nonrefundable CTC + ODC)
+        const kids = Math.floor(clampNonNeg(Number(childrenU17.value)));
+        const odep = Math.floor(clampNonNeg(Number(otherDeps.value)));
+        const baseCredit = (kids * 2000) + (odep * 500);
+        const phaseStart = conf.ctcPhaseoutStartHOH;
+        const excess = Math.max(0, agi - phaseStart);
+        const phaseout = excess > 0 ? 50 * Math.ceil(excess / 1000) : 0;
+        const availCredit = Math.max(0, baseCredit - phaseout);
+        const creditApplied = Math.min(availCredit, tax);
+        const finalTax = Math.max(0, tax - creditApplied);
+
+        // Outputs
+        agiOut.textContent = fmtUSD(Math.round(agi));
+        deductionOut.textContent = fmtUSD(Math.round(deduction));
+        deductionTypeOut.textContent = dedTypeLabel;
+        taxableOut.textContent = fmtUSD(Math.round(taxable));
+        preCreditTaxOut.textContent = fmtUSD(Math.round(tax));
+        creditsOut.textContent = fmtUSD(Math.round(creditApplied));
+        finalTaxOut.textContent = fmtUSD(Math.round(finalTax));
+        marginalRateOut.textContent = taxable > 0 ? (marginal*100).toFixed(0) + '%' : '—';
+        effectiveRateOut.textContent = agi > 0 ? ((finalTax/agi)*100).toFixed(2) + '%' : '—';
+        breakdownList.innerHTML = breakdownLines.length ? breakdownLines.map(l => `• ${l}`).join('<br>') : 'No taxable income.';
+
+      }
+
+      // Event wiring
+      [
+        taxYear,totalIncome,adjustments,itemizedAmount,is65,isBlind,childrenU17,otherDeps,dedStandard,dedItemized
+      ].forEach(ctrl => ctrl.addEventListener('input', computeTax));
+
+      // Buttons
+      el('calcBtn').addEventListener('click', computeTax);
+      el('resetBtn').addEventListener('click', () => {
+        taxYear.value = '2024';
+        totalIncome.value = '';
+        adjustments.value = '';
+        dedStandard.checked = true;
+        dedItemized.checked = false;
+        toggleDeductionControls();
+        itemizedAmount.value = '';
+        is65.checked = false;
+        isBlind.checked = false;
+        childrenU17.value = '0';
+        otherDeps.value = '0';
+        Object.values(errors).forEach(e => e.textContent = '');
+        [totalIncome, adjustments, itemizedAmount].forEach(i => i.removeAttribute('aria-invalid'));
+        computeTax();
+      });
+
+      // Initialize
+      computeTax();
+    })();
+  </script></body></html>

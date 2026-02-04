@@ -281,10 +281,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
@@ -324,10 +330,22 @@
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
 </style>
 </head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">Paint Calculator</h1>
+    <p class="sub" id="pageSub">Professional paint calculator to estimate how much paint you need for walls, ceilings, and trim. Mobile-first, WCAG 2.1 AA accessible, and optimized for Core Web Vitals.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<main id="main-content">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main id="main-content">
 <div class="container">
 <nav aria-label="Breadcrumb" class="breadcrumb">
 Home / <a href="https://calcdomain.com/construction-diy">Construction</a> / Framing &amp; Roofing / Paint Calculator
@@ -473,7 +491,7 @@ Home / <a href="https://calcdomain.com/construction-diy">Construction</a> / Fram
 </div>
 <div class="inline-controls" style="margin-top:1rem">
 <button aria-label="Calculate paint need" class="btn" id="calculateBtn" type="button">Calculate</button>
-<button aria-label="Reset all fields" class="btn ghost" id="resetBtn" type="button">Reset</button>
+<button aria-label="Reset all fields" class="btn ghost btnSecondary" id="resetBtn" type="button">Reset</button>
 </div>
 </section>
 </aside>
@@ -2391,512 +2409,19 @@ Home / <a href="https://calcdomain.com/construction-diy">Construction</a> / Fram
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
+
+
 </main>
-<!-- Standard Footer --> 
-<script defer="">
-  (function(){
-    'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
+</div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-    // Utilities
-    const $ = (sel, ctx=document) => ctx.querySelector(sel);
-    const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
-    const clamp = (v,min,max) => Math.max(min, Math.min(max, v));
-    const toNumber = v => (typeof v === 'number') ? v : parseFloat(String(v).replace(/,/g,'')) || 0;
-    const round2 = v => Math.round(v*100)/100;
-
-    // State
-    const state = {
-      unit: 'imperial', // 'imperial' or 'metric'
-      rooms: [],
-      nextRoomId: 1
-    };
-
-    // Elements
-    const roomsContainer = $('#roomsContainer');
-    const addRoomBtn = $('#addRoomBtn');
-    const coverageInput = $('#coverageInput');
-    const porosityInput = $('#porosity');
-    const wallCoatsInput = $('#wallCoats');
-    const ceilingCoatsInput = $('#ceilingCoats');
-    const trimCoatsInput = $('#trimCoats');
-    const doorAreaInput = $('#doorArea');
-    const windowAreaInput = $('#windowArea');
-    const trimWidthInput = $('#trimWidth');
-    const calculateBtn = $('#calculateBtn');
-    const resetBtn = $('#resetBtn');
-
-    const priceQuart = $('#priceQuart');
-    const priceGallon = $('#priceGallon');
-    const priceFive = $('#priceFiveGallon');
-
-    // Results
-    const totalAreaEqEl = $('#totalAreaEq');
-    const totalGallonsEl = $('#totalGallons');
-    const effectiveCoverageEl = $('#effectiveCoverage');
-    const wallsBreakdownEl = $('#wallsBreakdown');
-    const ceilingsBreakdownEl = $('#ceilingsBreakdown');
-    const trimBreakdownEl = $('#trimBreakdown');
-    const canRecommendationEl = $('#canRecommendation');
-    const costEstimateEl = $('#costEstimate');
-
-    const unitRadios = $$('input[name="unitSystem"]');
-    const suffixCoverage = $('#cov-suf');
-    const suffixDoor = $('#door-suf');
-    const suffixWindow = $('#win-suf');
-    const suffixTrim = $('#trim-suf');
-
-    // Accessible tooltips
-    $$('.toggle-help').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{
-        const id = btn.getAttribute('aria-controls');
-        const tip = document.getElementById(id);
-        const expanded = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!expanded));
-        tip.setAttribute('aria-hidden', String(expanded));
-      });
-      btn.addEventListener('keydown', (e)=>{
-        if(e.key === 'Enter' || e.key === ' '){
-          e.preventDefault();
-          btn.click();
-        }
-      });
-    });
-
-    // Create Room UI
-    function createRoom(){
-      const id = state.nextRoomId++;
-      const room = {
-        id, name: `Room ${id}`,
-        length: 12, width: 12, height: 8,
-        doors: 1, windows: 1,
-        includeCeiling: true,
-        trimLength: 0,
-        extraOpening: 0,
-        collapsed: false
-      };
-      state.rooms.push(room);
-      renderRooms();
-      return room;
-    }
-
-    function renderRooms(){
-      roomsContainer.innerHTML = '';
-      state.rooms.forEach(room=>{
-        const roomEl = document.createElement('div');
-        roomEl.className = 'room';
-        roomEl.setAttribute('data-id', room.id);
-
-        roomEl.innerHTML = `
-          <div class="room-header">
-            <div class="room-title" aria-live="polite">${escapeHtml(room.name)}</div>
-            <div class="room-actions">
-              <button type="button" class="btn collapse-btn" aria-expanded="${!room.collapsed}" aria-controls="room-${room.id}-body">${room.collapsed ? 'Expand' : 'Collapse'}</button>
-              <button type="button" class="btn remove-btn" aria-label="Remove ${escapeHtml(room.name)}">Remove</button>
-            </div>
-          </div>
-
-          <div id="room-${room.id}-body" ${room.collapsed ? 'hidden' : ''}>
-            <div class="form-group">
-              <label for="room-name-${room.id}">Room name</label>
-              <input id="room-name-${room.id}" class="form-control" type="text" value="${escapeHtml(room.name)}">
-            </div>
-
-            <div class="grid grid-3">
-              <div class="form-group">
-                <label for="len-${room.id}">Length<span class="required" aria-hidden="true">*</span></label>
-                <div class="input-wrap">
-                  <input id="len-${room.id}" class="form-control room-field" data-field="length" type="number" min="0.1" step="0.01" value="${room.length}" aria-required="true" aria-describedby="len-err-${room.id} len-suf-${room.id}">
-                  <span id="len-suf-${room.id}" class="suffix">${state.unit === 'imperial' ? 'ft' : 'm'}</span>
-                </div>
-                <div id="len-err-${room.id}" class="error-text" role="alert" aria-live="polite"></div>
-              </div>
-              <div class="form-group">
-                <label for="wid-${room.id}">Width<span class="required" aria-hidden="true">*</span></label>
-                <div class="input-wrap">
-                  <input id="wid-${room.id}" class="form-control room-field" data-field="width" type="number" min="0.1" step="0.01" value="${room.width}" aria-required="true" aria-describedby="wid-err-${room.id} wid-suf-${room.id}">
-                  <span id="wid-suf-${room.id}" class="suffix">${state.unit === 'imperial' ? 'ft' : 'm'}</span>
-                </div>
-                <div id="wid-err-${room.id}" class="error-text" role="alert" aria-live="polite"></div>
-              </div>
-              <div class="form-group">
-                <label for="hei-${room.id}">Height<span class="required" aria-hidden="true">*</span></label>
-                <div class="input-wrap">
-                  <input id="hei-${room.id}" class="form-control room-field" data-field="height" type="number" min="0.1" step="0.01" value="${room.height}" aria-required="true" aria-describedby="hei-err-${room.id} hei-suf-${room.id}">
-                  <span id="hei-suf-${room.id}" class="suffix">${state.unit === 'imperial' ? 'ft' : 'm'}</span>
-                </div>
-                <div id="hei-err-${room.id}" class="error-text" role="alert" aria-live="polite"></div>
-              </div>
-            </div>
-
-            <div class="grid grid-3">
-              <div class="form-group">
-                <label for="doors-${room.id}">Doors</label>
-                <input id="doors-${room.id}" class="form-control room-field" data-field="doors" type="number" min="0" step="1" value="${room.doors}" aria-describedby="doors-err-${room.id}">
-                <div id="doors-err-${room.id}" class="error-text" role="alert" aria-live="polite"></div>
-              </div>
-              <div class="form-group">
-                <label for="windows-${room.id}">Windows</label>
-                <input id="windows-${room.id}" class="form-control room-field" data-field="windows" type="number" min="0" step="1" value="${room.windows}" aria-describedby="windows-err-${room.id}">
-                <div id="windows-err-${room.id}" class="error-text" role="alert" aria-live="polite"></div>
-              </div>
-              <div class="form-group">
-                <label for="extra-${room.id}">Extra opening area</label>
-                <div class="input-wrap">
-                  <input id="extra-${room.id}" class="form-control room-field" data-field="extraOpening" type="number" min="0" step="0.1" value="${room.extraOpening}" aria-describedby="extra-suf-${room.id}">
-                  <span id="extra-suf-${room.id}" class="suffix">${state.unit === 'imperial' ? 'sq ft' : 'm²'}</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="grid grid-3">
-              <div class="form-group">
-                <label for="trim-${room.id}">Trim length</label>
-                <div class="input-wrap">
-                  <input id="trim-${room.id}" class="form-control room-field" data-field="trimLength" type="number" min="0" step="0.1" value="${room.trimLength}">
-                  <span class="suffix">${state.unit === 'imperial' ? 'ft' : 'm'}</span>
-                </div>
-              </div>
-              <div class="form-group">
-                <label for="ceiling-${room.id}">Include ceiling</label>
-                <div class="radio-chip-group">
-                  <div class="radio-chip">
-                    <input type="radio" id="ceiling-yes-${room.id}" name="ceiling-${room.id}" value="yes" ${room.includeCeiling ? 'checked' : ''}>
-                    <label for="ceiling-yes-${room.id}">Yes</label>
-                  </div>
-                  <div class="radio-chip">
-                    <input type="radio" id="ceiling-no-${room.id}" name="ceiling-${room.id}" value="no" ${room.includeCeiling ? '' : 'checked'}>
-                    <label for="ceiling-no-${room.id}">No</label>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-
-        // Events
-        roomEl.querySelector('.collapse-btn').addEventListener('click', ()=>{
-          room.collapsed = !room.collapsed;
-          renderRooms();
-        });
-        roomEl.querySelector('.remove-btn').addEventListener('click', ()=>{
-          state.rooms = state.rooms.filter(r=>r.id !== room.id);
-          renderRooms();
-          computeAndRender();
-        });
-        roomEl.querySelector(`#room-name-${room.id}`).addEventListener('input', (e)=>{
-          room.name = e.target.value || `Room ${room.id}`;
-          roomEl.querySelector('.room-title').textContent = room.name;
-        });
-
-        // Room field handling
-        roomEl.querySelectorAll('.room-field').forEach(inp=>{
-          inp.addEventListener('blur', ()=> validateField(inp));
-          inp.addEventListener('input', ()=>{
-            const f = inp.getAttribute('data-field');
-            let val = toNumber(inp.value);
-            if(['length','width','height'].includes(f) && val <= 0){ /* validation later */ }
-            if(['doors','windows'].includes(f)){ val = Math.max(0, Math.floor(val)); inp.value = val; }
-            room[f] = val;
-            computeAndRenderDebounced();
-          });
-        });
-
-        // Ceiling toggle
-        roomEl.querySelector(`#ceiling-yes-${room.id}`).addEventListener('change', (e)=>{
-          room.includeCeiling = true; computeAndRenderDebounced();
-        });
-        roomEl.querySelector(`#ceiling-no-${room.id}`).addEventListener('change', (e)=>{
-          room.includeCeiling = false; computeAndRenderDebounced();
-        });
-
-        roomsContainer.appendChild(roomEl);
-      });
-    }
-
-    function validateField(input){
-      const val = toNumber(input.value);
-      const id = input.id;
-      const errEl = document.getElementById(id.replace(/^(.+?)(?=-|$)/,'$&') + '-err-' + (id.split('-').pop()));
-      // For global fields we may not have the same pattern; skip error mapping if not found
-      let errorTarget = null;
-      if (!errEl && input.getAttribute('aria-describedby')){
-        const ids = input.getAttribute('aria-describedby').split(' ');
-        errorTarget = ids.map(i=>document.getElementById(i)).find(el=>el && el.classList.contains('error-text'));
-      } else {
-        errorTarget = errEl;
-      }
-      let msg = '';
-      if(input.hasAttribute('aria-required') && (isNaN(val) || val <= 0)){
-        msg = 'Please enter a value greater than 0.';
-      }
-      if(input.id.startsWith('doors') || input.id.startsWith('windows')){
-        if(val < 0 || !Number.isFinite(val)) msg = 'Please enter a non-negative whole number.';
-      }
-      input.setAttribute('aria-invalid', msg ? 'true' : 'false');
-      if(errorTarget){ errorTarget.textContent = msg; }
-    }
-
-    // Unit handling
-    unitRadios.forEach(r=>{
-      r.addEventListener('change', ()=>{
-        state.unit = r.value;
-        updateUnitSuffixes();
-        computeAndRender();
-      });
-    });
-
-    function updateUnitSuffixes(){
-      if(state.unit === 'imperial'){
-        suffixCoverage.textContent = 'sq ft / gallon';
-        suffixDoor.textContent = 'sq ft';
-        suffixWindow.textContent = 'sq ft';
-        suffixTrim.textContent = 'inches';
-        // Update room field suffixes dynamically
-      }else{
-        suffixCoverage.textContent = 'm² / liter';
-        suffixDoor.textContent = 'm²';
-        suffixWindow.textContent = 'm²';
-        suffixTrim.textContent = 'cm';
-      }
-      // Re-render rooms to update inline suffixes
-      renderRooms();
-    }
-
-    // Coverage conversion
-    // Returns effective coverage in sq ft per gallon
-    function getEffectiveCoverageSqFtPerGallon(){
-      const cov = Math.max(1, toNumber(coverageInput.value));
-      const s = clamp(toNumber(porosityInput.value) || 100, 50, 150);
-      const base = (state.unit === 'imperial')
-        ? cov // sq ft per gallon
-        : cov * 10.76391041671 * 3.785411784; // m²/L -> sq ft/gal
-      const eff = base * (s/100);
-      return eff;
-    }
-
-    function roomAreasSqFt(room){
-      // convert inputs to feet
-      const toFeet = (v) => state.unit === 'imperial' ? v : v * 3.280839895;
-      const toSqFt = (v) => state.unit === 'imperial' ? v : v * 10.76391041671;
-
-      const L = Math.max(0, toFeet(room.length));
-      const W = Math.max(0, toFeet(room.width));
-      const H = Math.max(0, toFeet(room.height));
-
-      const Adoor = state.unit === 'imperial' ? Math.max(0, toNumber(doorAreaInput.value)) : toSqFt(toNumber(doorAreaInput.value));
-      const Awin  = state.unit === 'imperial' ? Math.max(0, toNumber(windowAreaInput.value)) : toSqFt(toNumber(windowAreaInput.value));
-      const Aextra = state.unit === 'imperial' ? Math.max(0, toNumber(room.extraOpening)) : toSqFt(Math.max(0, toNumber(room.extraOpening)));
-
-      let walls = 2*(L+W)*H - Math.max(0, Math.floor(room.doors))*Adoor - Math.max(0, Math.floor(room.windows))*Awin - Aextra;
-      walls = Math.max(0, walls);
-
-      let ceiling = room.includeCeiling ? (L*W) : 0;
-
-      // Trim area: length * width
-      // Input: length in ft/m; width in inches/cm defaults global
-      const trimLen = state.unit === 'imperial' ? toNumber(room.trimLength) : toNumber(room.trimLength) * 3.280839895;
-      const trimWidth = state.unit === 'imperial' ? toNumber(trimWidthInput.value)/12 : (toNumber(trimWidthInput.value)/100) * 3.280839895; // convert inches->ft OR cm->m->ft
-      let trim = Math.max(0, trimLen * Math.max(0, trimWidth)); // in square feet already
-
-      return {walls, ceiling, trim};
-    }
-
-    function computeTotals(){
-      const effCov = getEffectiveCoverageSqFtPerGallon(); // sq ft per gallon
-      const cw = Math.max(0, Math.floor(toNumber(wallCoatsInput.value)));
-      const cc = Math.max(0, Math.floor(toNumber(ceilingCoatsInput.value)));
-      const ct = Math.max(0, Math.floor(toNumber(trimCoatsInput.value)));
-
-      let wallsArea = 0, ceilingArea = 0, trimArea = 0;
-      state.rooms.forEach(r=>{
-        const a = roomAreasSqFt(r);
-        wallsArea += a.walls;
-        ceilingArea += a.ceiling;
-        trimArea += a.trim;
-      });
-
-      const eqArea = wallsArea*cw + ceilingArea*cc + trimArea*ct; // sq ft-coats
-      const totalGallons = effCov > 0 ? (eqArea / effCov) : 0;
-
-      // Breakdown per type (gallons)
-      const wallsGal = effCov > 0 ? (wallsArea*cw / effCov) : 0;
-      const ceilGal  = effCov > 0 ? (ceilingArea*cc / effCov) : 0;
-      const trimGal  = effCov > 0 ? (trimArea*ct / effCov) : 0;
-
-      return {
-        effCov, eqArea, totalGallons, wallsGal, ceilGal, trimGal,
-        wallsArea, ceilingArea, trimArea, coats: {cw, cc, ct}
-      };
-    }
-
-    function gallonsToLiters(gal){ return gal * 3.785411784; }
-
-    // Can optimization (5, 1, 0.25 gal)
-    function optimizeCans(requiredGallons){
-      if(requiredGallons <= 0) return {five:0, one:0, quart:0, overage:0};
-      const maxFive = Math.ceil(requiredGallons / 5);
-      let best = null;
-
-      for(let f = 0; f <= maxFive; f++){
-        const remainingAfterFive = Math.max(0, requiredGallons - 5*f);
-        const maxOne = Math.ceil(remainingAfterFive);
-        for(let o = 0; o <= maxOne + 1; o++){
-          let remaining = Math.max(0, requiredGallons - (5*f + 1*o));
-          // quarts 0..3
-          for(let q = 0; q <= 3; q++){
-            const total = 5*f + 1*o + 0.25*q;
-            if(total < requiredGallons) continue;
-            const over = round2(total - requiredGallons);
-            const cans = f + o + q;
-            const cost = estimateCost({five:f, one:o, quart:q});
-            const candidate = {five:f, one:o, quart:q, overage:over, cans, cost};
-            if(!best){
-              best = candidate;
-            }else{
-              // Prefer minimal overage, then minimal cost if provided, then fewer cans
-              if(over < best.overage
-                || (over === best.overage && cost != null && best.cost != null && cost < best.cost)
-                || (over === best.overage && (cost == null || best.cost == null) && cans < best.cans)
-                || (over === best.overage && cost != null && best.cost == null)
-              ){
-                best = candidate;
-              }
-            }
-          }
-        }
-      }
-      return best || {five:0, one:Math.ceil(requiredGallons), quart:0, overage:round2(Math.ceil(requiredGallons)-requiredGallons)};
-    }
-
-    function estimateCost(cans){
-      const pq = toNumber(priceQuart.value);
-      const pg = toNumber(priceGallon.value);
-      const p5 = toNumber(priceFive.value);
-      const hasAny = pq>0 || pg>0 || p5>0;
-      if(!hasAny) return null;
-      const qCost = pq>0 ? pq*cans.quart : 0;
-      const gCost = pg>0 ? pg*cans.one : 0;
-      const fCost = p5>0 ? p5*cans.five : 0;
-      // If some prices missing, assume proportional where needed
-      const fallbackPg = (pg>0) ? pg : (p5>0 ? (p5/5) : (pq>0 ? pq*4 : 0));
-      const fallbackPq = (pq>0) ? pq : (fallbackPg/4);
-      const fallbackP5 = (p5>0) ? p5 : (fallbackPg*5*0.95); // small bulk discount assumption
-      const cost = (pq>0 ? 0 : fallbackPq*cans.quart)
-                 + (pg>0 ? 0 : fallbackPg*cans.one)
-                 + (p5>0 ? 0 : fallbackP5*cans.five)
-                 + qCost + gCost + fCost;
-      return round2(cost);
-    }
-
-    // Rendering results
-    function computeAndRender(){
-      // Validate critical fields
-      [coverageInput, porosityInput, wallCoatsInput, ceilingCoatsInput, trimCoatsInput].forEach(validateField);
-
-      const totals = computeTotals();
-      const effCov = round2(totals.effCov);
-      const gallons = round2(totals.totalGallons);
-      const liters = round2(gallonsToLiters(gallons));
-
-      effectiveCoverageEl.textContent = isFinite(effCov) ? `${effCov} sq ft/gal` : '—';
-      totalAreaEqEl.textContent = `${round2(totals.eqArea)} sq ft-coats`;
-      totalGallonsEl.textContent = `${gallons.toFixed(2)} gal (${liters.toFixed(2)} L)`;
-      wallsBreakdownEl.textContent = `${round2(totals.wallsGal).toFixed(2)} gal`;
-      ceilingsBreakdownEl.textContent = `${round2(totals.ceilGal).toFixed(2)} gal`;
-      trimBreakdownEl.textContent = `${round2(totals.trimGal).toFixed(2)} gal`;
-
-      const rec = optimizeCans(totals.totalGallons);
-      if(rec){
-        const totalProvided = 5*rec.five + 1*rec.one + 0.25*rec.quart;
-        canRecommendationEl.textContent = `${rec.five}×5 gal, ${rec.one}×1 gal, ${rec.quart}×1 qt (total ${round2(totalProvided)} gal, overage ${rec.overage} gal)`;
-        const cost = estimateCost(rec);
-        costEstimateEl.textContent = cost != null ? `$${cost.toFixed(2)} (est.)` : 'Add can prices to estimate';
-      }else{
-        canRecommendationEl.textContent = '—';
-        costEstimateEl.textContent = '—';
-      }
-    }
-    const computeAndRenderDebounced = debounce(computeAndRender, 60);
-
-    function debounce(fn, ms){
-      let t=0;
-      return function(...args){
-        clearTimeout(t);
-        t = setTimeout(()=>fn.apply(this,args), ms);
-      }
-    }
-
-    // Buttons
-    addRoomBtn.addEventListener('click', ()=>{
-      createRoom();
-      computeAndRender();
-    });
-    calculateBtn.addEventListener('click', computeAndRender);
-    resetBtn.addEventListener('click', ()=>{
-      // Reset global
-      $('input#unitImperial').checked = true;
-      state.unit = 'imperial';
-      coverageInput.value = 350;
-      porosityInput.value = 100;
-      wallCoatsInput.value = 2;
-      ceilingCoatsInput.value = 1;
-      trimCoatsInput.value = 1;
-      doorAreaInput.value = 21;
-      windowAreaInput.value = 15;
-      trimWidthInput.value = 3.5;
-      priceQuart.value = '';
-      priceGallon.value = '';
-      priceFive.value = '';
-      updateUnitSuffixes();
-      // Reset rooms
-      state.rooms = [];
-      state.nextRoomId = 1;
-      createRoom();
-      computeAndRender();
-    });
-
-    // Global field validation on blur
-    [coverageInput, porosityInput, wallCoatsInput, ceilingCoatsInput, trimCoatsInput].forEach(inp=>{
-      inp.addEventListener('blur', ()=> validateField(inp));
-      inp.addEventListener('input', computeAndRenderDebounced);
-    });
-    [doorAreaInput, windowAreaInput, trimWidthInput].forEach(inp=>{
-      inp.addEventListener('input', computeAndRenderDebounced);
-    });
-    [priceQuart, priceGallon, priceFive].forEach(inp=>{
-      inp.addEventListener('input', computeAndRenderDebounced);
-    });
-
-    // Init
-    createRoom();
-    updateUnitSuffixes();
-    computeAndRender();
-
-    // Review date iso
-    const reviewDate = document.getElementById('reviewDate');
-    if(reviewDate){
-      const iso = '2025-09-15';
-      reviewDate.setAttribute('datetime', iso);
-      reviewDate.textContent = new Date(iso+'T00:00:00Z').toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'});
-    }
-
-    // Helpers
-    function escapeHtml(str){
-      return String(str).replace(/[&<>"']/g, s=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[s]));
-    }
-  })();
-  </script>
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main-content">Skip to main content</a><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -2928,12 +2453,7 @@ Home / <a href="https://calcdomain.com/construction-diy">Construction</a> / Fram
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main id="main-content">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main id="main-content">
 <div class="container">
 <nav aria-label="Breadcrumb" class="breadcrumb">
 Home / <a href="https://calcdomain.com/construction-diy">Construction</a> / Framing &amp; Roofing / Paint Calculator
@@ -3079,7 +2599,7 @@ Home / <a href="https://calcdomain.com/construction-diy">Construction</a> / Fram
 </div>
 <div class="inline-controls" style="margin-top:1rem">
 <button aria-label="Calculate paint need" class="btn" id="calculateBtn" type="button">Calculate</button>
-<button aria-label="Reset all fields" class="btn ghost" id="resetBtn" type="button">Reset</button>
+<button aria-label="Reset all fields" class="btn ghost" id="resetBtn__dup2" type="button">Reset</button>
 </div>
 </section>
 </aside>
@@ -4997,512 +4517,7 @@ Home / <a href="https://calcdomain.com/construction-diy">Construction</a> / Fram
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-  (function(){
-    'use strict';
-
-    // Utilities
-    const $ = (sel, ctx=document) => ctx.querySelector(sel);
-    const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
-    const clamp = (v,min,max) => Math.max(min, Math.min(max, v));
-    const toNumber = v => (typeof v === 'number') ? v : parseFloat(String(v).replace(/,/g,'')) || 0;
-    const round2 = v => Math.round(v*100)/100;
-
-    // State
-    const state = {
-      unit: 'imperial', // 'imperial' or 'metric'
-      rooms: [],
-      nextRoomId: 1
-    };
-
-    // Elements
-    const roomsContainer = $('#roomsContainer');
-    const addRoomBtn = $('#addRoomBtn');
-    const coverageInput = $('#coverageInput');
-    const porosityInput = $('#porosity');
-    const wallCoatsInput = $('#wallCoats');
-    const ceilingCoatsInput = $('#ceilingCoats');
-    const trimCoatsInput = $('#trimCoats');
-    const doorAreaInput = $('#doorArea');
-    const windowAreaInput = $('#windowArea');
-    const trimWidthInput = $('#trimWidth');
-    const calculateBtn = $('#calculateBtn');
-    const resetBtn = $('#resetBtn');
-
-    const priceQuart = $('#priceQuart');
-    const priceGallon = $('#priceGallon');
-    const priceFive = $('#priceFiveGallon');
-
-    // Results
-    const totalAreaEqEl = $('#totalAreaEq');
-    const totalGallonsEl = $('#totalGallons');
-    const effectiveCoverageEl = $('#effectiveCoverage');
-    const wallsBreakdownEl = $('#wallsBreakdown');
-    const ceilingsBreakdownEl = $('#ceilingsBreakdown');
-    const trimBreakdownEl = $('#trimBreakdown');
-    const canRecommendationEl = $('#canRecommendation');
-    const costEstimateEl = $('#costEstimate');
-
-    const unitRadios = $$('input[name="unitSystem"]');
-    const suffixCoverage = $('#cov-suf');
-    const suffixDoor = $('#door-suf');
-    const suffixWindow = $('#win-suf');
-    const suffixTrim = $('#trim-suf');
-
-    // Accessible tooltips
-    $$('.toggle-help').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{
-        const id = btn.getAttribute('aria-controls');
-        const tip = document.getElementById(id);
-        const expanded = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!expanded));
-        tip.setAttribute('aria-hidden', String(expanded));
-      });
-      btn.addEventListener('keydown', (e)=>{
-        if(e.key === 'Enter' || e.key === ' '){
-          e.preventDefault();
-          btn.click();
-        }
-      });
-    });
-
-    // Create Room UI
-    function createRoom(){
-      const id = state.nextRoomId++;
-      const room = {
-        id, name: `Room ${id}`,
-        length: 12, width: 12, height: 8,
-        doors: 1, windows: 1,
-        includeCeiling: true,
-        trimLength: 0,
-        extraOpening: 0,
-        collapsed: false
-      };
-      state.rooms.push(room);
-      renderRooms();
-      return room;
-    }
-
-    function renderRooms(){
-      roomsContainer.innerHTML = '';
-      state.rooms.forEach(room=>{
-        const roomEl = document.createElement('div');
-        roomEl.className = 'room';
-        roomEl.setAttribute('data-id', room.id);
-
-        roomEl.innerHTML = `
-          <div class="room-header">
-            <div class="room-title" aria-live="polite">${escapeHtml(room.name)}</div>
-            <div class="room-actions">
-              <button type="button" class="btn collapse-btn" aria-expanded="${!room.collapsed}" aria-controls="room-${room.id}-body">${room.collapsed ? 'Expand' : 'Collapse'}</button>
-              <button type="button" class="btn remove-btn" aria-label="Remove ${escapeHtml(room.name)}">Remove</button>
-            </div>
-          </div>
-
-          <div id="room-${room.id}-body" ${room.collapsed ? 'hidden' : ''}>
-            <div class="form-group">
-              <label for="room-name-${room.id}">Room name</label>
-              <input id="room-name-${room.id}" class="form-control" type="text" value="${escapeHtml(room.name)}">
-            </div>
-
-            <div class="grid grid-3">
-              <div class="form-group">
-                <label for="len-${room.id}">Length<span class="required" aria-hidden="true">*</span></label>
-                <div class="input-wrap">
-                  <input id="len-${room.id}" class="form-control room-field" data-field="length" type="number" min="0.1" step="0.01" value="${room.length}" aria-required="true" aria-describedby="len-err-${room.id} len-suf-${room.id}">
-                  <span id="len-suf-${room.id}" class="suffix">${state.unit === 'imperial' ? 'ft' : 'm'}</span>
-                </div>
-                <div id="len-err-${room.id}" class="error-text" role="alert" aria-live="polite"></div>
-              </div>
-              <div class="form-group">
-                <label for="wid-${room.id}">Width<span class="required" aria-hidden="true">*</span></label>
-                <div class="input-wrap">
-                  <input id="wid-${room.id}" class="form-control room-field" data-field="width" type="number" min="0.1" step="0.01" value="${room.width}" aria-required="true" aria-describedby="wid-err-${room.id} wid-suf-${room.id}">
-                  <span id="wid-suf-${room.id}" class="suffix">${state.unit === 'imperial' ? 'ft' : 'm'}</span>
-                </div>
-                <div id="wid-err-${room.id}" class="error-text" role="alert" aria-live="polite"></div>
-              </div>
-              <div class="form-group">
-                <label for="hei-${room.id}">Height<span class="required" aria-hidden="true">*</span></label>
-                <div class="input-wrap">
-                  <input id="hei-${room.id}" class="form-control room-field" data-field="height" type="number" min="0.1" step="0.01" value="${room.height}" aria-required="true" aria-describedby="hei-err-${room.id} hei-suf-${room.id}">
-                  <span id="hei-suf-${room.id}" class="suffix">${state.unit === 'imperial' ? 'ft' : 'm'}</span>
-                </div>
-                <div id="hei-err-${room.id}" class="error-text" role="alert" aria-live="polite"></div>
-              </div>
-            </div>
-
-            <div class="grid grid-3">
-              <div class="form-group">
-                <label for="doors-${room.id}">Doors</label>
-                <input id="doors-${room.id}" class="form-control room-field" data-field="doors" type="number" min="0" step="1" value="${room.doors}" aria-describedby="doors-err-${room.id}">
-                <div id="doors-err-${room.id}" class="error-text" role="alert" aria-live="polite"></div>
-              </div>
-              <div class="form-group">
-                <label for="windows-${room.id}">Windows</label>
-                <input id="windows-${room.id}" class="form-control room-field" data-field="windows" type="number" min="0" step="1" value="${room.windows}" aria-describedby="windows-err-${room.id}">
-                <div id="windows-err-${room.id}" class="error-text" role="alert" aria-live="polite"></div>
-              </div>
-              <div class="form-group">
-                <label for="extra-${room.id}">Extra opening area</label>
-                <div class="input-wrap">
-                  <input id="extra-${room.id}" class="form-control room-field" data-field="extraOpening" type="number" min="0" step="0.1" value="${room.extraOpening}" aria-describedby="extra-suf-${room.id}">
-                  <span id="extra-suf-${room.id}" class="suffix">${state.unit === 'imperial' ? 'sq ft' : 'm²'}</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="grid grid-3">
-              <div class="form-group">
-                <label for="trim-${room.id}">Trim length</label>
-                <div class="input-wrap">
-                  <input id="trim-${room.id}" class="form-control room-field" data-field="trimLength" type="number" min="0" step="0.1" value="${room.trimLength}">
-                  <span class="suffix">${state.unit === 'imperial' ? 'ft' : 'm'}</span>
-                </div>
-              </div>
-              <div class="form-group">
-                <label for="ceiling-${room.id}">Include ceiling</label>
-                <div class="radio-chip-group">
-                  <div class="radio-chip">
-                    <input type="radio" id="ceiling-yes-${room.id}" name="ceiling-${room.id}" value="yes" ${room.includeCeiling ? 'checked' : ''}>
-                    <label for="ceiling-yes-${room.id}">Yes</label>
-                  </div>
-                  <div class="radio-chip">
-                    <input type="radio" id="ceiling-no-${room.id}" name="ceiling-${room.id}" value="no" ${room.includeCeiling ? '' : 'checked'}>
-                    <label for="ceiling-no-${room.id}">No</label>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-
-        // Events
-        roomEl.querySelector('.collapse-btn').addEventListener('click', ()=>{
-          room.collapsed = !room.collapsed;
-          renderRooms();
-        });
-        roomEl.querySelector('.remove-btn').addEventListener('click', ()=>{
-          state.rooms = state.rooms.filter(r=>r.id !== room.id);
-          renderRooms();
-          computeAndRender();
-        });
-        roomEl.querySelector(`#room-name-${room.id}`).addEventListener('input', (e)=>{
-          room.name = e.target.value || `Room ${room.id}`;
-          roomEl.querySelector('.room-title').textContent = room.name;
-        });
-
-        // Room field handling
-        roomEl.querySelectorAll('.room-field').forEach(inp=>{
-          inp.addEventListener('blur', ()=> validateField(inp));
-          inp.addEventListener('input', ()=>{
-            const f = inp.getAttribute('data-field');
-            let val = toNumber(inp.value);
-            if(['length','width','height'].includes(f) && val <= 0){ /* validation later */ }
-            if(['doors','windows'].includes(f)){ val = Math.max(0, Math.floor(val)); inp.value = val; }
-            room[f] = val;
-            computeAndRenderDebounced();
-          });
-        });
-
-        // Ceiling toggle
-        roomEl.querySelector(`#ceiling-yes-${room.id}`).addEventListener('change', (e)=>{
-          room.includeCeiling = true; computeAndRenderDebounced();
-        });
-        roomEl.querySelector(`#ceiling-no-${room.id}`).addEventListener('change', (e)=>{
-          room.includeCeiling = false; computeAndRenderDebounced();
-        });
-
-        roomsContainer.appendChild(roomEl);
-      });
-    }
-
-    function validateField(input){
-      const val = toNumber(input.value);
-      const id = input.id;
-      const errEl = document.getElementById(id.replace(/^(.+?)(?=-|$)/,'$&') + '-err-' + (id.split('-').pop()));
-      // For global fields we may not have the same pattern; skip error mapping if not found
-      let errorTarget = null;
-      if (!errEl && input.getAttribute('aria-describedby')){
-        const ids = input.getAttribute('aria-describedby').split(' ');
-        errorTarget = ids.map(i=>document.getElementById(i)).find(el=>el && el.classList.contains('error-text'));
-      } else {
-        errorTarget = errEl;
-      }
-      let msg = '';
-      if(input.hasAttribute('aria-required') && (isNaN(val) || val <= 0)){
-        msg = 'Please enter a value greater than 0.';
-      }
-      if(input.id.startsWith('doors') || input.id.startsWith('windows')){
-        if(val < 0 || !Number.isFinite(val)) msg = 'Please enter a non-negative whole number.';
-      }
-      input.setAttribute('aria-invalid', msg ? 'true' : 'false');
-      if(errorTarget){ errorTarget.textContent = msg; }
-    }
-
-    // Unit handling
-    unitRadios.forEach(r=>{
-      r.addEventListener('change', ()=>{
-        state.unit = r.value;
-        updateUnitSuffixes();
-        computeAndRender();
-      });
-    });
-
-    function updateUnitSuffixes(){
-      if(state.unit === 'imperial'){
-        suffixCoverage.textContent = 'sq ft / gallon';
-        suffixDoor.textContent = 'sq ft';
-        suffixWindow.textContent = 'sq ft';
-        suffixTrim.textContent = 'inches';
-        // Update room field suffixes dynamically
-      }else{
-        suffixCoverage.textContent = 'm² / liter';
-        suffixDoor.textContent = 'm²';
-        suffixWindow.textContent = 'm²';
-        suffixTrim.textContent = 'cm';
-      }
-      // Re-render rooms to update inline suffixes
-      renderRooms();
-    }
-
-    // Coverage conversion
-    // Returns effective coverage in sq ft per gallon
-    function getEffectiveCoverageSqFtPerGallon(){
-      const cov = Math.max(1, toNumber(coverageInput.value));
-      const s = clamp(toNumber(porosityInput.value) || 100, 50, 150);
-      const base = (state.unit === 'imperial')
-        ? cov // sq ft per gallon
-        : cov * 10.76391041671 * 3.785411784; // m²/L -> sq ft/gal
-      const eff = base * (s/100);
-      return eff;
-    }
-
-    function roomAreasSqFt(room){
-      // convert inputs to feet
-      const toFeet = (v) => state.unit === 'imperial' ? v : v * 3.280839895;
-      const toSqFt = (v) => state.unit === 'imperial' ? v : v * 10.76391041671;
-
-      const L = Math.max(0, toFeet(room.length));
-      const W = Math.max(0, toFeet(room.width));
-      const H = Math.max(0, toFeet(room.height));
-
-      const Adoor = state.unit === 'imperial' ? Math.max(0, toNumber(doorAreaInput.value)) : toSqFt(toNumber(doorAreaInput.value));
-      const Awin  = state.unit === 'imperial' ? Math.max(0, toNumber(windowAreaInput.value)) : toSqFt(toNumber(windowAreaInput.value));
-      const Aextra = state.unit === 'imperial' ? Math.max(0, toNumber(room.extraOpening)) : toSqFt(Math.max(0, toNumber(room.extraOpening)));
-
-      let walls = 2*(L+W)*H - Math.max(0, Math.floor(room.doors))*Adoor - Math.max(0, Math.floor(room.windows))*Awin - Aextra;
-      walls = Math.max(0, walls);
-
-      let ceiling = room.includeCeiling ? (L*W) : 0;
-
-      // Trim area: length * width
-      // Input: length in ft/m; width in inches/cm defaults global
-      const trimLen = state.unit === 'imperial' ? toNumber(room.trimLength) : toNumber(room.trimLength) * 3.280839895;
-      const trimWidth = state.unit === 'imperial' ? toNumber(trimWidthInput.value)/12 : (toNumber(trimWidthInput.value)/100) * 3.280839895; // convert inches->ft OR cm->m->ft
-      let trim = Math.max(0, trimLen * Math.max(0, trimWidth)); // in square feet already
-
-      return {walls, ceiling, trim};
-    }
-
-    function computeTotals(){
-      const effCov = getEffectiveCoverageSqFtPerGallon(); // sq ft per gallon
-      const cw = Math.max(0, Math.floor(toNumber(wallCoatsInput.value)));
-      const cc = Math.max(0, Math.floor(toNumber(ceilingCoatsInput.value)));
-      const ct = Math.max(0, Math.floor(toNumber(trimCoatsInput.value)));
-
-      let wallsArea = 0, ceilingArea = 0, trimArea = 0;
-      state.rooms.forEach(r=>{
-        const a = roomAreasSqFt(r);
-        wallsArea += a.walls;
-        ceilingArea += a.ceiling;
-        trimArea += a.trim;
-      });
-
-      const eqArea = wallsArea*cw + ceilingArea*cc + trimArea*ct; // sq ft-coats
-      const totalGallons = effCov > 0 ? (eqArea / effCov) : 0;
-
-      // Breakdown per type (gallons)
-      const wallsGal = effCov > 0 ? (wallsArea*cw / effCov) : 0;
-      const ceilGal  = effCov > 0 ? (ceilingArea*cc / effCov) : 0;
-      const trimGal  = effCov > 0 ? (trimArea*ct / effCov) : 0;
-
-      return {
-        effCov, eqArea, totalGallons, wallsGal, ceilGal, trimGal,
-        wallsArea, ceilingArea, trimArea, coats: {cw, cc, ct}
-      };
-    }
-
-    function gallonsToLiters(gal){ return gal * 3.785411784; }
-
-    // Can optimization (5, 1, 0.25 gal)
-    function optimizeCans(requiredGallons){
-      if(requiredGallons <= 0) return {five:0, one:0, quart:0, overage:0};
-      const maxFive = Math.ceil(requiredGallons / 5);
-      let best = null;
-
-      for(let f = 0; f <= maxFive; f++){
-        const remainingAfterFive = Math.max(0, requiredGallons - 5*f);
-        const maxOne = Math.ceil(remainingAfterFive);
-        for(let o = 0; o <= maxOne + 1; o++){
-          let remaining = Math.max(0, requiredGallons - (5*f + 1*o));
-          // quarts 0..3
-          for(let q = 0; q <= 3; q++){
-            const total = 5*f + 1*o + 0.25*q;
-            if(total < requiredGallons) continue;
-            const over = round2(total - requiredGallons);
-            const cans = f + o + q;
-            const cost = estimateCost({five:f, one:o, quart:q});
-            const candidate = {five:f, one:o, quart:q, overage:over, cans, cost};
-            if(!best){
-              best = candidate;
-            }else{
-              // Prefer minimal overage, then minimal cost if provided, then fewer cans
-              if(over < best.overage
-                || (over === best.overage && cost != null && best.cost != null && cost < best.cost)
-                || (over === best.overage && (cost == null || best.cost == null) && cans < best.cans)
-                || (over === best.overage && cost != null && best.cost == null)
-              ){
-                best = candidate;
-              }
-            }
-          }
-        }
-      }
-      return best || {five:0, one:Math.ceil(requiredGallons), quart:0, overage:round2(Math.ceil(requiredGallons)-requiredGallons)};
-    }
-
-    function estimateCost(cans){
-      const pq = toNumber(priceQuart.value);
-      const pg = toNumber(priceGallon.value);
-      const p5 = toNumber(priceFive.value);
-      const hasAny = pq>0 || pg>0 || p5>0;
-      if(!hasAny) return null;
-      const qCost = pq>0 ? pq*cans.quart : 0;
-      const gCost = pg>0 ? pg*cans.one : 0;
-      const fCost = p5>0 ? p5*cans.five : 0;
-      // If some prices missing, assume proportional where needed
-      const fallbackPg = (pg>0) ? pg : (p5>0 ? (p5/5) : (pq>0 ? pq*4 : 0));
-      const fallbackPq = (pq>0) ? pq : (fallbackPg/4);
-      const fallbackP5 = (p5>0) ? p5 : (fallbackPg*5*0.95); // small bulk discount assumption
-      const cost = (pq>0 ? 0 : fallbackPq*cans.quart)
-                 + (pg>0 ? 0 : fallbackPg*cans.one)
-                 + (p5>0 ? 0 : fallbackP5*cans.five)
-                 + qCost + gCost + fCost;
-      return round2(cost);
-    }
-
-    // Rendering results
-    function computeAndRender(){
-      // Validate critical fields
-      [coverageInput, porosityInput, wallCoatsInput, ceilingCoatsInput, trimCoatsInput].forEach(validateField);
-
-      const totals = computeTotals();
-      const effCov = round2(totals.effCov);
-      const gallons = round2(totals.totalGallons);
-      const liters = round2(gallonsToLiters(gallons));
-
-      effectiveCoverageEl.textContent = isFinite(effCov) ? `${effCov} sq ft/gal` : '—';
-      totalAreaEqEl.textContent = `${round2(totals.eqArea)} sq ft-coats`;
-      totalGallonsEl.textContent = `${gallons.toFixed(2)} gal (${liters.toFixed(2)} L)`;
-      wallsBreakdownEl.textContent = `${round2(totals.wallsGal).toFixed(2)} gal`;
-      ceilingsBreakdownEl.textContent = `${round2(totals.ceilGal).toFixed(2)} gal`;
-      trimBreakdownEl.textContent = `${round2(totals.trimGal).toFixed(2)} gal`;
-
-      const rec = optimizeCans(totals.totalGallons);
-      if(rec){
-        const totalProvided = 5*rec.five + 1*rec.one + 0.25*rec.quart;
-        canRecommendationEl.textContent = `${rec.five}×5 gal, ${rec.one}×1 gal, ${rec.quart}×1 qt (total ${round2(totalProvided)} gal, overage ${rec.overage} gal)`;
-        const cost = estimateCost(rec);
-        costEstimateEl.textContent = cost != null ? `$${cost.toFixed(2)} (est.)` : 'Add can prices to estimate';
-      }else{
-        canRecommendationEl.textContent = '—';
-        costEstimateEl.textContent = '—';
-      }
-    }
-    const computeAndRenderDebounced = debounce(computeAndRender, 60);
-
-    function debounce(fn, ms){
-      let t=0;
-      return function(...args){
-        clearTimeout(t);
-        t = setTimeout(()=>fn.apply(this,args), ms);
-      }
-    }
-
-    // Buttons
-    addRoomBtn.addEventListener('click', ()=>{
-      createRoom();
-      computeAndRender();
-    });
-    calculateBtn.addEventListener('click', computeAndRender);
-    resetBtn.addEventListener('click', ()=>{
-      // Reset global
-      $('input#unitImperial').checked = true;
-      state.unit = 'imperial';
-      coverageInput.value = 350;
-      porosityInput.value = 100;
-      wallCoatsInput.value = 2;
-      ceilingCoatsInput.value = 1;
-      trimCoatsInput.value = 1;
-      doorAreaInput.value = 21;
-      windowAreaInput.value = 15;
-      trimWidthInput.value = 3.5;
-      priceQuart.value = '';
-      priceGallon.value = '';
-      priceFive.value = '';
-      updateUnitSuffixes();
-      // Reset rooms
-      state.rooms = [];
-      state.nextRoomId = 1;
-      createRoom();
-      computeAndRender();
-    });
-
-    // Global field validation on blur
-    [coverageInput, porosityInput, wallCoatsInput, ceilingCoatsInput, trimCoatsInput].forEach(inp=>{
-      inp.addEventListener('blur', ()=> validateField(inp));
-      inp.addEventListener('input', computeAndRenderDebounced);
-    });
-    [doorAreaInput, windowAreaInput, trimWidthInput].forEach(inp=>{
-      inp.addEventListener('input', computeAndRenderDebounced);
-    });
-    [priceQuart, priceGallon, priceFive].forEach(inp=>{
-      inp.addEventListener('input', computeAndRenderDebounced);
-    });
-
-    // Init
-    createRoom();
-    updateUnitSuffixes();
-    computeAndRender();
-
-    // Review date iso
-    const reviewDate = document.getElementById('reviewDate');
-    if(reviewDate){
-      const iso = '2025-09-15';
-      reviewDate.setAttribute('datetime', iso);
-      reviewDate.textContent = new Date(iso+'T00:00:00Z').toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'});
-    }
-
-    // Helpers
-    function escapeHtml(str){
-      return String(str).replace(/[&<>"']/g, s=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[s]));
-    }
-  })();
-  </script>
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -5534,12 +4549,7 @@ Home / <a href="https://calcdomain.com/construction-diy">Construction</a> / Fram
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main id="main-content">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main id="main-content">
 <div class="container">
 <nav aria-label="Breadcrumb" class="breadcrumb">
 Home / <a href="https://calcdomain.com/construction-diy">Construction</a> / Framing &amp; Roofing / Paint Calculator
@@ -5685,7 +4695,7 @@ Home / <a href="https://calcdomain.com/construction-diy">Construction</a> / Fram
 </div>
 <div class="inline-controls" style="margin-top:1rem">
 <button aria-label="Calculate paint need" class="btn" id="calculateBtn" type="button">Calculate</button>
-<button aria-label="Reset all fields" class="btn ghost" id="resetBtn" type="button">Reset</button>
+<button aria-label="Reset all fields" class="btn ghost" id="resetBtn__dup3" type="button">Reset</button>
 </div>
 </section>
 </aside>
@@ -7603,9 +6613,48 @@ Home / <a href="https://calcdomain.com/construction-diy">Construction</a> / Fram
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
   (function(){
     'use strict';
 
@@ -8097,6 +7146,988 @@ Home / <a href="https://calcdomain.com/construction-diy">Construction</a> / Fram
       return String(str).replace(/[&<>"']/g, s=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[s]));
     }
   })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+  (function(){
+    'use strict';
 
-</body></html>
+    // Utilities
+    const $ = (sel, ctx=document) => ctx.querySelector(sel);
+    const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+    const clamp = (v,min,max) => Math.max(min, Math.min(max, v));
+    const toNumber = v => (typeof v === 'number') ? v : parseFloat(String(v).replace(/,/g,'')) || 0;
+    const round2 = v => Math.round(v*100)/100;
+
+    // State
+    const state = {
+      unit: 'imperial', // 'imperial' or 'metric'
+      rooms: [],
+      nextRoomId: 1
+    };
+
+    // Elements
+    const roomsContainer = $('#roomsContainer');
+    const addRoomBtn = $('#addRoomBtn');
+    const coverageInput = $('#coverageInput');
+    const porosityInput = $('#porosity');
+    const wallCoatsInput = $('#wallCoats');
+    const ceilingCoatsInput = $('#ceilingCoats');
+    const trimCoatsInput = $('#trimCoats');
+    const doorAreaInput = $('#doorArea');
+    const windowAreaInput = $('#windowArea');
+    const trimWidthInput = $('#trimWidth');
+    const calculateBtn = $('#calculateBtn');
+    const resetBtn = $('#resetBtn');
+
+    const priceQuart = $('#priceQuart');
+    const priceGallon = $('#priceGallon');
+    const priceFive = $('#priceFiveGallon');
+
+    // Results
+    const totalAreaEqEl = $('#totalAreaEq');
+    const totalGallonsEl = $('#totalGallons');
+    const effectiveCoverageEl = $('#effectiveCoverage');
+    const wallsBreakdownEl = $('#wallsBreakdown');
+    const ceilingsBreakdownEl = $('#ceilingsBreakdown');
+    const trimBreakdownEl = $('#trimBreakdown');
+    const canRecommendationEl = $('#canRecommendation');
+    const costEstimateEl = $('#costEstimate');
+
+    const unitRadios = $$('input[name="unitSystem"]');
+    const suffixCoverage = $('#cov-suf');
+    const suffixDoor = $('#door-suf');
+    const suffixWindow = $('#win-suf');
+    const suffixTrim = $('#trim-suf');
+
+    // Accessible tooltips
+    $$('.toggle-help').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        const id = btn.getAttribute('aria-controls');
+        const tip = document.getElementById(id);
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        tip.setAttribute('aria-hidden', String(expanded));
+      });
+      btn.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter' || e.key === ' '){
+          e.preventDefault();
+          btn.click();
+        }
+      });
+    });
+
+    // Create Room UI
+    function createRoom(){
+      const id = state.nextRoomId++;
+      const room = {
+        id, name: `Room ${id}`,
+        length: 12, width: 12, height: 8,
+        doors: 1, windows: 1,
+        includeCeiling: true,
+        trimLength: 0,
+        extraOpening: 0,
+        collapsed: false
+      };
+      state.rooms.push(room);
+      renderRooms();
+      return room;
+    }
+
+    function renderRooms(){
+      roomsContainer.innerHTML = '';
+      state.rooms.forEach(room=>{
+        const roomEl = document.createElement('div');
+        roomEl.className = 'room';
+        roomEl.setAttribute('data-id', room.id);
+
+        roomEl.innerHTML = `
+          <div class="room-header">
+            <div class="room-title" aria-live="polite">${escapeHtml(room.name)}</div>
+            <div class="room-actions">
+              <button type="button" class="btn collapse-btn" aria-expanded="${!room.collapsed}" aria-controls="room-${room.id}-body">${room.collapsed ? 'Expand' : 'Collapse'}</button>
+              <button type="button" class="btn remove-btn" aria-label="Remove ${escapeHtml(room.name)}">Remove</button>
+            </div>
+          </div>
+
+          <div id="room-${room.id}-body" ${room.collapsed ? 'hidden' : ''}>
+            <div class="form-group">
+              <label for="room-name-${room.id}">Room name</label>
+              <input id="room-name-${room.id}" class="form-control" type="text" value="${escapeHtml(room.name)}">
+            </div>
+
+            <div class="grid grid-3">
+              <div class="form-group">
+                <label for="len-${room.id}">Length<span class="required" aria-hidden="true">*</span></label>
+                <div class="input-wrap">
+                  <input id="len-${room.id}" class="form-control room-field" data-field="length" type="number" min="0.1" step="0.01" value="${room.length}" aria-required="true" aria-describedby="len-err-${room.id} len-suf-${room.id}">
+                  <span id="len-suf-${room.id}" class="suffix">${state.unit === 'imperial' ? 'ft' : 'm'}</span>
+                </div>
+                <div id="len-err-${room.id}" class="error-text" role="alert" aria-live="polite"></div>
+              </div>
+              <div class="form-group">
+                <label for="wid-${room.id}">Width<span class="required" aria-hidden="true">*</span></label>
+                <div class="input-wrap">
+                  <input id="wid-${room.id}" class="form-control room-field" data-field="width" type="number" min="0.1" step="0.01" value="${room.width}" aria-required="true" aria-describedby="wid-err-${room.id} wid-suf-${room.id}">
+                  <span id="wid-suf-${room.id}" class="suffix">${state.unit === 'imperial' ? 'ft' : 'm'}</span>
+                </div>
+                <div id="wid-err-${room.id}" class="error-text" role="alert" aria-live="polite"></div>
+              </div>
+              <div class="form-group">
+                <label for="hei-${room.id}">Height<span class="required" aria-hidden="true">*</span></label>
+                <div class="input-wrap">
+                  <input id="hei-${room.id}" class="form-control room-field" data-field="height" type="number" min="0.1" step="0.01" value="${room.height}" aria-required="true" aria-describedby="hei-err-${room.id} hei-suf-${room.id}">
+                  <span id="hei-suf-${room.id}" class="suffix">${state.unit === 'imperial' ? 'ft' : 'm'}</span>
+                </div>
+                <div id="hei-err-${room.id}" class="error-text" role="alert" aria-live="polite"></div>
+              </div>
+            </div>
+
+            <div class="grid grid-3">
+              <div class="form-group">
+                <label for="doors-${room.id}">Doors</label>
+                <input id="doors-${room.id}" class="form-control room-field" data-field="doors" type="number" min="0" step="1" value="${room.doors}" aria-describedby="doors-err-${room.id}">
+                <div id="doors-err-${room.id}" class="error-text" role="alert" aria-live="polite"></div>
+              </div>
+              <div class="form-group">
+                <label for="windows-${room.id}">Windows</label>
+                <input id="windows-${room.id}" class="form-control room-field" data-field="windows" type="number" min="0" step="1" value="${room.windows}" aria-describedby="windows-err-${room.id}">
+                <div id="windows-err-${room.id}" class="error-text" role="alert" aria-live="polite"></div>
+              </div>
+              <div class="form-group">
+                <label for="extra-${room.id}">Extra opening area</label>
+                <div class="input-wrap">
+                  <input id="extra-${room.id}" class="form-control room-field" data-field="extraOpening" type="number" min="0" step="0.1" value="${room.extraOpening}" aria-describedby="extra-suf-${room.id}">
+                  <span id="extra-suf-${room.id}" class="suffix">${state.unit === 'imperial' ? 'sq ft' : 'm²'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-3">
+              <div class="form-group">
+                <label for="trim-${room.id}">Trim length</label>
+                <div class="input-wrap">
+                  <input id="trim-${room.id}" class="form-control room-field" data-field="trimLength" type="number" min="0" step="0.1" value="${room.trimLength}">
+                  <span class="suffix">${state.unit === 'imperial' ? 'ft' : 'm'}</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="ceiling-${room.id}">Include ceiling</label>
+                <div class="radio-chip-group">
+                  <div class="radio-chip">
+                    <input type="radio" id="ceiling-yes-${room.id}" name="ceiling-${room.id}" value="yes" ${room.includeCeiling ? 'checked' : ''}>
+                    <label for="ceiling-yes-${room.id}">Yes</label>
+                  </div>
+                  <div class="radio-chip">
+                    <input type="radio" id="ceiling-no-${room.id}" name="ceiling-${room.id}" value="no" ${room.includeCeiling ? '' : 'checked'}>
+                    <label for="ceiling-no-${room.id}">No</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        // Events
+        roomEl.querySelector('.collapse-btn').addEventListener('click', ()=>{
+          room.collapsed = !room.collapsed;
+          renderRooms();
+        });
+        roomEl.querySelector('.remove-btn').addEventListener('click', ()=>{
+          state.rooms = state.rooms.filter(r=>r.id !== room.id);
+          renderRooms();
+          computeAndRender();
+        });
+        roomEl.querySelector(`#room-name-${room.id}`).addEventListener('input', (e)=>{
+          room.name = e.target.value || `Room ${room.id}`;
+          roomEl.querySelector('.room-title').textContent = room.name;
+        });
+
+        // Room field handling
+        roomEl.querySelectorAll('.room-field').forEach(inp=>{
+          inp.addEventListener('blur', ()=> validateField(inp));
+          inp.addEventListener('input', ()=>{
+            const f = inp.getAttribute('data-field');
+            let val = toNumber(inp.value);
+            if(['length','width','height'].includes(f) && val <= 0){ /* validation later */ }
+            if(['doors','windows'].includes(f)){ val = Math.max(0, Math.floor(val)); inp.value = val; }
+            room[f] = val;
+            computeAndRenderDebounced();
+          });
+        });
+
+        // Ceiling toggle
+        roomEl.querySelector(`#ceiling-yes-${room.id}`).addEventListener('change', (e)=>{
+          room.includeCeiling = true; computeAndRenderDebounced();
+        });
+        roomEl.querySelector(`#ceiling-no-${room.id}`).addEventListener('change', (e)=>{
+          room.includeCeiling = false; computeAndRenderDebounced();
+        });
+
+        roomsContainer.appendChild(roomEl);
+      });
+    }
+
+    function validateField(input){
+      const val = toNumber(input.value);
+      const id = input.id;
+      const errEl = document.getElementById(id.replace(/^(.+?)(?=-|$)/,'$&') + '-err-' + (id.split('-').pop()));
+      // For global fields we may not have the same pattern; skip error mapping if not found
+      let errorTarget = null;
+      if (!errEl && input.getAttribute('aria-describedby')){
+        const ids = input.getAttribute('aria-describedby').split(' ');
+        errorTarget = ids.map(i=>document.getElementById(i)).find(el=>el && el.classList.contains('error-text'));
+      } else {
+        errorTarget = errEl;
+      }
+      let msg = '';
+      if(input.hasAttribute('aria-required') && (isNaN(val) || val <= 0)){
+        msg = 'Please enter a value greater than 0.';
+      }
+      if(input.id.startsWith('doors') || input.id.startsWith('windows')){
+        if(val < 0 || !Number.isFinite(val)) msg = 'Please enter a non-negative whole number.';
+      }
+      input.setAttribute('aria-invalid', msg ? 'true' : 'false');
+      if(errorTarget){ errorTarget.textContent = msg; }
+    }
+
+    // Unit handling
+    unitRadios.forEach(r=>{
+      r.addEventListener('change', ()=>{
+        state.unit = r.value;
+        updateUnitSuffixes();
+        computeAndRender();
+      });
+    });
+
+    function updateUnitSuffixes(){
+      if(state.unit === 'imperial'){
+        suffixCoverage.textContent = 'sq ft / gallon';
+        suffixDoor.textContent = 'sq ft';
+        suffixWindow.textContent = 'sq ft';
+        suffixTrim.textContent = 'inches';
+        // Update room field suffixes dynamically
+      }else{
+        suffixCoverage.textContent = 'm² / liter';
+        suffixDoor.textContent = 'm²';
+        suffixWindow.textContent = 'm²';
+        suffixTrim.textContent = 'cm';
+      }
+      // Re-render rooms to update inline suffixes
+      renderRooms();
+    }
+
+    // Coverage conversion
+    // Returns effective coverage in sq ft per gallon
+    function getEffectiveCoverageSqFtPerGallon(){
+      const cov = Math.max(1, toNumber(coverageInput.value));
+      const s = clamp(toNumber(porosityInput.value) || 100, 50, 150);
+      const base = (state.unit === 'imperial')
+        ? cov // sq ft per gallon
+        : cov * 10.76391041671 * 3.785411784; // m²/L -> sq ft/gal
+      const eff = base * (s/100);
+      return eff;
+    }
+
+    function roomAreasSqFt(room){
+      // convert inputs to feet
+      const toFeet = (v) => state.unit === 'imperial' ? v : v * 3.280839895;
+      const toSqFt = (v) => state.unit === 'imperial' ? v : v * 10.76391041671;
+
+      const L = Math.max(0, toFeet(room.length));
+      const W = Math.max(0, toFeet(room.width));
+      const H = Math.max(0, toFeet(room.height));
+
+      const Adoor = state.unit === 'imperial' ? Math.max(0, toNumber(doorAreaInput.value)) : toSqFt(toNumber(doorAreaInput.value));
+      const Awin  = state.unit === 'imperial' ? Math.max(0, toNumber(windowAreaInput.value)) : toSqFt(toNumber(windowAreaInput.value));
+      const Aextra = state.unit === 'imperial' ? Math.max(0, toNumber(room.extraOpening)) : toSqFt(Math.max(0, toNumber(room.extraOpening)));
+
+      let walls = 2*(L+W)*H - Math.max(0, Math.floor(room.doors))*Adoor - Math.max(0, Math.floor(room.windows))*Awin - Aextra;
+      walls = Math.max(0, walls);
+
+      let ceiling = room.includeCeiling ? (L*W) : 0;
+
+      // Trim area: length * width
+      // Input: length in ft/m; width in inches/cm defaults global
+      const trimLen = state.unit === 'imperial' ? toNumber(room.trimLength) : toNumber(room.trimLength) * 3.280839895;
+      const trimWidth = state.unit === 'imperial' ? toNumber(trimWidthInput.value)/12 : (toNumber(trimWidthInput.value)/100) * 3.280839895; // convert inches->ft OR cm->m->ft
+      let trim = Math.max(0, trimLen * Math.max(0, trimWidth)); // in square feet already
+
+      return {walls, ceiling, trim};
+    }
+
+    function computeTotals(){
+      const effCov = getEffectiveCoverageSqFtPerGallon(); // sq ft per gallon
+      const cw = Math.max(0, Math.floor(toNumber(wallCoatsInput.value)));
+      const cc = Math.max(0, Math.floor(toNumber(ceilingCoatsInput.value)));
+      const ct = Math.max(0, Math.floor(toNumber(trimCoatsInput.value)));
+
+      let wallsArea = 0, ceilingArea = 0, trimArea = 0;
+      state.rooms.forEach(r=>{
+        const a = roomAreasSqFt(r);
+        wallsArea += a.walls;
+        ceilingArea += a.ceiling;
+        trimArea += a.trim;
+      });
+
+      const eqArea = wallsArea*cw + ceilingArea*cc + trimArea*ct; // sq ft-coats
+      const totalGallons = effCov > 0 ? (eqArea / effCov) : 0;
+
+      // Breakdown per type (gallons)
+      const wallsGal = effCov > 0 ? (wallsArea*cw / effCov) : 0;
+      const ceilGal  = effCov > 0 ? (ceilingArea*cc / effCov) : 0;
+      const trimGal  = effCov > 0 ? (trimArea*ct / effCov) : 0;
+
+      return {
+        effCov, eqArea, totalGallons, wallsGal, ceilGal, trimGal,
+        wallsArea, ceilingArea, trimArea, coats: {cw, cc, ct}
+      };
+    }
+
+    function gallonsToLiters(gal){ return gal * 3.785411784; }
+
+    // Can optimization (5, 1, 0.25 gal)
+    function optimizeCans(requiredGallons){
+      if(requiredGallons <= 0) return {five:0, one:0, quart:0, overage:0};
+      const maxFive = Math.ceil(requiredGallons / 5);
+      let best = null;
+
+      for(let f = 0; f <= maxFive; f++){
+        const remainingAfterFive = Math.max(0, requiredGallons - 5*f);
+        const maxOne = Math.ceil(remainingAfterFive);
+        for(let o = 0; o <= maxOne + 1; o++){
+          let remaining = Math.max(0, requiredGallons - (5*f + 1*o));
+          // quarts 0..3
+          for(let q = 0; q <= 3; q++){
+            const total = 5*f + 1*o + 0.25*q;
+            if(total < requiredGallons) continue;
+            const over = round2(total - requiredGallons);
+            const cans = f + o + q;
+            const cost = estimateCost({five:f, one:o, quart:q});
+            const candidate = {five:f, one:o, quart:q, overage:over, cans, cost};
+            if(!best){
+              best = candidate;
+            }else{
+              // Prefer minimal overage, then minimal cost if provided, then fewer cans
+              if(over < best.overage
+                || (over === best.overage && cost != null && best.cost != null && cost < best.cost)
+                || (over === best.overage && (cost == null || best.cost == null) && cans < best.cans)
+                || (over === best.overage && cost != null && best.cost == null)
+              ){
+                best = candidate;
+              }
+            }
+          }
+        }
+      }
+      return best || {five:0, one:Math.ceil(requiredGallons), quart:0, overage:round2(Math.ceil(requiredGallons)-requiredGallons)};
+    }
+
+    function estimateCost(cans){
+      const pq = toNumber(priceQuart.value);
+      const pg = toNumber(priceGallon.value);
+      const p5 = toNumber(priceFive.value);
+      const hasAny = pq>0 || pg>0 || p5>0;
+      if(!hasAny) return null;
+      const qCost = pq>0 ? pq*cans.quart : 0;
+      const gCost = pg>0 ? pg*cans.one : 0;
+      const fCost = p5>0 ? p5*cans.five : 0;
+      // If some prices missing, assume proportional where needed
+      const fallbackPg = (pg>0) ? pg : (p5>0 ? (p5/5) : (pq>0 ? pq*4 : 0));
+      const fallbackPq = (pq>0) ? pq : (fallbackPg/4);
+      const fallbackP5 = (p5>0) ? p5 : (fallbackPg*5*0.95); // small bulk discount assumption
+      const cost = (pq>0 ? 0 : fallbackPq*cans.quart)
+                 + (pg>0 ? 0 : fallbackPg*cans.one)
+                 + (p5>0 ? 0 : fallbackP5*cans.five)
+                 + qCost + gCost + fCost;
+      return round2(cost);
+    }
+
+    // Rendering results
+    function computeAndRender(){
+      // Validate critical fields
+      [coverageInput, porosityInput, wallCoatsInput, ceilingCoatsInput, trimCoatsInput].forEach(validateField);
+
+      const totals = computeTotals();
+      const effCov = round2(totals.effCov);
+      const gallons = round2(totals.totalGallons);
+      const liters = round2(gallonsToLiters(gallons));
+
+      effectiveCoverageEl.textContent = isFinite(effCov) ? `${effCov} sq ft/gal` : '—';
+      totalAreaEqEl.textContent = `${round2(totals.eqArea)} sq ft-coats`;
+      totalGallonsEl.textContent = `${gallons.toFixed(2)} gal (${liters.toFixed(2)} L)`;
+      wallsBreakdownEl.textContent = `${round2(totals.wallsGal).toFixed(2)} gal`;
+      ceilingsBreakdownEl.textContent = `${round2(totals.ceilGal).toFixed(2)} gal`;
+      trimBreakdownEl.textContent = `${round2(totals.trimGal).toFixed(2)} gal`;
+
+      const rec = optimizeCans(totals.totalGallons);
+      if(rec){
+        const totalProvided = 5*rec.five + 1*rec.one + 0.25*rec.quart;
+        canRecommendationEl.textContent = `${rec.five}×5 gal, ${rec.one}×1 gal, ${rec.quart}×1 qt (total ${round2(totalProvided)} gal, overage ${rec.overage} gal)`;
+        const cost = estimateCost(rec);
+        costEstimateEl.textContent = cost != null ? `$${cost.toFixed(2)} (est.)` : 'Add can prices to estimate';
+      }else{
+        canRecommendationEl.textContent = '—';
+        costEstimateEl.textContent = '—';
+      }
+    }
+    const computeAndRenderDebounced = debounce(computeAndRender, 60);
+
+    function debounce(fn, ms){
+      let t=0;
+      return function(...args){
+        clearTimeout(t);
+        t = setTimeout(()=>fn.apply(this,args), ms);
+      }
+    }
+
+    // Buttons
+    addRoomBtn.addEventListener('click', ()=>{
+      createRoom();
+      computeAndRender();
+    });
+    calculateBtn.addEventListener('click', computeAndRender);
+    resetBtn.addEventListener('click', ()=>{
+      // Reset global
+      $('input#unitImperial').checked = true;
+      state.unit = 'imperial';
+      coverageInput.value = 350;
+      porosityInput.value = 100;
+      wallCoatsInput.value = 2;
+      ceilingCoatsInput.value = 1;
+      trimCoatsInput.value = 1;
+      doorAreaInput.value = 21;
+      windowAreaInput.value = 15;
+      trimWidthInput.value = 3.5;
+      priceQuart.value = '';
+      priceGallon.value = '';
+      priceFive.value = '';
+      updateUnitSuffixes();
+      // Reset rooms
+      state.rooms = [];
+      state.nextRoomId = 1;
+      createRoom();
+      computeAndRender();
+    });
+
+    // Global field validation on blur
+    [coverageInput, porosityInput, wallCoatsInput, ceilingCoatsInput, trimCoatsInput].forEach(inp=>{
+      inp.addEventListener('blur', ()=> validateField(inp));
+      inp.addEventListener('input', computeAndRenderDebounced);
+    });
+    [doorAreaInput, windowAreaInput, trimWidthInput].forEach(inp=>{
+      inp.addEventListener('input', computeAndRenderDebounced);
+    });
+    [priceQuart, priceGallon, priceFive].forEach(inp=>{
+      inp.addEventListener('input', computeAndRenderDebounced);
+    });
+
+    // Init
+    createRoom();
+    updateUnitSuffixes();
+    computeAndRender();
+
+    // Review date iso
+    const reviewDate = document.getElementById('reviewDate');
+    if(reviewDate){
+      const iso = '2025-09-15';
+      reviewDate.setAttribute('datetime', iso);
+      reviewDate.textContent = new Date(iso+'T00:00:00Z').toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'});
+    }
+
+    // Helpers
+    function escapeHtml(str){
+      return String(str).replace(/[&<>"']/g, s=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[s]));
+    }
+  })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+  (function(){
+    'use strict';
+
+    // Utilities
+    const $ = (sel, ctx=document) => ctx.querySelector(sel);
+    const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+    const clamp = (v,min,max) => Math.max(min, Math.min(max, v));
+    const toNumber = v => (typeof v === 'number') ? v : parseFloat(String(v).replace(/,/g,'')) || 0;
+    const round2 = v => Math.round(v*100)/100;
+
+    // State
+    const state = {
+      unit: 'imperial', // 'imperial' or 'metric'
+      rooms: [],
+      nextRoomId: 1
+    };
+
+    // Elements
+    const roomsContainer = $('#roomsContainer');
+    const addRoomBtn = $('#addRoomBtn');
+    const coverageInput = $('#coverageInput');
+    const porosityInput = $('#porosity');
+    const wallCoatsInput = $('#wallCoats');
+    const ceilingCoatsInput = $('#ceilingCoats');
+    const trimCoatsInput = $('#trimCoats');
+    const doorAreaInput = $('#doorArea');
+    const windowAreaInput = $('#windowArea');
+    const trimWidthInput = $('#trimWidth');
+    const calculateBtn = $('#calculateBtn');
+    const resetBtn = $('#resetBtn');
+
+    const priceQuart = $('#priceQuart');
+    const priceGallon = $('#priceGallon');
+    const priceFive = $('#priceFiveGallon');
+
+    // Results
+    const totalAreaEqEl = $('#totalAreaEq');
+    const totalGallonsEl = $('#totalGallons');
+    const effectiveCoverageEl = $('#effectiveCoverage');
+    const wallsBreakdownEl = $('#wallsBreakdown');
+    const ceilingsBreakdownEl = $('#ceilingsBreakdown');
+    const trimBreakdownEl = $('#trimBreakdown');
+    const canRecommendationEl = $('#canRecommendation');
+    const costEstimateEl = $('#costEstimate');
+
+    const unitRadios = $$('input[name="unitSystem"]');
+    const suffixCoverage = $('#cov-suf');
+    const suffixDoor = $('#door-suf');
+    const suffixWindow = $('#win-suf');
+    const suffixTrim = $('#trim-suf');
+
+    // Accessible tooltips
+    $$('.toggle-help').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        const id = btn.getAttribute('aria-controls');
+        const tip = document.getElementById(id);
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        tip.setAttribute('aria-hidden', String(expanded));
+      });
+      btn.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter' || e.key === ' '){
+          e.preventDefault();
+          btn.click();
+        }
+      });
+    });
+
+    // Create Room UI
+    function createRoom(){
+      const id = state.nextRoomId++;
+      const room = {
+        id, name: `Room ${id}`,
+        length: 12, width: 12, height: 8,
+        doors: 1, windows: 1,
+        includeCeiling: true,
+        trimLength: 0,
+        extraOpening: 0,
+        collapsed: false
+      };
+      state.rooms.push(room);
+      renderRooms();
+      return room;
+    }
+
+    function renderRooms(){
+      roomsContainer.innerHTML = '';
+      state.rooms.forEach(room=>{
+        const roomEl = document.createElement('div');
+        roomEl.className = 'room';
+        roomEl.setAttribute('data-id', room.id);
+
+        roomEl.innerHTML = `
+          <div class="room-header">
+            <div class="room-title" aria-live="polite">${escapeHtml(room.name)}</div>
+            <div class="room-actions">
+              <button type="button" class="btn collapse-btn" aria-expanded="${!room.collapsed}" aria-controls="room-${room.id}-body">${room.collapsed ? 'Expand' : 'Collapse'}</button>
+              <button type="button" class="btn remove-btn" aria-label="Remove ${escapeHtml(room.name)}">Remove</button>
+            </div>
+          </div>
+
+          <div id="room-${room.id}-body" ${room.collapsed ? 'hidden' : ''}>
+            <div class="form-group">
+              <label for="room-name-${room.id}">Room name</label>
+              <input id="room-name-${room.id}" class="form-control" type="text" value="${escapeHtml(room.name)}">
+            </div>
+
+            <div class="grid grid-3">
+              <div class="form-group">
+                <label for="len-${room.id}">Length<span class="required" aria-hidden="true">*</span></label>
+                <div class="input-wrap">
+                  <input id="len-${room.id}" class="form-control room-field" data-field="length" type="number" min="0.1" step="0.01" value="${room.length}" aria-required="true" aria-describedby="len-err-${room.id} len-suf-${room.id}">
+                  <span id="len-suf-${room.id}" class="suffix">${state.unit === 'imperial' ? 'ft' : 'm'}</span>
+                </div>
+                <div id="len-err-${room.id}" class="error-text" role="alert" aria-live="polite"></div>
+              </div>
+              <div class="form-group">
+                <label for="wid-${room.id}">Width<span class="required" aria-hidden="true">*</span></label>
+                <div class="input-wrap">
+                  <input id="wid-${room.id}" class="form-control room-field" data-field="width" type="number" min="0.1" step="0.01" value="${room.width}" aria-required="true" aria-describedby="wid-err-${room.id} wid-suf-${room.id}">
+                  <span id="wid-suf-${room.id}" class="suffix">${state.unit === 'imperial' ? 'ft' : 'm'}</span>
+                </div>
+                <div id="wid-err-${room.id}" class="error-text" role="alert" aria-live="polite"></div>
+              </div>
+              <div class="form-group">
+                <label for="hei-${room.id}">Height<span class="required" aria-hidden="true">*</span></label>
+                <div class="input-wrap">
+                  <input id="hei-${room.id}" class="form-control room-field" data-field="height" type="number" min="0.1" step="0.01" value="${room.height}" aria-required="true" aria-describedby="hei-err-${room.id} hei-suf-${room.id}">
+                  <span id="hei-suf-${room.id}" class="suffix">${state.unit === 'imperial' ? 'ft' : 'm'}</span>
+                </div>
+                <div id="hei-err-${room.id}" class="error-text" role="alert" aria-live="polite"></div>
+              </div>
+            </div>
+
+            <div class="grid grid-3">
+              <div class="form-group">
+                <label for="doors-${room.id}">Doors</label>
+                <input id="doors-${room.id}" class="form-control room-field" data-field="doors" type="number" min="0" step="1" value="${room.doors}" aria-describedby="doors-err-${room.id}">
+                <div id="doors-err-${room.id}" class="error-text" role="alert" aria-live="polite"></div>
+              </div>
+              <div class="form-group">
+                <label for="windows-${room.id}">Windows</label>
+                <input id="windows-${room.id}" class="form-control room-field" data-field="windows" type="number" min="0" step="1" value="${room.windows}" aria-describedby="windows-err-${room.id}">
+                <div id="windows-err-${room.id}" class="error-text" role="alert" aria-live="polite"></div>
+              </div>
+              <div class="form-group">
+                <label for="extra-${room.id}">Extra opening area</label>
+                <div class="input-wrap">
+                  <input id="extra-${room.id}" class="form-control room-field" data-field="extraOpening" type="number" min="0" step="0.1" value="${room.extraOpening}" aria-describedby="extra-suf-${room.id}">
+                  <span id="extra-suf-${room.id}" class="suffix">${state.unit === 'imperial' ? 'sq ft' : 'm²'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-3">
+              <div class="form-group">
+                <label for="trim-${room.id}">Trim length</label>
+                <div class="input-wrap">
+                  <input id="trim-${room.id}" class="form-control room-field" data-field="trimLength" type="number" min="0" step="0.1" value="${room.trimLength}">
+                  <span class="suffix">${state.unit === 'imperial' ? 'ft' : 'm'}</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="ceiling-${room.id}">Include ceiling</label>
+                <div class="radio-chip-group">
+                  <div class="radio-chip">
+                    <input type="radio" id="ceiling-yes-${room.id}" name="ceiling-${room.id}" value="yes" ${room.includeCeiling ? 'checked' : ''}>
+                    <label for="ceiling-yes-${room.id}">Yes</label>
+                  </div>
+                  <div class="radio-chip">
+                    <input type="radio" id="ceiling-no-${room.id}" name="ceiling-${room.id}" value="no" ${room.includeCeiling ? '' : 'checked'}>
+                    <label for="ceiling-no-${room.id}">No</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        // Events
+        roomEl.querySelector('.collapse-btn').addEventListener('click', ()=>{
+          room.collapsed = !room.collapsed;
+          renderRooms();
+        });
+        roomEl.querySelector('.remove-btn').addEventListener('click', ()=>{
+          state.rooms = state.rooms.filter(r=>r.id !== room.id);
+          renderRooms();
+          computeAndRender();
+        });
+        roomEl.querySelector(`#room-name-${room.id}`).addEventListener('input', (e)=>{
+          room.name = e.target.value || `Room ${room.id}`;
+          roomEl.querySelector('.room-title').textContent = room.name;
+        });
+
+        // Room field handling
+        roomEl.querySelectorAll('.room-field').forEach(inp=>{
+          inp.addEventListener('blur', ()=> validateField(inp));
+          inp.addEventListener('input', ()=>{
+            const f = inp.getAttribute('data-field');
+            let val = toNumber(inp.value);
+            if(['length','width','height'].includes(f) && val <= 0){ /* validation later */ }
+            if(['doors','windows'].includes(f)){ val = Math.max(0, Math.floor(val)); inp.value = val; }
+            room[f] = val;
+            computeAndRenderDebounced();
+          });
+        });
+
+        // Ceiling toggle
+        roomEl.querySelector(`#ceiling-yes-${room.id}`).addEventListener('change', (e)=>{
+          room.includeCeiling = true; computeAndRenderDebounced();
+        });
+        roomEl.querySelector(`#ceiling-no-${room.id}`).addEventListener('change', (e)=>{
+          room.includeCeiling = false; computeAndRenderDebounced();
+        });
+
+        roomsContainer.appendChild(roomEl);
+      });
+    }
+
+    function validateField(input){
+      const val = toNumber(input.value);
+      const id = input.id;
+      const errEl = document.getElementById(id.replace(/^(.+?)(?=-|$)/,'$&') + '-err-' + (id.split('-').pop()));
+      // For global fields we may not have the same pattern; skip error mapping if not found
+      let errorTarget = null;
+      if (!errEl && input.getAttribute('aria-describedby')){
+        const ids = input.getAttribute('aria-describedby').split(' ');
+        errorTarget = ids.map(i=>document.getElementById(i)).find(el=>el && el.classList.contains('error-text'));
+      } else {
+        errorTarget = errEl;
+      }
+      let msg = '';
+      if(input.hasAttribute('aria-required') && (isNaN(val) || val <= 0)){
+        msg = 'Please enter a value greater than 0.';
+      }
+      if(input.id.startsWith('doors') || input.id.startsWith('windows')){
+        if(val < 0 || !Number.isFinite(val)) msg = 'Please enter a non-negative whole number.';
+      }
+      input.setAttribute('aria-invalid', msg ? 'true' : 'false');
+      if(errorTarget){ errorTarget.textContent = msg; }
+    }
+
+    // Unit handling
+    unitRadios.forEach(r=>{
+      r.addEventListener('change', ()=>{
+        state.unit = r.value;
+        updateUnitSuffixes();
+        computeAndRender();
+      });
+    });
+
+    function updateUnitSuffixes(){
+      if(state.unit === 'imperial'){
+        suffixCoverage.textContent = 'sq ft / gallon';
+        suffixDoor.textContent = 'sq ft';
+        suffixWindow.textContent = 'sq ft';
+        suffixTrim.textContent = 'inches';
+        // Update room field suffixes dynamically
+      }else{
+        suffixCoverage.textContent = 'm² / liter';
+        suffixDoor.textContent = 'm²';
+        suffixWindow.textContent = 'm²';
+        suffixTrim.textContent = 'cm';
+      }
+      // Re-render rooms to update inline suffixes
+      renderRooms();
+    }
+
+    // Coverage conversion
+    // Returns effective coverage in sq ft per gallon
+    function getEffectiveCoverageSqFtPerGallon(){
+      const cov = Math.max(1, toNumber(coverageInput.value));
+      const s = clamp(toNumber(porosityInput.value) || 100, 50, 150);
+      const base = (state.unit === 'imperial')
+        ? cov // sq ft per gallon
+        : cov * 10.76391041671 * 3.785411784; // m²/L -> sq ft/gal
+      const eff = base * (s/100);
+      return eff;
+    }
+
+    function roomAreasSqFt(room){
+      // convert inputs to feet
+      const toFeet = (v) => state.unit === 'imperial' ? v : v * 3.280839895;
+      const toSqFt = (v) => state.unit === 'imperial' ? v : v * 10.76391041671;
+
+      const L = Math.max(0, toFeet(room.length));
+      const W = Math.max(0, toFeet(room.width));
+      const H = Math.max(0, toFeet(room.height));
+
+      const Adoor = state.unit === 'imperial' ? Math.max(0, toNumber(doorAreaInput.value)) : toSqFt(toNumber(doorAreaInput.value));
+      const Awin  = state.unit === 'imperial' ? Math.max(0, toNumber(windowAreaInput.value)) : toSqFt(toNumber(windowAreaInput.value));
+      const Aextra = state.unit === 'imperial' ? Math.max(0, toNumber(room.extraOpening)) : toSqFt(Math.max(0, toNumber(room.extraOpening)));
+
+      let walls = 2*(L+W)*H - Math.max(0, Math.floor(room.doors))*Adoor - Math.max(0, Math.floor(room.windows))*Awin - Aextra;
+      walls = Math.max(0, walls);
+
+      let ceiling = room.includeCeiling ? (L*W) : 0;
+
+      // Trim area: length * width
+      // Input: length in ft/m; width in inches/cm defaults global
+      const trimLen = state.unit === 'imperial' ? toNumber(room.trimLength) : toNumber(room.trimLength) * 3.280839895;
+      const trimWidth = state.unit === 'imperial' ? toNumber(trimWidthInput.value)/12 : (toNumber(trimWidthInput.value)/100) * 3.280839895; // convert inches->ft OR cm->m->ft
+      let trim = Math.max(0, trimLen * Math.max(0, trimWidth)); // in square feet already
+
+      return {walls, ceiling, trim};
+    }
+
+    function computeTotals(){
+      const effCov = getEffectiveCoverageSqFtPerGallon(); // sq ft per gallon
+      const cw = Math.max(0, Math.floor(toNumber(wallCoatsInput.value)));
+      const cc = Math.max(0, Math.floor(toNumber(ceilingCoatsInput.value)));
+      const ct = Math.max(0, Math.floor(toNumber(trimCoatsInput.value)));
+
+      let wallsArea = 0, ceilingArea = 0, trimArea = 0;
+      state.rooms.forEach(r=>{
+        const a = roomAreasSqFt(r);
+        wallsArea += a.walls;
+        ceilingArea += a.ceiling;
+        trimArea += a.trim;
+      });
+
+      const eqArea = wallsArea*cw + ceilingArea*cc + trimArea*ct; // sq ft-coats
+      const totalGallons = effCov > 0 ? (eqArea / effCov) : 0;
+
+      // Breakdown per type (gallons)
+      const wallsGal = effCov > 0 ? (wallsArea*cw / effCov) : 0;
+      const ceilGal  = effCov > 0 ? (ceilingArea*cc / effCov) : 0;
+      const trimGal  = effCov > 0 ? (trimArea*ct / effCov) : 0;
+
+      return {
+        effCov, eqArea, totalGallons, wallsGal, ceilGal, trimGal,
+        wallsArea, ceilingArea, trimArea, coats: {cw, cc, ct}
+      };
+    }
+
+    function gallonsToLiters(gal){ return gal * 3.785411784; }
+
+    // Can optimization (5, 1, 0.25 gal)
+    function optimizeCans(requiredGallons){
+      if(requiredGallons <= 0) return {five:0, one:0, quart:0, overage:0};
+      const maxFive = Math.ceil(requiredGallons / 5);
+      let best = null;
+
+      for(let f = 0; f <= maxFive; f++){
+        const remainingAfterFive = Math.max(0, requiredGallons - 5*f);
+        const maxOne = Math.ceil(remainingAfterFive);
+        for(let o = 0; o <= maxOne + 1; o++){
+          let remaining = Math.max(0, requiredGallons - (5*f + 1*o));
+          // quarts 0..3
+          for(let q = 0; q <= 3; q++){
+            const total = 5*f + 1*o + 0.25*q;
+            if(total < requiredGallons) continue;
+            const over = round2(total - requiredGallons);
+            const cans = f + o + q;
+            const cost = estimateCost({five:f, one:o, quart:q});
+            const candidate = {five:f, one:o, quart:q, overage:over, cans, cost};
+            if(!best){
+              best = candidate;
+            }else{
+              // Prefer minimal overage, then minimal cost if provided, then fewer cans
+              if(over < best.overage
+                || (over === best.overage && cost != null && best.cost != null && cost < best.cost)
+                || (over === best.overage && (cost == null || best.cost == null) && cans < best.cans)
+                || (over === best.overage && cost != null && best.cost == null)
+              ){
+                best = candidate;
+              }
+            }
+          }
+        }
+      }
+      return best || {five:0, one:Math.ceil(requiredGallons), quart:0, overage:round2(Math.ceil(requiredGallons)-requiredGallons)};
+    }
+
+    function estimateCost(cans){
+      const pq = toNumber(priceQuart.value);
+      const pg = toNumber(priceGallon.value);
+      const p5 = toNumber(priceFive.value);
+      const hasAny = pq>0 || pg>0 || p5>0;
+      if(!hasAny) return null;
+      const qCost = pq>0 ? pq*cans.quart : 0;
+      const gCost = pg>0 ? pg*cans.one : 0;
+      const fCost = p5>0 ? p5*cans.five : 0;
+      // If some prices missing, assume proportional where needed
+      const fallbackPg = (pg>0) ? pg : (p5>0 ? (p5/5) : (pq>0 ? pq*4 : 0));
+      const fallbackPq = (pq>0) ? pq : (fallbackPg/4);
+      const fallbackP5 = (p5>0) ? p5 : (fallbackPg*5*0.95); // small bulk discount assumption
+      const cost = (pq>0 ? 0 : fallbackPq*cans.quart)
+                 + (pg>0 ? 0 : fallbackPg*cans.one)
+                 + (p5>0 ? 0 : fallbackP5*cans.five)
+                 + qCost + gCost + fCost;
+      return round2(cost);
+    }
+
+    // Rendering results
+    function computeAndRender(){
+      // Validate critical fields
+      [coverageInput, porosityInput, wallCoatsInput, ceilingCoatsInput, trimCoatsInput].forEach(validateField);
+
+      const totals = computeTotals();
+      const effCov = round2(totals.effCov);
+      const gallons = round2(totals.totalGallons);
+      const liters = round2(gallonsToLiters(gallons));
+
+      effectiveCoverageEl.textContent = isFinite(effCov) ? `${effCov} sq ft/gal` : '—';
+      totalAreaEqEl.textContent = `${round2(totals.eqArea)} sq ft-coats`;
+      totalGallonsEl.textContent = `${gallons.toFixed(2)} gal (${liters.toFixed(2)} L)`;
+      wallsBreakdownEl.textContent = `${round2(totals.wallsGal).toFixed(2)} gal`;
+      ceilingsBreakdownEl.textContent = `${round2(totals.ceilGal).toFixed(2)} gal`;
+      trimBreakdownEl.textContent = `${round2(totals.trimGal).toFixed(2)} gal`;
+
+      const rec = optimizeCans(totals.totalGallons);
+      if(rec){
+        const totalProvided = 5*rec.five + 1*rec.one + 0.25*rec.quart;
+        canRecommendationEl.textContent = `${rec.five}×5 gal, ${rec.one}×1 gal, ${rec.quart}×1 qt (total ${round2(totalProvided)} gal, overage ${rec.overage} gal)`;
+        const cost = estimateCost(rec);
+        costEstimateEl.textContent = cost != null ? `$${cost.toFixed(2)} (est.)` : 'Add can prices to estimate';
+      }else{
+        canRecommendationEl.textContent = '—';
+        costEstimateEl.textContent = '—';
+      }
+    }
+    const computeAndRenderDebounced = debounce(computeAndRender, 60);
+
+    function debounce(fn, ms){
+      let t=0;
+      return function(...args){
+        clearTimeout(t);
+        t = setTimeout(()=>fn.apply(this,args), ms);
+      }
+    }
+
+    // Buttons
+    addRoomBtn.addEventListener('click', ()=>{
+      createRoom();
+      computeAndRender();
+    });
+    calculateBtn.addEventListener('click', computeAndRender);
+    resetBtn.addEventListener('click', ()=>{
+      // Reset global
+      $('input#unitImperial').checked = true;
+      state.unit = 'imperial';
+      coverageInput.value = 350;
+      porosityInput.value = 100;
+      wallCoatsInput.value = 2;
+      ceilingCoatsInput.value = 1;
+      trimCoatsInput.value = 1;
+      doorAreaInput.value = 21;
+      windowAreaInput.value = 15;
+      trimWidthInput.value = 3.5;
+      priceQuart.value = '';
+      priceGallon.value = '';
+      priceFive.value = '';
+      updateUnitSuffixes();
+      // Reset rooms
+      state.rooms = [];
+      state.nextRoomId = 1;
+      createRoom();
+      computeAndRender();
+    });
+
+    // Global field validation on blur
+    [coverageInput, porosityInput, wallCoatsInput, ceilingCoatsInput, trimCoatsInput].forEach(inp=>{
+      inp.addEventListener('blur', ()=> validateField(inp));
+      inp.addEventListener('input', computeAndRenderDebounced);
+    });
+    [doorAreaInput, windowAreaInput, trimWidthInput].forEach(inp=>{
+      inp.addEventListener('input', computeAndRenderDebounced);
+    });
+    [priceQuart, priceGallon, priceFive].forEach(inp=>{
+      inp.addEventListener('input', computeAndRenderDebounced);
+    });
+
+    // Init
+    createRoom();
+    updateUnitSuffixes();
+    computeAndRender();
+
+    // Review date iso
+    const reviewDate = document.getElementById('reviewDate');
+    if(reviewDate){
+      const iso = '2025-09-15';
+      reviewDate.setAttribute('datetime', iso);
+      reviewDate.textContent = new Date(iso+'T00:00:00Z').toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'});
+    }
+
+    // Helpers
+    function escapeHtml(str){
+      return String(str).replace(/[&<>"']/g, s=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[s]));
+    }
+  })();
+  </script></body></html>

@@ -266,10 +266,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
@@ -336,12 +342,24 @@
 }
 </script>
 </head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">Louisiana State Income Tax Calculator</h1>
+    <p class="sub" id="pageSub">Use this Louisiana income tax calculator to estimate your 2024–2025 state income tax, effective and marginal rates. Mobile-first, WCAG 2.1 AA accessible tool with authoritative methodology.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<main class="main-content w-full lg:w-2/3" id="main-content">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main class="main-content w-full lg:w-2/3" id="main-content">
 <div class="container">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Louisiana State Income Tax Calculator</h1>
 <p>
         Quickly estimate your Louisiana state income tax, effective and marginal rates for the latest tax year. This tool is designed for residents and nonresidents with Louisiana-source income who want a clear, accurate, and accessible estimate of state tax owed using current brackets.
@@ -418,7 +436,7 @@
 <span class="input-hint">Tax year: 2024–2025 (current statutory rates and brackets)</span>
 </div>
 <div class="form-group" style="display:flex; gap:.5rem; flex-wrap:wrap">
-<button class="btn" id="resetBtn" type="button">Reset</button>
+<button class="btn btnSecondary" id="resetBtn" type="button">Reset</button>
 <button class="btn btn-primary" id="focusResultsBtn" type="button">View Results</button>
 </div>
 </section>
@@ -648,206 +666,19 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
+
+
 </main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
+</div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-      const $ = (sel, ctx=document) => ctx.querySelector(sel);
-      const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
-
-      // Elements
-      const grossEl = $('#grossIncome');
-      const adjEl = $('#adjustments');
-      const fedEl = $('#federalDeduction');
-      const filingStatusEls = $$('input[name="filingStatus"]');
-
-      const taxableEl = $('#taxableIncome');
-      const taxEl = $('#estimatedTax');
-      const effRateEl = $('#effectiveRate');
-      const margRateEl = $('#marginalRate');
-      const afterTaxEl = $('#afterTax');
-      const bracketSummaryEl = $('#bracketSummary');
-
-      const resetBtn = $('#resetBtn');
-      const focusResultsBtn = $('#focusResultsBtn');
-
-      // Tooltips
-      const tips = [
-        {btn:'#tip-gross-btn', panel:'#tip-gross'},
-        {btn:'#tip-adj-btn', panel:'#tip-adj'},
-        {btn:'#tip-fed-btn', panel:'#tip-fed'}
-      ];
-      tips.forEach(({btn, panel})=>{
-        const b = $(btn), p = $(panel);
-        if(!b || !p) return;
-        b.addEventListener('click', ()=>{
-          const expanded = b.getAttribute('aria-expanded') === 'true';
-          b.setAttribute('aria-expanded', String(!expanded));
-          p.dataset.open = String(!expanded);
-        });
-        b.addEventListener('keydown', (e)=>{
-          if(e.key === 'Escape'){
-            b.setAttribute('aria-expanded','false'); p.dataset.open='false';
-            b.focus();
-          }
-        });
-      });
-
-      // Validation helpers
-      function parseNum(el){
-        const v = el.value.trim();
-        if(v === '') return null;
-        const n = Number(v);
-        return Number.isFinite(n) ? n : NaN;
-      }
-      function setError(el, errId, msg){
-        const err = document.getElementById(errId);
-        if(msg){
-          el.setAttribute('aria-invalid','true');
-          err.textContent = msg;
-        } else {
-          el.removeAttribute('aria-invalid');
-          err.textContent = '';
-        }
-      }
-      function validateNumber(el, {required=false, min=0, label='This value'}){
-        const id = el.id + 'Error';
-        const val = parseNum(el);
-        if(required && (val === null || Number.isNaN(val))){
-          setError(el, id, `Please enter ${label}.`);
-          return null;
-        }
-        if(val === null) { setError(el, id, ''); return 0; }
-        if(Number.isNaN(val)){
-          setError(el, id, `Please enter a valid number for ${label}.`);
-          return null;
-        }
-        if(val < min){
-          setError(el, id, `${label} cannot be less than ${min}.`);
-          return null;
-        }
-        setError(el, id, '');
-        return val;
-      }
-
-      // Louisiana brackets configuration
-      function getBrackets(status){
-        // Rates are identical; thresholds differ for MFJ
-        if(status === 'mfj'){
-          return { b1: 25000, b2: 100000, r1: 0.0185, r2: 0.035, r3: 0.0425 };
-        }
-        // single and hoh
-        return { b1: 12500, b2: 50000, r1: 0.0185, r2: 0.035, r3: 0.0425 };
-      }
-
-      function formatCurrency(n){
-        return new Intl.NumberFormat('en-US', {style:'currency', currency:'USD', maximumFractionDigits:2}).format(n);
-      }
-      function formatPct(n){
-        return (n*100).toFixed(2) + '%';
-      }
-
-      function calculateTax(T, brackets){
-        const {b1,b2,r1,r2,r3} = brackets;
-        if(T <= 0) return { tax: 0, marginal: 0 };
-        let tax = 0, marginal = 0;
-        if(T <= b1){
-          tax = r1*T; marginal = r1;
-        } else if(T <= b2){
-          tax = r1*b1 + r2*(T - b1); marginal = r2;
-        } else {
-          tax = r1*b1 + r2*(b2 - b1) + r3*(T - b2); marginal = r3;
-        }
-        return { tax, marginal };
-      }
-
-      function updateBracketSummary(status){
-        const b = getBrackets(status);
-        bracketSummaryEl.textContent = `${(b.r1*100).toFixed(2)}% / ${(b.r2*100).toFixed(2)}% / ${(b.r3*100).toFixed(2)}%`;
-      }
-
-      function compute(){
-        const status = filingStatusEls.find(r=>r.checked)?.value || 'single';
-        updateBracketSummary(status);
-
-        const G = validateNumber(grossEl, {required:true, min:0, label:'Annual Gross Income'});
-        const A = validateNumber(adjEl, {required:false, min:0, label:'Adjustments/Subtractions'});
-        const F = validateNumber(fedEl, {required:false, min:0, label:'Federal Income Tax Deduction'});
-
-        if(G === null || A === null || F === null) {
-          // Invalid inputs present; do not compute
-          return;
-        }
-
-        const T = Math.max(0, G - A - F);
-        const brackets = getBrackets(status);
-        const { tax, marginal } = calculateTax(T, brackets);
-        const eff = G > 0 ? (tax / G) : 0;
-        const after = Math.max(0, G - tax);
-
-        taxableEl.textContent = formatCurrency(T);
-        taxEl.textContent = formatCurrency(tax);
-        effRateEl.textContent = formatPct(eff);
-        margRateEl.textContent = formatPct(marginal);
-        afterTaxEl.textContent = formatCurrency(after);
-      }
-
-      // Events
-      [grossEl, adjEl, fedEl].forEach(el=>{
-        el.addEventListener('blur', compute);
-        el.addEventListener('input', ()=>{ /* live update without spamming alerts */ compute(); });
-      });
-      filingStatusEls.forEach(r=>r.addEventListener('change', compute));
-
-      resetBtn.addEventListener('click', ()=>{
-        // Reset fields but keep filing status to Single
-        grossEl.value = '';
-        adjEl.value = '';
-        fedEl.value = '';
-        setError(grossEl, 'grossIncomeError', '');
-        setError(adjEl, 'adjustmentsError', '');
-        setError(fedEl, 'federalDeductionError', '');
-        $('#fs-single').checked = true;
-        // Close tooltips
-        tips.forEach(({btn, panel})=>{
-          const b=$(btn), p=$(panel);
-          b.setAttribute('aria-expanded','false'); p.dataset.open='false';
-        });
-        // Reset results
-        taxableEl.textContent = '$0.00';
-        taxEl.textContent = '$0.00';
-        effRateEl.textContent = '0.00%';
-        margRateEl.textContent = '0.00%';
-        afterTaxEl.textContent = '$0.00';
-        bracketSummaryEl.textContent = '1.85% / 3.50% / 4.25%';
-        grossEl.focus();
-      });
-
-      focusResultsBtn.addEventListener('click', ()=>{
-        compute();
-        // Move focus to results heading for screen reader announcement
-        $('#results-heading').setAttribute('tabindex','-1');
-        $('#results-heading').focus({preventScroll:true});
-        $('#results').scrollIntoView({behavior:'smooth', block:'start'});
-      });
-
-      // Initial compute
-      compute();
-    })();
-  </script>
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main-content">Skip to main content</a><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -879,41 +710,9 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "General",
-      "item": "https://calcdomain.com/categories/general"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Miscellaneous",
-      "item": "https://calcdomain.com/subcategories/miscellaneous"
-    }
-  ]
-}
-</script>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="main-content" id="main-content">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="main-content" id="main-content">
 <div class="container">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Louisiana State Income Tax Calculator</h1>
 <p>
         Quickly estimate your Louisiana state income tax, effective and marginal rates for the latest tax year. This tool is designed for residents and nonresidents with Louisiana-source income who want a clear, accurate, and accessible estimate of state tax owed using current brackets.
@@ -990,7 +789,7 @@
 <span class="input-hint">Tax year: 2024–2025 (current statutory rates and brackets)</span>
 </div>
 <div class="form-group" style="display:flex; gap:.5rem; flex-wrap:wrap">
-<button class="btn" id="resetBtn" type="button">Reset</button>
+<button class="btn" id="resetBtn__dup2" type="button">Reset</button>
 <button class="btn btn-primary" id="focusResultsBtn" type="button">View Results</button>
 </div>
 </section>
@@ -1220,206 +1019,7 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
-
-      const $ = (sel, ctx=document) => ctx.querySelector(sel);
-      const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
-
-      // Elements
-      const grossEl = $('#grossIncome');
-      const adjEl = $('#adjustments');
-      const fedEl = $('#federalDeduction');
-      const filingStatusEls = $$('input[name="filingStatus"]');
-
-      const taxableEl = $('#taxableIncome');
-      const taxEl = $('#estimatedTax');
-      const effRateEl = $('#effectiveRate');
-      const margRateEl = $('#marginalRate');
-      const afterTaxEl = $('#afterTax');
-      const bracketSummaryEl = $('#bracketSummary');
-
-      const resetBtn = $('#resetBtn');
-      const focusResultsBtn = $('#focusResultsBtn');
-
-      // Tooltips
-      const tips = [
-        {btn:'#tip-gross-btn', panel:'#tip-gross'},
-        {btn:'#tip-adj-btn', panel:'#tip-adj'},
-        {btn:'#tip-fed-btn', panel:'#tip-fed'}
-      ];
-      tips.forEach(({btn, panel})=>{
-        const b = $(btn), p = $(panel);
-        if(!b || !p) return;
-        b.addEventListener('click', ()=>{
-          const expanded = b.getAttribute('aria-expanded') === 'true';
-          b.setAttribute('aria-expanded', String(!expanded));
-          p.dataset.open = String(!expanded);
-        });
-        b.addEventListener('keydown', (e)=>{
-          if(e.key === 'Escape'){
-            b.setAttribute('aria-expanded','false'); p.dataset.open='false';
-            b.focus();
-          }
-        });
-      });
-
-      // Validation helpers
-      function parseNum(el){
-        const v = el.value.trim();
-        if(v === '') return null;
-        const n = Number(v);
-        return Number.isFinite(n) ? n : NaN;
-      }
-      function setError(el, errId, msg){
-        const err = document.getElementById(errId);
-        if(msg){
-          el.setAttribute('aria-invalid','true');
-          err.textContent = msg;
-        } else {
-          el.removeAttribute('aria-invalid');
-          err.textContent = '';
-        }
-      }
-      function validateNumber(el, {required=false, min=0, label='This value'}){
-        const id = el.id + 'Error';
-        const val = parseNum(el);
-        if(required && (val === null || Number.isNaN(val))){
-          setError(el, id, `Please enter ${label}.`);
-          return null;
-        }
-        if(val === null) { setError(el, id, ''); return 0; }
-        if(Number.isNaN(val)){
-          setError(el, id, `Please enter a valid number for ${label}.`);
-          return null;
-        }
-        if(val < min){
-          setError(el, id, `${label} cannot be less than ${min}.`);
-          return null;
-        }
-        setError(el, id, '');
-        return val;
-      }
-
-      // Louisiana brackets configuration
-      function getBrackets(status){
-        // Rates are identical; thresholds differ for MFJ
-        if(status === 'mfj'){
-          return { b1: 25000, b2: 100000, r1: 0.0185, r2: 0.035, r3: 0.0425 };
-        }
-        // single and hoh
-        return { b1: 12500, b2: 50000, r1: 0.0185, r2: 0.035, r3: 0.0425 };
-      }
-
-      function formatCurrency(n){
-        return new Intl.NumberFormat('en-US', {style:'currency', currency:'USD', maximumFractionDigits:2}).format(n);
-      }
-      function formatPct(n){
-        return (n*100).toFixed(2) + '%';
-      }
-
-      function calculateTax(T, brackets){
-        const {b1,b2,r1,r2,r3} = brackets;
-        if(T <= 0) return { tax: 0, marginal: 0 };
-        let tax = 0, marginal = 0;
-        if(T <= b1){
-          tax = r1*T; marginal = r1;
-        } else if(T <= b2){
-          tax = r1*b1 + r2*(T - b1); marginal = r2;
-        } else {
-          tax = r1*b1 + r2*(b2 - b1) + r3*(T - b2); marginal = r3;
-        }
-        return { tax, marginal };
-      }
-
-      function updateBracketSummary(status){
-        const b = getBrackets(status);
-        bracketSummaryEl.textContent = `${(b.r1*100).toFixed(2)}% / ${(b.r2*100).toFixed(2)}% / ${(b.r3*100).toFixed(2)}%`;
-      }
-
-      function compute(){
-        const status = filingStatusEls.find(r=>r.checked)?.value || 'single';
-        updateBracketSummary(status);
-
-        const G = validateNumber(grossEl, {required:true, min:0, label:'Annual Gross Income'});
-        const A = validateNumber(adjEl, {required:false, min:0, label:'Adjustments/Subtractions'});
-        const F = validateNumber(fedEl, {required:false, min:0, label:'Federal Income Tax Deduction'});
-
-        if(G === null || A === null || F === null) {
-          // Invalid inputs present; do not compute
-          return;
-        }
-
-        const T = Math.max(0, G - A - F);
-        const brackets = getBrackets(status);
-        const { tax, marginal } = calculateTax(T, brackets);
-        const eff = G > 0 ? (tax / G) : 0;
-        const after = Math.max(0, G - tax);
-
-        taxableEl.textContent = formatCurrency(T);
-        taxEl.textContent = formatCurrency(tax);
-        effRateEl.textContent = formatPct(eff);
-        margRateEl.textContent = formatPct(marginal);
-        afterTaxEl.textContent = formatCurrency(after);
-      }
-
-      // Events
-      [grossEl, adjEl, fedEl].forEach(el=>{
-        el.addEventListener('blur', compute);
-        el.addEventListener('input', ()=>{ /* live update without spamming alerts */ compute(); });
-      });
-      filingStatusEls.forEach(r=>r.addEventListener('change', compute));
-
-      resetBtn.addEventListener('click', ()=>{
-        // Reset fields but keep filing status to Single
-        grossEl.value = '';
-        adjEl.value = '';
-        fedEl.value = '';
-        setError(grossEl, 'grossIncomeError', '');
-        setError(adjEl, 'adjustmentsError', '');
-        setError(fedEl, 'federalDeductionError', '');
-        $('#fs-single').checked = true;
-        // Close tooltips
-        tips.forEach(({btn, panel})=>{
-          const b=$(btn), p=$(panel);
-          b.setAttribute('aria-expanded','false'); p.dataset.open='false';
-        });
-        // Reset results
-        taxableEl.textContent = '$0.00';
-        taxEl.textContent = '$0.00';
-        effRateEl.textContent = '0.00%';
-        margRateEl.textContent = '0.00%';
-        afterTaxEl.textContent = '$0.00';
-        bracketSummaryEl.textContent = '1.85% / 3.50% / 4.25%';
-        grossEl.focus();
-      });
-
-      focusResultsBtn.addEventListener('click', ()=>{
-        compute();
-        // Move focus to results heading for screen reader announcement
-        $('#results-heading').setAttribute('tabindex','-1');
-        $('#results-heading').focus({preventScroll:true});
-        $('#results').scrollIntoView({behavior:'smooth', block:'start'});
-      });
-
-      // Initial compute
-      compute();
-    })();
-  </script>
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1451,41 +1051,9 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "General",
-      "item": "https://calcdomain.com/categories/general"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Miscellaneous",
-      "item": "https://calcdomain.com/subcategories/miscellaneous"
-    }
-  ]
-}
-</script>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="main-content" id="main-content">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="main-content" id="main-content">
 <div class="container">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Louisiana State Income Tax Calculator</h1>
 <p>
         Quickly estimate your Louisiana state income tax, effective and marginal rates for the latest tax year. This tool is designed for residents and nonresidents with Louisiana-source income who want a clear, accurate, and accessible estimate of state tax owed using current brackets.
@@ -1562,7 +1130,7 @@
 <span class="input-hint">Tax year: 2024–2025 (current statutory rates and brackets)</span>
 </div>
 <div class="form-group" style="display:flex; gap:.5rem; flex-wrap:wrap">
-<button class="btn" id="resetBtn" type="button">Reset</button>
+<button class="btn" id="resetBtn__dup3" type="button">Reset</button>
 <button class="btn btn-primary" id="focusResultsBtn" type="button">View Results</button>
 </div>
 </section>
@@ -1792,9 +1360,48 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
     (function(){
       'use strict';
 
@@ -1980,6 +1587,426 @@
       // Initial compute
       compute();
     })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "General",
+      "item": "https://calcdomain.com/categories/general"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Miscellaneous",
+      "item": "https://calcdomain.com/subcategories/miscellaneous"
+    }
+  ]
+}
+</script><script defer="">
+    (function(){
+      'use strict';
 
-</body></html>
+      const $ = (sel, ctx=document) => ctx.querySelector(sel);
+      const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+
+      // Elements
+      const grossEl = $('#grossIncome');
+      const adjEl = $('#adjustments');
+      const fedEl = $('#federalDeduction');
+      const filingStatusEls = $$('input[name="filingStatus"]');
+
+      const taxableEl = $('#taxableIncome');
+      const taxEl = $('#estimatedTax');
+      const effRateEl = $('#effectiveRate');
+      const margRateEl = $('#marginalRate');
+      const afterTaxEl = $('#afterTax');
+      const bracketSummaryEl = $('#bracketSummary');
+
+      const resetBtn = $('#resetBtn');
+      const focusResultsBtn = $('#focusResultsBtn');
+
+      // Tooltips
+      const tips = [
+        {btn:'#tip-gross-btn', panel:'#tip-gross'},
+        {btn:'#tip-adj-btn', panel:'#tip-adj'},
+        {btn:'#tip-fed-btn', panel:'#tip-fed'}
+      ];
+      tips.forEach(({btn, panel})=>{
+        const b = $(btn), p = $(panel);
+        if(!b || !p) return;
+        b.addEventListener('click', ()=>{
+          const expanded = b.getAttribute('aria-expanded') === 'true';
+          b.setAttribute('aria-expanded', String(!expanded));
+          p.dataset.open = String(!expanded);
+        });
+        b.addEventListener('keydown', (e)=>{
+          if(e.key === 'Escape'){
+            b.setAttribute('aria-expanded','false'); p.dataset.open='false';
+            b.focus();
+          }
+        });
+      });
+
+      // Validation helpers
+      function parseNum(el){
+        const v = el.value.trim();
+        if(v === '') return null;
+        const n = Number(v);
+        return Number.isFinite(n) ? n : NaN;
+      }
+      function setError(el, errId, msg){
+        const err = document.getElementById(errId);
+        if(msg){
+          el.setAttribute('aria-invalid','true');
+          err.textContent = msg;
+        } else {
+          el.removeAttribute('aria-invalid');
+          err.textContent = '';
+        }
+      }
+      function validateNumber(el, {required=false, min=0, label='This value'}){
+        const id = el.id + 'Error';
+        const val = parseNum(el);
+        if(required && (val === null || Number.isNaN(val))){
+          setError(el, id, `Please enter ${label}.`);
+          return null;
+        }
+        if(val === null) { setError(el, id, ''); return 0; }
+        if(Number.isNaN(val)){
+          setError(el, id, `Please enter a valid number for ${label}.`);
+          return null;
+        }
+        if(val < min){
+          setError(el, id, `${label} cannot be less than ${min}.`);
+          return null;
+        }
+        setError(el, id, '');
+        return val;
+      }
+
+      // Louisiana brackets configuration
+      function getBrackets(status){
+        // Rates are identical; thresholds differ for MFJ
+        if(status === 'mfj'){
+          return { b1: 25000, b2: 100000, r1: 0.0185, r2: 0.035, r3: 0.0425 };
+        }
+        // single and hoh
+        return { b1: 12500, b2: 50000, r1: 0.0185, r2: 0.035, r3: 0.0425 };
+      }
+
+      function formatCurrency(n){
+        return new Intl.NumberFormat('en-US', {style:'currency', currency:'USD', maximumFractionDigits:2}).format(n);
+      }
+      function formatPct(n){
+        return (n*100).toFixed(2) + '%';
+      }
+
+      function calculateTax(T, brackets){
+        const {b1,b2,r1,r2,r3} = brackets;
+        if(T <= 0) return { tax: 0, marginal: 0 };
+        let tax = 0, marginal = 0;
+        if(T <= b1){
+          tax = r1*T; marginal = r1;
+        } else if(T <= b2){
+          tax = r1*b1 + r2*(T - b1); marginal = r2;
+        } else {
+          tax = r1*b1 + r2*(b2 - b1) + r3*(T - b2); marginal = r3;
+        }
+        return { tax, marginal };
+      }
+
+      function updateBracketSummary(status){
+        const b = getBrackets(status);
+        bracketSummaryEl.textContent = `${(b.r1*100).toFixed(2)}% / ${(b.r2*100).toFixed(2)}% / ${(b.r3*100).toFixed(2)}%`;
+      }
+
+      function compute(){
+        const status = filingStatusEls.find(r=>r.checked)?.value || 'single';
+        updateBracketSummary(status);
+
+        const G = validateNumber(grossEl, {required:true, min:0, label:'Annual Gross Income'});
+        const A = validateNumber(adjEl, {required:false, min:0, label:'Adjustments/Subtractions'});
+        const F = validateNumber(fedEl, {required:false, min:0, label:'Federal Income Tax Deduction'});
+
+        if(G === null || A === null || F === null) {
+          // Invalid inputs present; do not compute
+          return;
+        }
+
+        const T = Math.max(0, G - A - F);
+        const brackets = getBrackets(status);
+        const { tax, marginal } = calculateTax(T, brackets);
+        const eff = G > 0 ? (tax / G) : 0;
+        const after = Math.max(0, G - tax);
+
+        taxableEl.textContent = formatCurrency(T);
+        taxEl.textContent = formatCurrency(tax);
+        effRateEl.textContent = formatPct(eff);
+        margRateEl.textContent = formatPct(marginal);
+        afterTaxEl.textContent = formatCurrency(after);
+      }
+
+      // Events
+      [grossEl, adjEl, fedEl].forEach(el=>{
+        el.addEventListener('blur', compute);
+        el.addEventListener('input', ()=>{ /* live update without spamming alerts */ compute(); });
+      });
+      filingStatusEls.forEach(r=>r.addEventListener('change', compute));
+
+      resetBtn.addEventListener('click', ()=>{
+        // Reset fields but keep filing status to Single
+        grossEl.value = '';
+        adjEl.value = '';
+        fedEl.value = '';
+        setError(grossEl, 'grossIncomeError', '');
+        setError(adjEl, 'adjustmentsError', '');
+        setError(fedEl, 'federalDeductionError', '');
+        $('#fs-single').checked = true;
+        // Close tooltips
+        tips.forEach(({btn, panel})=>{
+          const b=$(btn), p=$(panel);
+          b.setAttribute('aria-expanded','false'); p.dataset.open='false';
+        });
+        // Reset results
+        taxableEl.textContent = '$0.00';
+        taxEl.textContent = '$0.00';
+        effRateEl.textContent = '0.00%';
+        margRateEl.textContent = '0.00%';
+        afterTaxEl.textContent = '$0.00';
+        bracketSummaryEl.textContent = '1.85% / 3.50% / 4.25%';
+        grossEl.focus();
+      });
+
+      focusResultsBtn.addEventListener('click', ()=>{
+        compute();
+        // Move focus to results heading for screen reader announcement
+        $('#results-heading').setAttribute('tabindex','-1');
+        $('#results-heading').focus({preventScroll:true});
+        $('#results').scrollIntoView({behavior:'smooth', block:'start'});
+      });
+
+      // Initial compute
+      compute();
+    })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "General",
+      "item": "https://calcdomain.com/categories/general"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Miscellaneous",
+      "item": "https://calcdomain.com/subcategories/miscellaneous"
+    }
+  ]
+}
+</script><script defer="">
+    (function(){
+      'use strict';
+
+      const $ = (sel, ctx=document) => ctx.querySelector(sel);
+      const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+
+      // Elements
+      const grossEl = $('#grossIncome');
+      const adjEl = $('#adjustments');
+      const fedEl = $('#federalDeduction');
+      const filingStatusEls = $$('input[name="filingStatus"]');
+
+      const taxableEl = $('#taxableIncome');
+      const taxEl = $('#estimatedTax');
+      const effRateEl = $('#effectiveRate');
+      const margRateEl = $('#marginalRate');
+      const afterTaxEl = $('#afterTax');
+      const bracketSummaryEl = $('#bracketSummary');
+
+      const resetBtn = $('#resetBtn');
+      const focusResultsBtn = $('#focusResultsBtn');
+
+      // Tooltips
+      const tips = [
+        {btn:'#tip-gross-btn', panel:'#tip-gross'},
+        {btn:'#tip-adj-btn', panel:'#tip-adj'},
+        {btn:'#tip-fed-btn', panel:'#tip-fed'}
+      ];
+      tips.forEach(({btn, panel})=>{
+        const b = $(btn), p = $(panel);
+        if(!b || !p) return;
+        b.addEventListener('click', ()=>{
+          const expanded = b.getAttribute('aria-expanded') === 'true';
+          b.setAttribute('aria-expanded', String(!expanded));
+          p.dataset.open = String(!expanded);
+        });
+        b.addEventListener('keydown', (e)=>{
+          if(e.key === 'Escape'){
+            b.setAttribute('aria-expanded','false'); p.dataset.open='false';
+            b.focus();
+          }
+        });
+      });
+
+      // Validation helpers
+      function parseNum(el){
+        const v = el.value.trim();
+        if(v === '') return null;
+        const n = Number(v);
+        return Number.isFinite(n) ? n : NaN;
+      }
+      function setError(el, errId, msg){
+        const err = document.getElementById(errId);
+        if(msg){
+          el.setAttribute('aria-invalid','true');
+          err.textContent = msg;
+        } else {
+          el.removeAttribute('aria-invalid');
+          err.textContent = '';
+        }
+      }
+      function validateNumber(el, {required=false, min=0, label='This value'}){
+        const id = el.id + 'Error';
+        const val = parseNum(el);
+        if(required && (val === null || Number.isNaN(val))){
+          setError(el, id, `Please enter ${label}.`);
+          return null;
+        }
+        if(val === null) { setError(el, id, ''); return 0; }
+        if(Number.isNaN(val)){
+          setError(el, id, `Please enter a valid number for ${label}.`);
+          return null;
+        }
+        if(val < min){
+          setError(el, id, `${label} cannot be less than ${min}.`);
+          return null;
+        }
+        setError(el, id, '');
+        return val;
+      }
+
+      // Louisiana brackets configuration
+      function getBrackets(status){
+        // Rates are identical; thresholds differ for MFJ
+        if(status === 'mfj'){
+          return { b1: 25000, b2: 100000, r1: 0.0185, r2: 0.035, r3: 0.0425 };
+        }
+        // single and hoh
+        return { b1: 12500, b2: 50000, r1: 0.0185, r2: 0.035, r3: 0.0425 };
+      }
+
+      function formatCurrency(n){
+        return new Intl.NumberFormat('en-US', {style:'currency', currency:'USD', maximumFractionDigits:2}).format(n);
+      }
+      function formatPct(n){
+        return (n*100).toFixed(2) + '%';
+      }
+
+      function calculateTax(T, brackets){
+        const {b1,b2,r1,r2,r3} = brackets;
+        if(T <= 0) return { tax: 0, marginal: 0 };
+        let tax = 0, marginal = 0;
+        if(T <= b1){
+          tax = r1*T; marginal = r1;
+        } else if(T <= b2){
+          tax = r1*b1 + r2*(T - b1); marginal = r2;
+        } else {
+          tax = r1*b1 + r2*(b2 - b1) + r3*(T - b2); marginal = r3;
+        }
+        return { tax, marginal };
+      }
+
+      function updateBracketSummary(status){
+        const b = getBrackets(status);
+        bracketSummaryEl.textContent = `${(b.r1*100).toFixed(2)}% / ${(b.r2*100).toFixed(2)}% / ${(b.r3*100).toFixed(2)}%`;
+      }
+
+      function compute(){
+        const status = filingStatusEls.find(r=>r.checked)?.value || 'single';
+        updateBracketSummary(status);
+
+        const G = validateNumber(grossEl, {required:true, min:0, label:'Annual Gross Income'});
+        const A = validateNumber(adjEl, {required:false, min:0, label:'Adjustments/Subtractions'});
+        const F = validateNumber(fedEl, {required:false, min:0, label:'Federal Income Tax Deduction'});
+
+        if(G === null || A === null || F === null) {
+          // Invalid inputs present; do not compute
+          return;
+        }
+
+        const T = Math.max(0, G - A - F);
+        const brackets = getBrackets(status);
+        const { tax, marginal } = calculateTax(T, brackets);
+        const eff = G > 0 ? (tax / G) : 0;
+        const after = Math.max(0, G - tax);
+
+        taxableEl.textContent = formatCurrency(T);
+        taxEl.textContent = formatCurrency(tax);
+        effRateEl.textContent = formatPct(eff);
+        margRateEl.textContent = formatPct(marginal);
+        afterTaxEl.textContent = formatCurrency(after);
+      }
+
+      // Events
+      [grossEl, adjEl, fedEl].forEach(el=>{
+        el.addEventListener('blur', compute);
+        el.addEventListener('input', ()=>{ /* live update without spamming alerts */ compute(); });
+      });
+      filingStatusEls.forEach(r=>r.addEventListener('change', compute));
+
+      resetBtn.addEventListener('click', ()=>{
+        // Reset fields but keep filing status to Single
+        grossEl.value = '';
+        adjEl.value = '';
+        fedEl.value = '';
+        setError(grossEl, 'grossIncomeError', '');
+        setError(adjEl, 'adjustmentsError', '');
+        setError(fedEl, 'federalDeductionError', '');
+        $('#fs-single').checked = true;
+        // Close tooltips
+        tips.forEach(({btn, panel})=>{
+          const b=$(btn), p=$(panel);
+          b.setAttribute('aria-expanded','false'); p.dataset.open='false';
+        });
+        // Reset results
+        taxableEl.textContent = '$0.00';
+        taxEl.textContent = '$0.00';
+        effRateEl.textContent = '0.00%';
+        margRateEl.textContent = '0.00%';
+        afterTaxEl.textContent = '$0.00';
+        bracketSummaryEl.textContent = '1.85% / 3.50% / 4.25%';
+        grossEl.focus();
+      });
+
+      focusResultsBtn.addEventListener('click', ()=>{
+        compute();
+        // Move focus to results heading for screen reader announcement
+        $('#results-heading').setAttribute('tabindex','-1');
+        $('#results-heading').focus({preventScroll:true});
+        $('#results').scrollIntoView({behavior:'smooth', block:'start'});
+      });
+
+      // Initial compute
+      compute();
+    })();
+  </script></body></html>

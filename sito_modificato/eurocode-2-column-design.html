@@ -244,10 +244,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
@@ -287,20 +293,43 @@
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
 </style>
 </head>
-<body>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">Eurocode 2 Concrete Column Design Calculator</h1>
+    <p class="sub" id="pageSub">Authoritative Eurocode 2 (EN 1992-1-1) reinforced concrete column design calculator. Check axial load and uniaxial bending capacity with EC2 stress block, safety factors, and A11y-first UX.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<a class="skip-link" href="#main">Skip to main content</a>
-<header aria-label="Site header" role="banner">
-<div class="header-inner">
-CalcDomain
-<form aria-label="Site search" class="search" onsubmit="event.preventDefault()" role="search">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><form aria-label="Site search" class="search" onsubmit="event.preventDefault()" role="search">
 <label class="sr-only" for="q">Search calculators</label>
 <input autocomplete="off" id="q" placeholder="Search calculators…" type="search">
 <button aria-label="Submit search" class="btn" type="submit">Search</button>
 </form>
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
+
+<button id="resetBtn" type="button" class="btn btnSecondary">Reset</button>
 </div>
-</header>
-<main class="container" id="main" role="main">
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
+
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main">Skip to main content</a><header aria-label="Site header" role="banner">
+<div class="header-inner">
+CalcDomain
+
+</div>
+</header><main class="container" id="main" role="main">
 <nav aria-label="Breadcrumb" class="breadcrumb">
 Home / <a href="https://calcdomain.com/engineering">Engineering</a> / Civil (Eurocode 2) / Eurocode 2 Column Design
     </nav>
@@ -664,286 +693,9 @@ Interaction:
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-  (function(){
-    'use strict';
-
-    // Utilities
-    const $ = (id) => document.getElementById(id);
-    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-    const fmt = (v, digits=2) => isFinite(v) ? Number(v).toLocaleString(undefined, {maximumFractionDigits:digits, minimumFractionDigits:digits}) : '—';
-
-    // Elements
-    const fields = {
-      b: $('b'), h: $('h'), cover: $('cover'), barDia: $('barDia'), nBars: $('nBars'),
-      fck: $('fck'), fyk: $('fyk'), alphaCC: $('alphaCC'), gammaC: $('gammaC'), gammaS: $('gammaS'),
-      NEd: $('NEd'), MEd: $('MEd'), l0: $('l0'), braced: $('braced'), unbraced: $('unbraced')
-    };
-
-    const errors = {
-      b: $('bErr'), h: $('hErr'), cover: $('coverErr'), barDia: $('barDiaErr'),
-      nBars: $('nBarsErr'), fck: $('fckErr'), fyk: $('fykErr'),
-      alphaCC: $('alphaCCErr'), gammaC: $('gammaCErr'), gammaS: $('gammaSErr'),
-      NEd: $('NEdErr'), MEd: $('MEDErr'), l0: $('l0Err')
-    };
-
-    const out = {
-      fcd: $('fcdOut'), fyd: $('fydOut'), As: $('AsOut'),
-      NRd0: $('NRd0'), MRdAtN: $('MRdAtN'), e: $('eOut'),
-      lambda: $('lambdaOut'), nUtil: $('nUtil'), mUtil: $('mUtil'),
-      verdict: $('verdict')
-    };
-
-    // Accessible tooltips
-    document.querySelectorAll('.help-btn').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{
-        const targetId = btn.getAttribute('aria-controls');
-        const tip = $(targetId);
-        const open = tip.getAttribute('data-open') === 'true';
-        tip.setAttribute('data-open', (!open).toString());
-        btn.setAttribute('aria-expanded', (!open).toString());
-      });
-      btn.addEventListener('keydown', (ev)=>{
-        if(ev.key === 'Enter' || ev.key === ' '){
-          ev.preventDefault(); btn.click();
-        }
-      });
-    });
-
-    // Validation rules
-    function validate(){
-      let ok = true;
-
-      function setErr(key, msg){
-        const el = fields[key];
-        const err = errors[key];
-        if(msg){
-          err.textContent = msg; el.setAttribute('aria-invalid', 'true'); ok = false;
-        }else{
-          err.textContent = ''; el.removeAttribute('aria-invalid');
-        }
-      }
-
-      const b = Number(fields.b.value), h = Number(fields.h.value);
-      const cover = Number(fields.cover.value), phi = Number(fields.barDia.value);
-      const nBars = Number(fields.nBars.value);
-      const fck = Number(fields.fck.value), fyk = Number(fields.fyk.value);
-      const alphaCC = Number(fields.alphaCC.value), gammaC = Number(fields.gammaC.value), gammaS = Number(fields.gammaS.value);
-      const NEd = Number(fields.NEd.value), MEd = Number(fields.MEd.value), l0 = Number(fields.l0.value);
-
-      setErr('b', (isNaN(b) || b < 150) ? 'Enter width ≥ 150 mm.' : '');
-      setErr('h', (isNaN(h) || h < 150) ? 'Enter depth ≥ 150 mm.' : '');
-      setErr('cover', (isNaN(cover) || cover < 20 || cover > Math.min(b,h)/3) ? 'Enter a realistic cover (20 mm to h/3).' : '');
-      setErr('barDia', (isNaN(phi) || phi < 8 || phi > 40) ? 'Bar diameter must be 8–40 mm.' : '');
-      setErr('nBars', (isNaN(nBars) || nBars < 4 || nBars % 2 !== 0) ? 'Use an even number of bars (≥ 4).' : '');
-      setErr('fck', (isNaN(fck) || fck < 12) ? 'Select a valid concrete class.' : '');
-      setErr('fyk', (isNaN(fyk) || fyk < 400 || fyk > 700) ? 'Enter steel grade 400–700 MPa.' : '');
-      setErr('alphaCC', (isNaN(alphaCC) || alphaCC < 0.7 || alphaCC > 1.0) ? 'α_cc typically 0.75–1.0 (default 0.85).' : '');
-      setErr('gammaC', (isNaN(gammaC) || gammaC < 1.2 || gammaC > 1.6) ? 'γ_c typically 1.4–1.5 (default 1.5).' : '');
-      setErr('gammaS', (isNaN(gammaS) || gammaS < 1.05 || gammaS > 1.25) ? 'γ_s typically 1.15 (enter 1.05–1.25).' : '');
-      setErr('NEd', (isNaN(NEd) || NEd < 0) ? 'Enter axial load ≥ 0 kN.' : '');
-      setErr('MEd', (isNaN(MEd) || MEd < 0) ? 'Enter moment ≥ 0 kNm.' : '');
-      setErr('l0', (isNaN(l0) || l0 < 1) ? 'Enter effective length ≥ 1.0 m.' : '');
-
-      // Check cover + bar within section
-      if(ok){
-        const aPrime = cover + 0.5*phi;
-        if(aPrime >= h/2){
-          setErr('cover', 'Cover too large for section depth (a\' < h/2 required).');
-        }
-      }
-
-      return ok;
-    }
-
-    // Calculation engine (EC2 uniaxial, symmetric reinforcement)
-    function calculate(){
-      if(!validate()){
-        // Clear outputs to avoid stale values
-        Object.values(out).forEach(el=>{
-          if(el === out.verdict) { el.textContent = '—'; el.className = 'badge'; }
-          else el.textContent = '—';
-        });
-        return;
-      }
-
-      // Inputs
-      const b = Number(fields.b.value);                      // mm
-      const h = Number(fields.h.value);                      // mm
-      const cover = Number(fields.cover.value);              // mm
-      const phi = Number(fields.barDia.value);               // mm
-      const nBars = Number(fields.nBars.value);              // –
-      const fck = Number(fields.fck.value);                  // MPa
-      const fyk = Number(fields.fyk.value);                  // MPa
-      const alphaCC = Number(fields.alphaCC.value);
-      const gammaC = Number(fields.gammaC.value);
-      const gammaS = Number(fields.gammaS.value);
-      const NEd_kN = Number(fields.NEd.value);               // kN
-      const MEd_kNm = Number(fields.MEd.value);              // kNm
-      const l0_m = Number(fields.l0.value);                  // m
-      const braced = fields.braced.checked;
-
-      // Derived
-      const fcd = alphaCC * fck / gammaC;                    // MPa
-      const fyd = fyk / gammaS;                              // MPa
-      const Es = 200000;                                     // MPa
-      const ecu = 0.0035;                                    // ULS concrete ultimate strain
-      const lambdaBlock = 0.8;                               // EC2
-      const aPrime = cover + 0.5*phi;                        // mm (layer depth)
-      const As_bar = Math.PI * Math.pow(phi,2) / 4;          // mm^2
-      const As_total = nBars * As_bar;                       // mm^2
-      const As_face = As_total/2;                            // mm^2 per face
-
-      // Steel layer positions (top compressed face at y=0)
-      const yTop = aPrime;
-      const yBot = h - aPrime;
-      const yC = h/2;
-
-      // Interaction curve via parameter x (neutral axis depth)
-      const steps = 220;
-      const xMin = 1; const xMax = 10*h; // wide range for pure compression area
-      const Ns = new Array(steps);
-      const Ms = new Array(steps);
-
-      let Nmax = -Infinity, Nmin = Infinity, idxNmax = -1;
-
-      for(let i=0;i<steps;i++){
-        const x = xMin + (i/(steps-1))*(xMax - xMin);
-
-        // Stress block
-        const a = Math.min(lambdaBlock * x, h);           // mm
-        const zc_from_top = (a < h) ? (0.5*a) : (0.5*h);  // mm
-        const Cc = b * a * fcd;                           // N (since MPa=N/mm2)
-
-        // Strains
-        const epsTop = ecu * (1 - yTop/x);
-        const epsBot = ecu * (1 - yBot/x);
-
-        // Steel stresses (clip to ±fyd)
-        const sigTop = clamp(Es * epsTop, -fyd, +fyd);
-        const sigBot = clamp(Es * epsBot, -fyd, +fyd);
-
-        const FsTop = As_face * sigTop; // N
-        const FsBot = As_face * sigBot; // N
-
-        const N = Cc + FsTop + FsBot; // N, positive compression
-        const M_top = Cc*zc_from_top + FsTop*yTop + FsBot*yBot; // N·mm about top
-        const M = M_top - N*yC; // about centroid (positive sign convention consistent magnitude)
-        Ns[i] = N;
-        Ms[i] = Math.abs(M); // magnitude for capacity envelope
-
-        if(N > Nmax){ Nmax = N; idxNmax = i; }
-        if(N < Nmin){ Nmin = N; }
-      }
-
-      // Pure axial capacity approx at M≈0 is near max N
-      const NRd0_kN = Nmax / 1000;
-
-      // Interpolate M_Rd at the given N_Ed (compression only)
-      const NEd_N = NEd_kN * 1000;
-      let MRdAtN_kNm = 0;
-
-      if(NEd_N < Nmin){
-        // Tension region; set capacity to 0 for column design scope
-        MRdAtN_kNm = 0;
-      }else if(NEd_N > Nmax){
-        MRdAtN_kNm = 0;
-      }else{
-        // Find bracket
-        // Curve not strictly monotone in M; interpolate across N
-        // Sort by N descending on the fly by scanning adjacent points
-        // Find i where Ns[i] >= NEd >= Ns[i+1] (assuming Ns decreases with i after some point)
-        let iFound = -1;
-        for(let i=0;i<steps-1;i++){
-          const N1 = Ns[i], N2 = Ns[i+1];
-          // Accept both increasing or decreasing segments
-          const lo = Math.min(N1,N2), hi = Math.max(N1,N2);
-          if(NEd_N >= lo && NEd_N <= hi){
-            iFound = i; break;
-          }
-        }
-        if(iFound >= 0){
-          const N1 = Ns[iFound], N2 = Ns[iFound+1];
-          const M1 = Ms[iFound], M2 = Ms[iFound+1];
-          const t = (NEd_N - N1) / (N2 - N1 || 1); // handle zero division
-          const Mint = M1 + t*(M2 - M1);
-          MRdAtN_kNm = Math.max(0, (Mint/1e6)); // N·mm to kNm
-        }else{
-          // Fallback: use nearest point
-          let j=0, dmin=Infinity;
-          for(let i=0;i<steps;i++){
-            const d = Math.abs(Ns[i] - NEd_N);
-            if(d < dmin){ dmin = d; j = i; }
-          }
-          MRdAtN_kNm = Math.max(0, Ms[j]/1e6);
-        }
-      }
-
-      // Slenderness (informative only)
-      const A = b*h;                       // mm2
-      const I = b*Math.pow(h,3)/12;        // mm4 (bending about h axis)
-      const i_rad = Math.sqrt(I/A);        // mm
-      const l0_mm = l0_m * 1000;           // mm
-      const lambda = l0_mm / i_rad;
-
-      // Eccentricity
-      const e_mm = (NEd_kN > 0) ? (MEd_kNm*1e6)/(NEd_kN*1000) : 0;
-
-      // Utilizations
-      const nUtil = NEd_kN > 0 ? (NEd_kN / NRd0_kN) : 0;
-      const mUtil = (MRdAtN_kNm > 0) ? (MEd_kNm / MRdAtN_kNm) : (MEd_kNm>0 ? Infinity : 0);
-
-      // Verdict
-      const pass = (NEd_kN <= NRd0_kN + 1e-6) && (MEd_kNm <= MRdAtN_kNm + 1e-6);
-      out.verdict.textContent = pass ? 'PASS — EC2 ULS check satisfied' : 'FAIL — Increase capacity or reduce actions';
-      out.verdict.className = 'badge ' + (pass ? 'pass' : 'fail');
-
-      // Output
-      out.fcd.textContent = fmt(fcd,2);
-      out.fyd.textContent = fmt(fyd,1);
-      out.As.textContent  = fmt(As_total,0);
-      out.NRd0.textContent = fmt(NRd0_kN,1);
-      out.MRdAtN.textContent = fmt(MRdAtN_kNm,1);
-      out.e.textContent = isFinite(e_mm) ? fmt(e_mm,1) : '—';
-      out.lambda.textContent = fmt(lambda,1) + (braced ? ' (braced)' : ' (unbraced)');
-      out.nUtil.textContent = isFinite(nUtil) ? fmt(nUtil,2) : '—';
-      out.mUtil.textContent = isFinite(mUtil) ? fmt(mUtil,2) : '—';
-    }
-
-    // Event listeners
-    const allInputs = document.querySelectorAll('#calculator input, #calculator select');
-    allInputs.forEach(el=>{
-      el.addEventListener('input', debounce(calculate, 80), {passive:true});
-      el.addEventListener('blur', validate, {passive:true});
-      el.addEventListener('change', calculate, {passive:true});
-    });
-
-    // Simple debounce to keep INP small
-    function debounce(fn, delay){
-      let t; return function(...args){
-        clearTimeout(t);
-        t = setTimeout(()=>fn.apply(this,args), delay);
-      };
-    }
-
-    // Initial compute
-    calculate();
-
-  })();
-  </script>
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
 
 
-<style>
+</main><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -975,12 +727,7 @@ Interaction:
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-
-<a class="skip-link" href="#main">Skip to main content</a>
-<header aria-label="Site header" role="banner">
+</style><a class="skip-link" href="#main">Skip to main content</a><header aria-label="Site header" role="banner">
 <div class="header-inner">
 CalcDomain
 <form aria-label="Site search" class="search" onsubmit="event.preventDefault()" role="search">
@@ -989,8 +736,7 @@ CalcDomain
 <button aria-label="Submit search" class="btn" type="submit">Search</button>
 </form>
 </div>
-</header>
-<main class="container" id="main" role="main">
+</header><main class="container" id="main" role="main">
 <nav aria-label="Breadcrumb" class="breadcrumb">
 Home / <a href="https://calcdomain.com/engineering">Engineering</a> / Civil (Eurocode 2) / Eurocode 2 Column Design
     </nav>
@@ -1354,286 +1100,7 @@ Interaction:
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-  (function(){
-    'use strict';
-
-    // Utilities
-    const $ = (id) => document.getElementById(id);
-    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-    const fmt = (v, digits=2) => isFinite(v) ? Number(v).toLocaleString(undefined, {maximumFractionDigits:digits, minimumFractionDigits:digits}) : '—';
-
-    // Elements
-    const fields = {
-      b: $('b'), h: $('h'), cover: $('cover'), barDia: $('barDia'), nBars: $('nBars'),
-      fck: $('fck'), fyk: $('fyk'), alphaCC: $('alphaCC'), gammaC: $('gammaC'), gammaS: $('gammaS'),
-      NEd: $('NEd'), MEd: $('MEd'), l0: $('l0'), braced: $('braced'), unbraced: $('unbraced')
-    };
-
-    const errors = {
-      b: $('bErr'), h: $('hErr'), cover: $('coverErr'), barDia: $('barDiaErr'),
-      nBars: $('nBarsErr'), fck: $('fckErr'), fyk: $('fykErr'),
-      alphaCC: $('alphaCCErr'), gammaC: $('gammaCErr'), gammaS: $('gammaSErr'),
-      NEd: $('NEdErr'), MEd: $('MEDErr'), l0: $('l0Err')
-    };
-
-    const out = {
-      fcd: $('fcdOut'), fyd: $('fydOut'), As: $('AsOut'),
-      NRd0: $('NRd0'), MRdAtN: $('MRdAtN'), e: $('eOut'),
-      lambda: $('lambdaOut'), nUtil: $('nUtil'), mUtil: $('mUtil'),
-      verdict: $('verdict')
-    };
-
-    // Accessible tooltips
-    document.querySelectorAll('.help-btn').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{
-        const targetId = btn.getAttribute('aria-controls');
-        const tip = $(targetId);
-        const open = tip.getAttribute('data-open') === 'true';
-        tip.setAttribute('data-open', (!open).toString());
-        btn.setAttribute('aria-expanded', (!open).toString());
-      });
-      btn.addEventListener('keydown', (ev)=>{
-        if(ev.key === 'Enter' || ev.key === ' '){
-          ev.preventDefault(); btn.click();
-        }
-      });
-    });
-
-    // Validation rules
-    function validate(){
-      let ok = true;
-
-      function setErr(key, msg){
-        const el = fields[key];
-        const err = errors[key];
-        if(msg){
-          err.textContent = msg; el.setAttribute('aria-invalid', 'true'); ok = false;
-        }else{
-          err.textContent = ''; el.removeAttribute('aria-invalid');
-        }
-      }
-
-      const b = Number(fields.b.value), h = Number(fields.h.value);
-      const cover = Number(fields.cover.value), phi = Number(fields.barDia.value);
-      const nBars = Number(fields.nBars.value);
-      const fck = Number(fields.fck.value), fyk = Number(fields.fyk.value);
-      const alphaCC = Number(fields.alphaCC.value), gammaC = Number(fields.gammaC.value), gammaS = Number(fields.gammaS.value);
-      const NEd = Number(fields.NEd.value), MEd = Number(fields.MEd.value), l0 = Number(fields.l0.value);
-
-      setErr('b', (isNaN(b) || b < 150) ? 'Enter width ≥ 150 mm.' : '');
-      setErr('h', (isNaN(h) || h < 150) ? 'Enter depth ≥ 150 mm.' : '');
-      setErr('cover', (isNaN(cover) || cover < 20 || cover > Math.min(b,h)/3) ? 'Enter a realistic cover (20 mm to h/3).' : '');
-      setErr('barDia', (isNaN(phi) || phi < 8 || phi > 40) ? 'Bar diameter must be 8–40 mm.' : '');
-      setErr('nBars', (isNaN(nBars) || nBars < 4 || nBars % 2 !== 0) ? 'Use an even number of bars (≥ 4).' : '');
-      setErr('fck', (isNaN(fck) || fck < 12) ? 'Select a valid concrete class.' : '');
-      setErr('fyk', (isNaN(fyk) || fyk < 400 || fyk > 700) ? 'Enter steel grade 400–700 MPa.' : '');
-      setErr('alphaCC', (isNaN(alphaCC) || alphaCC < 0.7 || alphaCC > 1.0) ? 'α_cc typically 0.75–1.0 (default 0.85).' : '');
-      setErr('gammaC', (isNaN(gammaC) || gammaC < 1.2 || gammaC > 1.6) ? 'γ_c typically 1.4–1.5 (default 1.5).' : '');
-      setErr('gammaS', (isNaN(gammaS) || gammaS < 1.05 || gammaS > 1.25) ? 'γ_s typically 1.15 (enter 1.05–1.25).' : '');
-      setErr('NEd', (isNaN(NEd) || NEd < 0) ? 'Enter axial load ≥ 0 kN.' : '');
-      setErr('MEd', (isNaN(MEd) || MEd < 0) ? 'Enter moment ≥ 0 kNm.' : '');
-      setErr('l0', (isNaN(l0) || l0 < 1) ? 'Enter effective length ≥ 1.0 m.' : '');
-
-      // Check cover + bar within section
-      if(ok){
-        const aPrime = cover + 0.5*phi;
-        if(aPrime >= h/2){
-          setErr('cover', 'Cover too large for section depth (a\' < h/2 required).');
-        }
-      }
-
-      return ok;
-    }
-
-    // Calculation engine (EC2 uniaxial, symmetric reinforcement)
-    function calculate(){
-      if(!validate()){
-        // Clear outputs to avoid stale values
-        Object.values(out).forEach(el=>{
-          if(el === out.verdict) { el.textContent = '—'; el.className = 'badge'; }
-          else el.textContent = '—';
-        });
-        return;
-      }
-
-      // Inputs
-      const b = Number(fields.b.value);                      // mm
-      const h = Number(fields.h.value);                      // mm
-      const cover = Number(fields.cover.value);              // mm
-      const phi = Number(fields.barDia.value);               // mm
-      const nBars = Number(fields.nBars.value);              // –
-      const fck = Number(fields.fck.value);                  // MPa
-      const fyk = Number(fields.fyk.value);                  // MPa
-      const alphaCC = Number(fields.alphaCC.value);
-      const gammaC = Number(fields.gammaC.value);
-      const gammaS = Number(fields.gammaS.value);
-      const NEd_kN = Number(fields.NEd.value);               // kN
-      const MEd_kNm = Number(fields.MEd.value);              // kNm
-      const l0_m = Number(fields.l0.value);                  // m
-      const braced = fields.braced.checked;
-
-      // Derived
-      const fcd = alphaCC * fck / gammaC;                    // MPa
-      const fyd = fyk / gammaS;                              // MPa
-      const Es = 200000;                                     // MPa
-      const ecu = 0.0035;                                    // ULS concrete ultimate strain
-      const lambdaBlock = 0.8;                               // EC2
-      const aPrime = cover + 0.5*phi;                        // mm (layer depth)
-      const As_bar = Math.PI * Math.pow(phi,2) / 4;          // mm^2
-      const As_total = nBars * As_bar;                       // mm^2
-      const As_face = As_total/2;                            // mm^2 per face
-
-      // Steel layer positions (top compressed face at y=0)
-      const yTop = aPrime;
-      const yBot = h - aPrime;
-      const yC = h/2;
-
-      // Interaction curve via parameter x (neutral axis depth)
-      const steps = 220;
-      const xMin = 1; const xMax = 10*h; // wide range for pure compression area
-      const Ns = new Array(steps);
-      const Ms = new Array(steps);
-
-      let Nmax = -Infinity, Nmin = Infinity, idxNmax = -1;
-
-      for(let i=0;i<steps;i++){
-        const x = xMin + (i/(steps-1))*(xMax - xMin);
-
-        // Stress block
-        const a = Math.min(lambdaBlock * x, h);           // mm
-        const zc_from_top = (a < h) ? (0.5*a) : (0.5*h);  // mm
-        const Cc = b * a * fcd;                           // N (since MPa=N/mm2)
-
-        // Strains
-        const epsTop = ecu * (1 - yTop/x);
-        const epsBot = ecu * (1 - yBot/x);
-
-        // Steel stresses (clip to ±fyd)
-        const sigTop = clamp(Es * epsTop, -fyd, +fyd);
-        const sigBot = clamp(Es * epsBot, -fyd, +fyd);
-
-        const FsTop = As_face * sigTop; // N
-        const FsBot = As_face * sigBot; // N
-
-        const N = Cc + FsTop + FsBot; // N, positive compression
-        const M_top = Cc*zc_from_top + FsTop*yTop + FsBot*yBot; // N·mm about top
-        const M = M_top - N*yC; // about centroid (positive sign convention consistent magnitude)
-        Ns[i] = N;
-        Ms[i] = Math.abs(M); // magnitude for capacity envelope
-
-        if(N > Nmax){ Nmax = N; idxNmax = i; }
-        if(N < Nmin){ Nmin = N; }
-      }
-
-      // Pure axial capacity approx at M≈0 is near max N
-      const NRd0_kN = Nmax / 1000;
-
-      // Interpolate M_Rd at the given N_Ed (compression only)
-      const NEd_N = NEd_kN * 1000;
-      let MRdAtN_kNm = 0;
-
-      if(NEd_N < Nmin){
-        // Tension region; set capacity to 0 for column design scope
-        MRdAtN_kNm = 0;
-      }else if(NEd_N > Nmax){
-        MRdAtN_kNm = 0;
-      }else{
-        // Find bracket
-        // Curve not strictly monotone in M; interpolate across N
-        // Sort by N descending on the fly by scanning adjacent points
-        // Find i where Ns[i] >= NEd >= Ns[i+1] (assuming Ns decreases with i after some point)
-        let iFound = -1;
-        for(let i=0;i<steps-1;i++){
-          const N1 = Ns[i], N2 = Ns[i+1];
-          // Accept both increasing or decreasing segments
-          const lo = Math.min(N1,N2), hi = Math.max(N1,N2);
-          if(NEd_N >= lo && NEd_N <= hi){
-            iFound = i; break;
-          }
-        }
-        if(iFound >= 0){
-          const N1 = Ns[iFound], N2 = Ns[iFound+1];
-          const M1 = Ms[iFound], M2 = Ms[iFound+1];
-          const t = (NEd_N - N1) / (N2 - N1 || 1); // handle zero division
-          const Mint = M1 + t*(M2 - M1);
-          MRdAtN_kNm = Math.max(0, (Mint/1e6)); // N·mm to kNm
-        }else{
-          // Fallback: use nearest point
-          let j=0, dmin=Infinity;
-          for(let i=0;i<steps;i++){
-            const d = Math.abs(Ns[i] - NEd_N);
-            if(d < dmin){ dmin = d; j = i; }
-          }
-          MRdAtN_kNm = Math.max(0, Ms[j]/1e6);
-        }
-      }
-
-      // Slenderness (informative only)
-      const A = b*h;                       // mm2
-      const I = b*Math.pow(h,3)/12;        // mm4 (bending about h axis)
-      const i_rad = Math.sqrt(I/A);        // mm
-      const l0_mm = l0_m * 1000;           // mm
-      const lambda = l0_mm / i_rad;
-
-      // Eccentricity
-      const e_mm = (NEd_kN > 0) ? (MEd_kNm*1e6)/(NEd_kN*1000) : 0;
-
-      // Utilizations
-      const nUtil = NEd_kN > 0 ? (NEd_kN / NRd0_kN) : 0;
-      const mUtil = (MRdAtN_kNm > 0) ? (MEd_kNm / MRdAtN_kNm) : (MEd_kNm>0 ? Infinity : 0);
-
-      // Verdict
-      const pass = (NEd_kN <= NRd0_kN + 1e-6) && (MEd_kNm <= MRdAtN_kNm + 1e-6);
-      out.verdict.textContent = pass ? 'PASS — EC2 ULS check satisfied' : 'FAIL — Increase capacity or reduce actions';
-      out.verdict.className = 'badge ' + (pass ? 'pass' : 'fail');
-
-      // Output
-      out.fcd.textContent = fmt(fcd,2);
-      out.fyd.textContent = fmt(fyd,1);
-      out.As.textContent  = fmt(As_total,0);
-      out.NRd0.textContent = fmt(NRd0_kN,1);
-      out.MRdAtN.textContent = fmt(MRdAtN_kNm,1);
-      out.e.textContent = isFinite(e_mm) ? fmt(e_mm,1) : '—';
-      out.lambda.textContent = fmt(lambda,1) + (braced ? ' (braced)' : ' (unbraced)');
-      out.nUtil.textContent = isFinite(nUtil) ? fmt(nUtil,2) : '—';
-      out.mUtil.textContent = isFinite(mUtil) ? fmt(mUtil,2) : '—';
-    }
-
-    // Event listeners
-    const allInputs = document.querySelectorAll('#calculator input, #calculator select');
-    allInputs.forEach(el=>{
-      el.addEventListener('input', debounce(calculate, 80), {passive:true});
-      el.addEventListener('blur', validate, {passive:true});
-      el.addEventListener('change', calculate, {passive:true});
-    });
-
-    // Simple debounce to keep INP small
-    function debounce(fn, delay){
-      let t; return function(...args){
-        clearTimeout(t);
-        t = setTimeout(()=>fn.apply(this,args), delay);
-      };
-    }
-
-    // Initial compute
-    calculate();
-
-  })();
-  </script>
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1665,12 +1132,7 @@ Interaction:
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-
-<a class="skip-link" href="#main">Skip to main content</a>
-<header aria-label="Site header" role="banner">
+</style><a class="skip-link" href="#main">Skip to main content</a><header aria-label="Site header" role="banner">
 <div class="header-inner">
 CalcDomain
 <form aria-label="Site search" class="search" onsubmit="event.preventDefault()" role="search">
@@ -1679,8 +1141,7 @@ CalcDomain
 <button aria-label="Submit search" class="btn" type="submit">Search</button>
 </form>
 </div>
-</header>
-<main class="container" id="main" role="main">
+</header><main class="container" id="main" role="main">
 <nav aria-label="Breadcrumb" class="breadcrumb">
 Home / <a href="https://calcdomain.com/engineering">Engineering</a> / Civil (Eurocode 2) / Eurocode 2 Column Design
     </nav>
@@ -2044,9 +1505,48 @@ Interaction:
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
   (function(){
     'use strict';
 
@@ -2312,6 +1812,536 @@ Interaction:
     calculate();
 
   })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+  (function(){
+    'use strict';
 
-</body></html>
+    // Utilities
+    const $ = (id) => document.getElementById(id);
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const fmt = (v, digits=2) => isFinite(v) ? Number(v).toLocaleString(undefined, {maximumFractionDigits:digits, minimumFractionDigits:digits}) : '—';
+
+    // Elements
+    const fields = {
+      b: $('b'), h: $('h'), cover: $('cover'), barDia: $('barDia'), nBars: $('nBars'),
+      fck: $('fck'), fyk: $('fyk'), alphaCC: $('alphaCC'), gammaC: $('gammaC'), gammaS: $('gammaS'),
+      NEd: $('NEd'), MEd: $('MEd'), l0: $('l0'), braced: $('braced'), unbraced: $('unbraced')
+    };
+
+    const errors = {
+      b: $('bErr'), h: $('hErr'), cover: $('coverErr'), barDia: $('barDiaErr'),
+      nBars: $('nBarsErr'), fck: $('fckErr'), fyk: $('fykErr'),
+      alphaCC: $('alphaCCErr'), gammaC: $('gammaCErr'), gammaS: $('gammaSErr'),
+      NEd: $('NEdErr'), MEd: $('MEDErr'), l0: $('l0Err')
+    };
+
+    const out = {
+      fcd: $('fcdOut'), fyd: $('fydOut'), As: $('AsOut'),
+      NRd0: $('NRd0'), MRdAtN: $('MRdAtN'), e: $('eOut'),
+      lambda: $('lambdaOut'), nUtil: $('nUtil'), mUtil: $('mUtil'),
+      verdict: $('verdict')
+    };
+
+    // Accessible tooltips
+    document.querySelectorAll('.help-btn').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        const targetId = btn.getAttribute('aria-controls');
+        const tip = $(targetId);
+        const open = tip.getAttribute('data-open') === 'true';
+        tip.setAttribute('data-open', (!open).toString());
+        btn.setAttribute('aria-expanded', (!open).toString());
+      });
+      btn.addEventListener('keydown', (ev)=>{
+        if(ev.key === 'Enter' || ev.key === ' '){
+          ev.preventDefault(); btn.click();
+        }
+      });
+    });
+
+    // Validation rules
+    function validate(){
+      let ok = true;
+
+      function setErr(key, msg){
+        const el = fields[key];
+        const err = errors[key];
+        if(msg){
+          err.textContent = msg; el.setAttribute('aria-invalid', 'true'); ok = false;
+        }else{
+          err.textContent = ''; el.removeAttribute('aria-invalid');
+        }
+      }
+
+      const b = Number(fields.b.value), h = Number(fields.h.value);
+      const cover = Number(fields.cover.value), phi = Number(fields.barDia.value);
+      const nBars = Number(fields.nBars.value);
+      const fck = Number(fields.fck.value), fyk = Number(fields.fyk.value);
+      const alphaCC = Number(fields.alphaCC.value), gammaC = Number(fields.gammaC.value), gammaS = Number(fields.gammaS.value);
+      const NEd = Number(fields.NEd.value), MEd = Number(fields.MEd.value), l0 = Number(fields.l0.value);
+
+      setErr('b', (isNaN(b) || b < 150) ? 'Enter width ≥ 150 mm.' : '');
+      setErr('h', (isNaN(h) || h < 150) ? 'Enter depth ≥ 150 mm.' : '');
+      setErr('cover', (isNaN(cover) || cover < 20 || cover > Math.min(b,h)/3) ? 'Enter a realistic cover (20 mm to h/3).' : '');
+      setErr('barDia', (isNaN(phi) || phi < 8 || phi > 40) ? 'Bar diameter must be 8–40 mm.' : '');
+      setErr('nBars', (isNaN(nBars) || nBars < 4 || nBars % 2 !== 0) ? 'Use an even number of bars (≥ 4).' : '');
+      setErr('fck', (isNaN(fck) || fck < 12) ? 'Select a valid concrete class.' : '');
+      setErr('fyk', (isNaN(fyk) || fyk < 400 || fyk > 700) ? 'Enter steel grade 400–700 MPa.' : '');
+      setErr('alphaCC', (isNaN(alphaCC) || alphaCC < 0.7 || alphaCC > 1.0) ? 'α_cc typically 0.75–1.0 (default 0.85).' : '');
+      setErr('gammaC', (isNaN(gammaC) || gammaC < 1.2 || gammaC > 1.6) ? 'γ_c typically 1.4–1.5 (default 1.5).' : '');
+      setErr('gammaS', (isNaN(gammaS) || gammaS < 1.05 || gammaS > 1.25) ? 'γ_s typically 1.15 (enter 1.05–1.25).' : '');
+      setErr('NEd', (isNaN(NEd) || NEd < 0) ? 'Enter axial load ≥ 0 kN.' : '');
+      setErr('MEd', (isNaN(MEd) || MEd < 0) ? 'Enter moment ≥ 0 kNm.' : '');
+      setErr('l0', (isNaN(l0) || l0 < 1) ? 'Enter effective length ≥ 1.0 m.' : '');
+
+      // Check cover + bar within section
+      if(ok){
+        const aPrime = cover + 0.5*phi;
+        if(aPrime >= h/2){
+          setErr('cover', 'Cover too large for section depth (a\' < h/2 required).');
+        }
+      }
+
+      return ok;
+    }
+
+    // Calculation engine (EC2 uniaxial, symmetric reinforcement)
+    function calculate(){
+      if(!validate()){
+        // Clear outputs to avoid stale values
+        Object.values(out).forEach(el=>{
+          if(el === out.verdict) { el.textContent = '—'; el.className = 'badge'; }
+          else el.textContent = '—';
+        });
+        return;
+      }
+
+      // Inputs
+      const b = Number(fields.b.value);                      // mm
+      const h = Number(fields.h.value);                      // mm
+      const cover = Number(fields.cover.value);              // mm
+      const phi = Number(fields.barDia.value);               // mm
+      const nBars = Number(fields.nBars.value);              // –
+      const fck = Number(fields.fck.value);                  // MPa
+      const fyk = Number(fields.fyk.value);                  // MPa
+      const alphaCC = Number(fields.alphaCC.value);
+      const gammaC = Number(fields.gammaC.value);
+      const gammaS = Number(fields.gammaS.value);
+      const NEd_kN = Number(fields.NEd.value);               // kN
+      const MEd_kNm = Number(fields.MEd.value);              // kNm
+      const l0_m = Number(fields.l0.value);                  // m
+      const braced = fields.braced.checked;
+
+      // Derived
+      const fcd = alphaCC * fck / gammaC;                    // MPa
+      const fyd = fyk / gammaS;                              // MPa
+      const Es = 200000;                                     // MPa
+      const ecu = 0.0035;                                    // ULS concrete ultimate strain
+      const lambdaBlock = 0.8;                               // EC2
+      const aPrime = cover + 0.5*phi;                        // mm (layer depth)
+      const As_bar = Math.PI * Math.pow(phi,2) / 4;          // mm^2
+      const As_total = nBars * As_bar;                       // mm^2
+      const As_face = As_total/2;                            // mm^2 per face
+
+      // Steel layer positions (top compressed face at y=0)
+      const yTop = aPrime;
+      const yBot = h - aPrime;
+      const yC = h/2;
+
+      // Interaction curve via parameter x (neutral axis depth)
+      const steps = 220;
+      const xMin = 1; const xMax = 10*h; // wide range for pure compression area
+      const Ns = new Array(steps);
+      const Ms = new Array(steps);
+
+      let Nmax = -Infinity, Nmin = Infinity, idxNmax = -1;
+
+      for(let i=0;i<steps;i++){
+        const x = xMin + (i/(steps-1))*(xMax - xMin);
+
+        // Stress block
+        const a = Math.min(lambdaBlock * x, h);           // mm
+        const zc_from_top = (a < h) ? (0.5*a) : (0.5*h);  // mm
+        const Cc = b * a * fcd;                           // N (since MPa=N/mm2)
+
+        // Strains
+        const epsTop = ecu * (1 - yTop/x);
+        const epsBot = ecu * (1 - yBot/x);
+
+        // Steel stresses (clip to ±fyd)
+        const sigTop = clamp(Es * epsTop, -fyd, +fyd);
+        const sigBot = clamp(Es * epsBot, -fyd, +fyd);
+
+        const FsTop = As_face * sigTop; // N
+        const FsBot = As_face * sigBot; // N
+
+        const N = Cc + FsTop + FsBot; // N, positive compression
+        const M_top = Cc*zc_from_top + FsTop*yTop + FsBot*yBot; // N·mm about top
+        const M = M_top - N*yC; // about centroid (positive sign convention consistent magnitude)
+        Ns[i] = N;
+        Ms[i] = Math.abs(M); // magnitude for capacity envelope
+
+        if(N > Nmax){ Nmax = N; idxNmax = i; }
+        if(N < Nmin){ Nmin = N; }
+      }
+
+      // Pure axial capacity approx at M≈0 is near max N
+      const NRd0_kN = Nmax / 1000;
+
+      // Interpolate M_Rd at the given N_Ed (compression only)
+      const NEd_N = NEd_kN * 1000;
+      let MRdAtN_kNm = 0;
+
+      if(NEd_N < Nmin){
+        // Tension region; set capacity to 0 for column design scope
+        MRdAtN_kNm = 0;
+      }else if(NEd_N > Nmax){
+        MRdAtN_kNm = 0;
+      }else{
+        // Find bracket
+        // Curve not strictly monotone in M; interpolate across N
+        // Sort by N descending on the fly by scanning adjacent points
+        // Find i where Ns[i] >= NEd >= Ns[i+1] (assuming Ns decreases with i after some point)
+        let iFound = -1;
+        for(let i=0;i<steps-1;i++){
+          const N1 = Ns[i], N2 = Ns[i+1];
+          // Accept both increasing or decreasing segments
+          const lo = Math.min(N1,N2), hi = Math.max(N1,N2);
+          if(NEd_N >= lo && NEd_N <= hi){
+            iFound = i; break;
+          }
+        }
+        if(iFound >= 0){
+          const N1 = Ns[iFound], N2 = Ns[iFound+1];
+          const M1 = Ms[iFound], M2 = Ms[iFound+1];
+          const t = (NEd_N - N1) / (N2 - N1 || 1); // handle zero division
+          const Mint = M1 + t*(M2 - M1);
+          MRdAtN_kNm = Math.max(0, (Mint/1e6)); // N·mm to kNm
+        }else{
+          // Fallback: use nearest point
+          let j=0, dmin=Infinity;
+          for(let i=0;i<steps;i++){
+            const d = Math.abs(Ns[i] - NEd_N);
+            if(d < dmin){ dmin = d; j = i; }
+          }
+          MRdAtN_kNm = Math.max(0, Ms[j]/1e6);
+        }
+      }
+
+      // Slenderness (informative only)
+      const A = b*h;                       // mm2
+      const I = b*Math.pow(h,3)/12;        // mm4 (bending about h axis)
+      const i_rad = Math.sqrt(I/A);        // mm
+      const l0_mm = l0_m * 1000;           // mm
+      const lambda = l0_mm / i_rad;
+
+      // Eccentricity
+      const e_mm = (NEd_kN > 0) ? (MEd_kNm*1e6)/(NEd_kN*1000) : 0;
+
+      // Utilizations
+      const nUtil = NEd_kN > 0 ? (NEd_kN / NRd0_kN) : 0;
+      const mUtil = (MRdAtN_kNm > 0) ? (MEd_kNm / MRdAtN_kNm) : (MEd_kNm>0 ? Infinity : 0);
+
+      // Verdict
+      const pass = (NEd_kN <= NRd0_kN + 1e-6) && (MEd_kNm <= MRdAtN_kNm + 1e-6);
+      out.verdict.textContent = pass ? 'PASS — EC2 ULS check satisfied' : 'FAIL — Increase capacity or reduce actions';
+      out.verdict.className = 'badge ' + (pass ? 'pass' : 'fail');
+
+      // Output
+      out.fcd.textContent = fmt(fcd,2);
+      out.fyd.textContent = fmt(fyd,1);
+      out.As.textContent  = fmt(As_total,0);
+      out.NRd0.textContent = fmt(NRd0_kN,1);
+      out.MRdAtN.textContent = fmt(MRdAtN_kNm,1);
+      out.e.textContent = isFinite(e_mm) ? fmt(e_mm,1) : '—';
+      out.lambda.textContent = fmt(lambda,1) + (braced ? ' (braced)' : ' (unbraced)');
+      out.nUtil.textContent = isFinite(nUtil) ? fmt(nUtil,2) : '—';
+      out.mUtil.textContent = isFinite(mUtil) ? fmt(mUtil,2) : '—';
+    }
+
+    // Event listeners
+    const allInputs = document.querySelectorAll('#calculator input, #calculator select');
+    allInputs.forEach(el=>{
+      el.addEventListener('input', debounce(calculate, 80), {passive:true});
+      el.addEventListener('blur', validate, {passive:true});
+      el.addEventListener('change', calculate, {passive:true});
+    });
+
+    // Simple debounce to keep INP small
+    function debounce(fn, delay){
+      let t; return function(...args){
+        clearTimeout(t);
+        t = setTimeout(()=>fn.apply(this,args), delay);
+      };
+    }
+
+    // Initial compute
+    calculate();
+
+  })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+  (function(){
+    'use strict';
+
+    // Utilities
+    const $ = (id) => document.getElementById(id);
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const fmt = (v, digits=2) => isFinite(v) ? Number(v).toLocaleString(undefined, {maximumFractionDigits:digits, minimumFractionDigits:digits}) : '—';
+
+    // Elements
+    const fields = {
+      b: $('b'), h: $('h'), cover: $('cover'), barDia: $('barDia'), nBars: $('nBars'),
+      fck: $('fck'), fyk: $('fyk'), alphaCC: $('alphaCC'), gammaC: $('gammaC'), gammaS: $('gammaS'),
+      NEd: $('NEd'), MEd: $('MEd'), l0: $('l0'), braced: $('braced'), unbraced: $('unbraced')
+    };
+
+    const errors = {
+      b: $('bErr'), h: $('hErr'), cover: $('coverErr'), barDia: $('barDiaErr'),
+      nBars: $('nBarsErr'), fck: $('fckErr'), fyk: $('fykErr'),
+      alphaCC: $('alphaCCErr'), gammaC: $('gammaCErr'), gammaS: $('gammaSErr'),
+      NEd: $('NEdErr'), MEd: $('MEDErr'), l0: $('l0Err')
+    };
+
+    const out = {
+      fcd: $('fcdOut'), fyd: $('fydOut'), As: $('AsOut'),
+      NRd0: $('NRd0'), MRdAtN: $('MRdAtN'), e: $('eOut'),
+      lambda: $('lambdaOut'), nUtil: $('nUtil'), mUtil: $('mUtil'),
+      verdict: $('verdict')
+    };
+
+    // Accessible tooltips
+    document.querySelectorAll('.help-btn').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        const targetId = btn.getAttribute('aria-controls');
+        const tip = $(targetId);
+        const open = tip.getAttribute('data-open') === 'true';
+        tip.setAttribute('data-open', (!open).toString());
+        btn.setAttribute('aria-expanded', (!open).toString());
+      });
+      btn.addEventListener('keydown', (ev)=>{
+        if(ev.key === 'Enter' || ev.key === ' '){
+          ev.preventDefault(); btn.click();
+        }
+      });
+    });
+
+    // Validation rules
+    function validate(){
+      let ok = true;
+
+      function setErr(key, msg){
+        const el = fields[key];
+        const err = errors[key];
+        if(msg){
+          err.textContent = msg; el.setAttribute('aria-invalid', 'true'); ok = false;
+        }else{
+          err.textContent = ''; el.removeAttribute('aria-invalid');
+        }
+      }
+
+      const b = Number(fields.b.value), h = Number(fields.h.value);
+      const cover = Number(fields.cover.value), phi = Number(fields.barDia.value);
+      const nBars = Number(fields.nBars.value);
+      const fck = Number(fields.fck.value), fyk = Number(fields.fyk.value);
+      const alphaCC = Number(fields.alphaCC.value), gammaC = Number(fields.gammaC.value), gammaS = Number(fields.gammaS.value);
+      const NEd = Number(fields.NEd.value), MEd = Number(fields.MEd.value), l0 = Number(fields.l0.value);
+
+      setErr('b', (isNaN(b) || b < 150) ? 'Enter width ≥ 150 mm.' : '');
+      setErr('h', (isNaN(h) || h < 150) ? 'Enter depth ≥ 150 mm.' : '');
+      setErr('cover', (isNaN(cover) || cover < 20 || cover > Math.min(b,h)/3) ? 'Enter a realistic cover (20 mm to h/3).' : '');
+      setErr('barDia', (isNaN(phi) || phi < 8 || phi > 40) ? 'Bar diameter must be 8–40 mm.' : '');
+      setErr('nBars', (isNaN(nBars) || nBars < 4 || nBars % 2 !== 0) ? 'Use an even number of bars (≥ 4).' : '');
+      setErr('fck', (isNaN(fck) || fck < 12) ? 'Select a valid concrete class.' : '');
+      setErr('fyk', (isNaN(fyk) || fyk < 400 || fyk > 700) ? 'Enter steel grade 400–700 MPa.' : '');
+      setErr('alphaCC', (isNaN(alphaCC) || alphaCC < 0.7 || alphaCC > 1.0) ? 'α_cc typically 0.75–1.0 (default 0.85).' : '');
+      setErr('gammaC', (isNaN(gammaC) || gammaC < 1.2 || gammaC > 1.6) ? 'γ_c typically 1.4–1.5 (default 1.5).' : '');
+      setErr('gammaS', (isNaN(gammaS) || gammaS < 1.05 || gammaS > 1.25) ? 'γ_s typically 1.15 (enter 1.05–1.25).' : '');
+      setErr('NEd', (isNaN(NEd) || NEd < 0) ? 'Enter axial load ≥ 0 kN.' : '');
+      setErr('MEd', (isNaN(MEd) || MEd < 0) ? 'Enter moment ≥ 0 kNm.' : '');
+      setErr('l0', (isNaN(l0) || l0 < 1) ? 'Enter effective length ≥ 1.0 m.' : '');
+
+      // Check cover + bar within section
+      if(ok){
+        const aPrime = cover + 0.5*phi;
+        if(aPrime >= h/2){
+          setErr('cover', 'Cover too large for section depth (a\' < h/2 required).');
+        }
+      }
+
+      return ok;
+    }
+
+    // Calculation engine (EC2 uniaxial, symmetric reinforcement)
+    function calculate(){
+      if(!validate()){
+        // Clear outputs to avoid stale values
+        Object.values(out).forEach(el=>{
+          if(el === out.verdict) { el.textContent = '—'; el.className = 'badge'; }
+          else el.textContent = '—';
+        });
+        return;
+      }
+
+      // Inputs
+      const b = Number(fields.b.value);                      // mm
+      const h = Number(fields.h.value);                      // mm
+      const cover = Number(fields.cover.value);              // mm
+      const phi = Number(fields.barDia.value);               // mm
+      const nBars = Number(fields.nBars.value);              // –
+      const fck = Number(fields.fck.value);                  // MPa
+      const fyk = Number(fields.fyk.value);                  // MPa
+      const alphaCC = Number(fields.alphaCC.value);
+      const gammaC = Number(fields.gammaC.value);
+      const gammaS = Number(fields.gammaS.value);
+      const NEd_kN = Number(fields.NEd.value);               // kN
+      const MEd_kNm = Number(fields.MEd.value);              // kNm
+      const l0_m = Number(fields.l0.value);                  // m
+      const braced = fields.braced.checked;
+
+      // Derived
+      const fcd = alphaCC * fck / gammaC;                    // MPa
+      const fyd = fyk / gammaS;                              // MPa
+      const Es = 200000;                                     // MPa
+      const ecu = 0.0035;                                    // ULS concrete ultimate strain
+      const lambdaBlock = 0.8;                               // EC2
+      const aPrime = cover + 0.5*phi;                        // mm (layer depth)
+      const As_bar = Math.PI * Math.pow(phi,2) / 4;          // mm^2
+      const As_total = nBars * As_bar;                       // mm^2
+      const As_face = As_total/2;                            // mm^2 per face
+
+      // Steel layer positions (top compressed face at y=0)
+      const yTop = aPrime;
+      const yBot = h - aPrime;
+      const yC = h/2;
+
+      // Interaction curve via parameter x (neutral axis depth)
+      const steps = 220;
+      const xMin = 1; const xMax = 10*h; // wide range for pure compression area
+      const Ns = new Array(steps);
+      const Ms = new Array(steps);
+
+      let Nmax = -Infinity, Nmin = Infinity, idxNmax = -1;
+
+      for(let i=0;i<steps;i++){
+        const x = xMin + (i/(steps-1))*(xMax - xMin);
+
+        // Stress block
+        const a = Math.min(lambdaBlock * x, h);           // mm
+        const zc_from_top = (a < h) ? (0.5*a) : (0.5*h);  // mm
+        const Cc = b * a * fcd;                           // N (since MPa=N/mm2)
+
+        // Strains
+        const epsTop = ecu * (1 - yTop/x);
+        const epsBot = ecu * (1 - yBot/x);
+
+        // Steel stresses (clip to ±fyd)
+        const sigTop = clamp(Es * epsTop, -fyd, +fyd);
+        const sigBot = clamp(Es * epsBot, -fyd, +fyd);
+
+        const FsTop = As_face * sigTop; // N
+        const FsBot = As_face * sigBot; // N
+
+        const N = Cc + FsTop + FsBot; // N, positive compression
+        const M_top = Cc*zc_from_top + FsTop*yTop + FsBot*yBot; // N·mm about top
+        const M = M_top - N*yC; // about centroid (positive sign convention consistent magnitude)
+        Ns[i] = N;
+        Ms[i] = Math.abs(M); // magnitude for capacity envelope
+
+        if(N > Nmax){ Nmax = N; idxNmax = i; }
+        if(N < Nmin){ Nmin = N; }
+      }
+
+      // Pure axial capacity approx at M≈0 is near max N
+      const NRd0_kN = Nmax / 1000;
+
+      // Interpolate M_Rd at the given N_Ed (compression only)
+      const NEd_N = NEd_kN * 1000;
+      let MRdAtN_kNm = 0;
+
+      if(NEd_N < Nmin){
+        // Tension region; set capacity to 0 for column design scope
+        MRdAtN_kNm = 0;
+      }else if(NEd_N > Nmax){
+        MRdAtN_kNm = 0;
+      }else{
+        // Find bracket
+        // Curve not strictly monotone in M; interpolate across N
+        // Sort by N descending on the fly by scanning adjacent points
+        // Find i where Ns[i] >= NEd >= Ns[i+1] (assuming Ns decreases with i after some point)
+        let iFound = -1;
+        for(let i=0;i<steps-1;i++){
+          const N1 = Ns[i], N2 = Ns[i+1];
+          // Accept both increasing or decreasing segments
+          const lo = Math.min(N1,N2), hi = Math.max(N1,N2);
+          if(NEd_N >= lo && NEd_N <= hi){
+            iFound = i; break;
+          }
+        }
+        if(iFound >= 0){
+          const N1 = Ns[iFound], N2 = Ns[iFound+1];
+          const M1 = Ms[iFound], M2 = Ms[iFound+1];
+          const t = (NEd_N - N1) / (N2 - N1 || 1); // handle zero division
+          const Mint = M1 + t*(M2 - M1);
+          MRdAtN_kNm = Math.max(0, (Mint/1e6)); // N·mm to kNm
+        }else{
+          // Fallback: use nearest point
+          let j=0, dmin=Infinity;
+          for(let i=0;i<steps;i++){
+            const d = Math.abs(Ns[i] - NEd_N);
+            if(d < dmin){ dmin = d; j = i; }
+          }
+          MRdAtN_kNm = Math.max(0, Ms[j]/1e6);
+        }
+      }
+
+      // Slenderness (informative only)
+      const A = b*h;                       // mm2
+      const I = b*Math.pow(h,3)/12;        // mm4 (bending about h axis)
+      const i_rad = Math.sqrt(I/A);        // mm
+      const l0_mm = l0_m * 1000;           // mm
+      const lambda = l0_mm / i_rad;
+
+      // Eccentricity
+      const e_mm = (NEd_kN > 0) ? (MEd_kNm*1e6)/(NEd_kN*1000) : 0;
+
+      // Utilizations
+      const nUtil = NEd_kN > 0 ? (NEd_kN / NRd0_kN) : 0;
+      const mUtil = (MRdAtN_kNm > 0) ? (MEd_kNm / MRdAtN_kNm) : (MEd_kNm>0 ? Infinity : 0);
+
+      // Verdict
+      const pass = (NEd_kN <= NRd0_kN + 1e-6) && (MEd_kNm <= MRdAtN_kNm + 1e-6);
+      out.verdict.textContent = pass ? 'PASS — EC2 ULS check satisfied' : 'FAIL — Increase capacity or reduce actions';
+      out.verdict.className = 'badge ' + (pass ? 'pass' : 'fail');
+
+      // Output
+      out.fcd.textContent = fmt(fcd,2);
+      out.fyd.textContent = fmt(fyd,1);
+      out.As.textContent  = fmt(As_total,0);
+      out.NRd0.textContent = fmt(NRd0_kN,1);
+      out.MRdAtN.textContent = fmt(MRdAtN_kNm,1);
+      out.e.textContent = isFinite(e_mm) ? fmt(e_mm,1) : '—';
+      out.lambda.textContent = fmt(lambda,1) + (braced ? ' (braced)' : ' (unbraced)');
+      out.nUtil.textContent = isFinite(nUtil) ? fmt(nUtil,2) : '—';
+      out.mUtil.textContent = isFinite(mUtil) ? fmt(mUtil,2) : '—';
+    }
+
+    // Event listeners
+    const allInputs = document.querySelectorAll('#calculator input, #calculator select');
+    allInputs.forEach(el=>{
+      el.addEventListener('input', debounce(calculate, 80), {passive:true});
+      el.addEventListener('blur', validate, {passive:true});
+      el.addEventListener('change', calculate, {passive:true});
+    });
+
+    // Simple debounce to keep INP small
+    function debounce(fn, delay){
+      let t; return function(...args){
+        clearTimeout(t);
+        t = setTimeout(()=>fn.apply(this,args), delay);
+      };
+    }
+
+    // Initial compute
+    calculate();
+
+  })();
+  </script></body></html>

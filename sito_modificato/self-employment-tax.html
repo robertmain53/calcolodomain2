@@ -356,10 +356,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
@@ -399,10 +405,22 @@
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
 </style>
 </head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">Self-Employment Tax Calculator</h1>
+    <p class="sub" id="pageSub">Professional self employment tax calculator for US federal taxes. Instantly estimate Social Security and Medicare self-employment taxes, the deductible portion, and the Additional Medicare Tax with authoritative methodology.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<main class="main-content" id="main-content" role="main">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main class="main-content" id="main-content" role="main">
 <div class="container">
 <h1>Self-Employment Tax Calculator</h1>
 <p>
@@ -493,7 +511,7 @@
 </div>
 </details>
 <div class="actions">
-<button class="btn btn-secondary" id="resetBtn" type="button">Reset</button>
+<button class="btn btn-secondary btnSecondary" id="resetBtn" type="button">Reset</button>
 </div>
 <div aria-live="polite" class="notice" role="note">
             This tool reflects federal rules only (no state or local taxes). For planning purposes; not tax advice.
@@ -748,250 +766,19 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
+
+
 </main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
+</div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-      // Rates and parameters by year
-      const YEAR_CONFIG = {
-        "2024": {
-          wageBase: 168600,
-          ssRate: 0.124,
-          medicareRate: 0.029,
-          adjFactor: 0.9235
-        },
-        "2023": {
-          wageBase: 160200,
-          ssRate: 0.124,
-          medicareRate: 0.029,
-          adjFactor: 0.9235
-        }
-      };
-
-      // Additional Medicare thresholds by filing status
-      const AM_THRESHOLDS = {
-        single: 200000, // Single, HOH, QW
-        mfj: 250000,    // Married Filing Jointly
-        mfs: 125000     // Married Filing Separately
-      };
-
-      // Intl currency formatter
-      const fmtUSD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
-
-      // Elements
-      const els = {
-        taxYear: document.getElementById('taxYear'),
-        filingStatus: () => document.querySelector('input[name="filingStatus"]:checked'),
-        netIncome: document.getElementById('netIncome'),
-        w2SS: document.getElementById('w2SS'),
-        w2Med: document.getElementById('w2Med'),
-
-        // Errors
-        errYear: document.getElementById('taxYearError'),
-        errNet: document.getElementById('netIncomeError'),
-        errW2SS: document.getElementById('w2SSError'),
-        errW2Med: document.getElementById('w2MedError'),
-
-        // Results
-        resNetEarnings: document.getElementById('resNetEarnings'),
-        resSSTaxable: document.getElementById('resSSTaxable'),
-        resSSTax: document.getElementById('resSSTax'),
-        resMedicareTax: document.getElementById('resMedicareTax'),
-        resTotalSETax: document.getElementById('resTotalSETax'),
-        resDeductibleHalf: document.getElementById('resDeductibleHalf'),
-        resAddlMedicareTax: document.getElementById('resAddlMedicareTax'),
-
-        // Buttons
-        resetBtn: document.getElementById('resetBtn')
-      };
-
-      // Accessible tooltip toggles
-      function bindTooltip(btnId, tipId){
-        const btn = document.getElementById(btnId);
-        const tip = document.getElementById(tipId);
-        if(!btn || !tip) return;
-        btn.addEventListener('click', () => {
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          tip.hidden = expanded;
-        });
-        btn.addEventListener('keydown', (e) => {
-          if(e.key === 'Escape'){
-            btn.setAttribute('aria-expanded', 'false');
-            tip.hidden = true;
-            btn.focus();
-          }
-        });
-      }
-      bindTooltip('taxYearHelp','taxYearTip');
-      bindTooltip('netIncomeHelp','netIncomeTip');
-      bindTooltip('w2SSHelp','w2SSTip');
-      bindTooltip('w2MedHelp','w2MedTip');
-
-      // Validation helpers
-      function toNumber(val){
-        if (val === '' || val === null || val === undefined) return 0;
-        const n = Number(val);
-        return Number.isFinite(n) ? n : NaN;
-      }
-
-      function setError(inputEl, errEl, msg){
-        if(!errEl) return;
-        if(msg){
-          inputEl?.setAttribute('aria-invalid','true');
-          errEl.textContent = msg;
-        } else {
-          inputEl?.setAttribute('aria-invalid','false');
-          errEl.textContent = '';
-        }
-      }
-
-      function validateRequiredNumber(inputEl, errEl, {allowNegative=false} = {}){
-        const raw = inputEl.value.trim();
-        if(raw === ''){
-          setError(inputEl, errEl, 'This field is required.');
-          return null;
-        }
-        const n = Number(raw);
-        if(!Number.isFinite(n)){
-          setError(inputEl, errEl, 'Please enter a valid number.');
-          return null;
-        }
-        if(!allowNegative && n < 0){
-          setError(inputEl, errEl, 'Please enter a number greater than or equal to 0.');
-          return null;
-        }
-        setError(inputEl, errEl, '');
-        return n;
-      }
-
-      // Core compute
-      function compute(){
-        const year = els.taxYear.value in YEAR_CONFIG ? els.taxYear.value : '2024';
-        const cfg = YEAR_CONFIG[year];
-
-        // Filing status
-        const fs = els.filingStatus()?.value || 'single';
-
-        // Inputs
-        const netIncome = toNumber(els.netIncome.value);
-        const w2SS = Math.max(0, toNumber(els.w2SS.value));
-        const w2Med = Math.max(0, toNumber(els.w2Med.value));
-
-        // Validation checks for calculation (non-blocking; will treat NaN as zero except required netIncome)
-        if(els.netIncome.value.trim() === '' || !Number.isFinite(netIncome)){
-          // Clear outputs for clarity
-          updateResults(0,0,0,0,0,0);
-          return;
-        }
-
-        // Negative net income => no SE tax
-        const positiveNet = Math.max(0, netIncome);
-
-        // Net earnings for SE tax (E)
-        const E = cfg.adjFactor * positiveNet;
-
-        // Social Security coordination
-        const wageBase = cfg.wageBase;
-        const w2SSCapped = Math.min(Math.max(0, w2SS), wageBase);
-        const remainingSSHeadroom = Math.max(0, wageBase - w2SSCapped);
-        const ssTaxableSE = Math.min(E, remainingSSHeadroom);
-
-        // Taxes
-        const ssTax = cfg.ssRate * ssTaxableSE;
-        const medicareTax = cfg.medicareRate * E;
-        const seTaxTotal = ssTax + medicareTax;
-
-        // Deductible half (excludes Additional Medicare Tax)
-        const deductibleHalf = 0.5 * seTaxTotal;
-
-        // Additional Medicare Tax estimate (0.9%) based on combined Medicare wages + E over threshold
-        const threshold = AM_THRESHOLDS[fs] ?? AM_THRESHOLDS.single;
-        const additionalBase = Math.max(0, (w2Med + E) - threshold);
-        const addlMedTax = 0.009 * additionalBase;
-
-        updateResults(E, ssTaxableSE, ssTax, medicareTax, seTaxTotal, deductibleHalf, addlMedTax);
-      }
-
-      function updateResults(E, ssTaxableSE, ssTax, medicareTax, seTaxTotal, deductibleHalf, addlMedTax=0){
-        els.resNetEarnings.textContent     = fmtUSD.format(E || 0);
-        els.resSSTaxable.textContent       = fmtUSD.format(ssTaxableSE || 0);
-        els.resSSTax.textContent           = fmtUSD.format(ssTax || 0);
-        els.resMedicareTax.textContent     = fmtUSD.format(medicareTax || 0);
-        els.resTotalSETax.textContent      = fmtUSD.format(seTaxTotal || 0);
-        els.resDeductibleHalf.textContent  = fmtUSD.format(deductibleHalf || 0);
-        els.resAddlMedicareTax.textContent = fmtUSD.format(addlMedTax || 0);
-      }
-
-      // Event bindings
-      els.taxYear.addEventListener('change', compute);
-
-      document.querySelectorAll('input[name="filingStatus"]').forEach(r => {
-        r.addEventListener('change', compute);
-      });
-
-      // On-blur validation
-      els.netIncome.addEventListener('blur', () => {
-        validateRequiredNumber(els.netIncome, els.errNet, {allowNegative:true});
-        compute();
-      });
-      els.w2SS.addEventListener('blur', () => {
-        const v = els.w2SS.value.trim();
-        if(v === '') { setError(els.w2SS, els.errW2SS, ''); compute(); return; }
-        const ok = validateRequiredNumber(els.w2SS, els.errW2SS, {allowNegative:false});
-        if(ok !== null){
-          // no further check here
-        }
-        compute();
-      });
-      els.w2Med.addEventListener('blur', () => {
-        const v = els.w2Med.value.trim();
-        if(v === '') { setError(els.w2Med, els.errW2Med, ''); compute(); return; }
-        const ok = validateRequiredNumber(els.w2Med, els.errW2Med, {allowNegative:false});
-        if(ok !== null){
-          // no further check
-        }
-        compute();
-      });
-
-      // Live recompute on input for better UX (non-intrusive)
-      ['input','change'].forEach(evt => {
-        els.netIncome.addEventListener(evt, compute);
-        els.w2SS.addEventListener(evt, compute);
-        els.w2Med.addEventListener(evt, compute);
-      });
-
-      // Reset
-      els.resetBtn.addEventListener('click', () => {
-        els.taxYear.value = '2024';
-        document.querySelector('input[name="filingStatus"][value="single"]').checked = true;
-        els.netIncome.value = '';
-        els.w2SS.value = '';
-        els.w2Med.value = '';
-        setError(els.netIncome, els.errNet, '');
-        setError(els.w2SS, els.errW2SS, '');
-        setError(els.w2Med, els.errW2Med, '');
-        updateResults(0,0,0,0,0,0,0);
-        els.netIncome.focus();
-      });
-
-      // Initial compute
-      compute();
-    })();
-  </script>
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main-content">Skip to main content</a><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1023,12 +810,7 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="main-content" id="main-content" role="main">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="main-content" id="main-content" role="main">
 <div class="container">
 <h1>Self-Employment Tax Calculator</h1>
 <p>
@@ -1119,7 +901,7 @@
 </div>
 </details>
 <div class="actions">
-<button class="btn btn-secondary" id="resetBtn" type="button">Reset</button>
+<button class="btn btn-secondary" id="resetBtn__dup2" type="button">Reset</button>
 </div>
 <div aria-live="polite" class="notice" role="note">
             This tool reflects federal rules only (no state or local taxes). For planning purposes; not tax advice.
@@ -1374,250 +1156,7 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
-
-      // Rates and parameters by year
-      const YEAR_CONFIG = {
-        "2024": {
-          wageBase: 168600,
-          ssRate: 0.124,
-          medicareRate: 0.029,
-          adjFactor: 0.9235
-        },
-        "2023": {
-          wageBase: 160200,
-          ssRate: 0.124,
-          medicareRate: 0.029,
-          adjFactor: 0.9235
-        }
-      };
-
-      // Additional Medicare thresholds by filing status
-      const AM_THRESHOLDS = {
-        single: 200000, // Single, HOH, QW
-        mfj: 250000,    // Married Filing Jointly
-        mfs: 125000     // Married Filing Separately
-      };
-
-      // Intl currency formatter
-      const fmtUSD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
-
-      // Elements
-      const els = {
-        taxYear: document.getElementById('taxYear'),
-        filingStatus: () => document.querySelector('input[name="filingStatus"]:checked'),
-        netIncome: document.getElementById('netIncome'),
-        w2SS: document.getElementById('w2SS'),
-        w2Med: document.getElementById('w2Med'),
-
-        // Errors
-        errYear: document.getElementById('taxYearError'),
-        errNet: document.getElementById('netIncomeError'),
-        errW2SS: document.getElementById('w2SSError'),
-        errW2Med: document.getElementById('w2MedError'),
-
-        // Results
-        resNetEarnings: document.getElementById('resNetEarnings'),
-        resSSTaxable: document.getElementById('resSSTaxable'),
-        resSSTax: document.getElementById('resSSTax'),
-        resMedicareTax: document.getElementById('resMedicareTax'),
-        resTotalSETax: document.getElementById('resTotalSETax'),
-        resDeductibleHalf: document.getElementById('resDeductibleHalf'),
-        resAddlMedicareTax: document.getElementById('resAddlMedicareTax'),
-
-        // Buttons
-        resetBtn: document.getElementById('resetBtn')
-      };
-
-      // Accessible tooltip toggles
-      function bindTooltip(btnId, tipId){
-        const btn = document.getElementById(btnId);
-        const tip = document.getElementById(tipId);
-        if(!btn || !tip) return;
-        btn.addEventListener('click', () => {
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          tip.hidden = expanded;
-        });
-        btn.addEventListener('keydown', (e) => {
-          if(e.key === 'Escape'){
-            btn.setAttribute('aria-expanded', 'false');
-            tip.hidden = true;
-            btn.focus();
-          }
-        });
-      }
-      bindTooltip('taxYearHelp','taxYearTip');
-      bindTooltip('netIncomeHelp','netIncomeTip');
-      bindTooltip('w2SSHelp','w2SSTip');
-      bindTooltip('w2MedHelp','w2MedTip');
-
-      // Validation helpers
-      function toNumber(val){
-        if (val === '' || val === null || val === undefined) return 0;
-        const n = Number(val);
-        return Number.isFinite(n) ? n : NaN;
-      }
-
-      function setError(inputEl, errEl, msg){
-        if(!errEl) return;
-        if(msg){
-          inputEl?.setAttribute('aria-invalid','true');
-          errEl.textContent = msg;
-        } else {
-          inputEl?.setAttribute('aria-invalid','false');
-          errEl.textContent = '';
-        }
-      }
-
-      function validateRequiredNumber(inputEl, errEl, {allowNegative=false} = {}){
-        const raw = inputEl.value.trim();
-        if(raw === ''){
-          setError(inputEl, errEl, 'This field is required.');
-          return null;
-        }
-        const n = Number(raw);
-        if(!Number.isFinite(n)){
-          setError(inputEl, errEl, 'Please enter a valid number.');
-          return null;
-        }
-        if(!allowNegative && n < 0){
-          setError(inputEl, errEl, 'Please enter a number greater than or equal to 0.');
-          return null;
-        }
-        setError(inputEl, errEl, '');
-        return n;
-      }
-
-      // Core compute
-      function compute(){
-        const year = els.taxYear.value in YEAR_CONFIG ? els.taxYear.value : '2024';
-        const cfg = YEAR_CONFIG[year];
-
-        // Filing status
-        const fs = els.filingStatus()?.value || 'single';
-
-        // Inputs
-        const netIncome = toNumber(els.netIncome.value);
-        const w2SS = Math.max(0, toNumber(els.w2SS.value));
-        const w2Med = Math.max(0, toNumber(els.w2Med.value));
-
-        // Validation checks for calculation (non-blocking; will treat NaN as zero except required netIncome)
-        if(els.netIncome.value.trim() === '' || !Number.isFinite(netIncome)){
-          // Clear outputs for clarity
-          updateResults(0,0,0,0,0,0);
-          return;
-        }
-
-        // Negative net income => no SE tax
-        const positiveNet = Math.max(0, netIncome);
-
-        // Net earnings for SE tax (E)
-        const E = cfg.adjFactor * positiveNet;
-
-        // Social Security coordination
-        const wageBase = cfg.wageBase;
-        const w2SSCapped = Math.min(Math.max(0, w2SS), wageBase);
-        const remainingSSHeadroom = Math.max(0, wageBase - w2SSCapped);
-        const ssTaxableSE = Math.min(E, remainingSSHeadroom);
-
-        // Taxes
-        const ssTax = cfg.ssRate * ssTaxableSE;
-        const medicareTax = cfg.medicareRate * E;
-        const seTaxTotal = ssTax + medicareTax;
-
-        // Deductible half (excludes Additional Medicare Tax)
-        const deductibleHalf = 0.5 * seTaxTotal;
-
-        // Additional Medicare Tax estimate (0.9%) based on combined Medicare wages + E over threshold
-        const threshold = AM_THRESHOLDS[fs] ?? AM_THRESHOLDS.single;
-        const additionalBase = Math.max(0, (w2Med + E) - threshold);
-        const addlMedTax = 0.009 * additionalBase;
-
-        updateResults(E, ssTaxableSE, ssTax, medicareTax, seTaxTotal, deductibleHalf, addlMedTax);
-      }
-
-      function updateResults(E, ssTaxableSE, ssTax, medicareTax, seTaxTotal, deductibleHalf, addlMedTax=0){
-        els.resNetEarnings.textContent     = fmtUSD.format(E || 0);
-        els.resSSTaxable.textContent       = fmtUSD.format(ssTaxableSE || 0);
-        els.resSSTax.textContent           = fmtUSD.format(ssTax || 0);
-        els.resMedicareTax.textContent     = fmtUSD.format(medicareTax || 0);
-        els.resTotalSETax.textContent      = fmtUSD.format(seTaxTotal || 0);
-        els.resDeductibleHalf.textContent  = fmtUSD.format(deductibleHalf || 0);
-        els.resAddlMedicareTax.textContent = fmtUSD.format(addlMedTax || 0);
-      }
-
-      // Event bindings
-      els.taxYear.addEventListener('change', compute);
-
-      document.querySelectorAll('input[name="filingStatus"]').forEach(r => {
-        r.addEventListener('change', compute);
-      });
-
-      // On-blur validation
-      els.netIncome.addEventListener('blur', () => {
-        validateRequiredNumber(els.netIncome, els.errNet, {allowNegative:true});
-        compute();
-      });
-      els.w2SS.addEventListener('blur', () => {
-        const v = els.w2SS.value.trim();
-        if(v === '') { setError(els.w2SS, els.errW2SS, ''); compute(); return; }
-        const ok = validateRequiredNumber(els.w2SS, els.errW2SS, {allowNegative:false});
-        if(ok !== null){
-          // no further check here
-        }
-        compute();
-      });
-      els.w2Med.addEventListener('blur', () => {
-        const v = els.w2Med.value.trim();
-        if(v === '') { setError(els.w2Med, els.errW2Med, ''); compute(); return; }
-        const ok = validateRequiredNumber(els.w2Med, els.errW2Med, {allowNegative:false});
-        if(ok !== null){
-          // no further check
-        }
-        compute();
-      });
-
-      // Live recompute on input for better UX (non-intrusive)
-      ['input','change'].forEach(evt => {
-        els.netIncome.addEventListener(evt, compute);
-        els.w2SS.addEventListener(evt, compute);
-        els.w2Med.addEventListener(evt, compute);
-      });
-
-      // Reset
-      els.resetBtn.addEventListener('click', () => {
-        els.taxYear.value = '2024';
-        document.querySelector('input[name="filingStatus"][value="single"]').checked = true;
-        els.netIncome.value = '';
-        els.w2SS.value = '';
-        els.w2Med.value = '';
-        setError(els.netIncome, els.errNet, '');
-        setError(els.w2SS, els.errW2SS, '');
-        setError(els.w2Med, els.errW2Med, '');
-        updateResults(0,0,0,0,0,0,0);
-        els.netIncome.focus();
-      });
-
-      // Initial compute
-      compute();
-    })();
-  </script>
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1649,12 +1188,7 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="main-content" id="main-content" role="main">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="main-content" id="main-content" role="main">
 <div class="container">
 <h1>Self-Employment Tax Calculator</h1>
 <p>
@@ -1745,7 +1279,7 @@
 </div>
 </details>
 <div class="actions">
-<button class="btn btn-secondary" id="resetBtn" type="button">Reset</button>
+<button class="btn btn-secondary" id="resetBtn__dup3" type="button">Reset</button>
 </div>
 <div aria-live="polite" class="notice" role="note">
             This tool reflects federal rules only (no state or local taxes). For planning purposes; not tax advice.
@@ -2000,9 +1534,48 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
     (function(){
       'use strict';
 
@@ -2232,6 +1805,464 @@
       // Initial compute
       compute();
     })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
 
-</body></html>
+      // Rates and parameters by year
+      const YEAR_CONFIG = {
+        "2024": {
+          wageBase: 168600,
+          ssRate: 0.124,
+          medicareRate: 0.029,
+          adjFactor: 0.9235
+        },
+        "2023": {
+          wageBase: 160200,
+          ssRate: 0.124,
+          medicareRate: 0.029,
+          adjFactor: 0.9235
+        }
+      };
+
+      // Additional Medicare thresholds by filing status
+      const AM_THRESHOLDS = {
+        single: 200000, // Single, HOH, QW
+        mfj: 250000,    // Married Filing Jointly
+        mfs: 125000     // Married Filing Separately
+      };
+
+      // Intl currency formatter
+      const fmtUSD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
+
+      // Elements
+      const els = {
+        taxYear: document.getElementById('taxYear'),
+        filingStatus: () => document.querySelector('input[name="filingStatus"]:checked'),
+        netIncome: document.getElementById('netIncome'),
+        w2SS: document.getElementById('w2SS'),
+        w2Med: document.getElementById('w2Med'),
+
+        // Errors
+        errYear: document.getElementById('taxYearError'),
+        errNet: document.getElementById('netIncomeError'),
+        errW2SS: document.getElementById('w2SSError'),
+        errW2Med: document.getElementById('w2MedError'),
+
+        // Results
+        resNetEarnings: document.getElementById('resNetEarnings'),
+        resSSTaxable: document.getElementById('resSSTaxable'),
+        resSSTax: document.getElementById('resSSTax'),
+        resMedicareTax: document.getElementById('resMedicareTax'),
+        resTotalSETax: document.getElementById('resTotalSETax'),
+        resDeductibleHalf: document.getElementById('resDeductibleHalf'),
+        resAddlMedicareTax: document.getElementById('resAddlMedicareTax'),
+
+        // Buttons
+        resetBtn: document.getElementById('resetBtn')
+      };
+
+      // Accessible tooltip toggles
+      function bindTooltip(btnId, tipId){
+        const btn = document.getElementById(btnId);
+        const tip = document.getElementById(tipId);
+        if(!btn || !tip) return;
+        btn.addEventListener('click', () => {
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          tip.hidden = expanded;
+        });
+        btn.addEventListener('keydown', (e) => {
+          if(e.key === 'Escape'){
+            btn.setAttribute('aria-expanded', 'false');
+            tip.hidden = true;
+            btn.focus();
+          }
+        });
+      }
+      bindTooltip('taxYearHelp','taxYearTip');
+      bindTooltip('netIncomeHelp','netIncomeTip');
+      bindTooltip('w2SSHelp','w2SSTip');
+      bindTooltip('w2MedHelp','w2MedTip');
+
+      // Validation helpers
+      function toNumber(val){
+        if (val === '' || val === null || val === undefined) return 0;
+        const n = Number(val);
+        return Number.isFinite(n) ? n : NaN;
+      }
+
+      function setError(inputEl, errEl, msg){
+        if(!errEl) return;
+        if(msg){
+          inputEl?.setAttribute('aria-invalid','true');
+          errEl.textContent = msg;
+        } else {
+          inputEl?.setAttribute('aria-invalid','false');
+          errEl.textContent = '';
+        }
+      }
+
+      function validateRequiredNumber(inputEl, errEl, {allowNegative=false} = {}){
+        const raw = inputEl.value.trim();
+        if(raw === ''){
+          setError(inputEl, errEl, 'This field is required.');
+          return null;
+        }
+        const n = Number(raw);
+        if(!Number.isFinite(n)){
+          setError(inputEl, errEl, 'Please enter a valid number.');
+          return null;
+        }
+        if(!allowNegative && n < 0){
+          setError(inputEl, errEl, 'Please enter a number greater than or equal to 0.');
+          return null;
+        }
+        setError(inputEl, errEl, '');
+        return n;
+      }
+
+      // Core compute
+      function compute(){
+        const year = els.taxYear.value in YEAR_CONFIG ? els.taxYear.value : '2024';
+        const cfg = YEAR_CONFIG[year];
+
+        // Filing status
+        const fs = els.filingStatus()?.value || 'single';
+
+        // Inputs
+        const netIncome = toNumber(els.netIncome.value);
+        const w2SS = Math.max(0, toNumber(els.w2SS.value));
+        const w2Med = Math.max(0, toNumber(els.w2Med.value));
+
+        // Validation checks for calculation (non-blocking; will treat NaN as zero except required netIncome)
+        if(els.netIncome.value.trim() === '' || !Number.isFinite(netIncome)){
+          // Clear outputs for clarity
+          updateResults(0,0,0,0,0,0);
+          return;
+        }
+
+        // Negative net income => no SE tax
+        const positiveNet = Math.max(0, netIncome);
+
+        // Net earnings for SE tax (E)
+        const E = cfg.adjFactor * positiveNet;
+
+        // Social Security coordination
+        const wageBase = cfg.wageBase;
+        const w2SSCapped = Math.min(Math.max(0, w2SS), wageBase);
+        const remainingSSHeadroom = Math.max(0, wageBase - w2SSCapped);
+        const ssTaxableSE = Math.min(E, remainingSSHeadroom);
+
+        // Taxes
+        const ssTax = cfg.ssRate * ssTaxableSE;
+        const medicareTax = cfg.medicareRate * E;
+        const seTaxTotal = ssTax + medicareTax;
+
+        // Deductible half (excludes Additional Medicare Tax)
+        const deductibleHalf = 0.5 * seTaxTotal;
+
+        // Additional Medicare Tax estimate (0.9%) based on combined Medicare wages + E over threshold
+        const threshold = AM_THRESHOLDS[fs] ?? AM_THRESHOLDS.single;
+        const additionalBase = Math.max(0, (w2Med + E) - threshold);
+        const addlMedTax = 0.009 * additionalBase;
+
+        updateResults(E, ssTaxableSE, ssTax, medicareTax, seTaxTotal, deductibleHalf, addlMedTax);
+      }
+
+      function updateResults(E, ssTaxableSE, ssTax, medicareTax, seTaxTotal, deductibleHalf, addlMedTax=0){
+        els.resNetEarnings.textContent     = fmtUSD.format(E || 0);
+        els.resSSTaxable.textContent       = fmtUSD.format(ssTaxableSE || 0);
+        els.resSSTax.textContent           = fmtUSD.format(ssTax || 0);
+        els.resMedicareTax.textContent     = fmtUSD.format(medicareTax || 0);
+        els.resTotalSETax.textContent      = fmtUSD.format(seTaxTotal || 0);
+        els.resDeductibleHalf.textContent  = fmtUSD.format(deductibleHalf || 0);
+        els.resAddlMedicareTax.textContent = fmtUSD.format(addlMedTax || 0);
+      }
+
+      // Event bindings
+      els.taxYear.addEventListener('change', compute);
+
+      document.querySelectorAll('input[name="filingStatus"]').forEach(r => {
+        r.addEventListener('change', compute);
+      });
+
+      // On-blur validation
+      els.netIncome.addEventListener('blur', () => {
+        validateRequiredNumber(els.netIncome, els.errNet, {allowNegative:true});
+        compute();
+      });
+      els.w2SS.addEventListener('blur', () => {
+        const v = els.w2SS.value.trim();
+        if(v === '') { setError(els.w2SS, els.errW2SS, ''); compute(); return; }
+        const ok = validateRequiredNumber(els.w2SS, els.errW2SS, {allowNegative:false});
+        if(ok !== null){
+          // no further check here
+        }
+        compute();
+      });
+      els.w2Med.addEventListener('blur', () => {
+        const v = els.w2Med.value.trim();
+        if(v === '') { setError(els.w2Med, els.errW2Med, ''); compute(); return; }
+        const ok = validateRequiredNumber(els.w2Med, els.errW2Med, {allowNegative:false});
+        if(ok !== null){
+          // no further check
+        }
+        compute();
+      });
+
+      // Live recompute on input for better UX (non-intrusive)
+      ['input','change'].forEach(evt => {
+        els.netIncome.addEventListener(evt, compute);
+        els.w2SS.addEventListener(evt, compute);
+        els.w2Med.addEventListener(evt, compute);
+      });
+
+      // Reset
+      els.resetBtn.addEventListener('click', () => {
+        els.taxYear.value = '2024';
+        document.querySelector('input[name="filingStatus"][value="single"]').checked = true;
+        els.netIncome.value = '';
+        els.w2SS.value = '';
+        els.w2Med.value = '';
+        setError(els.netIncome, els.errNet, '');
+        setError(els.w2SS, els.errW2SS, '');
+        setError(els.w2Med, els.errW2Med, '');
+        updateResults(0,0,0,0,0,0,0);
+        els.netIncome.focus();
+      });
+
+      // Initial compute
+      compute();
+    })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
+
+      // Rates and parameters by year
+      const YEAR_CONFIG = {
+        "2024": {
+          wageBase: 168600,
+          ssRate: 0.124,
+          medicareRate: 0.029,
+          adjFactor: 0.9235
+        },
+        "2023": {
+          wageBase: 160200,
+          ssRate: 0.124,
+          medicareRate: 0.029,
+          adjFactor: 0.9235
+        }
+      };
+
+      // Additional Medicare thresholds by filing status
+      const AM_THRESHOLDS = {
+        single: 200000, // Single, HOH, QW
+        mfj: 250000,    // Married Filing Jointly
+        mfs: 125000     // Married Filing Separately
+      };
+
+      // Intl currency formatter
+      const fmtUSD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
+
+      // Elements
+      const els = {
+        taxYear: document.getElementById('taxYear'),
+        filingStatus: () => document.querySelector('input[name="filingStatus"]:checked'),
+        netIncome: document.getElementById('netIncome'),
+        w2SS: document.getElementById('w2SS'),
+        w2Med: document.getElementById('w2Med'),
+
+        // Errors
+        errYear: document.getElementById('taxYearError'),
+        errNet: document.getElementById('netIncomeError'),
+        errW2SS: document.getElementById('w2SSError'),
+        errW2Med: document.getElementById('w2MedError'),
+
+        // Results
+        resNetEarnings: document.getElementById('resNetEarnings'),
+        resSSTaxable: document.getElementById('resSSTaxable'),
+        resSSTax: document.getElementById('resSSTax'),
+        resMedicareTax: document.getElementById('resMedicareTax'),
+        resTotalSETax: document.getElementById('resTotalSETax'),
+        resDeductibleHalf: document.getElementById('resDeductibleHalf'),
+        resAddlMedicareTax: document.getElementById('resAddlMedicareTax'),
+
+        // Buttons
+        resetBtn: document.getElementById('resetBtn')
+      };
+
+      // Accessible tooltip toggles
+      function bindTooltip(btnId, tipId){
+        const btn = document.getElementById(btnId);
+        const tip = document.getElementById(tipId);
+        if(!btn || !tip) return;
+        btn.addEventListener('click', () => {
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          tip.hidden = expanded;
+        });
+        btn.addEventListener('keydown', (e) => {
+          if(e.key === 'Escape'){
+            btn.setAttribute('aria-expanded', 'false');
+            tip.hidden = true;
+            btn.focus();
+          }
+        });
+      }
+      bindTooltip('taxYearHelp','taxYearTip');
+      bindTooltip('netIncomeHelp','netIncomeTip');
+      bindTooltip('w2SSHelp','w2SSTip');
+      bindTooltip('w2MedHelp','w2MedTip');
+
+      // Validation helpers
+      function toNumber(val){
+        if (val === '' || val === null || val === undefined) return 0;
+        const n = Number(val);
+        return Number.isFinite(n) ? n : NaN;
+      }
+
+      function setError(inputEl, errEl, msg){
+        if(!errEl) return;
+        if(msg){
+          inputEl?.setAttribute('aria-invalid','true');
+          errEl.textContent = msg;
+        } else {
+          inputEl?.setAttribute('aria-invalid','false');
+          errEl.textContent = '';
+        }
+      }
+
+      function validateRequiredNumber(inputEl, errEl, {allowNegative=false} = {}){
+        const raw = inputEl.value.trim();
+        if(raw === ''){
+          setError(inputEl, errEl, 'This field is required.');
+          return null;
+        }
+        const n = Number(raw);
+        if(!Number.isFinite(n)){
+          setError(inputEl, errEl, 'Please enter a valid number.');
+          return null;
+        }
+        if(!allowNegative && n < 0){
+          setError(inputEl, errEl, 'Please enter a number greater than or equal to 0.');
+          return null;
+        }
+        setError(inputEl, errEl, '');
+        return n;
+      }
+
+      // Core compute
+      function compute(){
+        const year = els.taxYear.value in YEAR_CONFIG ? els.taxYear.value : '2024';
+        const cfg = YEAR_CONFIG[year];
+
+        // Filing status
+        const fs = els.filingStatus()?.value || 'single';
+
+        // Inputs
+        const netIncome = toNumber(els.netIncome.value);
+        const w2SS = Math.max(0, toNumber(els.w2SS.value));
+        const w2Med = Math.max(0, toNumber(els.w2Med.value));
+
+        // Validation checks for calculation (non-blocking; will treat NaN as zero except required netIncome)
+        if(els.netIncome.value.trim() === '' || !Number.isFinite(netIncome)){
+          // Clear outputs for clarity
+          updateResults(0,0,0,0,0,0);
+          return;
+        }
+
+        // Negative net income => no SE tax
+        const positiveNet = Math.max(0, netIncome);
+
+        // Net earnings for SE tax (E)
+        const E = cfg.adjFactor * positiveNet;
+
+        // Social Security coordination
+        const wageBase = cfg.wageBase;
+        const w2SSCapped = Math.min(Math.max(0, w2SS), wageBase);
+        const remainingSSHeadroom = Math.max(0, wageBase - w2SSCapped);
+        const ssTaxableSE = Math.min(E, remainingSSHeadroom);
+
+        // Taxes
+        const ssTax = cfg.ssRate * ssTaxableSE;
+        const medicareTax = cfg.medicareRate * E;
+        const seTaxTotal = ssTax + medicareTax;
+
+        // Deductible half (excludes Additional Medicare Tax)
+        const deductibleHalf = 0.5 * seTaxTotal;
+
+        // Additional Medicare Tax estimate (0.9%) based on combined Medicare wages + E over threshold
+        const threshold = AM_THRESHOLDS[fs] ?? AM_THRESHOLDS.single;
+        const additionalBase = Math.max(0, (w2Med + E) - threshold);
+        const addlMedTax = 0.009 * additionalBase;
+
+        updateResults(E, ssTaxableSE, ssTax, medicareTax, seTaxTotal, deductibleHalf, addlMedTax);
+      }
+
+      function updateResults(E, ssTaxableSE, ssTax, medicareTax, seTaxTotal, deductibleHalf, addlMedTax=0){
+        els.resNetEarnings.textContent     = fmtUSD.format(E || 0);
+        els.resSSTaxable.textContent       = fmtUSD.format(ssTaxableSE || 0);
+        els.resSSTax.textContent           = fmtUSD.format(ssTax || 0);
+        els.resMedicareTax.textContent     = fmtUSD.format(medicareTax || 0);
+        els.resTotalSETax.textContent      = fmtUSD.format(seTaxTotal || 0);
+        els.resDeductibleHalf.textContent  = fmtUSD.format(deductibleHalf || 0);
+        els.resAddlMedicareTax.textContent = fmtUSD.format(addlMedTax || 0);
+      }
+
+      // Event bindings
+      els.taxYear.addEventListener('change', compute);
+
+      document.querySelectorAll('input[name="filingStatus"]').forEach(r => {
+        r.addEventListener('change', compute);
+      });
+
+      // On-blur validation
+      els.netIncome.addEventListener('blur', () => {
+        validateRequiredNumber(els.netIncome, els.errNet, {allowNegative:true});
+        compute();
+      });
+      els.w2SS.addEventListener('blur', () => {
+        const v = els.w2SS.value.trim();
+        if(v === '') { setError(els.w2SS, els.errW2SS, ''); compute(); return; }
+        const ok = validateRequiredNumber(els.w2SS, els.errW2SS, {allowNegative:false});
+        if(ok !== null){
+          // no further check here
+        }
+        compute();
+      });
+      els.w2Med.addEventListener('blur', () => {
+        const v = els.w2Med.value.trim();
+        if(v === '') { setError(els.w2Med, els.errW2Med, ''); compute(); return; }
+        const ok = validateRequiredNumber(els.w2Med, els.errW2Med, {allowNegative:false});
+        if(ok !== null){
+          // no further check
+        }
+        compute();
+      });
+
+      // Live recompute on input for better UX (non-intrusive)
+      ['input','change'].forEach(evt => {
+        els.netIncome.addEventListener(evt, compute);
+        els.w2SS.addEventListener(evt, compute);
+        els.w2Med.addEventListener(evt, compute);
+      });
+
+      // Reset
+      els.resetBtn.addEventListener('click', () => {
+        els.taxYear.value = '2024';
+        document.querySelector('input[name="filingStatus"][value="single"]').checked = true;
+        els.netIncome.value = '';
+        els.w2SS.value = '';
+        els.w2Med.value = '';
+        setError(els.netIncome, els.errNet, '');
+        setError(els.w2SS, els.errW2SS, '');
+        setError(els.w2Med, els.errW2Med, '');
+        updateResults(0,0,0,0,0,0,0);
+        els.netIncome.focus();
+      });
+
+      // Initial compute
+      compute();
+    })();
+  </script></body></html>

@@ -279,7 +279,13 @@
 }</script>
 <!-- MathJax for LaTeX rendering -->
 <script>
-  window.MathJax = { tex: { inlineMath: [['\\(','\\)'], ['</script>
+  (function() {
+
+    'use strict';
+
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)'], ['
+
+  })();</script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="search.js" defer=""></script>
@@ -318,10 +324,22 @@
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
 </style>
 </head>
-<body>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">Eurocode 2 Concrete Slab Punching Shear Calculator</h1>
+    <p class="sub" id="pageSub">Professional Eurocode 2 punching shear calculator for concrete slabs. Computes control perimeter, design shear stress, concrete shear resistance, and maximum punching capacity per EN 1992-1-1. WCAG-accessible, mobile-first, and optimized for performance.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<a class="skip-link" href="#main">Skip to main content</a>
-<main class="container" id="main" role="main">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main class="container" id="main" role="main">
 <nav aria-label="Breadcrumb" class="breadcrumb">
 Home › <a href="https://calcdomain.com/engineering">Engineering</a> › Civil (Eurocode 2) › Eurocode 2 Punching Shear
     </nav>
@@ -724,306 +742,21 @@ Home › <a href="https://calcdomain.com/engineering">Engineering</a> › Civil 
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
+
+
 </main>
-<script defer="">
-    (function(){
-      'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
 
-      const qs = (sel, ctx=document)=>ctx.querySelector(sel);
-      const qsa = (sel, ctx=document)=>Array.from(ctx.querySelectorAll(sel));
+<button id="resetBtn" type="button" class="btn btnSecondary">Reset</button>
+</div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-      const state = {
-        shape: 'rect'
-      };
-
-      // Elements
-      const rectFields = qs('#rectFields');
-      const circFields = qs('#circFields');
-
-      const colB = qs('#colB');
-      const colC = qs('#colC');
-      const colD = qs('#colD');
-
-      const effDepth = qs('#effDepth');
-      const slabThk = qs('#slabThk');
-      const fck = qs('#fck');
-      const rhoL = qs('#rhoL');
-      const Ved = qs('#Ved');
-      const beta = qs('#beta');
-      const sigmaCp = qs('#sigmaCp');
-      const perimDeduct = qs('#perimDeduct');
-      const gammaC = qs('#gammaC');
-
-      // Rho helper
-      const toggleRhoHelper = qs('#toggleRhoHelper');
-      const rhoHelper = qs('#rhoHelper');
-      const computeRhoBtn = qs('#computeRhoBtn');
-      const rhoHelperOut = qs('#rhoHelperOut');
-      const barDiaX = qs('#barDiaX');
-      const barSpX  = qs('#barSpX');
-      const barDiaY = qs('#barDiaY');
-      const barSpY  = qs('#barSpY');
-
-      // Results
-      const u1mm = qs('#u1mm');
-      const u1m  = qs('#u1m');
-      const boShow = qs('#boShow');
-      const kVal = qs('#kVal');
-      const rhoShow = qs('#rhoShow');
-      const vEd = qs('#vEd');
-      const vRdc = qs('#vRdc');
-      const vRdmax = qs('#vRdmax');
-      const utilRdc = qs('#utilRdc');
-      const statusBox = qs('#statusBox');
-
-      // Tooltips
-      qsa('.help-btn').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          const tid = btn.getAttribute('aria-controls');
-          const tip = qs('#'+tid);
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          tip?.setAttribute('data-open', String(!expanded));
-        });
-        btn.addEventListener('keydown', (e)=>{
-          if(e.key === 'Enter' || e.key === ' '){
-            e.preventDefault(); btn.click();
-          }
-        });
-      });
-
-      // Shape toggle
-      qsa('input[name="shape"]').forEach(r=>{
-        r.addEventListener('change', ()=>{
-          state.shape = r.value;
-          if(state.shape === 'rect'){
-            rectFields.hidden = false;
-            circFields.hidden = true;
-            setRequired([colB, colC], true);
-            setRequired([colD], false);
-          }else{
-            rectFields.hidden = true;
-            circFields.hidden = false;
-            setRequired([colD], true);
-            setRequired([colB, colC], false);
-          }
-          calculate();
-        });
-      });
-
-      function setRequired(list, isReq){
-        list.forEach(inp=>{
-          if(!inp) return;
-          if(isReq){
-            inp.setAttribute('aria-required','true');
-          }else{
-            inp.removeAttribute('aria-required');
-          }
-        });
-      }
-
-      // Advanced helper toggle
-      toggleRhoHelper.addEventListener('change', ()=>{
-        const open = toggleRhoHelper.checked;
-        rhoHelper.setAttribute('aria-hidden', String(!open));
-        toggleRhoHelper.setAttribute('aria-expanded', String(open));
-      });
-
-      computeRhoBtn.addEventListener('click', ()=>{
-        const d = num(effDepth);
-        if(!isFinite(d) || d <= 0){
-          effDepth.focus();
-          rhoHelperOut.textContent = 'Enter a valid effective depth d first.';
-          return;
-        }
-        const phix = num(barDiaX), sx = num(barSpX), phiy = num(barDiaY), sy = num(barSpY);
-        if([phix,sx,phiy,sy].some(v=>!isFinite(v) || v<=0)){
-          rhoHelperOut.textContent = 'Provide bar diameters and spacings in both directions.';
-          return;
-        }
-        // ρ = (π φ^2 / (4 s d)) (with s and d in mm). This yields a fraction (e.g., 0.01 = 1%)
-        const rhoX = Math.PI * phix*phix / (4 * sx * d);
-        const rhoY = Math.PI * phiy*phiy / (4 * sy * d);
-        const rhoAvg = 100 * (rhoX + rhoY)/2; // percent
-        rhoL.value = clamp(rhoAvg, 0.05, 2).toFixed(2);
-        rhoHelperOut.textContent = `Computed ρ_l ≈ ${rhoL.value}% (avg of X=${(rhoX*100).toFixed(2)}%, Y=${(rhoY*100).toFixed(2)}%).`;
-        calculate();
-      });
-
-      // Validation helpers
-      function num(el){ return parseFloat((el?.value || '').trim()); }
-      function setErr(input, errId, msg){
-        const errEl = qs('#'+errId);
-        if(msg){
-          input?.setAttribute('aria-invalid','true');
-          errEl.textContent = msg;
-        }else{
-          input?.removeAttribute('aria-invalid');
-          errEl.textContent = '';
-        }
-      }
-      function clamp(v, min, max){ return Math.min(Math.max(v, min), max); }
-
-      // Field-level validation on blur
-      const validators = {
-        colB: v=> (state.shape==='rect' && (!isFinite(v) || v<=0)) ? 'Enter column width b in mm (b > 0).' : '',
-        colC: v=> (state.shape==='rect' && (!isFinite(v) || v<=0)) ? 'Enter column depth c in mm (c > 0).' : '',
-        colD: v=> (state.shape==='circ' && (!isFinite(v) || v<=0)) ? 'Enter column diameter D in mm (D > 0).' : '',
-        effDepth: v=> !isFinite(v)||v<=0 ? 'Enter effective depth d in mm (d > 0).' : '',
-        slabThk: v=> (isFinite(v) && isFinite(num(effDepth)) && v>0 && num(effDepth)>v) ? 'd should not exceed h; check inputs.' : '',
-        fck: v=> !isFinite(v)||v<12||v>90 ? 'Enter fck between 12 and 90 MPa.' : '',
-        rhoL: v=>{
-          if(!isFinite(v) || v<=0) return 'Enter ρl in percent (e.g., 1.0).';
-          if(v>2) return 'Per EC2, ρl is limited to 2% for this check.';
-          return '';
-        },
-        Ved: v=> !isFinite(v)||v<=0 ? 'Enter design shear VEd in kN (VEd > 0).' : '',
-        beta: v=> !isFinite(v)||v<1||v>2 ? 'Enter β between 1.0 and 2.0.' : '',
-        sigmaCp: v=> (isFinite(v) && v<0) ? 'σcp cannot be negative.' : '',
-        perimDeduct: v=> (isFinite(v) && v<0) ? 'Perimeter deduction must be ≥ 0.' : '',
-        gammaC: v=> !isFinite(v)||v<1||v>1.6 ? 'Enter γc between 1.0 and 1.6.' : ''
-      };
-
-      const inputs = [colB,colC,colD,effDepth,slabThk,fck,rhoL,Ved,beta,sigmaCp,perimDeduct,gammaC];
-      inputs.forEach(inp=>{
-        if(!inp) return;
-        inp.addEventListener('blur', ()=> validateField(inp.id));
-        inp.addEventListener('input', ()=> { /* responsive update without nagging errors */ calculate(false); });
-      });
-
-      function validateField(id){
-        const el = qs('#'+id);
-        if(!el) return true;
-        const v = num(el);
-        const msg = validators[id] ? validators[id](v) : '';
-        setErr(el, id+'Err', msg);
-        return msg === '';
-      }
-
-      function validateAll(){
-        let ok = true;
-        inputs.forEach(inp=>{
-          if(!inp || inp.offsetParent===null){ return; } // skip hidden
-          ok = validateField(inp.id) && ok;
-        });
-        return ok;
-      }
-
-      // Core calculation
-      function calculate(showErrors = true){
-        if(showErrors && !validateAll()){
-          statusBox.className = 'status warn';
-          statusBox.textContent = 'Please correct highlighted fields to compute results.';
-          return;
-        }
-
-        const d = num(effDepth);
-        const fckVal = num(fck);
-        const rhoPct = num(rhoL);
-        const rho = clamp((rhoPct||0)/100, 0, 0.02); // fraction
-        const betaVal = Math.max(1, Math.min(2, num(beta) || 1));
-        const gamma = num(gammaC) || 1.5;
-        const sigma = Math.max(0, num(sigmaCp) || 0);
-        const VedVal = num(Ved);
-        const bo = Math.max(0, num(perimDeduct) || 0);
-
-        // Control perimeter u1
-        let u1;
-        if(state.shape === 'rect'){
-          const b = num(colB), c = num(colC);
-          if(!(b>0 && c>0 && d>0)){ paintPlaceholders(); return; }
-          u1 = 2*(b + c + 8*d); // mm
-        }else{
-          const D = num(colD);
-          if(!(D>0 && d>0)){ paintPlaceholders(); return; }
-          u1 = Math.PI*( (num(colD)||0) + 4*d ); // mm
-        }
-        const u1eff = Math.max(0, u1 - bo);
-
-        // k
-        const k = Math.min(2, 1 + Math.sqrt(200/Math.max(1,d)));
-
-        // vmin and CRdc
-        const CRdc = 0.18 / gamma;
-        const vmin = 0.035 * Math.pow(k, 1.5) * Math.sqrt(fckVal||0);
-        const term = CRdc * k * Math.cbrt(100 * rho * (fckVal||0));
-        const vRdcVal = Math.max(term, vmin) + 0.1 * sigma; // MPa
-
-        // vEd
-        let vEdVal = NaN;
-        if(VedVal>0 && u1eff>0 && d>0){
-          vEdVal = (betaVal * VedVal * 1000) / (u1eff * d); // kN to N, -> MPa since N/mm2
-        }
-
-        // vRdmax
-        const v1 = 0.6*(1 - (fckVal||0)/250);
-        const fcd = (1.0 * (fckVal||0)) / gamma;
-        const vRdmaxVal = 0.5 * v1 * fcd;
-
-        // Output
-        u1mm.textContent = isFinite(u1eff)? fmt(u1eff,0) : '—';
-        u1m.textContent  = isFinite(u1eff)? fmt(u1eff/1000,3) : '—';
-        boShow.textContent = isFinite(bo)? fmt(bo,0)+' mm' : '—';
-        kVal.textContent = isFinite(k)? k.toFixed(3) : '—';
-        rhoShow.textContent = isFinite(rho) ? (rho*100).toFixed(2)+' %' : '—';
-        vEd.textContent = isFinite(vEdVal)? fmt(vEdVal,3)+' MPa' : '—';
-        vRdc.textContent = isFinite(vRdcVal)? fmt(vRdcVal,3)+' MPa' : '—';
-        vRdmax.textContent = isFinite(vRdmaxVal)? fmt(vRdmaxVal,3)+' MPa' : '—';
-        utilRdc.textContent = (isFinite(vEdVal) && isFinite(vRdcVal) && vRdcVal>0) ? (vEdVal/vRdcVal).toFixed(2) : '—';
-
-        // Status
-        if(!isFinite(vEdVal)){
-          statusBox.className = 'status';
-          statusBox.textContent = 'Enter values to compute punching shear.';
-          return;
-        }
-        if(vEdVal <= vRdcVal){
-          statusBox.className = 'status ok';
-          statusBox.textContent = 'OK without shear reinforcement: vEd ≤ vRd,c.';
-        }else if(vEdVal <= vRdmaxVal){
-          const ratio = (vEdVal/vRdcVal);
-          statusBox.className = 'status warn';
-          statusBox.textContent = `Shear reinforcement required: vEd > vRd,c but vEd ≤ vRd,max. Current utilization vs vRd,c = ${ratio.toFixed(2)}.`;
-        }else{
-          statusBox.className = 'status bad';
-          statusBox.textContent = 'Not safe: vEd > vRd,max. Increase slab depth, enlarge column, reduce loads, or redesign.';
-        }
-
-        // Soft warning on h vs d
-        const h = num(slabThk);
-        if(isFinite(h) && isFinite(d) && d>h){
-          setErr(slabThk, 'slabThkErr', 'Warning: d exceeds h. Check your inputs.');
-        }else{
-          setErr(slabThk, 'slabThkErr', '');
-        }
-
-        function paintPlaceholders(){
-          u1mm.textContent = '—'; u1m.textContent = '—'; boShow.textContent = '—';
-          kVal.textContent = '—'; rhoShow.textContent = '—'; vEd.textContent = '—';
-          vRdc.textContent = '—'; vRdmax.textContent = '—'; utilRdc.textContent = '—';
-          statusBox.className = 'status';
-          statusBox.textContent = 'Provide geometry and material inputs to compute.';
-        }
-      }
-
-      function fmt(x, dec=2){
-        return Number(x).toLocaleString(undefined, {maximumFractionDigits: dec, minimumFractionDigits: dec});
-      }
-
-      // Initial compute
-      calculate(false);
-    })();
-  </script>
-
-
-<script defer="" src="/assets/js/mobile-menu.js"></script>
-<script defer="" src="/assets/js/page-enhancements.js"></script>
-</body></html>, '</script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="search.js" defer=""></script>
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main">Skip to main content</a><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1055,12 +788,7 @@ Home › <a href="https://calcdomain.com/engineering">Engineering</a> › Civil 
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-
-<a class="skip-link" href="#main">Skip to main content</a>
-<main class="container" id="main" role="main">
+</style><a class="skip-link" href="#main">Skip to main content</a><main class="container" id="main" role="main">
 <nav aria-label="Breadcrumb" class="breadcrumb">
 Home › <a href="https://calcdomain.com/engineering">Engineering</a> › Civil (Eurocode 2) › Eurocode 2 Punching Shear
     </nav>
@@ -1463,308 +1191,7 @@ Home › <a href="https://calcdomain.com/engineering">Engineering</a> › Civil 
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<script defer="">
-    (function(){
-      'use strict';
-
-      const qs = (sel, ctx=document)=>ctx.querySelector(sel);
-      const qsa = (sel, ctx=document)=>Array.from(ctx.querySelectorAll(sel));
-
-      const state = {
-        shape: 'rect'
-      };
-
-      // Elements
-      const rectFields = qs('#rectFields');
-      const circFields = qs('#circFields');
-
-      const colB = qs('#colB');
-      const colC = qs('#colC');
-      const colD = qs('#colD');
-
-      const effDepth = qs('#effDepth');
-      const slabThk = qs('#slabThk');
-      const fck = qs('#fck');
-      const rhoL = qs('#rhoL');
-      const Ved = qs('#Ved');
-      const beta = qs('#beta');
-      const sigmaCp = qs('#sigmaCp');
-      const perimDeduct = qs('#perimDeduct');
-      const gammaC = qs('#gammaC');
-
-      // Rho helper
-      const toggleRhoHelper = qs('#toggleRhoHelper');
-      const rhoHelper = qs('#rhoHelper');
-      const computeRhoBtn = qs('#computeRhoBtn');
-      const rhoHelperOut = qs('#rhoHelperOut');
-      const barDiaX = qs('#barDiaX');
-      const barSpX  = qs('#barSpX');
-      const barDiaY = qs('#barDiaY');
-      const barSpY  = qs('#barSpY');
-
-      // Results
-      const u1mm = qs('#u1mm');
-      const u1m  = qs('#u1m');
-      const boShow = qs('#boShow');
-      const kVal = qs('#kVal');
-      const rhoShow = qs('#rhoShow');
-      const vEd = qs('#vEd');
-      const vRdc = qs('#vRdc');
-      const vRdmax = qs('#vRdmax');
-      const utilRdc = qs('#utilRdc');
-      const statusBox = qs('#statusBox');
-
-      // Tooltips
-      qsa('.help-btn').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          const tid = btn.getAttribute('aria-controls');
-          const tip = qs('#'+tid);
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          tip?.setAttribute('data-open', String(!expanded));
-        });
-        btn.addEventListener('keydown', (e)=>{
-          if(e.key === 'Enter' || e.key === ' '){
-            e.preventDefault(); btn.click();
-          }
-        });
-      });
-
-      // Shape toggle
-      qsa('input[name="shape"]').forEach(r=>{
-        r.addEventListener('change', ()=>{
-          state.shape = r.value;
-          if(state.shape === 'rect'){
-            rectFields.hidden = false;
-            circFields.hidden = true;
-            setRequired([colB, colC], true);
-            setRequired([colD], false);
-          }else{
-            rectFields.hidden = true;
-            circFields.hidden = false;
-            setRequired([colD], true);
-            setRequired([colB, colC], false);
-          }
-          calculate();
-        });
-      });
-
-      function setRequired(list, isReq){
-        list.forEach(inp=>{
-          if(!inp) return;
-          if(isReq){
-            inp.setAttribute('aria-required','true');
-          }else{
-            inp.removeAttribute('aria-required');
-          }
-        });
-      }
-
-      // Advanced helper toggle
-      toggleRhoHelper.addEventListener('change', ()=>{
-        const open = toggleRhoHelper.checked;
-        rhoHelper.setAttribute('aria-hidden', String(!open));
-        toggleRhoHelper.setAttribute('aria-expanded', String(open));
-      });
-
-      computeRhoBtn.addEventListener('click', ()=>{
-        const d = num(effDepth);
-        if(!isFinite(d) || d <= 0){
-          effDepth.focus();
-          rhoHelperOut.textContent = 'Enter a valid effective depth d first.';
-          return;
-        }
-        const phix = num(barDiaX), sx = num(barSpX), phiy = num(barDiaY), sy = num(barSpY);
-        if([phix,sx,phiy,sy].some(v=>!isFinite(v) || v<=0)){
-          rhoHelperOut.textContent = 'Provide bar diameters and spacings in both directions.';
-          return;
-        }
-        // ρ = (π φ^2 / (4 s d)) (with s and d in mm). This yields a fraction (e.g., 0.01 = 1%)
-        const rhoX = Math.PI * phix*phix / (4 * sx * d);
-        const rhoY = Math.PI * phiy*phiy / (4 * sy * d);
-        const rhoAvg = 100 * (rhoX + rhoY)/2; // percent
-        rhoL.value = clamp(rhoAvg, 0.05, 2).toFixed(2);
-        rhoHelperOut.textContent = `Computed ρ_l ≈ ${rhoL.value}% (avg of X=${(rhoX*100).toFixed(2)}%, Y=${(rhoY*100).toFixed(2)}%).`;
-        calculate();
-      });
-
-      // Validation helpers
-      function num(el){ return parseFloat((el?.value || '').trim()); }
-      function setErr(input, errId, msg){
-        const errEl = qs('#'+errId);
-        if(msg){
-          input?.setAttribute('aria-invalid','true');
-          errEl.textContent = msg;
-        }else{
-          input?.removeAttribute('aria-invalid');
-          errEl.textContent = '';
-        }
-      }
-      function clamp(v, min, max){ return Math.min(Math.max(v, min), max); }
-
-      // Field-level validation on blur
-      const validators = {
-        colB: v=> (state.shape==='rect' && (!isFinite(v) || v<=0)) ? 'Enter column width b in mm (b > 0).' : '',
-        colC: v=> (state.shape==='rect' && (!isFinite(v) || v<=0)) ? 'Enter column depth c in mm (c > 0).' : '',
-        colD: v=> (state.shape==='circ' && (!isFinite(v) || v<=0)) ? 'Enter column diameter D in mm (D > 0).' : '',
-        effDepth: v=> !isFinite(v)||v<=0 ? 'Enter effective depth d in mm (d > 0).' : '',
-        slabThk: v=> (isFinite(v) && isFinite(num(effDepth)) && v>0 && num(effDepth)>v) ? 'd should not exceed h; check inputs.' : '',
-        fck: v=> !isFinite(v)||v<12||v>90 ? 'Enter fck between 12 and 90 MPa.' : '',
-        rhoL: v=>{
-          if(!isFinite(v) || v<=0) return 'Enter ρl in percent (e.g., 1.0).';
-          if(v>2) return 'Per EC2, ρl is limited to 2% for this check.';
-          return '';
-        },
-        Ved: v=> !isFinite(v)||v<=0 ? 'Enter design shear VEd in kN (VEd > 0).' : '',
-        beta: v=> !isFinite(v)||v<1||v>2 ? 'Enter β between 1.0 and 2.0.' : '',
-        sigmaCp: v=> (isFinite(v) && v<0) ? 'σcp cannot be negative.' : '',
-        perimDeduct: v=> (isFinite(v) && v<0) ? 'Perimeter deduction must be ≥ 0.' : '',
-        gammaC: v=> !isFinite(v)||v<1||v>1.6 ? 'Enter γc between 1.0 and 1.6.' : ''
-      };
-
-      const inputs = [colB,colC,colD,effDepth,slabThk,fck,rhoL,Ved,beta,sigmaCp,perimDeduct,gammaC];
-      inputs.forEach(inp=>{
-        if(!inp) return;
-        inp.addEventListener('blur', ()=> validateField(inp.id));
-        inp.addEventListener('input', ()=> { /* responsive update without nagging errors */ calculate(false); });
-      });
-
-      function validateField(id){
-        const el = qs('#'+id);
-        if(!el) return true;
-        const v = num(el);
-        const msg = validators[id] ? validators[id](v) : '';
-        setErr(el, id+'Err', msg);
-        return msg === '';
-      }
-
-      function validateAll(){
-        let ok = true;
-        inputs.forEach(inp=>{
-          if(!inp || inp.offsetParent===null){ return; } // skip hidden
-          ok = validateField(inp.id) && ok;
-        });
-        return ok;
-      }
-
-      // Core calculation
-      function calculate(showErrors = true){
-        if(showErrors && !validateAll()){
-          statusBox.className = 'status warn';
-          statusBox.textContent = 'Please correct highlighted fields to compute results.';
-          return;
-        }
-
-        const d = num(effDepth);
-        const fckVal = num(fck);
-        const rhoPct = num(rhoL);
-        const rho = clamp((rhoPct||0)/100, 0, 0.02); // fraction
-        const betaVal = Math.max(1, Math.min(2, num(beta) || 1));
-        const gamma = num(gammaC) || 1.5;
-        const sigma = Math.max(0, num(sigmaCp) || 0);
-        const VedVal = num(Ved);
-        const bo = Math.max(0, num(perimDeduct) || 0);
-
-        // Control perimeter u1
-        let u1;
-        if(state.shape === 'rect'){
-          const b = num(colB), c = num(colC);
-          if(!(b>0 && c>0 && d>0)){ paintPlaceholders(); return; }
-          u1 = 2*(b + c + 8*d); // mm
-        }else{
-          const D = num(colD);
-          if(!(D>0 && d>0)){ paintPlaceholders(); return; }
-          u1 = Math.PI*( (num(colD)||0) + 4*d ); // mm
-        }
-        const u1eff = Math.max(0, u1 - bo);
-
-        // k
-        const k = Math.min(2, 1 + Math.sqrt(200/Math.max(1,d)));
-
-        // vmin and CRdc
-        const CRdc = 0.18 / gamma;
-        const vmin = 0.035 * Math.pow(k, 1.5) * Math.sqrt(fckVal||0);
-        const term = CRdc * k * Math.cbrt(100 * rho * (fckVal||0));
-        const vRdcVal = Math.max(term, vmin) + 0.1 * sigma; // MPa
-
-        // vEd
-        let vEdVal = NaN;
-        if(VedVal>0 && u1eff>0 && d>0){
-          vEdVal = (betaVal * VedVal * 1000) / (u1eff * d); // kN to N, -> MPa since N/mm2
-        }
-
-        // vRdmax
-        const v1 = 0.6*(1 - (fckVal||0)/250);
-        const fcd = (1.0 * (fckVal||0)) / gamma;
-        const vRdmaxVal = 0.5 * v1 * fcd;
-
-        // Output
-        u1mm.textContent = isFinite(u1eff)? fmt(u1eff,0) : '—';
-        u1m.textContent  = isFinite(u1eff)? fmt(u1eff/1000,3) : '—';
-        boShow.textContent = isFinite(bo)? fmt(bo,0)+' mm' : '—';
-        kVal.textContent = isFinite(k)? k.toFixed(3) : '—';
-        rhoShow.textContent = isFinite(rho) ? (rho*100).toFixed(2)+' %' : '—';
-        vEd.textContent = isFinite(vEdVal)? fmt(vEdVal,3)+' MPa' : '—';
-        vRdc.textContent = isFinite(vRdcVal)? fmt(vRdcVal,3)+' MPa' : '—';
-        vRdmax.textContent = isFinite(vRdmaxVal)? fmt(vRdmaxVal,3)+' MPa' : '—';
-        utilRdc.textContent = (isFinite(vEdVal) && isFinite(vRdcVal) && vRdcVal>0) ? (vEdVal/vRdcVal).toFixed(2) : '—';
-
-        // Status
-        if(!isFinite(vEdVal)){
-          statusBox.className = 'status';
-          statusBox.textContent = 'Enter values to compute punching shear.';
-          return;
-        }
-        if(vEdVal <= vRdcVal){
-          statusBox.className = 'status ok';
-          statusBox.textContent = 'OK without shear reinforcement: vEd ≤ vRd,c.';
-        }else if(vEdVal <= vRdmaxVal){
-          const ratio = (vEdVal/vRdcVal);
-          statusBox.className = 'status warn';
-          statusBox.textContent = `Shear reinforcement required: vEd > vRd,c but vEd ≤ vRd,max. Current utilization vs vRd,c = ${ratio.toFixed(2)}.`;
-        }else{
-          statusBox.className = 'status bad';
-          statusBox.textContent = 'Not safe: vEd > vRd,max. Increase slab depth, enlarge column, reduce loads, or redesign.';
-        }
-
-        // Soft warning on h vs d
-        const h = num(slabThk);
-        if(isFinite(h) && isFinite(d) && d>h){
-          setErr(slabThk, 'slabThkErr', 'Warning: d exceeds h. Check your inputs.');
-        }else{
-          setErr(slabThk, 'slabThkErr', '');
-        }
-
-        function paintPlaceholders(){
-          u1mm.textContent = '—'; u1m.textContent = '—'; boShow.textContent = '—';
-          kVal.textContent = '—'; rhoShow.textContent = '—'; vEd.textContent = '—';
-          vRdc.textContent = '—'; vRdmax.textContent = '—'; utilRdc.textContent = '—';
-          statusBox.className = 'status';
-          statusBox.textContent = 'Provide geometry and material inputs to compute.';
-        }
-      }
-
-      function fmt(x, dec=2){
-        return Number(x).toLocaleString(undefined, {maximumFractionDigits: dec, minimumFractionDigits: dec});
-      }
-
-      // Initial compute
-      calculate(false);
-    })();
-  </script>
-
-
-<script defer="" src="/assets/js/mobile-menu.js"></script>
-<script defer="" src="/assets/js/page-enhancements.js"></script>
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };
-</script>
-<script defer="" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="search.js" defer=""></script>
-
-<style>
+</main><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1796,12 +1223,7 @@ Home › <a href="https://calcdomain.com/engineering">Engineering</a> › Civil 
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-
-<a class="skip-link" href="#main">Skip to main content</a>
-<main class="container" id="main" role="main">
+</style><a class="skip-link" href="#main">Skip to main content</a><main class="container" id="main" role="main">
 <nav aria-label="Breadcrumb" class="breadcrumb">
 Home › <a href="https://calcdomain.com/engineering">Engineering</a> › Civil (Eurocode 2) › Eurocode 2 Punching Shear
     </nav>
@@ -2204,8 +1626,48 @@ Home › <a href="https://calcdomain.com/engineering">Engineering</a> › Civil 
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
     (function(){
       'use strict';
 
@@ -2493,9 +1955,580 @@ Home › <a href="https://calcdomain.com/engineering">Engineering</a> › Civil 
       // Initial compute
       calculate(false);
     })();
-  </script>
+  </script><script defer="" src="/assets/js/mobile-menu.js"></script><script defer="" src="/assets/js/page-enhancements.js"></script><script src="https://cdn.tailwindcss.com"></script><script src="search.js" defer=""></script><script defer="">
+    (function(){
+      'use strict';
 
+      const qs = (sel, ctx=document)=>ctx.querySelector(sel);
+      const qsa = (sel, ctx=document)=>Array.from(ctx.querySelectorAll(sel));
 
-<script defer="" src="/assets/js/mobile-menu.js"></script>
-<script defer="" src="/assets/js/page-enhancements.js"></script>
-</body></html>
+      const state = {
+        shape: 'rect'
+      };
+
+      // Elements
+      const rectFields = qs('#rectFields');
+      const circFields = qs('#circFields');
+
+      const colB = qs('#colB');
+      const colC = qs('#colC');
+      const colD = qs('#colD');
+
+      const effDepth = qs('#effDepth');
+      const slabThk = qs('#slabThk');
+      const fck = qs('#fck');
+      const rhoL = qs('#rhoL');
+      const Ved = qs('#Ved');
+      const beta = qs('#beta');
+      const sigmaCp = qs('#sigmaCp');
+      const perimDeduct = qs('#perimDeduct');
+      const gammaC = qs('#gammaC');
+
+      // Rho helper
+      const toggleRhoHelper = qs('#toggleRhoHelper');
+      const rhoHelper = qs('#rhoHelper');
+      const computeRhoBtn = qs('#computeRhoBtn');
+      const rhoHelperOut = qs('#rhoHelperOut');
+      const barDiaX = qs('#barDiaX');
+      const barSpX  = qs('#barSpX');
+      const barDiaY = qs('#barDiaY');
+      const barSpY  = qs('#barSpY');
+
+      // Results
+      const u1mm = qs('#u1mm');
+      const u1m  = qs('#u1m');
+      const boShow = qs('#boShow');
+      const kVal = qs('#kVal');
+      const rhoShow = qs('#rhoShow');
+      const vEd = qs('#vEd');
+      const vRdc = qs('#vRdc');
+      const vRdmax = qs('#vRdmax');
+      const utilRdc = qs('#utilRdc');
+      const statusBox = qs('#statusBox');
+
+      // Tooltips
+      qsa('.help-btn').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const tid = btn.getAttribute('aria-controls');
+          const tip = qs('#'+tid);
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          tip?.setAttribute('data-open', String(!expanded));
+        });
+        btn.addEventListener('keydown', (e)=>{
+          if(e.key === 'Enter' || e.key === ' '){
+            e.preventDefault(); btn.click();
+          }
+        });
+      });
+
+      // Shape toggle
+      qsa('input[name="shape"]').forEach(r=>{
+        r.addEventListener('change', ()=>{
+          state.shape = r.value;
+          if(state.shape === 'rect'){
+            rectFields.hidden = false;
+            circFields.hidden = true;
+            setRequired([colB, colC], true);
+            setRequired([colD], false);
+          }else{
+            rectFields.hidden = true;
+            circFields.hidden = false;
+            setRequired([colD], true);
+            setRequired([colB, colC], false);
+          }
+          calculate();
+        });
+      });
+
+      function setRequired(list, isReq){
+        list.forEach(inp=>{
+          if(!inp) return;
+          if(isReq){
+            inp.setAttribute('aria-required','true');
+          }else{
+            inp.removeAttribute('aria-required');
+          }
+        });
+      }
+
+      // Advanced helper toggle
+      toggleRhoHelper.addEventListener('change', ()=>{
+        const open = toggleRhoHelper.checked;
+        rhoHelper.setAttribute('aria-hidden', String(!open));
+        toggleRhoHelper.setAttribute('aria-expanded', String(open));
+      });
+
+      computeRhoBtn.addEventListener('click', ()=>{
+        const d = num(effDepth);
+        if(!isFinite(d) || d <= 0){
+          effDepth.focus();
+          rhoHelperOut.textContent = 'Enter a valid effective depth d first.';
+          return;
+        }
+        const phix = num(barDiaX), sx = num(barSpX), phiy = num(barDiaY), sy = num(barSpY);
+        if([phix,sx,phiy,sy].some(v=>!isFinite(v) || v<=0)){
+          rhoHelperOut.textContent = 'Provide bar diameters and spacings in both directions.';
+          return;
+        }
+        // ρ = (π φ^2 / (4 s d)) (with s and d in mm). This yields a fraction (e.g., 0.01 = 1%)
+        const rhoX = Math.PI * phix*phix / (4 * sx * d);
+        const rhoY = Math.PI * phiy*phiy / (4 * sy * d);
+        const rhoAvg = 100 * (rhoX + rhoY)/2; // percent
+        rhoL.value = clamp(rhoAvg, 0.05, 2).toFixed(2);
+        rhoHelperOut.textContent = `Computed ρ_l ≈ ${rhoL.value}% (avg of X=${(rhoX*100).toFixed(2)}%, Y=${(rhoY*100).toFixed(2)}%).`;
+        calculate();
+      });
+
+      // Validation helpers
+      function num(el){ return parseFloat((el?.value || '').trim()); }
+      function setErr(input, errId, msg){
+        const errEl = qs('#'+errId);
+        if(msg){
+          input?.setAttribute('aria-invalid','true');
+          errEl.textContent = msg;
+        }else{
+          input?.removeAttribute('aria-invalid');
+          errEl.textContent = '';
+        }
+      }
+      function clamp(v, min, max){ return Math.min(Math.max(v, min), max); }
+
+      // Field-level validation on blur
+      const validators = {
+        colB: v=> (state.shape==='rect' && (!isFinite(v) || v<=0)) ? 'Enter column width b in mm (b > 0).' : '',
+        colC: v=> (state.shape==='rect' && (!isFinite(v) || v<=0)) ? 'Enter column depth c in mm (c > 0).' : '',
+        colD: v=> (state.shape==='circ' && (!isFinite(v) || v<=0)) ? 'Enter column diameter D in mm (D > 0).' : '',
+        effDepth: v=> !isFinite(v)||v<=0 ? 'Enter effective depth d in mm (d > 0).' : '',
+        slabThk: v=> (isFinite(v) && isFinite(num(effDepth)) && v>0 && num(effDepth)>v) ? 'd should not exceed h; check inputs.' : '',
+        fck: v=> !isFinite(v)||v<12||v>90 ? 'Enter fck between 12 and 90 MPa.' : '',
+        rhoL: v=>{
+          if(!isFinite(v) || v<=0) return 'Enter ρl in percent (e.g., 1.0).';
+          if(v>2) return 'Per EC2, ρl is limited to 2% for this check.';
+          return '';
+        },
+        Ved: v=> !isFinite(v)||v<=0 ? 'Enter design shear VEd in kN (VEd > 0).' : '',
+        beta: v=> !isFinite(v)||v<1||v>2 ? 'Enter β between 1.0 and 2.0.' : '',
+        sigmaCp: v=> (isFinite(v) && v<0) ? 'σcp cannot be negative.' : '',
+        perimDeduct: v=> (isFinite(v) && v<0) ? 'Perimeter deduction must be ≥ 0.' : '',
+        gammaC: v=> !isFinite(v)||v<1||v>1.6 ? 'Enter γc between 1.0 and 1.6.' : ''
+      };
+
+      const inputs = [colB,colC,colD,effDepth,slabThk,fck,rhoL,Ved,beta,sigmaCp,perimDeduct,gammaC];
+      inputs.forEach(inp=>{
+        if(!inp) return;
+        inp.addEventListener('blur', ()=> validateField(inp.id));
+        inp.addEventListener('input', ()=> { /* responsive update without nagging errors */ calculate(false); });
+      });
+
+      function validateField(id){
+        const el = qs('#'+id);
+        if(!el) return true;
+        const v = num(el);
+        const msg = validators[id] ? validators[id](v) : '';
+        setErr(el, id+'Err', msg);
+        return msg === '';
+      }
+
+      function validateAll(){
+        let ok = true;
+        inputs.forEach(inp=>{
+          if(!inp || inp.offsetParent===null){ return; } // skip hidden
+          ok = validateField(inp.id) && ok;
+        });
+        return ok;
+      }
+
+      // Core calculation
+      function calculate(showErrors = true){
+        if(showErrors && !validateAll()){
+          statusBox.className = 'status warn';
+          statusBox.textContent = 'Please correct highlighted fields to compute results.';
+          return;
+        }
+
+        const d = num(effDepth);
+        const fckVal = num(fck);
+        const rhoPct = num(rhoL);
+        const rho = clamp((rhoPct||0)/100, 0, 0.02); // fraction
+        const betaVal = Math.max(1, Math.min(2, num(beta) || 1));
+        const gamma = num(gammaC) || 1.5;
+        const sigma = Math.max(0, num(sigmaCp) || 0);
+        const VedVal = num(Ved);
+        const bo = Math.max(0, num(perimDeduct) || 0);
+
+        // Control perimeter u1
+        let u1;
+        if(state.shape === 'rect'){
+          const b = num(colB), c = num(colC);
+          if(!(b>0 && c>0 && d>0)){ paintPlaceholders(); return; }
+          u1 = 2*(b + c + 8*d); // mm
+        }else{
+          const D = num(colD);
+          if(!(D>0 && d>0)){ paintPlaceholders(); return; }
+          u1 = Math.PI*( (num(colD)||0) + 4*d ); // mm
+        }
+        const u1eff = Math.max(0, u1 - bo);
+
+        // k
+        const k = Math.min(2, 1 + Math.sqrt(200/Math.max(1,d)));
+
+        // vmin and CRdc
+        const CRdc = 0.18 / gamma;
+        const vmin = 0.035 * Math.pow(k, 1.5) * Math.sqrt(fckVal||0);
+        const term = CRdc * k * Math.cbrt(100 * rho * (fckVal||0));
+        const vRdcVal = Math.max(term, vmin) + 0.1 * sigma; // MPa
+
+        // vEd
+        let vEdVal = NaN;
+        if(VedVal>0 && u1eff>0 && d>0){
+          vEdVal = (betaVal * VedVal * 1000) / (u1eff * d); // kN to N, -> MPa since N/mm2
+        }
+
+        // vRdmax
+        const v1 = 0.6*(1 - (fckVal||0)/250);
+        const fcd = (1.0 * (fckVal||0)) / gamma;
+        const vRdmaxVal = 0.5 * v1 * fcd;
+
+        // Output
+        u1mm.textContent = isFinite(u1eff)? fmt(u1eff,0) : '—';
+        u1m.textContent  = isFinite(u1eff)? fmt(u1eff/1000,3) : '—';
+        boShow.textContent = isFinite(bo)? fmt(bo,0)+' mm' : '—';
+        kVal.textContent = isFinite(k)? k.toFixed(3) : '—';
+        rhoShow.textContent = isFinite(rho) ? (rho*100).toFixed(2)+' %' : '—';
+        vEd.textContent = isFinite(vEdVal)? fmt(vEdVal,3)+' MPa' : '—';
+        vRdc.textContent = isFinite(vRdcVal)? fmt(vRdcVal,3)+' MPa' : '—';
+        vRdmax.textContent = isFinite(vRdmaxVal)? fmt(vRdmaxVal,3)+' MPa' : '—';
+        utilRdc.textContent = (isFinite(vEdVal) && isFinite(vRdcVal) && vRdcVal>0) ? (vEdVal/vRdcVal).toFixed(2) : '—';
+
+        // Status
+        if(!isFinite(vEdVal)){
+          statusBox.className = 'status';
+          statusBox.textContent = 'Enter values to compute punching shear.';
+          return;
+        }
+        if(vEdVal <= vRdcVal){
+          statusBox.className = 'status ok';
+          statusBox.textContent = 'OK without shear reinforcement: vEd ≤ vRd,c.';
+        }else if(vEdVal <= vRdmaxVal){
+          const ratio = (vEdVal/vRdcVal);
+          statusBox.className = 'status warn';
+          statusBox.textContent = `Shear reinforcement required: vEd > vRd,c but vEd ≤ vRd,max. Current utilization vs vRd,c = ${ratio.toFixed(2)}.`;
+        }else{
+          statusBox.className = 'status bad';
+          statusBox.textContent = 'Not safe: vEd > vRd,max. Increase slab depth, enlarge column, reduce loads, or redesign.';
+        }
+
+        // Soft warning on h vs d
+        const h = num(slabThk);
+        if(isFinite(h) && isFinite(d) && d>h){
+          setErr(slabThk, 'slabThkErr', 'Warning: d exceeds h. Check your inputs.');
+        }else{
+          setErr(slabThk, 'slabThkErr', '');
+        }
+
+        function paintPlaceholders(){
+          u1mm.textContent = '—'; u1m.textContent = '—'; boShow.textContent = '—';
+          kVal.textContent = '—'; rhoShow.textContent = '—'; vEd.textContent = '—';
+          vRdc.textContent = '—'; vRdmax.textContent = '—'; utilRdc.textContent = '—';
+          statusBox.className = 'status';
+          statusBox.textContent = 'Provide geometry and material inputs to compute.';
+        }
+      }
+
+      function fmt(x, dec=2){
+        return Number(x).toLocaleString(undefined, {maximumFractionDigits: dec, minimumFractionDigits: dec});
+      }
+
+      // Initial compute
+      calculate(false);
+    })();
+  </script><script defer="" src="/assets/js/mobile-menu.js"></script><script defer="" src="/assets/js/page-enhancements.js"></script><script defer="" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script src="https://cdn.tailwindcss.com"></script><script src="search.js" defer=""></script><script defer="">
+    (function(){
+      'use strict';
+
+      const qs = (sel, ctx=document)=>ctx.querySelector(sel);
+      const qsa = (sel, ctx=document)=>Array.from(ctx.querySelectorAll(sel));
+
+      const state = {
+        shape: 'rect'
+      };
+
+      // Elements
+      const rectFields = qs('#rectFields');
+      const circFields = qs('#circFields');
+
+      const colB = qs('#colB');
+      const colC = qs('#colC');
+      const colD = qs('#colD');
+
+      const effDepth = qs('#effDepth');
+      const slabThk = qs('#slabThk');
+      const fck = qs('#fck');
+      const rhoL = qs('#rhoL');
+      const Ved = qs('#Ved');
+      const beta = qs('#beta');
+      const sigmaCp = qs('#sigmaCp');
+      const perimDeduct = qs('#perimDeduct');
+      const gammaC = qs('#gammaC');
+
+      // Rho helper
+      const toggleRhoHelper = qs('#toggleRhoHelper');
+      const rhoHelper = qs('#rhoHelper');
+      const computeRhoBtn = qs('#computeRhoBtn');
+      const rhoHelperOut = qs('#rhoHelperOut');
+      const barDiaX = qs('#barDiaX');
+      const barSpX  = qs('#barSpX');
+      const barDiaY = qs('#barDiaY');
+      const barSpY  = qs('#barSpY');
+
+      // Results
+      const u1mm = qs('#u1mm');
+      const u1m  = qs('#u1m');
+      const boShow = qs('#boShow');
+      const kVal = qs('#kVal');
+      const rhoShow = qs('#rhoShow');
+      const vEd = qs('#vEd');
+      const vRdc = qs('#vRdc');
+      const vRdmax = qs('#vRdmax');
+      const utilRdc = qs('#utilRdc');
+      const statusBox = qs('#statusBox');
+
+      // Tooltips
+      qsa('.help-btn').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const tid = btn.getAttribute('aria-controls');
+          const tip = qs('#'+tid);
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          tip?.setAttribute('data-open', String(!expanded));
+        });
+        btn.addEventListener('keydown', (e)=>{
+          if(e.key === 'Enter' || e.key === ' '){
+            e.preventDefault(); btn.click();
+          }
+        });
+      });
+
+      // Shape toggle
+      qsa('input[name="shape"]').forEach(r=>{
+        r.addEventListener('change', ()=>{
+          state.shape = r.value;
+          if(state.shape === 'rect'){
+            rectFields.hidden = false;
+            circFields.hidden = true;
+            setRequired([colB, colC], true);
+            setRequired([colD], false);
+          }else{
+            rectFields.hidden = true;
+            circFields.hidden = false;
+            setRequired([colD], true);
+            setRequired([colB, colC], false);
+          }
+          calculate();
+        });
+      });
+
+      function setRequired(list, isReq){
+        list.forEach(inp=>{
+          if(!inp) return;
+          if(isReq){
+            inp.setAttribute('aria-required','true');
+          }else{
+            inp.removeAttribute('aria-required');
+          }
+        });
+      }
+
+      // Advanced helper toggle
+      toggleRhoHelper.addEventListener('change', ()=>{
+        const open = toggleRhoHelper.checked;
+        rhoHelper.setAttribute('aria-hidden', String(!open));
+        toggleRhoHelper.setAttribute('aria-expanded', String(open));
+      });
+
+      computeRhoBtn.addEventListener('click', ()=>{
+        const d = num(effDepth);
+        if(!isFinite(d) || d <= 0){
+          effDepth.focus();
+          rhoHelperOut.textContent = 'Enter a valid effective depth d first.';
+          return;
+        }
+        const phix = num(barDiaX), sx = num(barSpX), phiy = num(barDiaY), sy = num(barSpY);
+        if([phix,sx,phiy,sy].some(v=>!isFinite(v) || v<=0)){
+          rhoHelperOut.textContent = 'Provide bar diameters and spacings in both directions.';
+          return;
+        }
+        // ρ = (π φ^2 / (4 s d)) (with s and d in mm). This yields a fraction (e.g., 0.01 = 1%)
+        const rhoX = Math.PI * phix*phix / (4 * sx * d);
+        const rhoY = Math.PI * phiy*phiy / (4 * sy * d);
+        const rhoAvg = 100 * (rhoX + rhoY)/2; // percent
+        rhoL.value = clamp(rhoAvg, 0.05, 2).toFixed(2);
+        rhoHelperOut.textContent = `Computed ρ_l ≈ ${rhoL.value}% (avg of X=${(rhoX*100).toFixed(2)}%, Y=${(rhoY*100).toFixed(2)}%).`;
+        calculate();
+      });
+
+      // Validation helpers
+      function num(el){ return parseFloat((el?.value || '').trim()); }
+      function setErr(input, errId, msg){
+        const errEl = qs('#'+errId);
+        if(msg){
+          input?.setAttribute('aria-invalid','true');
+          errEl.textContent = msg;
+        }else{
+          input?.removeAttribute('aria-invalid');
+          errEl.textContent = '';
+        }
+      }
+      function clamp(v, min, max){ return Math.min(Math.max(v, min), max); }
+
+      // Field-level validation on blur
+      const validators = {
+        colB: v=> (state.shape==='rect' && (!isFinite(v) || v<=0)) ? 'Enter column width b in mm (b > 0).' : '',
+        colC: v=> (state.shape==='rect' && (!isFinite(v) || v<=0)) ? 'Enter column depth c in mm (c > 0).' : '',
+        colD: v=> (state.shape==='circ' && (!isFinite(v) || v<=0)) ? 'Enter column diameter D in mm (D > 0).' : '',
+        effDepth: v=> !isFinite(v)||v<=0 ? 'Enter effective depth d in mm (d > 0).' : '',
+        slabThk: v=> (isFinite(v) && isFinite(num(effDepth)) && v>0 && num(effDepth)>v) ? 'd should not exceed h; check inputs.' : '',
+        fck: v=> !isFinite(v)||v<12||v>90 ? 'Enter fck between 12 and 90 MPa.' : '',
+        rhoL: v=>{
+          if(!isFinite(v) || v<=0) return 'Enter ρl in percent (e.g., 1.0).';
+          if(v>2) return 'Per EC2, ρl is limited to 2% for this check.';
+          return '';
+        },
+        Ved: v=> !isFinite(v)||v<=0 ? 'Enter design shear VEd in kN (VEd > 0).' : '',
+        beta: v=> !isFinite(v)||v<1||v>2 ? 'Enter β between 1.0 and 2.0.' : '',
+        sigmaCp: v=> (isFinite(v) && v<0) ? 'σcp cannot be negative.' : '',
+        perimDeduct: v=> (isFinite(v) && v<0) ? 'Perimeter deduction must be ≥ 0.' : '',
+        gammaC: v=> !isFinite(v)||v<1||v>1.6 ? 'Enter γc between 1.0 and 1.6.' : ''
+      };
+
+      const inputs = [colB,colC,colD,effDepth,slabThk,fck,rhoL,Ved,beta,sigmaCp,perimDeduct,gammaC];
+      inputs.forEach(inp=>{
+        if(!inp) return;
+        inp.addEventListener('blur', ()=> validateField(inp.id));
+        inp.addEventListener('input', ()=> { /* responsive update without nagging errors */ calculate(false); });
+      });
+
+      function validateField(id){
+        const el = qs('#'+id);
+        if(!el) return true;
+        const v = num(el);
+        const msg = validators[id] ? validators[id](v) : '';
+        setErr(el, id+'Err', msg);
+        return msg === '';
+      }
+
+      function validateAll(){
+        let ok = true;
+        inputs.forEach(inp=>{
+          if(!inp || inp.offsetParent===null){ return; } // skip hidden
+          ok = validateField(inp.id) && ok;
+        });
+        return ok;
+      }
+
+      // Core calculation
+      function calculate(showErrors = true){
+        if(showErrors && !validateAll()){
+          statusBox.className = 'status warn';
+          statusBox.textContent = 'Please correct highlighted fields to compute results.';
+          return;
+        }
+
+        const d = num(effDepth);
+        const fckVal = num(fck);
+        const rhoPct = num(rhoL);
+        const rho = clamp((rhoPct||0)/100, 0, 0.02); // fraction
+        const betaVal = Math.max(1, Math.min(2, num(beta) || 1));
+        const gamma = num(gammaC) || 1.5;
+        const sigma = Math.max(0, num(sigmaCp) || 0);
+        const VedVal = num(Ved);
+        const bo = Math.max(0, num(perimDeduct) || 0);
+
+        // Control perimeter u1
+        let u1;
+        if(state.shape === 'rect'){
+          const b = num(colB), c = num(colC);
+          if(!(b>0 && c>0 && d>0)){ paintPlaceholders(); return; }
+          u1 = 2*(b + c + 8*d); // mm
+        }else{
+          const D = num(colD);
+          if(!(D>0 && d>0)){ paintPlaceholders(); return; }
+          u1 = Math.PI*( (num(colD)||0) + 4*d ); // mm
+        }
+        const u1eff = Math.max(0, u1 - bo);
+
+        // k
+        const k = Math.min(2, 1 + Math.sqrt(200/Math.max(1,d)));
+
+        // vmin and CRdc
+        const CRdc = 0.18 / gamma;
+        const vmin = 0.035 * Math.pow(k, 1.5) * Math.sqrt(fckVal||0);
+        const term = CRdc * k * Math.cbrt(100 * rho * (fckVal||0));
+        const vRdcVal = Math.max(term, vmin) + 0.1 * sigma; // MPa
+
+        // vEd
+        let vEdVal = NaN;
+        if(VedVal>0 && u1eff>0 && d>0){
+          vEdVal = (betaVal * VedVal * 1000) / (u1eff * d); // kN to N, -> MPa since N/mm2
+        }
+
+        // vRdmax
+        const v1 = 0.6*(1 - (fckVal||0)/250);
+        const fcd = (1.0 * (fckVal||0)) / gamma;
+        const vRdmaxVal = 0.5 * v1 * fcd;
+
+        // Output
+        u1mm.textContent = isFinite(u1eff)? fmt(u1eff,0) : '—';
+        u1m.textContent  = isFinite(u1eff)? fmt(u1eff/1000,3) : '—';
+        boShow.textContent = isFinite(bo)? fmt(bo,0)+' mm' : '—';
+        kVal.textContent = isFinite(k)? k.toFixed(3) : '—';
+        rhoShow.textContent = isFinite(rho) ? (rho*100).toFixed(2)+' %' : '—';
+        vEd.textContent = isFinite(vEdVal)? fmt(vEdVal,3)+' MPa' : '—';
+        vRdc.textContent = isFinite(vRdcVal)? fmt(vRdcVal,3)+' MPa' : '—';
+        vRdmax.textContent = isFinite(vRdmaxVal)? fmt(vRdmaxVal,3)+' MPa' : '—';
+        utilRdc.textContent = (isFinite(vEdVal) && isFinite(vRdcVal) && vRdcVal>0) ? (vEdVal/vRdcVal).toFixed(2) : '—';
+
+        // Status
+        if(!isFinite(vEdVal)){
+          statusBox.className = 'status';
+          statusBox.textContent = 'Enter values to compute punching shear.';
+          return;
+        }
+        if(vEdVal <= vRdcVal){
+          statusBox.className = 'status ok';
+          statusBox.textContent = 'OK without shear reinforcement: vEd ≤ vRd,c.';
+        }else if(vEdVal <= vRdmaxVal){
+          const ratio = (vEdVal/vRdcVal);
+          statusBox.className = 'status warn';
+          statusBox.textContent = `Shear reinforcement required: vEd > vRd,c but vEd ≤ vRd,max. Current utilization vs vRd,c = ${ratio.toFixed(2)}.`;
+        }else{
+          statusBox.className = 'status bad';
+          statusBox.textContent = 'Not safe: vEd > vRd,max. Increase slab depth, enlarge column, reduce loads, or redesign.';
+        }
+
+        // Soft warning on h vs d
+        const h = num(slabThk);
+        if(isFinite(h) && isFinite(d) && d>h){
+          setErr(slabThk, 'slabThkErr', 'Warning: d exceeds h. Check your inputs.');
+        }else{
+          setErr(slabThk, 'slabThkErr', '');
+        }
+
+        function paintPlaceholders(){
+          u1mm.textContent = '—'; u1m.textContent = '—'; boShow.textContent = '—';
+          kVal.textContent = '—'; rhoShow.textContent = '—'; vEd.textContent = '—';
+          vRdc.textContent = '—'; vRdmax.textContent = '—'; utilRdc.textContent = '—';
+          statusBox.className = 'status';
+          statusBox.textContent = 'Provide geometry and material inputs to compute.';
+        }
+      }
+
+      function fmt(x, dec=2){
+        return Number(x).toLocaleString(undefined, {maximumFractionDigits: dec, minimumFractionDigits: dec});
+      }
+
+      // Initial compute
+      calculate(false);
+    })();
+  </script><script defer="" src="/assets/js/mobile-menu.js"></script><script defer="" src="/assets/js/page-enhancements.js"></script></body></html>

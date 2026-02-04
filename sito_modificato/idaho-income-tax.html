@@ -263,10 +263,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
@@ -333,11 +339,23 @@
 }
 </script>
 </head>
-<body>
-<a class="skip-link" href="#main">Skip to main content</a>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">Idaho State Income Tax Calculator</h1>
+    <p class="sub" id="pageSub">Idaho income tax calculator: estimate Idaho state income tax for 2024 with a clean, mobile-first tool. Model standard or itemized deductions, pre-tax contributions, credits, and per-paycheck withholding.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<main class="container" id="main" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main class="container" id="main" role="main">
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Idaho State Income Tax Calculator</h1>
 <p>
       This Idaho income tax calculator helps residents and employers estimate Idaho state income tax quickly and accurately. It supports standard or itemized deductions, common pre-tax contributions, optional credits, and an annual or per‑paycheck view. Built for clarity, speed, and accessibility.
@@ -702,254 +720,21 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
+
+
 </main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
 
-      // Data configuration (easily updatable)
-      const TAX_RATE_BY_YEAR = {
-        2024: 0.058 // Idaho flat individual income tax rate (2024)
-      };
-      const STANDARD_DEDUCTION_2024 = {
-        single: 14600,
-        mfj: 29200,
-        mfs: 14600,
-        hoh: 21900
-      };
+<button id="resetBtn" type="button" class="btn btnSecondary">Reset</button>
+</div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-      // DOM helpers
-      const $ = (sel) => document.querySelector(sel);
-      const formatCurrency = (n) => (isFinite(n) ? n : 0).toLocaleString('en-US', { style:'currency', currency:'USD' });
-      const formatPercent = (n) => `${(isFinite(n)? n : 0).toFixed(2)}%`;
-
-      // Inputs
-      const modeAnnual = $('#mode-annual');
-      const modePaycheck = $('#mode-paycheck');
-      const taxYearEl = $('#taxYear');
-      const filingStatusEl = $('#filingStatus');
-      const grossEl = $('#grossIncome');
-      const retEl = $('#pretaxRetirement');
-      const hsaEl = $('#hsa');
-      const deductStandardEl = $('#deduct-standard');
-      const deductItemizedEl = $('#deduct-itemized');
-      const standardRow = $('#standardRow');
-      const itemizedRow = $('#itemizedRow');
-      const itemizedEl = $('#itemizedDeduction');
-      const creditsEl = $('#credits');
-      const payFreqRow = $('#payFrequencyRow');
-      const payFreqEl = $('#payFrequency');
-      const stdDeductionRO = $('#standardDeduction');
-
-      // Tooltips
-      function makeTip(btnId, panelId){
-        const btn = document.getElementById(btnId);
-        const panel = document.getElementById(panelId);
-        if(!btn || !panel) return;
-        btn.addEventListener('click', ()=>{
-          const open = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!open));
-          panel.dataset.open = String(!open);
-        });
-        btn.addEventListener('keydown', (e)=>{
-          if(e.key === 'Escape'){
-            btn.setAttribute('aria-expanded','false');
-            panel.dataset.open = 'false';
-            btn.focus();
-          }
-        });
-      }
-      makeTip('tip-gross','tooltip-gross');
-      makeTip('tip-ret','tooltip-ret');
-      makeTip('tip-hsa','tooltip-hsa');
-      makeTip('tip-credit','tooltip-credit');
-
-      // Results
-      const resTaxable = $('#res-taxable');
-      const resTax = $('#res-tax');
-      const resCredits = $('#res-credits');
-      const resNetTax = $('#res-net-tax');
-      const resEffRate = $('#res-eff-rate');
-      const resTakehome = $('#res-takehome');
-      const ppBlock = $('#perPaycheckBlock');
-      const ppLabel = $('#pp-label');
-      const resPPGross = $('#res-pp-gross');
-      const resPPTax = $('#res-pp-tax');
-      const resPPTakehome = $('#res-pp-takehome');
-
-      // Errors
-      const grossError = $('#gross-error');
-      const itemizedError = $('#itemized-error');
-
-      // Validation on blur
-      function validateNumberInput(inputEl, errorEl, opts={}){
-        const val = inputEl.value.trim();
-        const required = !!opts.required;
-        const min = opts.min ?? 0;
-        let msg = '';
-        if(required && val === ''){
-          msg = 'Please enter a value.';
-        } else if(val !== ''){
-          const num = Number(val);
-          if(isNaN(num)){
-            msg = 'Please enter a valid number (digits and an optional decimal).';
-          } else if(num < min){
-            msg = `Value must be at least ${min}.`;
-          }
-        }
-        if(msg){
-          inputEl.setAttribute('aria-invalid','true');
-          errorEl.textContent = msg + ' Tip: no commas or currency symbols.';
-        } else {
-          inputEl.removeAttribute('aria-invalid');
-          errorEl.textContent = '';
-        }
-        return !msg;
-      }
-
-      grossEl.addEventListener('blur', ()=> validateNumberInput(grossEl, grossError, {required:true, min:0}));
-      itemizedEl.addEventListener('blur', ()=> {
-        if(!itemizedRow.hidden){
-          validateNumberInput(itemizedEl, itemizedError, {required:true, min:0});
-        } else {
-          itemizedError.textContent = '';
-          itemizedEl.removeAttribute('aria-invalid');
-        }
-      });
-
-      // Update standard deduction display
-      function refreshStandardDeduction(){
-        const year = Number(taxYearEl.value);
-        const status = filingStatusEl.value;
-        let amount = 0;
-        if(year === 2024){
-          amount = STANDARD_DEDUCTION_2024[status] ?? 0;
-        }
-        stdDeductionRO.value = formatCurrency(amount);
-        return amount;
-      }
-
-      // Toggle modes
-      function updateModeUI(){
-        const isPaycheck = modePaycheck.checked;
-        payFreqRow.hidden = !isPaycheck;
-        ppBlock.hidden = !isPaycheck;
-      }
-      modeAnnual.addEventListener('change', updateModeUI);
-      modePaycheck.addEventListener('change', updateModeUI);
-
-      // Toggle deduction rows
-      function updateDeductionUI(){
-        const useStandard = deductStandardEl.checked;
-        standardRow.hidden = !useStandard;
-        itemizedRow.hidden = useStandard;
-        if(useStandard){
-          itemizedError.textContent = '';
-          itemizedEl.removeAttribute('aria-invalid');
-        }
-      }
-      deductStandardEl.addEventListener('change', ()=>{ updateDeductionUI(); compute(); });
-      deductItemizedEl.addEventListener('change', ()=>{ updateDeductionUI(); compute(); });
-
-      // Compute core
-      function getNumber(el){
-        const v = (el.value || '').trim();
-        if(v === '') return 0;
-        const n = Number(v);
-        return isFinite(n) ? n : 0;
-      }
-
-      function compute(){
-        // Halt if validation fails
-        const okGross = validateNumberInput(grossEl, grossError, {required:true, min:0});
-        if(!okGross){ paint(0,0,0,0,0,0,0,0,0,false); return; }
-        if(deductItemizedEl.checked){
-          const okItem = validateNumberInput(itemizedEl, itemizedError, {required:true, min:0});
-          if(!okItem){ paint(0,0,0,0,0,0,0,0,0,false); return; }
-        }
-
-        const year = Number(taxYearEl.value);
-        const rate = TAX_RATE_BY_YEAR[year] ?? 0.058;
-        const gross = getNumber(grossEl);
-        const pretax = getNumber(retEl);
-        const hsa = getNumber(hsaEl);
-        const credits = getNumber(creditsEl);
-
-        const stdDed = refreshStandardDeduction();
-        const deduction = deductStandardEl.checked ? stdDed : getNumber(itemizedEl);
-
-        const taxable = Math.max(0, gross - pretax - hsa - deduction);
-        const taxBefore = taxable * rate;
-        const netTax = Math.max(0, taxBefore - credits);
-        const effRate = gross > 0 ? (netTax / gross) * 100 : 0;
-        const takehomeAnnual = Math.max(0, gross - netTax); // state-only take-home for display
-
-        // Per-paycheck
-        const isPaycheck = modePaycheck.checked;
-        const periods = Number(payFreqEl.value || 26);
-        const ppGross = isPaycheck ? gross / periods : 0;
-        const ppTax = isPaycheck ? netTax / periods : 0;
-        const ppTakehome = isPaycheck ? Math.max(0, ppGross - ppTax) : 0;
-
-        paint(taxable, taxBefore, credits, netTax, effRate, takehomeAnnual, ppGross, ppTax, ppTakehome, isPaycheck);
-      }
-
-      function paint(taxable, taxBefore, credits, netTax, effRate, takehomeAnnual, ppGross, ppTax, ppTakehome, isPP){
-        resTaxable.textContent = formatCurrency(taxable);
-        resTax.textContent = formatCurrency(taxBefore);
-        resCredits.textContent = formatCurrency(credits);
-        resNetTax.textContent = formatCurrency(netTax);
-        resEffRate.textContent = formatPercent(effRate);
-        resTakehome.textContent = formatCurrency(takehomeAnnual);
-
-        if(isPP){
-          ppBlock.hidden = false;
-          const label = payFreqEl.selectedOptions[0]?.textContent || 'Biweekly (26)';
-          ppLabel.textContent = label;
-          resPPGross.textContent = formatCurrency(ppGross);
-          resPPTax.textContent = formatCurrency(ppTax);
-          resPPTakehome.textContent = formatCurrency(ppTakehome);
-        } else {
-          ppBlock.hidden = true;
-        }
-      }
-
-      // Event listeners to recompute
-      [taxYearEl, filingStatusEl, retEl, hsaEl, creditsEl, payFreqEl].forEach(el => {
-        el.addEventListener('input', compute);
-        el.addEventListener('change', compute);
-      });
-      grossEl.addEventListener('input', compute);
-      itemizedEl.addEventListener('input', compute);
-
-      // Initialize UI
-      updateModeUI();
-      updateDeductionUI();
-      refreshStandardDeduction();
-      compute();
-
-      // Accessibility: recalc standard when filing status/year changes
-      taxYearEl.addEventListener('change', ()=>{ refreshStandardDeduction(); compute(); });
-      filingStatusEl.addEventListener('change', ()=>{ refreshStandardDeduction(); compute(); });
-
-      // Ensure touch target sizing on buttons in some browsers
-      document.querySelectorAll('button, .seg-option, select, input').forEach(el=>{
-        el.style.minHeight = '48px';
-      });
-    })();
-  </script>
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main">Skip to main content</a><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -981,40 +766,8 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "General",
-      "item": "https://calcdomain.com/categories/general"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Miscellaneous",
-      "item": "https://calcdomain.com/subcategories/miscellaneous"
-    }
-  ]
-}
-</script>
-</head>
-<body>
-<a class="skip-link" href="#main">Skip to main content</a>
-
-<main class="container" id="main" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+</style><a class="skip-link" href="#main">Skip to main content</a><main class="container" id="main" role="main">
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Idaho State Income Tax Calculator</h1>
 <p>
       This Idaho income tax calculator helps residents and employers estimate Idaho state income tax quickly and accurately. It supports standard or itemized deductions, common pre-tax contributions, optional credits, and an annual or per‑paycheck view. Built for clarity, speed, and accessibility.
@@ -1379,254 +1132,7 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
-
-      // Data configuration (easily updatable)
-      const TAX_RATE_BY_YEAR = {
-        2024: 0.058 // Idaho flat individual income tax rate (2024)
-      };
-      const STANDARD_DEDUCTION_2024 = {
-        single: 14600,
-        mfj: 29200,
-        mfs: 14600,
-        hoh: 21900
-      };
-
-      // DOM helpers
-      const $ = (sel) => document.querySelector(sel);
-      const formatCurrency = (n) => (isFinite(n) ? n : 0).toLocaleString('en-US', { style:'currency', currency:'USD' });
-      const formatPercent = (n) => `${(isFinite(n)? n : 0).toFixed(2)}%`;
-
-      // Inputs
-      const modeAnnual = $('#mode-annual');
-      const modePaycheck = $('#mode-paycheck');
-      const taxYearEl = $('#taxYear');
-      const filingStatusEl = $('#filingStatus');
-      const grossEl = $('#grossIncome');
-      const retEl = $('#pretaxRetirement');
-      const hsaEl = $('#hsa');
-      const deductStandardEl = $('#deduct-standard');
-      const deductItemizedEl = $('#deduct-itemized');
-      const standardRow = $('#standardRow');
-      const itemizedRow = $('#itemizedRow');
-      const itemizedEl = $('#itemizedDeduction');
-      const creditsEl = $('#credits');
-      const payFreqRow = $('#payFrequencyRow');
-      const payFreqEl = $('#payFrequency');
-      const stdDeductionRO = $('#standardDeduction');
-
-      // Tooltips
-      function makeTip(btnId, panelId){
-        const btn = document.getElementById(btnId);
-        const panel = document.getElementById(panelId);
-        if(!btn || !panel) return;
-        btn.addEventListener('click', ()=>{
-          const open = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!open));
-          panel.dataset.open = String(!open);
-        });
-        btn.addEventListener('keydown', (e)=>{
-          if(e.key === 'Escape'){
-            btn.setAttribute('aria-expanded','false');
-            panel.dataset.open = 'false';
-            btn.focus();
-          }
-        });
-      }
-      makeTip('tip-gross','tooltip-gross');
-      makeTip('tip-ret','tooltip-ret');
-      makeTip('tip-hsa','tooltip-hsa');
-      makeTip('tip-credit','tooltip-credit');
-
-      // Results
-      const resTaxable = $('#res-taxable');
-      const resTax = $('#res-tax');
-      const resCredits = $('#res-credits');
-      const resNetTax = $('#res-net-tax');
-      const resEffRate = $('#res-eff-rate');
-      const resTakehome = $('#res-takehome');
-      const ppBlock = $('#perPaycheckBlock');
-      const ppLabel = $('#pp-label');
-      const resPPGross = $('#res-pp-gross');
-      const resPPTax = $('#res-pp-tax');
-      const resPPTakehome = $('#res-pp-takehome');
-
-      // Errors
-      const grossError = $('#gross-error');
-      const itemizedError = $('#itemized-error');
-
-      // Validation on blur
-      function validateNumberInput(inputEl, errorEl, opts={}){
-        const val = inputEl.value.trim();
-        const required = !!opts.required;
-        const min = opts.min ?? 0;
-        let msg = '';
-        if(required && val === ''){
-          msg = 'Please enter a value.';
-        } else if(val !== ''){
-          const num = Number(val);
-          if(isNaN(num)){
-            msg = 'Please enter a valid number (digits and an optional decimal).';
-          } else if(num < min){
-            msg = `Value must be at least ${min}.`;
-          }
-        }
-        if(msg){
-          inputEl.setAttribute('aria-invalid','true');
-          errorEl.textContent = msg + ' Tip: no commas or currency symbols.';
-        } else {
-          inputEl.removeAttribute('aria-invalid');
-          errorEl.textContent = '';
-        }
-        return !msg;
-      }
-
-      grossEl.addEventListener('blur', ()=> validateNumberInput(grossEl, grossError, {required:true, min:0}));
-      itemizedEl.addEventListener('blur', ()=> {
-        if(!itemizedRow.hidden){
-          validateNumberInput(itemizedEl, itemizedError, {required:true, min:0});
-        } else {
-          itemizedError.textContent = '';
-          itemizedEl.removeAttribute('aria-invalid');
-        }
-      });
-
-      // Update standard deduction display
-      function refreshStandardDeduction(){
-        const year = Number(taxYearEl.value);
-        const status = filingStatusEl.value;
-        let amount = 0;
-        if(year === 2024){
-          amount = STANDARD_DEDUCTION_2024[status] ?? 0;
-        }
-        stdDeductionRO.value = formatCurrency(amount);
-        return amount;
-      }
-
-      // Toggle modes
-      function updateModeUI(){
-        const isPaycheck = modePaycheck.checked;
-        payFreqRow.hidden = !isPaycheck;
-        ppBlock.hidden = !isPaycheck;
-      }
-      modeAnnual.addEventListener('change', updateModeUI);
-      modePaycheck.addEventListener('change', updateModeUI);
-
-      // Toggle deduction rows
-      function updateDeductionUI(){
-        const useStandard = deductStandardEl.checked;
-        standardRow.hidden = !useStandard;
-        itemizedRow.hidden = useStandard;
-        if(useStandard){
-          itemizedError.textContent = '';
-          itemizedEl.removeAttribute('aria-invalid');
-        }
-      }
-      deductStandardEl.addEventListener('change', ()=>{ updateDeductionUI(); compute(); });
-      deductItemizedEl.addEventListener('change', ()=>{ updateDeductionUI(); compute(); });
-
-      // Compute core
-      function getNumber(el){
-        const v = (el.value || '').trim();
-        if(v === '') return 0;
-        const n = Number(v);
-        return isFinite(n) ? n : 0;
-      }
-
-      function compute(){
-        // Halt if validation fails
-        const okGross = validateNumberInput(grossEl, grossError, {required:true, min:0});
-        if(!okGross){ paint(0,0,0,0,0,0,0,0,0,false); return; }
-        if(deductItemizedEl.checked){
-          const okItem = validateNumberInput(itemizedEl, itemizedError, {required:true, min:0});
-          if(!okItem){ paint(0,0,0,0,0,0,0,0,0,false); return; }
-        }
-
-        const year = Number(taxYearEl.value);
-        const rate = TAX_RATE_BY_YEAR[year] ?? 0.058;
-        const gross = getNumber(grossEl);
-        const pretax = getNumber(retEl);
-        const hsa = getNumber(hsaEl);
-        const credits = getNumber(creditsEl);
-
-        const stdDed = refreshStandardDeduction();
-        const deduction = deductStandardEl.checked ? stdDed : getNumber(itemizedEl);
-
-        const taxable = Math.max(0, gross - pretax - hsa - deduction);
-        const taxBefore = taxable * rate;
-        const netTax = Math.max(0, taxBefore - credits);
-        const effRate = gross > 0 ? (netTax / gross) * 100 : 0;
-        const takehomeAnnual = Math.max(0, gross - netTax); // state-only take-home for display
-
-        // Per-paycheck
-        const isPaycheck = modePaycheck.checked;
-        const periods = Number(payFreqEl.value || 26);
-        const ppGross = isPaycheck ? gross / periods : 0;
-        const ppTax = isPaycheck ? netTax / periods : 0;
-        const ppTakehome = isPaycheck ? Math.max(0, ppGross - ppTax) : 0;
-
-        paint(taxable, taxBefore, credits, netTax, effRate, takehomeAnnual, ppGross, ppTax, ppTakehome, isPaycheck);
-      }
-
-      function paint(taxable, taxBefore, credits, netTax, effRate, takehomeAnnual, ppGross, ppTax, ppTakehome, isPP){
-        resTaxable.textContent = formatCurrency(taxable);
-        resTax.textContent = formatCurrency(taxBefore);
-        resCredits.textContent = formatCurrency(credits);
-        resNetTax.textContent = formatCurrency(netTax);
-        resEffRate.textContent = formatPercent(effRate);
-        resTakehome.textContent = formatCurrency(takehomeAnnual);
-
-        if(isPP){
-          ppBlock.hidden = false;
-          const label = payFreqEl.selectedOptions[0]?.textContent || 'Biweekly (26)';
-          ppLabel.textContent = label;
-          resPPGross.textContent = formatCurrency(ppGross);
-          resPPTax.textContent = formatCurrency(ppTax);
-          resPPTakehome.textContent = formatCurrency(ppTakehome);
-        } else {
-          ppBlock.hidden = true;
-        }
-      }
-
-      // Event listeners to recompute
-      [taxYearEl, filingStatusEl, retEl, hsaEl, creditsEl, payFreqEl].forEach(el => {
-        el.addEventListener('input', compute);
-        el.addEventListener('change', compute);
-      });
-      grossEl.addEventListener('input', compute);
-      itemizedEl.addEventListener('input', compute);
-
-      // Initialize UI
-      updateModeUI();
-      updateDeductionUI();
-      refreshStandardDeduction();
-      compute();
-
-      // Accessibility: recalc standard when filing status/year changes
-      taxYearEl.addEventListener('change', ()=>{ refreshStandardDeduction(); compute(); });
-      filingStatusEl.addEventListener('change', ()=>{ refreshStandardDeduction(); compute(); });
-
-      // Ensure touch target sizing on buttons in some browsers
-      document.querySelectorAll('button, .seg-option, select, input').forEach(el=>{
-        el.style.minHeight = '48px';
-      });
-    })();
-  </script>
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1658,40 +1164,8 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "General",
-      "item": "https://calcdomain.com/categories/general"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Miscellaneous",
-      "item": "https://calcdomain.com/subcategories/miscellaneous"
-    }
-  ]
-}
-</script>
-</head>
-<body>
-<a class="skip-link" href="#main">Skip to main content</a>
-
-<main class="container" id="main" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+</style><a class="skip-link" href="#main">Skip to main content</a><main class="container" id="main" role="main">
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Idaho State Income Tax Calculator</h1>
 <p>
       This Idaho income tax calculator helps residents and employers estimate Idaho state income tax quickly and accurately. It supports standard or itemized deductions, common pre-tax contributions, optional credits, and an annual or per‑paycheck view. Built for clarity, speed, and accessibility.
@@ -2056,9 +1530,48 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
     (function(){
       'use strict';
 
@@ -2292,6 +1805,522 @@
         el.style.minHeight = '48px';
       });
     })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "General",
+      "item": "https://calcdomain.com/categories/general"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Miscellaneous",
+      "item": "https://calcdomain.com/subcategories/miscellaneous"
+    }
+  ]
+}
+</script><script defer="">
+    (function(){
+      'use strict';
 
-</body></html>
+      // Data configuration (easily updatable)
+      const TAX_RATE_BY_YEAR = {
+        2024: 0.058 // Idaho flat individual income tax rate (2024)
+      };
+      const STANDARD_DEDUCTION_2024 = {
+        single: 14600,
+        mfj: 29200,
+        mfs: 14600,
+        hoh: 21900
+      };
+
+      // DOM helpers
+      const $ = (sel) => document.querySelector(sel);
+      const formatCurrency = (n) => (isFinite(n) ? n : 0).toLocaleString('en-US', { style:'currency', currency:'USD' });
+      const formatPercent = (n) => `${(isFinite(n)? n : 0).toFixed(2)}%`;
+
+      // Inputs
+      const modeAnnual = $('#mode-annual');
+      const modePaycheck = $('#mode-paycheck');
+      const taxYearEl = $('#taxYear');
+      const filingStatusEl = $('#filingStatus');
+      const grossEl = $('#grossIncome');
+      const retEl = $('#pretaxRetirement');
+      const hsaEl = $('#hsa');
+      const deductStandardEl = $('#deduct-standard');
+      const deductItemizedEl = $('#deduct-itemized');
+      const standardRow = $('#standardRow');
+      const itemizedRow = $('#itemizedRow');
+      const itemizedEl = $('#itemizedDeduction');
+      const creditsEl = $('#credits');
+      const payFreqRow = $('#payFrequencyRow');
+      const payFreqEl = $('#payFrequency');
+      const stdDeductionRO = $('#standardDeduction');
+
+      // Tooltips
+      function makeTip(btnId, panelId){
+        const btn = document.getElementById(btnId);
+        const panel = document.getElementById(panelId);
+        if(!btn || !panel) return;
+        btn.addEventListener('click', ()=>{
+          const open = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!open));
+          panel.dataset.open = String(!open);
+        });
+        btn.addEventListener('keydown', (e)=>{
+          if(e.key === 'Escape'){
+            btn.setAttribute('aria-expanded','false');
+            panel.dataset.open = 'false';
+            btn.focus();
+          }
+        });
+      }
+      makeTip('tip-gross','tooltip-gross');
+      makeTip('tip-ret','tooltip-ret');
+      makeTip('tip-hsa','tooltip-hsa');
+      makeTip('tip-credit','tooltip-credit');
+
+      // Results
+      const resTaxable = $('#res-taxable');
+      const resTax = $('#res-tax');
+      const resCredits = $('#res-credits');
+      const resNetTax = $('#res-net-tax');
+      const resEffRate = $('#res-eff-rate');
+      const resTakehome = $('#res-takehome');
+      const ppBlock = $('#perPaycheckBlock');
+      const ppLabel = $('#pp-label');
+      const resPPGross = $('#res-pp-gross');
+      const resPPTax = $('#res-pp-tax');
+      const resPPTakehome = $('#res-pp-takehome');
+
+      // Errors
+      const grossError = $('#gross-error');
+      const itemizedError = $('#itemized-error');
+
+      // Validation on blur
+      function validateNumberInput(inputEl, errorEl, opts={}){
+        const val = inputEl.value.trim();
+        const required = !!opts.required;
+        const min = opts.min ?? 0;
+        let msg = '';
+        if(required && val === ''){
+          msg = 'Please enter a value.';
+        } else if(val !== ''){
+          const num = Number(val);
+          if(isNaN(num)){
+            msg = 'Please enter a valid number (digits and an optional decimal).';
+          } else if(num < min){
+            msg = `Value must be at least ${min}.`;
+          }
+        }
+        if(msg){
+          inputEl.setAttribute('aria-invalid','true');
+          errorEl.textContent = msg + ' Tip: no commas or currency symbols.';
+        } else {
+          inputEl.removeAttribute('aria-invalid');
+          errorEl.textContent = '';
+        }
+        return !msg;
+      }
+
+      grossEl.addEventListener('blur', ()=> validateNumberInput(grossEl, grossError, {required:true, min:0}));
+      itemizedEl.addEventListener('blur', ()=> {
+        if(!itemizedRow.hidden){
+          validateNumberInput(itemizedEl, itemizedError, {required:true, min:0});
+        } else {
+          itemizedError.textContent = '';
+          itemizedEl.removeAttribute('aria-invalid');
+        }
+      });
+
+      // Update standard deduction display
+      function refreshStandardDeduction(){
+        const year = Number(taxYearEl.value);
+        const status = filingStatusEl.value;
+        let amount = 0;
+        if(year === 2024){
+          amount = STANDARD_DEDUCTION_2024[status] ?? 0;
+        }
+        stdDeductionRO.value = formatCurrency(amount);
+        return amount;
+      }
+
+      // Toggle modes
+      function updateModeUI(){
+        const isPaycheck = modePaycheck.checked;
+        payFreqRow.hidden = !isPaycheck;
+        ppBlock.hidden = !isPaycheck;
+      }
+      modeAnnual.addEventListener('change', updateModeUI);
+      modePaycheck.addEventListener('change', updateModeUI);
+
+      // Toggle deduction rows
+      function updateDeductionUI(){
+        const useStandard = deductStandardEl.checked;
+        standardRow.hidden = !useStandard;
+        itemizedRow.hidden = useStandard;
+        if(useStandard){
+          itemizedError.textContent = '';
+          itemizedEl.removeAttribute('aria-invalid');
+        }
+      }
+      deductStandardEl.addEventListener('change', ()=>{ updateDeductionUI(); compute(); });
+      deductItemizedEl.addEventListener('change', ()=>{ updateDeductionUI(); compute(); });
+
+      // Compute core
+      function getNumber(el){
+        const v = (el.value || '').trim();
+        if(v === '') return 0;
+        const n = Number(v);
+        return isFinite(n) ? n : 0;
+      }
+
+      function compute(){
+        // Halt if validation fails
+        const okGross = validateNumberInput(grossEl, grossError, {required:true, min:0});
+        if(!okGross){ paint(0,0,0,0,0,0,0,0,0,false); return; }
+        if(deductItemizedEl.checked){
+          const okItem = validateNumberInput(itemizedEl, itemizedError, {required:true, min:0});
+          if(!okItem){ paint(0,0,0,0,0,0,0,0,0,false); return; }
+        }
+
+        const year = Number(taxYearEl.value);
+        const rate = TAX_RATE_BY_YEAR[year] ?? 0.058;
+        const gross = getNumber(grossEl);
+        const pretax = getNumber(retEl);
+        const hsa = getNumber(hsaEl);
+        const credits = getNumber(creditsEl);
+
+        const stdDed = refreshStandardDeduction();
+        const deduction = deductStandardEl.checked ? stdDed : getNumber(itemizedEl);
+
+        const taxable = Math.max(0, gross - pretax - hsa - deduction);
+        const taxBefore = taxable * rate;
+        const netTax = Math.max(0, taxBefore - credits);
+        const effRate = gross > 0 ? (netTax / gross) * 100 : 0;
+        const takehomeAnnual = Math.max(0, gross - netTax); // state-only take-home for display
+
+        // Per-paycheck
+        const isPaycheck = modePaycheck.checked;
+        const periods = Number(payFreqEl.value || 26);
+        const ppGross = isPaycheck ? gross / periods : 0;
+        const ppTax = isPaycheck ? netTax / periods : 0;
+        const ppTakehome = isPaycheck ? Math.max(0, ppGross - ppTax) : 0;
+
+        paint(taxable, taxBefore, credits, netTax, effRate, takehomeAnnual, ppGross, ppTax, ppTakehome, isPaycheck);
+      }
+
+      function paint(taxable, taxBefore, credits, netTax, effRate, takehomeAnnual, ppGross, ppTax, ppTakehome, isPP){
+        resTaxable.textContent = formatCurrency(taxable);
+        resTax.textContent = formatCurrency(taxBefore);
+        resCredits.textContent = formatCurrency(credits);
+        resNetTax.textContent = formatCurrency(netTax);
+        resEffRate.textContent = formatPercent(effRate);
+        resTakehome.textContent = formatCurrency(takehomeAnnual);
+
+        if(isPP){
+          ppBlock.hidden = false;
+          const label = payFreqEl.selectedOptions[0]?.textContent || 'Biweekly (26)';
+          ppLabel.textContent = label;
+          resPPGross.textContent = formatCurrency(ppGross);
+          resPPTax.textContent = formatCurrency(ppTax);
+          resPPTakehome.textContent = formatCurrency(ppTakehome);
+        } else {
+          ppBlock.hidden = true;
+        }
+      }
+
+      // Event listeners to recompute
+      [taxYearEl, filingStatusEl, retEl, hsaEl, creditsEl, payFreqEl].forEach(el => {
+        el.addEventListener('input', compute);
+        el.addEventListener('change', compute);
+      });
+      grossEl.addEventListener('input', compute);
+      itemizedEl.addEventListener('input', compute);
+
+      // Initialize UI
+      updateModeUI();
+      updateDeductionUI();
+      refreshStandardDeduction();
+      compute();
+
+      // Accessibility: recalc standard when filing status/year changes
+      taxYearEl.addEventListener('change', ()=>{ refreshStandardDeduction(); compute(); });
+      filingStatusEl.addEventListener('change', ()=>{ refreshStandardDeduction(); compute(); });
+
+      // Ensure touch target sizing on buttons in some browsers
+      document.querySelectorAll('button, .seg-option, select, input').forEach(el=>{
+        el.style.minHeight = '48px';
+      });
+    })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "General",
+      "item": "https://calcdomain.com/categories/general"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Miscellaneous",
+      "item": "https://calcdomain.com/subcategories/miscellaneous"
+    }
+  ]
+}
+</script><script defer="">
+    (function(){
+      'use strict';
+
+      // Data configuration (easily updatable)
+      const TAX_RATE_BY_YEAR = {
+        2024: 0.058 // Idaho flat individual income tax rate (2024)
+      };
+      const STANDARD_DEDUCTION_2024 = {
+        single: 14600,
+        mfj: 29200,
+        mfs: 14600,
+        hoh: 21900
+      };
+
+      // DOM helpers
+      const $ = (sel) => document.querySelector(sel);
+      const formatCurrency = (n) => (isFinite(n) ? n : 0).toLocaleString('en-US', { style:'currency', currency:'USD' });
+      const formatPercent = (n) => `${(isFinite(n)? n : 0).toFixed(2)}%`;
+
+      // Inputs
+      const modeAnnual = $('#mode-annual');
+      const modePaycheck = $('#mode-paycheck');
+      const taxYearEl = $('#taxYear');
+      const filingStatusEl = $('#filingStatus');
+      const grossEl = $('#grossIncome');
+      const retEl = $('#pretaxRetirement');
+      const hsaEl = $('#hsa');
+      const deductStandardEl = $('#deduct-standard');
+      const deductItemizedEl = $('#deduct-itemized');
+      const standardRow = $('#standardRow');
+      const itemizedRow = $('#itemizedRow');
+      const itemizedEl = $('#itemizedDeduction');
+      const creditsEl = $('#credits');
+      const payFreqRow = $('#payFrequencyRow');
+      const payFreqEl = $('#payFrequency');
+      const stdDeductionRO = $('#standardDeduction');
+
+      // Tooltips
+      function makeTip(btnId, panelId){
+        const btn = document.getElementById(btnId);
+        const panel = document.getElementById(panelId);
+        if(!btn || !panel) return;
+        btn.addEventListener('click', ()=>{
+          const open = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!open));
+          panel.dataset.open = String(!open);
+        });
+        btn.addEventListener('keydown', (e)=>{
+          if(e.key === 'Escape'){
+            btn.setAttribute('aria-expanded','false');
+            panel.dataset.open = 'false';
+            btn.focus();
+          }
+        });
+      }
+      makeTip('tip-gross','tooltip-gross');
+      makeTip('tip-ret','tooltip-ret');
+      makeTip('tip-hsa','tooltip-hsa');
+      makeTip('tip-credit','tooltip-credit');
+
+      // Results
+      const resTaxable = $('#res-taxable');
+      const resTax = $('#res-tax');
+      const resCredits = $('#res-credits');
+      const resNetTax = $('#res-net-tax');
+      const resEffRate = $('#res-eff-rate');
+      const resTakehome = $('#res-takehome');
+      const ppBlock = $('#perPaycheckBlock');
+      const ppLabel = $('#pp-label');
+      const resPPGross = $('#res-pp-gross');
+      const resPPTax = $('#res-pp-tax');
+      const resPPTakehome = $('#res-pp-takehome');
+
+      // Errors
+      const grossError = $('#gross-error');
+      const itemizedError = $('#itemized-error');
+
+      // Validation on blur
+      function validateNumberInput(inputEl, errorEl, opts={}){
+        const val = inputEl.value.trim();
+        const required = !!opts.required;
+        const min = opts.min ?? 0;
+        let msg = '';
+        if(required && val === ''){
+          msg = 'Please enter a value.';
+        } else if(val !== ''){
+          const num = Number(val);
+          if(isNaN(num)){
+            msg = 'Please enter a valid number (digits and an optional decimal).';
+          } else if(num < min){
+            msg = `Value must be at least ${min}.`;
+          }
+        }
+        if(msg){
+          inputEl.setAttribute('aria-invalid','true');
+          errorEl.textContent = msg + ' Tip: no commas or currency symbols.';
+        } else {
+          inputEl.removeAttribute('aria-invalid');
+          errorEl.textContent = '';
+        }
+        return !msg;
+      }
+
+      grossEl.addEventListener('blur', ()=> validateNumberInput(grossEl, grossError, {required:true, min:0}));
+      itemizedEl.addEventListener('blur', ()=> {
+        if(!itemizedRow.hidden){
+          validateNumberInput(itemizedEl, itemizedError, {required:true, min:0});
+        } else {
+          itemizedError.textContent = '';
+          itemizedEl.removeAttribute('aria-invalid');
+        }
+      });
+
+      // Update standard deduction display
+      function refreshStandardDeduction(){
+        const year = Number(taxYearEl.value);
+        const status = filingStatusEl.value;
+        let amount = 0;
+        if(year === 2024){
+          amount = STANDARD_DEDUCTION_2024[status] ?? 0;
+        }
+        stdDeductionRO.value = formatCurrency(amount);
+        return amount;
+      }
+
+      // Toggle modes
+      function updateModeUI(){
+        const isPaycheck = modePaycheck.checked;
+        payFreqRow.hidden = !isPaycheck;
+        ppBlock.hidden = !isPaycheck;
+      }
+      modeAnnual.addEventListener('change', updateModeUI);
+      modePaycheck.addEventListener('change', updateModeUI);
+
+      // Toggle deduction rows
+      function updateDeductionUI(){
+        const useStandard = deductStandardEl.checked;
+        standardRow.hidden = !useStandard;
+        itemizedRow.hidden = useStandard;
+        if(useStandard){
+          itemizedError.textContent = '';
+          itemizedEl.removeAttribute('aria-invalid');
+        }
+      }
+      deductStandardEl.addEventListener('change', ()=>{ updateDeductionUI(); compute(); });
+      deductItemizedEl.addEventListener('change', ()=>{ updateDeductionUI(); compute(); });
+
+      // Compute core
+      function getNumber(el){
+        const v = (el.value || '').trim();
+        if(v === '') return 0;
+        const n = Number(v);
+        return isFinite(n) ? n : 0;
+      }
+
+      function compute(){
+        // Halt if validation fails
+        const okGross = validateNumberInput(grossEl, grossError, {required:true, min:0});
+        if(!okGross){ paint(0,0,0,0,0,0,0,0,0,false); return; }
+        if(deductItemizedEl.checked){
+          const okItem = validateNumberInput(itemizedEl, itemizedError, {required:true, min:0});
+          if(!okItem){ paint(0,0,0,0,0,0,0,0,0,false); return; }
+        }
+
+        const year = Number(taxYearEl.value);
+        const rate = TAX_RATE_BY_YEAR[year] ?? 0.058;
+        const gross = getNumber(grossEl);
+        const pretax = getNumber(retEl);
+        const hsa = getNumber(hsaEl);
+        const credits = getNumber(creditsEl);
+
+        const stdDed = refreshStandardDeduction();
+        const deduction = deductStandardEl.checked ? stdDed : getNumber(itemizedEl);
+
+        const taxable = Math.max(0, gross - pretax - hsa - deduction);
+        const taxBefore = taxable * rate;
+        const netTax = Math.max(0, taxBefore - credits);
+        const effRate = gross > 0 ? (netTax / gross) * 100 : 0;
+        const takehomeAnnual = Math.max(0, gross - netTax); // state-only take-home for display
+
+        // Per-paycheck
+        const isPaycheck = modePaycheck.checked;
+        const periods = Number(payFreqEl.value || 26);
+        const ppGross = isPaycheck ? gross / periods : 0;
+        const ppTax = isPaycheck ? netTax / periods : 0;
+        const ppTakehome = isPaycheck ? Math.max(0, ppGross - ppTax) : 0;
+
+        paint(taxable, taxBefore, credits, netTax, effRate, takehomeAnnual, ppGross, ppTax, ppTakehome, isPaycheck);
+      }
+
+      function paint(taxable, taxBefore, credits, netTax, effRate, takehomeAnnual, ppGross, ppTax, ppTakehome, isPP){
+        resTaxable.textContent = formatCurrency(taxable);
+        resTax.textContent = formatCurrency(taxBefore);
+        resCredits.textContent = formatCurrency(credits);
+        resNetTax.textContent = formatCurrency(netTax);
+        resEffRate.textContent = formatPercent(effRate);
+        resTakehome.textContent = formatCurrency(takehomeAnnual);
+
+        if(isPP){
+          ppBlock.hidden = false;
+          const label = payFreqEl.selectedOptions[0]?.textContent || 'Biweekly (26)';
+          ppLabel.textContent = label;
+          resPPGross.textContent = formatCurrency(ppGross);
+          resPPTax.textContent = formatCurrency(ppTax);
+          resPPTakehome.textContent = formatCurrency(ppTakehome);
+        } else {
+          ppBlock.hidden = true;
+        }
+      }
+
+      // Event listeners to recompute
+      [taxYearEl, filingStatusEl, retEl, hsaEl, creditsEl, payFreqEl].forEach(el => {
+        el.addEventListener('input', compute);
+        el.addEventListener('change', compute);
+      });
+      grossEl.addEventListener('input', compute);
+      itemizedEl.addEventListener('input', compute);
+
+      // Initialize UI
+      updateModeUI();
+      updateDeductionUI();
+      refreshStandardDeduction();
+      compute();
+
+      // Accessibility: recalc standard when filing status/year changes
+      taxYearEl.addEventListener('change', ()=>{ refreshStandardDeduction(); compute(); });
+      filingStatusEl.addEventListener('change', ()=>{ refreshStandardDeduction(); compute(); });
+
+      // Ensure touch target sizing on buttons in some browsers
+      document.querySelectorAll('button, .seg-option, select, input').forEach(el=>{
+        el.style.minHeight = '48px';
+      });
+    })();
+  </script></body></html>

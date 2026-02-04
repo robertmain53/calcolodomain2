@@ -278,10 +278,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
@@ -321,18 +327,22 @@
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
 </style>
 </head>
-<body>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">ACI 318 Reinforcement Development Length Calculator (Compression)</h1>
+    <p class="sub" id="pageSub">Professional-grade ACI 318 development length calculator for reinforcing bars in compression. Mobile-first, accessible, and precise—compute ld per ACI 318 with confinement and lightweight concrete factors.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<a class="skip-link" href="#main-content">Skip to main content</a>
-<header role="banner">
-<div aria-label="Breadcrumb" class="container header-inner" role="navigation">
-StructuralCalc
-<nav class="breadcrumb">
-<a href="https://calcdomain.com/engineering">Engineering</a> › Civil (ACI 318) › ACI 318 Compression Development Length
-      </nav>
-</div>
-</header>
-<main class="container w-full lg:w-2/3" id="main-content" role="main">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main class="container w-full lg:w-2/3" id="main-content" role="main">
 <h1>ACI 318 Reinforcement Development Length Calculator (Compression)</h1>
 <p>
       This professional tool computes the required development length in compression (ld) for deformed reinforcing bars in concrete per ACI 318. It is tailored for structural engineers, detailers, and reviewers who need accurate, audit-ready results with clear explanations, mobile-first UX, and full accessibility.
@@ -459,7 +469,7 @@ StructuralCalc
 </div>
 <div class="actions">
 <button aria-label="Compute development length" class="btn" id="computeBtn" type="button">Compute</button>
-<button aria-label="Reset inputs" class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button aria-label="Reset inputs" class="btn secondary btnSecondary" id="resetBtn" type="button">Reset</button>
 </div>
 <section aria-atomic="true" aria-labelledby="resultsHeading" aria-live="polite" class="results">
 <h3 class="sr-only" id="resultsHeading">Results</h3>
@@ -661,269 +671,26 @@ StructuralCalc
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
+
+
 </main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
+</div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-      // Elements
-      const unitsUS = document.getElementById('units-us');
-      const unitsSI = document.getElementById('units-si');
-      const barSize = document.getElementById('barSize');
-      const dbInput = document.getElementById('db');
-      const fcInput = document.getElementById('fc');
-      const fyInput = document.getElementById('fy');
-      const dbUnit = document.getElementById('dbUnit');
-      const fcUnit = document.getElementById('fcUnit');
-      const fyUnit = document.getElementById('fyUnit');
-      const computeBtn = document.getElementById('computeBtn');
-      const resetBtn = document.getElementById('resetBtn');
-
-      const dbError = document.getElementById('dbError');
-      const fcError = document.getElementById('fcError');
-      const fyError = document.getElementById('fyError');
-
-      const ldPrimary = document.getElementById('ldPrimary');
-      const ldAlt = document.getElementById('ldAlt');
-      const ldInDb = document.getElementById('ldInDb');
-      const governing = document.getElementById('governing');
-      const notes = document.getElementById('notes');
-
-      // Tooltip toggles
-      document.querySelectorAll('.help-btn').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          const id = btn.getAttribute('aria-controls');
-          const tip = document.getElementById(id);
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          if(tip){
-            tip.setAttribute('aria-hidden', String(expanded));
-          }
-        });
-      });
-
-      // Bar size to diameter map (inches)
-      const sizeDbIn = {
-        "#3": 0.375, "#4": 0.500, "#5": 0.625, "#6": 0.750, "#7": 0.875,
-        "#8": 1.000, "#9": 1.128, "#10": 1.270, "#11": 1.410
-      };
-
-      function isUS(){ return unitsUS.checked; }
-
-      function setUnits(){
-        if(isUS()){
-          dbUnit.textContent = 'in';
-          fcUnit.textContent = 'ksi';
-          fyUnit.textContent = 'ksi';
-          // default common values if empty
-          if(!fcInput.value) fcInput.value = '4.0';
-          if(!fyInput.value) fyInput.value = '60';
-        }else{
-          dbUnit.textContent = 'mm';
-          fcUnit.textContent = 'MPa';
-          fyUnit.textContent = 'MPa';
-          if(!fcInput.value) fcInput.value = '28';
-          if(!fyInput.value) fyInput.value = '420';
-        }
-        // If US and bar size selected (not custom), auto-fill db
-        applyBarSizeToDb();
-        clearResults();
-      }
-
-      function applyBarSizeToDb(){
-        if(isUS()){
-          if(barSize.value !== 'custom'){
-            const val = sizeDbIn[barSize.value] || '';
-            dbInput.value = val;
-            dbInput.readOnly = true;
-          } else {
-            dbInput.readOnly = false;
-          }
-        } else {
-          // SI ignores bar size
-          barSize.value = 'custom';
-          dbInput.readOnly = false;
-        }
-      }
-
-      unitsUS.addEventListener('change', setUnits);
-      unitsSI.addEventListener('change', setUnits);
-      barSize.addEventListener('change', ()=>{
-        applyBarSizeToDb();
-        validateField(dbInput, dbError, v=>v>0, 'Enter a positive diameter.');
-      });
-
-      // Validation helpers
-      function readNumber(el){
-        const v = parseFloat(String(el.value).replace(',', '.'));
-        return Number.isFinite(v) ? v : NaN;
-      }
-      function showError(el, errEl, msg){
-        el.setAttribute('aria-invalid','true');
-        errEl.textContent = msg;
-      }
-      function clearError(el, errEl){
-        el.removeAttribute('aria-invalid');
-        errEl.textContent = '';
-      }
-      function validateField(el, errEl, predicate, message){
-        const v = readNumber(el);
-        if(!Number.isFinite(v) || !predicate(v)){
-          showError(el, errEl, message);
-          return null;
-        }
-        clearError(el, errEl);
-        return v;
-      }
-
-      dbInput.addEventListener('blur', ()=> validateField(dbInput, dbError, v=>v>0, 'Enter a positive diameter.'));
-      fcInput.addEventListener('blur', ()=>{
-        const msg = isUS() ? "Typical range: 3–10 ksi." : "Typical range: 20–70 MPa.";
-        validateField(fcInput, fcError, v=>v>0, "Enter a positive f'c. "+msg);
-      });
-      fyInput.addEventListener('blur', ()=>{
-        const msg = isUS() ? "Typical range: 60–80 ksi." : "Typical range: 420–550 MPa.";
-        validateField(fyInput, fyError, v=>v>0, 'Enter a positive fy. '+msg);
-      });
-
-      // Compute
-      function getLambda(){
-        const sel = document.querySelector('input[name="lambda"]:checked');
-        return sel ? parseFloat(sel.value) : 1.0;
-      }
-      function getPsiS(){
-        const conf = document.querySelector('input[name="conf"]:checked')?.value;
-        return conf === 'spiral' ? 0.75 : 1.0;
-      }
-
-      function toPsi(ksi){ return ksi*1000.0; }
-      function psiToMPa(psi){ return psi * 0.006894757; }
-      function MPaToPsi(MPa){ return MPa / 0.006894757; }
-      function inToMm(inch){ return inch*25.4; }
-      function mmToIn(mm){ return mm/25.4; }
-
-      function formatLength(val, unit){
-        if(!Number.isFinite(val)) return '—';
-        if(unit==='in') return (Math.round(val*100)/100).toFixed(2)+' in';
-        if(unit==='mm') return (Math.round(val*10)/10).toFixed(1)+' mm';
-        return String(val);
-      }
-      function formatDbMultiple(val){
-        if(!Number.isFinite(val)) return '—';
-        return (Math.round(val*100)/100).toFixed(2)+' db';
-      }
-
-      function compute(){
-        // Validate inputs
-        const db = validateField(dbInput, dbError, v=>v>0, 'Enter a positive diameter.');
-        const fc = validateField(fcInput, fcError, v=>v>0, "Enter a positive f'c.");
-        const fy = validateField(fyInput, fyError, v=>v>0, 'Enter a positive fy.');
-        if([db,fc,fy].includes(null)) { notes.textContent = 'Please correct the highlighted inputs.'; return; }
-
-        const lambda = getLambda();
-        const psiS = getPsiS();
-
-        let db_in, fc_psi, fy_psi;
-        if(isUS()){
-          db_in = db;                    // in
-          fc_psi = toPsi(fc);            // ksi -> psi
-          fy_psi = toPsi(fy);            // ksi -> psi
-        } else {
-          db_in = mmToIn(db);            // mm -> in
-          fc_psi = MPaToPsi(fc);         // MPa -> psi
-          fy_psi = MPaToPsi(fy);         // MPa -> psi
-        }
-
-        // ACI compression development (per Section 25.4.3 style)
-        // Terms:
-        // t1 = 0.02 * (fy / (lambda * sqrt(fc'))) * db
-        // t2 = 0.0003 * fy * db
-        // t3 = 8 * db
-        // ld_base = max(t1, t2, t3)
-        // ld = psi_s * ld_base
-        const sqrt_fc = Math.sqrt(fc_psi);
-        const t1_db = 0.02 * (fy_psi / (lambda * sqrt_fc)) * db_in; // inches
-        const t2_db = 0.0003 * fy_psi * db_in;                      // inches
-        const t3_db = 8.0 * db_in;                                  // inches
-
-        const terms = [
-          {name: "0.02·fy/(λ·√f'c)·db", value: t1_db},
-          {name: "0.0003·fy·db", value: t2_db},
-          {name: "8·db", value: t3_db}
-        ];
-        let maxTerm = terms[0];
-        for(const t of terms){ if(t.value > maxTerm.value) maxTerm = t; }
-
-        const ld_base_in = maxTerm.value;
-        const ld_in = psiS * ld_base_in; // final required length (inches)
-
-        // Outputs in selected and alternate units
-        const primaryUnit = isUS() ? 'in' : 'mm';
-        const altUnit = isUS() ? 'mm' : 'in';
-        const ld_primary = isUS() ? ld_in : inToMm(ld_in);
-        const ld_alt = isUS() ? inToMm(ld_in) : ld_in;
-
-        ldPrimary.textContent = formatLength(ld_primary, primaryUnit);
-        ldAlt.textContent = formatLength(ld_alt, altUnit);
-        ldInDb.textContent = formatDbMultiple(ld_in / db_in);
-
-        const confText = (psiS===0.75) ? "Spiral reduction applied (×0.75)" : "No confinement reduction";
-        governing.textContent = maxTerm.name;
-        notes.innerHTML = "Final ld is " + (psiS===0.75 ? "reduced by spirals" : "not reduced") + ". " +
-                          "<span class='pill'>" + confText + "</span>";
-      }
-
-      function clearResults(){
-        ldPrimary.textContent = '—';
-        ldAlt.textContent = '—';
-        ldInDb.textContent = '—';
-        governing.textContent = '—';
-        notes.textContent = 'Enter values to see detailed results.';
-      }
-
-      function resetAll(){
-        unitsUS.checked = true;
-        barSize.value = 'custom';
-        dbInput.value = '';
-        dbInput.readOnly = false;
-        fcInput.value = isUS() ? '4.0' : '28';
-        fyInput.value = isUS() ? '60' : '420';
-        document.getElementById('lambda100').checked = true;
-        document.getElementById('ties').checked = true;
-        clearError(dbInput, dbError);
-        clearError(fcInput, fcError);
-        clearError(fyInput, fyError);
-        setUnits();
-        clearResults();
-        dbInput.focus();
-      }
-
-      // Listeners
-      computeBtn.addEventListener('click', compute);
-      resetBtn.addEventListener('click', resetAll);
-      document.querySelectorAll('input[name="lambda"]').forEach(el=>el.addEventListener('change', compute));
-      document.querySelectorAll('input[name="conf"]').forEach(el=>el.addEventListener('change', compute));
-      dbInput.addEventListener('input', ()=>{ clearError(dbInput, dbError); });
-      fcInput.addEventListener('input', ()=>{ clearError(fcInput, fcError); });
-      fyInput.addEventListener('input', ()=>{ clearError(fyInput, fyError); });
-
-      // Initialize defaults
-      setUnits();
-      clearResults();
-    })();
-  </script>
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main-content">Skip to main content</a><header role="banner">
+<div aria-label="Breadcrumb" class="container header-inner" role="navigation">
+StructuralCalc
+<nav class="breadcrumb">
+<a href="https://calcdomain.com/engineering">Engineering</a> › Civil (ACI 318) › ACI 318 Compression Development Length
+      </nav>
+</div>
+</header><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -955,20 +722,14 @@ StructuralCalc
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-
-<a class="skip-link" href="#main-content">Skip to main content</a>
-<header role="banner">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><header role="banner">
 <div aria-label="Breadcrumb" class="container header-inner" role="navigation">
 StructuralCalc
 <nav class="breadcrumb">
 <a href="https://calcdomain.com/engineering">Engineering</a> › Civil (ACI 318) › ACI 318 Compression Development Length
       </nav>
 </div>
-</header>
-<main class="container" id="main-content" role="main">
+</header><main class="container" id="main-content" role="main">
 <h1>ACI 318 Reinforcement Development Length Calculator (Compression)</h1>
 <p>
       This professional tool computes the required development length in compression (ld) for deformed reinforcing bars in concrete per ACI 318. It is tailored for structural engineers, detailers, and reviewers who need accurate, audit-ready results with clear explanations, mobile-first UX, and full accessibility.
@@ -1095,7 +856,7 @@ StructuralCalc
 </div>
 <div class="actions">
 <button aria-label="Compute development length" class="btn" id="computeBtn" type="button">Compute</button>
-<button aria-label="Reset inputs" class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button aria-label="Reset inputs" class="btn secondary" id="resetBtn__dup2" type="button">Reset</button>
 </div>
 <section aria-atomic="true" aria-labelledby="resultsHeading" aria-live="polite" class="results">
 <h3 class="sr-only" id="resultsHeading">Results</h3>
@@ -1297,269 +1058,7 @@ StructuralCalc
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
-
-      // Elements
-      const unitsUS = document.getElementById('units-us');
-      const unitsSI = document.getElementById('units-si');
-      const barSize = document.getElementById('barSize');
-      const dbInput = document.getElementById('db');
-      const fcInput = document.getElementById('fc');
-      const fyInput = document.getElementById('fy');
-      const dbUnit = document.getElementById('dbUnit');
-      const fcUnit = document.getElementById('fcUnit');
-      const fyUnit = document.getElementById('fyUnit');
-      const computeBtn = document.getElementById('computeBtn');
-      const resetBtn = document.getElementById('resetBtn');
-
-      const dbError = document.getElementById('dbError');
-      const fcError = document.getElementById('fcError');
-      const fyError = document.getElementById('fyError');
-
-      const ldPrimary = document.getElementById('ldPrimary');
-      const ldAlt = document.getElementById('ldAlt');
-      const ldInDb = document.getElementById('ldInDb');
-      const governing = document.getElementById('governing');
-      const notes = document.getElementById('notes');
-
-      // Tooltip toggles
-      document.querySelectorAll('.help-btn').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          const id = btn.getAttribute('aria-controls');
-          const tip = document.getElementById(id);
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          if(tip){
-            tip.setAttribute('aria-hidden', String(expanded));
-          }
-        });
-      });
-
-      // Bar size to diameter map (inches)
-      const sizeDbIn = {
-        "#3": 0.375, "#4": 0.500, "#5": 0.625, "#6": 0.750, "#7": 0.875,
-        "#8": 1.000, "#9": 1.128, "#10": 1.270, "#11": 1.410
-      };
-
-      function isUS(){ return unitsUS.checked; }
-
-      function setUnits(){
-        if(isUS()){
-          dbUnit.textContent = 'in';
-          fcUnit.textContent = 'ksi';
-          fyUnit.textContent = 'ksi';
-          // default common values if empty
-          if(!fcInput.value) fcInput.value = '4.0';
-          if(!fyInput.value) fyInput.value = '60';
-        }else{
-          dbUnit.textContent = 'mm';
-          fcUnit.textContent = 'MPa';
-          fyUnit.textContent = 'MPa';
-          if(!fcInput.value) fcInput.value = '28';
-          if(!fyInput.value) fyInput.value = '420';
-        }
-        // If US and bar size selected (not custom), auto-fill db
-        applyBarSizeToDb();
-        clearResults();
-      }
-
-      function applyBarSizeToDb(){
-        if(isUS()){
-          if(barSize.value !== 'custom'){
-            const val = sizeDbIn[barSize.value] || '';
-            dbInput.value = val;
-            dbInput.readOnly = true;
-          } else {
-            dbInput.readOnly = false;
-          }
-        } else {
-          // SI ignores bar size
-          barSize.value = 'custom';
-          dbInput.readOnly = false;
-        }
-      }
-
-      unitsUS.addEventListener('change', setUnits);
-      unitsSI.addEventListener('change', setUnits);
-      barSize.addEventListener('change', ()=>{
-        applyBarSizeToDb();
-        validateField(dbInput, dbError, v=>v>0, 'Enter a positive diameter.');
-      });
-
-      // Validation helpers
-      function readNumber(el){
-        const v = parseFloat(String(el.value).replace(',', '.'));
-        return Number.isFinite(v) ? v : NaN;
-      }
-      function showError(el, errEl, msg){
-        el.setAttribute('aria-invalid','true');
-        errEl.textContent = msg;
-      }
-      function clearError(el, errEl){
-        el.removeAttribute('aria-invalid');
-        errEl.textContent = '';
-      }
-      function validateField(el, errEl, predicate, message){
-        const v = readNumber(el);
-        if(!Number.isFinite(v) || !predicate(v)){
-          showError(el, errEl, message);
-          return null;
-        }
-        clearError(el, errEl);
-        return v;
-      }
-
-      dbInput.addEventListener('blur', ()=> validateField(dbInput, dbError, v=>v>0, 'Enter a positive diameter.'));
-      fcInput.addEventListener('blur', ()=>{
-        const msg = isUS() ? "Typical range: 3–10 ksi." : "Typical range: 20–70 MPa.";
-        validateField(fcInput, fcError, v=>v>0, "Enter a positive f'c. "+msg);
-      });
-      fyInput.addEventListener('blur', ()=>{
-        const msg = isUS() ? "Typical range: 60–80 ksi." : "Typical range: 420–550 MPa.";
-        validateField(fyInput, fyError, v=>v>0, 'Enter a positive fy. '+msg);
-      });
-
-      // Compute
-      function getLambda(){
-        const sel = document.querySelector('input[name="lambda"]:checked');
-        return sel ? parseFloat(sel.value) : 1.0;
-      }
-      function getPsiS(){
-        const conf = document.querySelector('input[name="conf"]:checked')?.value;
-        return conf === 'spiral' ? 0.75 : 1.0;
-      }
-
-      function toPsi(ksi){ return ksi*1000.0; }
-      function psiToMPa(psi){ return psi * 0.006894757; }
-      function MPaToPsi(MPa){ return MPa / 0.006894757; }
-      function inToMm(inch){ return inch*25.4; }
-      function mmToIn(mm){ return mm/25.4; }
-
-      function formatLength(val, unit){
-        if(!Number.isFinite(val)) return '—';
-        if(unit==='in') return (Math.round(val*100)/100).toFixed(2)+' in';
-        if(unit==='mm') return (Math.round(val*10)/10).toFixed(1)+' mm';
-        return String(val);
-      }
-      function formatDbMultiple(val){
-        if(!Number.isFinite(val)) return '—';
-        return (Math.round(val*100)/100).toFixed(2)+' db';
-      }
-
-      function compute(){
-        // Validate inputs
-        const db = validateField(dbInput, dbError, v=>v>0, 'Enter a positive diameter.');
-        const fc = validateField(fcInput, fcError, v=>v>0, "Enter a positive f'c.");
-        const fy = validateField(fyInput, fyError, v=>v>0, 'Enter a positive fy.');
-        if([db,fc,fy].includes(null)) { notes.textContent = 'Please correct the highlighted inputs.'; return; }
-
-        const lambda = getLambda();
-        const psiS = getPsiS();
-
-        let db_in, fc_psi, fy_psi;
-        if(isUS()){
-          db_in = db;                    // in
-          fc_psi = toPsi(fc);            // ksi -> psi
-          fy_psi = toPsi(fy);            // ksi -> psi
-        } else {
-          db_in = mmToIn(db);            // mm -> in
-          fc_psi = MPaToPsi(fc);         // MPa -> psi
-          fy_psi = MPaToPsi(fy);         // MPa -> psi
-        }
-
-        // ACI compression development (per Section 25.4.3 style)
-        // Terms:
-        // t1 = 0.02 * (fy / (lambda * sqrt(fc'))) * db
-        // t2 = 0.0003 * fy * db
-        // t3 = 8 * db
-        // ld_base = max(t1, t2, t3)
-        // ld = psi_s * ld_base
-        const sqrt_fc = Math.sqrt(fc_psi);
-        const t1_db = 0.02 * (fy_psi / (lambda * sqrt_fc)) * db_in; // inches
-        const t2_db = 0.0003 * fy_psi * db_in;                      // inches
-        const t3_db = 8.0 * db_in;                                  // inches
-
-        const terms = [
-          {name: "0.02·fy/(λ·√f'c)·db", value: t1_db},
-          {name: "0.0003·fy·db", value: t2_db},
-          {name: "8·db", value: t3_db}
-        ];
-        let maxTerm = terms[0];
-        for(const t of terms){ if(t.value > maxTerm.value) maxTerm = t; }
-
-        const ld_base_in = maxTerm.value;
-        const ld_in = psiS * ld_base_in; // final required length (inches)
-
-        // Outputs in selected and alternate units
-        const primaryUnit = isUS() ? 'in' : 'mm';
-        const altUnit = isUS() ? 'mm' : 'in';
-        const ld_primary = isUS() ? ld_in : inToMm(ld_in);
-        const ld_alt = isUS() ? inToMm(ld_in) : ld_in;
-
-        ldPrimary.textContent = formatLength(ld_primary, primaryUnit);
-        ldAlt.textContent = formatLength(ld_alt, altUnit);
-        ldInDb.textContent = formatDbMultiple(ld_in / db_in);
-
-        const confText = (psiS===0.75) ? "Spiral reduction applied (×0.75)" : "No confinement reduction";
-        governing.textContent = maxTerm.name;
-        notes.innerHTML = "Final ld is " + (psiS===0.75 ? "reduced by spirals" : "not reduced") + ". " +
-                          "<span class='pill'>" + confText + "</span>";
-      }
-
-      function clearResults(){
-        ldPrimary.textContent = '—';
-        ldAlt.textContent = '—';
-        ldInDb.textContent = '—';
-        governing.textContent = '—';
-        notes.textContent = 'Enter values to see detailed results.';
-      }
-
-      function resetAll(){
-        unitsUS.checked = true;
-        barSize.value = 'custom';
-        dbInput.value = '';
-        dbInput.readOnly = false;
-        fcInput.value = isUS() ? '4.0' : '28';
-        fyInput.value = isUS() ? '60' : '420';
-        document.getElementById('lambda100').checked = true;
-        document.getElementById('ties').checked = true;
-        clearError(dbInput, dbError);
-        clearError(fcInput, fcError);
-        clearError(fyInput, fyError);
-        setUnits();
-        clearResults();
-        dbInput.focus();
-      }
-
-      // Listeners
-      computeBtn.addEventListener('click', compute);
-      resetBtn.addEventListener('click', resetAll);
-      document.querySelectorAll('input[name="lambda"]').forEach(el=>el.addEventListener('change', compute));
-      document.querySelectorAll('input[name="conf"]').forEach(el=>el.addEventListener('change', compute));
-      dbInput.addEventListener('input', ()=>{ clearError(dbInput, dbError); });
-      fcInput.addEventListener('input', ()=>{ clearError(fcInput, fcError); });
-      fyInput.addEventListener('input', ()=>{ clearError(fyInput, fyError); });
-
-      // Initialize defaults
-      setUnits();
-      clearResults();
-    })();
-  </script>
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1591,20 +1090,14 @@ StructuralCalc
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-
-<a class="skip-link" href="#main-content">Skip to main content</a>
-<header role="banner">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><header role="banner">
 <div aria-label="Breadcrumb" class="container header-inner" role="navigation">
 StructuralCalc
 <nav class="breadcrumb">
 <a href="https://calcdomain.com/engineering">Engineering</a> › Civil (ACI 318) › ACI 318 Compression Development Length
       </nav>
 </div>
-</header>
-<main class="container" id="main-content" role="main">
+</header><main class="container" id="main-content" role="main">
 <h1>ACI 318 Reinforcement Development Length Calculator (Compression)</h1>
 <p>
       This professional tool computes the required development length in compression (ld) for deformed reinforcing bars in concrete per ACI 318. It is tailored for structural engineers, detailers, and reviewers who need accurate, audit-ready results with clear explanations, mobile-first UX, and full accessibility.
@@ -1731,7 +1224,7 @@ StructuralCalc
 </div>
 <div class="actions">
 <button aria-label="Compute development length" class="btn" id="computeBtn" type="button">Compute</button>
-<button aria-label="Reset inputs" class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button aria-label="Reset inputs" class="btn secondary" id="resetBtn__dup3" type="button">Reset</button>
 </div>
 <section aria-atomic="true" aria-labelledby="resultsHeading" aria-live="polite" class="results">
 <h3 class="sr-only" id="resultsHeading">Results</h3>
@@ -1933,9 +1426,48 @@ StructuralCalc
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
     (function(){
       'use strict';
 
@@ -2184,6 +1716,502 @@ StructuralCalc
       setUnits();
       clearResults();
     })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
 
-</body></html>
+      // Elements
+      const unitsUS = document.getElementById('units-us');
+      const unitsSI = document.getElementById('units-si');
+      const barSize = document.getElementById('barSize');
+      const dbInput = document.getElementById('db');
+      const fcInput = document.getElementById('fc');
+      const fyInput = document.getElementById('fy');
+      const dbUnit = document.getElementById('dbUnit');
+      const fcUnit = document.getElementById('fcUnit');
+      const fyUnit = document.getElementById('fyUnit');
+      const computeBtn = document.getElementById('computeBtn');
+      const resetBtn = document.getElementById('resetBtn');
+
+      const dbError = document.getElementById('dbError');
+      const fcError = document.getElementById('fcError');
+      const fyError = document.getElementById('fyError');
+
+      const ldPrimary = document.getElementById('ldPrimary');
+      const ldAlt = document.getElementById('ldAlt');
+      const ldInDb = document.getElementById('ldInDb');
+      const governing = document.getElementById('governing');
+      const notes = document.getElementById('notes');
+
+      // Tooltip toggles
+      document.querySelectorAll('.help-btn').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const id = btn.getAttribute('aria-controls');
+          const tip = document.getElementById(id);
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          if(tip){
+            tip.setAttribute('aria-hidden', String(expanded));
+          }
+        });
+      });
+
+      // Bar size to diameter map (inches)
+      const sizeDbIn = {
+        "#3": 0.375, "#4": 0.500, "#5": 0.625, "#6": 0.750, "#7": 0.875,
+        "#8": 1.000, "#9": 1.128, "#10": 1.270, "#11": 1.410
+      };
+
+      function isUS(){ return unitsUS.checked; }
+
+      function setUnits(){
+        if(isUS()){
+          dbUnit.textContent = 'in';
+          fcUnit.textContent = 'ksi';
+          fyUnit.textContent = 'ksi';
+          // default common values if empty
+          if(!fcInput.value) fcInput.value = '4.0';
+          if(!fyInput.value) fyInput.value = '60';
+        }else{
+          dbUnit.textContent = 'mm';
+          fcUnit.textContent = 'MPa';
+          fyUnit.textContent = 'MPa';
+          if(!fcInput.value) fcInput.value = '28';
+          if(!fyInput.value) fyInput.value = '420';
+        }
+        // If US and bar size selected (not custom), auto-fill db
+        applyBarSizeToDb();
+        clearResults();
+      }
+
+      function applyBarSizeToDb(){
+        if(isUS()){
+          if(barSize.value !== 'custom'){
+            const val = sizeDbIn[barSize.value] || '';
+            dbInput.value = val;
+            dbInput.readOnly = true;
+          } else {
+            dbInput.readOnly = false;
+          }
+        } else {
+          // SI ignores bar size
+          barSize.value = 'custom';
+          dbInput.readOnly = false;
+        }
+      }
+
+      unitsUS.addEventListener('change', setUnits);
+      unitsSI.addEventListener('change', setUnits);
+      barSize.addEventListener('change', ()=>{
+        applyBarSizeToDb();
+        validateField(dbInput, dbError, v=>v>0, 'Enter a positive diameter.');
+      });
+
+      // Validation helpers
+      function readNumber(el){
+        const v = parseFloat(String(el.value).replace(',', '.'));
+        return Number.isFinite(v) ? v : NaN;
+      }
+      function showError(el, errEl, msg){
+        el.setAttribute('aria-invalid','true');
+        errEl.textContent = msg;
+      }
+      function clearError(el, errEl){
+        el.removeAttribute('aria-invalid');
+        errEl.textContent = '';
+      }
+      function validateField(el, errEl, predicate, message){
+        const v = readNumber(el);
+        if(!Number.isFinite(v) || !predicate(v)){
+          showError(el, errEl, message);
+          return null;
+        }
+        clearError(el, errEl);
+        return v;
+      }
+
+      dbInput.addEventListener('blur', ()=> validateField(dbInput, dbError, v=>v>0, 'Enter a positive diameter.'));
+      fcInput.addEventListener('blur', ()=>{
+        const msg = isUS() ? "Typical range: 3–10 ksi." : "Typical range: 20–70 MPa.";
+        validateField(fcInput, fcError, v=>v>0, "Enter a positive f'c. "+msg);
+      });
+      fyInput.addEventListener('blur', ()=>{
+        const msg = isUS() ? "Typical range: 60–80 ksi." : "Typical range: 420–550 MPa.";
+        validateField(fyInput, fyError, v=>v>0, 'Enter a positive fy. '+msg);
+      });
+
+      // Compute
+      function getLambda(){
+        const sel = document.querySelector('input[name="lambda"]:checked');
+        return sel ? parseFloat(sel.value) : 1.0;
+      }
+      function getPsiS(){
+        const conf = document.querySelector('input[name="conf"]:checked')?.value;
+        return conf === 'spiral' ? 0.75 : 1.0;
+      }
+
+      function toPsi(ksi){ return ksi*1000.0; }
+      function psiToMPa(psi){ return psi * 0.006894757; }
+      function MPaToPsi(MPa){ return MPa / 0.006894757; }
+      function inToMm(inch){ return inch*25.4; }
+      function mmToIn(mm){ return mm/25.4; }
+
+      function formatLength(val, unit){
+        if(!Number.isFinite(val)) return '—';
+        if(unit==='in') return (Math.round(val*100)/100).toFixed(2)+' in';
+        if(unit==='mm') return (Math.round(val*10)/10).toFixed(1)+' mm';
+        return String(val);
+      }
+      function formatDbMultiple(val){
+        if(!Number.isFinite(val)) return '—';
+        return (Math.round(val*100)/100).toFixed(2)+' db';
+      }
+
+      function compute(){
+        // Validate inputs
+        const db = validateField(dbInput, dbError, v=>v>0, 'Enter a positive diameter.');
+        const fc = validateField(fcInput, fcError, v=>v>0, "Enter a positive f'c.");
+        const fy = validateField(fyInput, fyError, v=>v>0, 'Enter a positive fy.');
+        if([db,fc,fy].includes(null)) { notes.textContent = 'Please correct the highlighted inputs.'; return; }
+
+        const lambda = getLambda();
+        const psiS = getPsiS();
+
+        let db_in, fc_psi, fy_psi;
+        if(isUS()){
+          db_in = db;                    // in
+          fc_psi = toPsi(fc);            // ksi -> psi
+          fy_psi = toPsi(fy);            // ksi -> psi
+        } else {
+          db_in = mmToIn(db);            // mm -> in
+          fc_psi = MPaToPsi(fc);         // MPa -> psi
+          fy_psi = MPaToPsi(fy);         // MPa -> psi
+        }
+
+        // ACI compression development (per Section 25.4.3 style)
+        // Terms:
+        // t1 = 0.02 * (fy / (lambda * sqrt(fc'))) * db
+        // t2 = 0.0003 * fy * db
+        // t3 = 8 * db
+        // ld_base = max(t1, t2, t3)
+        // ld = psi_s * ld_base
+        const sqrt_fc = Math.sqrt(fc_psi);
+        const t1_db = 0.02 * (fy_psi / (lambda * sqrt_fc)) * db_in; // inches
+        const t2_db = 0.0003 * fy_psi * db_in;                      // inches
+        const t3_db = 8.0 * db_in;                                  // inches
+
+        const terms = [
+          {name: "0.02·fy/(λ·√f'c)·db", value: t1_db},
+          {name: "0.0003·fy·db", value: t2_db},
+          {name: "8·db", value: t3_db}
+        ];
+        let maxTerm = terms[0];
+        for(const t of terms){ if(t.value > maxTerm.value) maxTerm = t; }
+
+        const ld_base_in = maxTerm.value;
+        const ld_in = psiS * ld_base_in; // final required length (inches)
+
+        // Outputs in selected and alternate units
+        const primaryUnit = isUS() ? 'in' : 'mm';
+        const altUnit = isUS() ? 'mm' : 'in';
+        const ld_primary = isUS() ? ld_in : inToMm(ld_in);
+        const ld_alt = isUS() ? inToMm(ld_in) : ld_in;
+
+        ldPrimary.textContent = formatLength(ld_primary, primaryUnit);
+        ldAlt.textContent = formatLength(ld_alt, altUnit);
+        ldInDb.textContent = formatDbMultiple(ld_in / db_in);
+
+        const confText = (psiS===0.75) ? "Spiral reduction applied (×0.75)" : "No confinement reduction";
+        governing.textContent = maxTerm.name;
+        notes.innerHTML = "Final ld is " + (psiS===0.75 ? "reduced by spirals" : "not reduced") + ". " +
+                          "<span class='pill'>" + confText + "</span>";
+      }
+
+      function clearResults(){
+        ldPrimary.textContent = '—';
+        ldAlt.textContent = '—';
+        ldInDb.textContent = '—';
+        governing.textContent = '—';
+        notes.textContent = 'Enter values to see detailed results.';
+      }
+
+      function resetAll(){
+        unitsUS.checked = true;
+        barSize.value = 'custom';
+        dbInput.value = '';
+        dbInput.readOnly = false;
+        fcInput.value = isUS() ? '4.0' : '28';
+        fyInput.value = isUS() ? '60' : '420';
+        document.getElementById('lambda100').checked = true;
+        document.getElementById('ties').checked = true;
+        clearError(dbInput, dbError);
+        clearError(fcInput, fcError);
+        clearError(fyInput, fyError);
+        setUnits();
+        clearResults();
+        dbInput.focus();
+      }
+
+      // Listeners
+      computeBtn.addEventListener('click', compute);
+      resetBtn.addEventListener('click', resetAll);
+      document.querySelectorAll('input[name="lambda"]').forEach(el=>el.addEventListener('change', compute));
+      document.querySelectorAll('input[name="conf"]').forEach(el=>el.addEventListener('change', compute));
+      dbInput.addEventListener('input', ()=>{ clearError(dbInput, dbError); });
+      fcInput.addEventListener('input', ()=>{ clearError(fcInput, fcError); });
+      fyInput.addEventListener('input', ()=>{ clearError(fyInput, fyError); });
+
+      // Initialize defaults
+      setUnits();
+      clearResults();
+    })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
+
+      // Elements
+      const unitsUS = document.getElementById('units-us');
+      const unitsSI = document.getElementById('units-si');
+      const barSize = document.getElementById('barSize');
+      const dbInput = document.getElementById('db');
+      const fcInput = document.getElementById('fc');
+      const fyInput = document.getElementById('fy');
+      const dbUnit = document.getElementById('dbUnit');
+      const fcUnit = document.getElementById('fcUnit');
+      const fyUnit = document.getElementById('fyUnit');
+      const computeBtn = document.getElementById('computeBtn');
+      const resetBtn = document.getElementById('resetBtn');
+
+      const dbError = document.getElementById('dbError');
+      const fcError = document.getElementById('fcError');
+      const fyError = document.getElementById('fyError');
+
+      const ldPrimary = document.getElementById('ldPrimary');
+      const ldAlt = document.getElementById('ldAlt');
+      const ldInDb = document.getElementById('ldInDb');
+      const governing = document.getElementById('governing');
+      const notes = document.getElementById('notes');
+
+      // Tooltip toggles
+      document.querySelectorAll('.help-btn').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const id = btn.getAttribute('aria-controls');
+          const tip = document.getElementById(id);
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          if(tip){
+            tip.setAttribute('aria-hidden', String(expanded));
+          }
+        });
+      });
+
+      // Bar size to diameter map (inches)
+      const sizeDbIn = {
+        "#3": 0.375, "#4": 0.500, "#5": 0.625, "#6": 0.750, "#7": 0.875,
+        "#8": 1.000, "#9": 1.128, "#10": 1.270, "#11": 1.410
+      };
+
+      function isUS(){ return unitsUS.checked; }
+
+      function setUnits(){
+        if(isUS()){
+          dbUnit.textContent = 'in';
+          fcUnit.textContent = 'ksi';
+          fyUnit.textContent = 'ksi';
+          // default common values if empty
+          if(!fcInput.value) fcInput.value = '4.0';
+          if(!fyInput.value) fyInput.value = '60';
+        }else{
+          dbUnit.textContent = 'mm';
+          fcUnit.textContent = 'MPa';
+          fyUnit.textContent = 'MPa';
+          if(!fcInput.value) fcInput.value = '28';
+          if(!fyInput.value) fyInput.value = '420';
+        }
+        // If US and bar size selected (not custom), auto-fill db
+        applyBarSizeToDb();
+        clearResults();
+      }
+
+      function applyBarSizeToDb(){
+        if(isUS()){
+          if(barSize.value !== 'custom'){
+            const val = sizeDbIn[barSize.value] || '';
+            dbInput.value = val;
+            dbInput.readOnly = true;
+          } else {
+            dbInput.readOnly = false;
+          }
+        } else {
+          // SI ignores bar size
+          barSize.value = 'custom';
+          dbInput.readOnly = false;
+        }
+      }
+
+      unitsUS.addEventListener('change', setUnits);
+      unitsSI.addEventListener('change', setUnits);
+      barSize.addEventListener('change', ()=>{
+        applyBarSizeToDb();
+        validateField(dbInput, dbError, v=>v>0, 'Enter a positive diameter.');
+      });
+
+      // Validation helpers
+      function readNumber(el){
+        const v = parseFloat(String(el.value).replace(',', '.'));
+        return Number.isFinite(v) ? v : NaN;
+      }
+      function showError(el, errEl, msg){
+        el.setAttribute('aria-invalid','true');
+        errEl.textContent = msg;
+      }
+      function clearError(el, errEl){
+        el.removeAttribute('aria-invalid');
+        errEl.textContent = '';
+      }
+      function validateField(el, errEl, predicate, message){
+        const v = readNumber(el);
+        if(!Number.isFinite(v) || !predicate(v)){
+          showError(el, errEl, message);
+          return null;
+        }
+        clearError(el, errEl);
+        return v;
+      }
+
+      dbInput.addEventListener('blur', ()=> validateField(dbInput, dbError, v=>v>0, 'Enter a positive diameter.'));
+      fcInput.addEventListener('blur', ()=>{
+        const msg = isUS() ? "Typical range: 3–10 ksi." : "Typical range: 20–70 MPa.";
+        validateField(fcInput, fcError, v=>v>0, "Enter a positive f'c. "+msg);
+      });
+      fyInput.addEventListener('blur', ()=>{
+        const msg = isUS() ? "Typical range: 60–80 ksi." : "Typical range: 420–550 MPa.";
+        validateField(fyInput, fyError, v=>v>0, 'Enter a positive fy. '+msg);
+      });
+
+      // Compute
+      function getLambda(){
+        const sel = document.querySelector('input[name="lambda"]:checked');
+        return sel ? parseFloat(sel.value) : 1.0;
+      }
+      function getPsiS(){
+        const conf = document.querySelector('input[name="conf"]:checked')?.value;
+        return conf === 'spiral' ? 0.75 : 1.0;
+      }
+
+      function toPsi(ksi){ return ksi*1000.0; }
+      function psiToMPa(psi){ return psi * 0.006894757; }
+      function MPaToPsi(MPa){ return MPa / 0.006894757; }
+      function inToMm(inch){ return inch*25.4; }
+      function mmToIn(mm){ return mm/25.4; }
+
+      function formatLength(val, unit){
+        if(!Number.isFinite(val)) return '—';
+        if(unit==='in') return (Math.round(val*100)/100).toFixed(2)+' in';
+        if(unit==='mm') return (Math.round(val*10)/10).toFixed(1)+' mm';
+        return String(val);
+      }
+      function formatDbMultiple(val){
+        if(!Number.isFinite(val)) return '—';
+        return (Math.round(val*100)/100).toFixed(2)+' db';
+      }
+
+      function compute(){
+        // Validate inputs
+        const db = validateField(dbInput, dbError, v=>v>0, 'Enter a positive diameter.');
+        const fc = validateField(fcInput, fcError, v=>v>0, "Enter a positive f'c.");
+        const fy = validateField(fyInput, fyError, v=>v>0, 'Enter a positive fy.');
+        if([db,fc,fy].includes(null)) { notes.textContent = 'Please correct the highlighted inputs.'; return; }
+
+        const lambda = getLambda();
+        const psiS = getPsiS();
+
+        let db_in, fc_psi, fy_psi;
+        if(isUS()){
+          db_in = db;                    // in
+          fc_psi = toPsi(fc);            // ksi -> psi
+          fy_psi = toPsi(fy);            // ksi -> psi
+        } else {
+          db_in = mmToIn(db);            // mm -> in
+          fc_psi = MPaToPsi(fc);         // MPa -> psi
+          fy_psi = MPaToPsi(fy);         // MPa -> psi
+        }
+
+        // ACI compression development (per Section 25.4.3 style)
+        // Terms:
+        // t1 = 0.02 * (fy / (lambda * sqrt(fc'))) * db
+        // t2 = 0.0003 * fy * db
+        // t3 = 8 * db
+        // ld_base = max(t1, t2, t3)
+        // ld = psi_s * ld_base
+        const sqrt_fc = Math.sqrt(fc_psi);
+        const t1_db = 0.02 * (fy_psi / (lambda * sqrt_fc)) * db_in; // inches
+        const t2_db = 0.0003 * fy_psi * db_in;                      // inches
+        const t3_db = 8.0 * db_in;                                  // inches
+
+        const terms = [
+          {name: "0.02·fy/(λ·√f'c)·db", value: t1_db},
+          {name: "0.0003·fy·db", value: t2_db},
+          {name: "8·db", value: t3_db}
+        ];
+        let maxTerm = terms[0];
+        for(const t of terms){ if(t.value > maxTerm.value) maxTerm = t; }
+
+        const ld_base_in = maxTerm.value;
+        const ld_in = psiS * ld_base_in; // final required length (inches)
+
+        // Outputs in selected and alternate units
+        const primaryUnit = isUS() ? 'in' : 'mm';
+        const altUnit = isUS() ? 'mm' : 'in';
+        const ld_primary = isUS() ? ld_in : inToMm(ld_in);
+        const ld_alt = isUS() ? inToMm(ld_in) : ld_in;
+
+        ldPrimary.textContent = formatLength(ld_primary, primaryUnit);
+        ldAlt.textContent = formatLength(ld_alt, altUnit);
+        ldInDb.textContent = formatDbMultiple(ld_in / db_in);
+
+        const confText = (psiS===0.75) ? "Spiral reduction applied (×0.75)" : "No confinement reduction";
+        governing.textContent = maxTerm.name;
+        notes.innerHTML = "Final ld is " + (psiS===0.75 ? "reduced by spirals" : "not reduced") + ". " +
+                          "<span class='pill'>" + confText + "</span>";
+      }
+
+      function clearResults(){
+        ldPrimary.textContent = '—';
+        ldAlt.textContent = '—';
+        ldInDb.textContent = '—';
+        governing.textContent = '—';
+        notes.textContent = 'Enter values to see detailed results.';
+      }
+
+      function resetAll(){
+        unitsUS.checked = true;
+        barSize.value = 'custom';
+        dbInput.value = '';
+        dbInput.readOnly = false;
+        fcInput.value = isUS() ? '4.0' : '28';
+        fyInput.value = isUS() ? '60' : '420';
+        document.getElementById('lambda100').checked = true;
+        document.getElementById('ties').checked = true;
+        clearError(dbInput, dbError);
+        clearError(fcInput, fcError);
+        clearError(fyInput, fyError);
+        setUnits();
+        clearResults();
+        dbInput.focus();
+      }
+
+      // Listeners
+      computeBtn.addEventListener('click', compute);
+      resetBtn.addEventListener('click', resetAll);
+      document.querySelectorAll('input[name="lambda"]').forEach(el=>el.addEventListener('change', compute));
+      document.querySelectorAll('input[name="conf"]').forEach(el=>el.addEventListener('change', compute));
+      dbInput.addEventListener('input', ()=>{ clearError(dbInput, dbError); });
+      fcInput.addEventListener('input', ()=>{ clearError(fcInput, fcError); });
+      fyInput.addEventListener('input', ()=>{ clearError(fyInput, fyError); });
+
+      // Initialize defaults
+      setUnits();
+      clearResults();
+    })();
+  </script></body></html>

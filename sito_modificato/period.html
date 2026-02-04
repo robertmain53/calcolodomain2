@@ -344,10 +344,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="/assets/js/page-enhancements.js" as="script">
@@ -387,10 +393,22 @@
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
 </style>
 </head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">Period Calculator</h1>
+    <p class="sub" id="pageSub">Professional period calculator to predict your next period, ovulation day, and fertile window based on your last period and average cycle length. Accurate, accessible, and mobile-friendly.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<main class="main-content w-full lg:w-2/3" id="main-content">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main class="main-content w-full lg:w-2/3" id="main-content">
 <div class="container">
 <nav aria-label="breadcrumb">
 Home / <a href="https://calcdomain.com/health-fitness">Health and Fitness</a> / Pregnancy &amp; Women's Health / Period Calculator
@@ -450,7 +468,7 @@ Home / <a href="https://calcdomain.com/health-fitness">Health and Fitness</a> / 
 </div>
 <div aria-live="polite" class="form-group">
 <button class="btn btn-primary" id="calcBtn" type="button">Calculate</button>
-<button class="btn btn-secondary" id="resetBtn" type="reset">Reset</button>
+<button class="btn btn-secondary btnSecondary" id="resetBtn" type="reset">Reset</button>
 </div>
 </form>
 </section>
@@ -639,243 +657,17 @@ Home / <a href="https://calcdomain.com/health-fitness">Health and Fitness</a> / 
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
+
+
 </main>
-<!-- Standard Footer --> 
-<script defer="">
-  (function(){
-    'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;"></div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-    // Utility date helpers with timezone-safe local noon
-    function toLocalNoon(date){ const d=new Date(date); d.setHours(12,0,0,0); return d; }
-    function parseDateInput(value){
-      if(!value) return null;
-      const [y,m,d] = value.split('-').map(Number);
-      if(!y || !m || !d) return null;
-      return toLocalNoon(new Date(y, m-1, d));
-    }
-    function addDays(date, days){ const d = new Date(date.getTime()); d.setDate(d.getDate()+days); return toLocalNoon(d); }
-    function formatDate(date){
-      try {
-        return date.toLocaleDateString('en-US', { weekday:'short', year:'numeric', month:'short', day:'numeric' });
-      } catch { return date.toDateString(); }
-    }
-
-    // Elements
-    const form = document.getElementById('calcForm');
-    const lmpEl = document.getElementById('lmp');
-    const cycleEl = document.getElementById('cycleLength');
-    const periodEl = document.getElementById('periodLength');
-    const varEl = document.getElementById('variation');
-
-    const lmpError = document.getElementById('lmpError');
-    const cycleError = document.getElementById('cycleError');
-    const periodError = document.getElementById('periodError');
-    const varError = document.getElementById('variationError');
-
-    const calcBtn = document.getElementById('calcBtn');
-    const resetBtn = document.getElementById('resetBtn');
-
-    const resultsRegion = document.getElementById('results');
-    const statusBadge = document.getElementById('resultsStatus');
-
-    const nextPeriodValue = document.getElementById('nextPeriodValue');
-    const periodWindowValue = document.getElementById('periodWindowValue');
-    const ovulationValue = document.getElementById('ovulationValue');
-    const fertileWindowValue = document.getElementById('fertileWindowValue');
-    const upcomingList = document.querySelector('#upcomingList ul');
-
-    // Accessible tooltips toggle
-    document.querySelectorAll('.tooltip-btn').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        const id = btn.getAttribute('aria-controls');
-        const tip = document.getElementById(id);
-        const expanded = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!expanded));
-        tip.hidden = expanded;
-      });
-      btn.addEventListener('keydown', (e)=>{
-        if(e.key === 'Enter' || e.key === ' '){
-          e.preventDefault();
-          btn.click();
-        }
-      });
-    });
-
-    // Validation rules
-    function setError(input, elError, message){
-      input.setAttribute('aria-invalid','true');
-      elError.textContent = message;
-    }
-    function clearError(input, elError){
-      input.setAttribute('aria-invalid','false');
-      elError.textContent = '';
-    }
-
-    function validateLMP(){
-      const val = lmpEl.value;
-      const date = parseDateInput(val);
-      if(!date){ setError(lmpEl, lmpError, 'Please enter a valid date (YYYY-MM-DD).'); return false; }
-      const today = toLocalNoon(new Date());
-      const earliest = addDays(today, -365*3); // allow up to 3 years back
-      const latest = addDays(today, 365); // and up to 1 year ahead for planning
-      if(date < earliest) { setError(lmpEl, lmpError, 'That date is too far in the past. Please use a more recent LMP.'); return false; }
-      if(date > latest) { setError(lmpEl, lmpError, 'That date is too far in the future. Please check and try again.'); return false; }
-      clearError(lmpEl, lmpError); return true;
-    }
-    function validateCycle(){
-      const v = Number(cycleEl.value);
-      if(!Number.isFinite(v)){ setError(cycleEl, cycleError, 'Enter your average cycle length as a number of days.'); return false; }
-      if(v < 15 || v > 60){ setError(cycleEl, cycleError, 'Cycle length should be between 15 and 60 days.'); return false; }
-      clearError(cycleEl, cycleError); return true;
-    }
-    function validatePeriod(){
-      const v = Number(periodEl.value);
-      if(!Number.isFinite(v)){ setError(periodEl, periodError, 'Enter your typical period length as a number of days.'); return false; }
-      if(v < 1 || v > 10){ setError(periodEl, periodError, 'Period length should be between 1 and 10 days.'); return false; }
-      clearError(periodEl, periodError); return true;
-    }
-    function validateVariation(){
-      const raw = varEl.value;
-      if(raw === '' || raw === null){ clearError(varEl, varError); return true; }
-      const v = Number(raw);
-      if(!Number.isFinite(v)){ setError(varEl, varError, 'Variation should be a number of days (e.g., 0–10).'); return false; }
-      if(v < 0 || v > 10){ setError(varEl, varError, 'Use a variation from 0 to 10 days.'); return false; }
-      clearError(varEl, varError); return true;
-    }
-
-    function validateAll(){
-      const a = validateLMP();
-      const b = validateCycle();
-      const c = validatePeriod();
-      const d = validateVariation();
-      return a && b && c && d;
-    }
-
-    // Inline validation on blur
-    lmpEl.addEventListener('blur', validateLMP);
-    cycleEl.addEventListener('blur', validateCycle);
-    periodEl.addEventListener('blur', validatePeriod);
-    varEl.addEventListener('blur', validateVariation);
-
-    // Compute logic
-    function compute(){
-      if(!validateAll()) return;
-
-      resultsRegion.setAttribute('aria-busy','true');
-      statusBadge.textContent = 'Calculating…';
-
-      const lmp = parseDateInput(lmpEl.value);
-      const CL = Number(cycleEl.value);
-      const PL = Number(periodEl.value);
-      const V = Number(varEl.value || 0);
-
-      // Next predicted start
-      const nextStart = addDays(lmp, CL);
-      const nextStartEarly = addDays(lmp, CL - V);
-      const nextStartLate = addDays(lmp, CL + V);
-
-      // Period window
-      const periodStart = nextStart;
-      const periodEnd = addDays(periodStart, Math.max(PL - 1, 0));
-
-      const periodStartEarly = nextStartEarly;
-      const periodEndLate = addDays(nextStartLate, Math.max(PL - 1, 0));
-
-      // Ovulation and fertile window
-      const ovulation = addDays(nextStart, -14);
-      const ovulationEarly = addDays(nextStartEarly, -14);
-      const ovulationLate = addDays(nextStartLate, -14);
-
-      const fertileStart = addDays(ovulation, -5);
-      const fertileEnd = addDays(ovulation, 1);
-      const fertileStartEarly = addDays(ovulationEarly, -5);
-      const fertileEndLate = addDays(ovulationLate, 1);
-
-      // Upcoming cycles
-      const upcoming = [];
-      let base = nextStart;
-      for(let i=0;i<6;i++){
-        upcoming.push(formatDate(addDays(base, CL*i)));
-      }
-
-      // Render
-      if(V > 0){
-        nextPeriodValue.textContent = `${formatDate(nextStartEarly)} – ${formatDate(nextStartLate)}`;
-        periodWindowValue.textContent = `${formatDate(periodStartEarly)} – ${formatDate(periodEndLate)} (${PL} days)`;
-        ovulationValue.textContent = `${formatDate(ovulationEarly)} – ${formatDate(ovulationLate)}`;
-        fertileWindowValue.textContent = `${formatDate(fertileStartEarly)} – ${formatDate(fertileEndLate)}`;
-      } else {
-        nextPeriodValue.textContent = `${formatDate(nextStart)}`;
-        periodWindowValue.textContent = `${formatDate(periodStart)} – ${formatDate(periodEnd)} (${PL} days)`;
-        ovulationValue.textContent = `${formatDate(ovulation)}`;
-        fertileWindowValue.textContent = `${formatDate(fertileStart)} – ${formatDate(fertileEnd)}`;
-      }
-
-      // Upcoming list
-      upcomingList.innerHTML = '';
-      upcoming.forEach((d,idx)=>{
-        const li = document.createElement('li');
-        li.textContent = `${idx===0?'Next':'+'+idx} cycle: ${d}`;
-        upcomingList.appendChild(li);
-      });
-
-      statusBadge.textContent = 'Updated';
-      resultsRegion.setAttribute('aria-busy','false');
-    }
-
-    // Bind buttons
-    calcBtn.addEventListener('click', compute);
-
-    // Recalculate as users correct inputs (without being intrusive)
-    [lmpEl, cycleEl, periodEl, varEl].forEach(el=>{
-      el.addEventListener('input', ()=>{
-        // If the field now validates, update results silently
-        if(validateAll()){
-          // throttle lightly
-          window.clearTimeout(el._t);
-          el._t = window.setTimeout(compute, 120);
-        }
-      });
-    });
-
-    // Reset
-    resetBtn.addEventListener('click', ()=>{
-      window.setTimeout(()=>{
-        [lmpError, cycleError, periodError, varError].forEach(e=>e.textContent='');
-        [lmpEl, cycleEl, periodEl, varEl].forEach(i=>i.setAttribute('aria-invalid','false'));
-        nextPeriodValue.textContent = '—';
-        periodWindowValue.textContent = '—';
-        ovulationValue.textContent = '—';
-        fertileWindowValue.textContent = '—';
-        upcomingList.innerHTML = '';
-        statusBadge.textContent = 'Ready';
-      }, 0);
-    });
-
-    // Accessibility: keyboard activation for Enter/Space on calculate
-    calcBtn.addEventListener('keydown', (e)=>{
-      if(e.key === 'Enter' || e.key === ' '){
-        e.preventDefault(); compute();
-      }
-    });
-
-    // Prefill LMP with today for convenience (opt-in)
-    // Leave blank by default to avoid assumptions; uncomment to prefill:
-    // const todayStr = new Date().toISOString().slice(0,10);
-    // lmpEl.value = todayStr;
-  })();
-  </script>
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main-content">Skip to main content</a><link rel="preload" href="/assets/js/mobile-menu.js" as="script"><link rel="preload" href="/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -907,12 +699,7 @@ Home / <a href="https://calcdomain.com/health-fitness">Health and Fitness</a> / 
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="main-content" id="main-content">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="main-content" id="main-content">
 <div class="container">
 <nav aria-label="breadcrumb">
 Home / <a href="https://calcdomain.com/health-fitness">Health and Fitness</a> / Pregnancy &amp; Women's Health / Period Calculator
@@ -971,8 +758,8 @@ Home / <a href="https://calcdomain.com/health-fitness">Health and Fitness</a> / 
 <div aria-live="polite" class="error-message" id="variationError" role="alert"></div>
 </div>
 <div aria-live="polite" class="form-group">
-<button class="btn btn-primary" id="calcBtn" type="button">Calculate</button>
-<button class="btn btn-secondary" id="resetBtn" type="reset">Reset</button>
+<button class="btn btn-primary" id="calcBtn__dup2" type="button">Calculate</button>
+<button class="btn btn-secondary" id="resetBtn__dup2" type="reset">Reset</button>
 </div>
 </form>
 </section>
@@ -1161,243 +948,7 @@ Home / <a href="https://calcdomain.com/health-fitness">Health and Fitness</a> / 
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-  (function(){
-    'use strict';
-
-    // Utility date helpers with timezone-safe local noon
-    function toLocalNoon(date){ const d=new Date(date); d.setHours(12,0,0,0); return d; }
-    function parseDateInput(value){
-      if(!value) return null;
-      const [y,m,d] = value.split('-').map(Number);
-      if(!y || !m || !d) return null;
-      return toLocalNoon(new Date(y, m-1, d));
-    }
-    function addDays(date, days){ const d = new Date(date.getTime()); d.setDate(d.getDate()+days); return toLocalNoon(d); }
-    function formatDate(date){
-      try {
-        return date.toLocaleDateString('en-US', { weekday:'short', year:'numeric', month:'short', day:'numeric' });
-      } catch { return date.toDateString(); }
-    }
-
-    // Elements
-    const form = document.getElementById('calcForm');
-    const lmpEl = document.getElementById('lmp');
-    const cycleEl = document.getElementById('cycleLength');
-    const periodEl = document.getElementById('periodLength');
-    const varEl = document.getElementById('variation');
-
-    const lmpError = document.getElementById('lmpError');
-    const cycleError = document.getElementById('cycleError');
-    const periodError = document.getElementById('periodError');
-    const varError = document.getElementById('variationError');
-
-    const calcBtn = document.getElementById('calcBtn');
-    const resetBtn = document.getElementById('resetBtn');
-
-    const resultsRegion = document.getElementById('results');
-    const statusBadge = document.getElementById('resultsStatus');
-
-    const nextPeriodValue = document.getElementById('nextPeriodValue');
-    const periodWindowValue = document.getElementById('periodWindowValue');
-    const ovulationValue = document.getElementById('ovulationValue');
-    const fertileWindowValue = document.getElementById('fertileWindowValue');
-    const upcomingList = document.querySelector('#upcomingList ul');
-
-    // Accessible tooltips toggle
-    document.querySelectorAll('.tooltip-btn').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        const id = btn.getAttribute('aria-controls');
-        const tip = document.getElementById(id);
-        const expanded = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!expanded));
-        tip.hidden = expanded;
-      });
-      btn.addEventListener('keydown', (e)=>{
-        if(e.key === 'Enter' || e.key === ' '){
-          e.preventDefault();
-          btn.click();
-        }
-      });
-    });
-
-    // Validation rules
-    function setError(input, elError, message){
-      input.setAttribute('aria-invalid','true');
-      elError.textContent = message;
-    }
-    function clearError(input, elError){
-      input.setAttribute('aria-invalid','false');
-      elError.textContent = '';
-    }
-
-    function validateLMP(){
-      const val = lmpEl.value;
-      const date = parseDateInput(val);
-      if(!date){ setError(lmpEl, lmpError, 'Please enter a valid date (YYYY-MM-DD).'); return false; }
-      const today = toLocalNoon(new Date());
-      const earliest = addDays(today, -365*3); // allow up to 3 years back
-      const latest = addDays(today, 365); // and up to 1 year ahead for planning
-      if(date < earliest) { setError(lmpEl, lmpError, 'That date is too far in the past. Please use a more recent LMP.'); return false; }
-      if(date > latest) { setError(lmpEl, lmpError, 'That date is too far in the future. Please check and try again.'); return false; }
-      clearError(lmpEl, lmpError); return true;
-    }
-    function validateCycle(){
-      const v = Number(cycleEl.value);
-      if(!Number.isFinite(v)){ setError(cycleEl, cycleError, 'Enter your average cycle length as a number of days.'); return false; }
-      if(v < 15 || v > 60){ setError(cycleEl, cycleError, 'Cycle length should be between 15 and 60 days.'); return false; }
-      clearError(cycleEl, cycleError); return true;
-    }
-    function validatePeriod(){
-      const v = Number(periodEl.value);
-      if(!Number.isFinite(v)){ setError(periodEl, periodError, 'Enter your typical period length as a number of days.'); return false; }
-      if(v < 1 || v > 10){ setError(periodEl, periodError, 'Period length should be between 1 and 10 days.'); return false; }
-      clearError(periodEl, periodError); return true;
-    }
-    function validateVariation(){
-      const raw = varEl.value;
-      if(raw === '' || raw === null){ clearError(varEl, varError); return true; }
-      const v = Number(raw);
-      if(!Number.isFinite(v)){ setError(varEl, varError, 'Variation should be a number of days (e.g., 0–10).'); return false; }
-      if(v < 0 || v > 10){ setError(varEl, varError, 'Use a variation from 0 to 10 days.'); return false; }
-      clearError(varEl, varError); return true;
-    }
-
-    function validateAll(){
-      const a = validateLMP();
-      const b = validateCycle();
-      const c = validatePeriod();
-      const d = validateVariation();
-      return a && b && c && d;
-    }
-
-    // Inline validation on blur
-    lmpEl.addEventListener('blur', validateLMP);
-    cycleEl.addEventListener('blur', validateCycle);
-    periodEl.addEventListener('blur', validatePeriod);
-    varEl.addEventListener('blur', validateVariation);
-
-    // Compute logic
-    function compute(){
-      if(!validateAll()) return;
-
-      resultsRegion.setAttribute('aria-busy','true');
-      statusBadge.textContent = 'Calculating…';
-
-      const lmp = parseDateInput(lmpEl.value);
-      const CL = Number(cycleEl.value);
-      const PL = Number(periodEl.value);
-      const V = Number(varEl.value || 0);
-
-      // Next predicted start
-      const nextStart = addDays(lmp, CL);
-      const nextStartEarly = addDays(lmp, CL - V);
-      const nextStartLate = addDays(lmp, CL + V);
-
-      // Period window
-      const periodStart = nextStart;
-      const periodEnd = addDays(periodStart, Math.max(PL - 1, 0));
-
-      const periodStartEarly = nextStartEarly;
-      const periodEndLate = addDays(nextStartLate, Math.max(PL - 1, 0));
-
-      // Ovulation and fertile window
-      const ovulation = addDays(nextStart, -14);
-      const ovulationEarly = addDays(nextStartEarly, -14);
-      const ovulationLate = addDays(nextStartLate, -14);
-
-      const fertileStart = addDays(ovulation, -5);
-      const fertileEnd = addDays(ovulation, 1);
-      const fertileStartEarly = addDays(ovulationEarly, -5);
-      const fertileEndLate = addDays(ovulationLate, 1);
-
-      // Upcoming cycles
-      const upcoming = [];
-      let base = nextStart;
-      for(let i=0;i<6;i++){
-        upcoming.push(formatDate(addDays(base, CL*i)));
-      }
-
-      // Render
-      if(V > 0){
-        nextPeriodValue.textContent = `${formatDate(nextStartEarly)} – ${formatDate(nextStartLate)}`;
-        periodWindowValue.textContent = `${formatDate(periodStartEarly)} – ${formatDate(periodEndLate)} (${PL} days)`;
-        ovulationValue.textContent = `${formatDate(ovulationEarly)} – ${formatDate(ovulationLate)}`;
-        fertileWindowValue.textContent = `${formatDate(fertileStartEarly)} – ${formatDate(fertileEndLate)}`;
-      } else {
-        nextPeriodValue.textContent = `${formatDate(nextStart)}`;
-        periodWindowValue.textContent = `${formatDate(periodStart)} – ${formatDate(periodEnd)} (${PL} days)`;
-        ovulationValue.textContent = `${formatDate(ovulation)}`;
-        fertileWindowValue.textContent = `${formatDate(fertileStart)} – ${formatDate(fertileEnd)}`;
-      }
-
-      // Upcoming list
-      upcomingList.innerHTML = '';
-      upcoming.forEach((d,idx)=>{
-        const li = document.createElement('li');
-        li.textContent = `${idx===0?'Next':'+'+idx} cycle: ${d}`;
-        upcomingList.appendChild(li);
-      });
-
-      statusBadge.textContent = 'Updated';
-      resultsRegion.setAttribute('aria-busy','false');
-    }
-
-    // Bind buttons
-    calcBtn.addEventListener('click', compute);
-
-    // Recalculate as users correct inputs (without being intrusive)
-    [lmpEl, cycleEl, periodEl, varEl].forEach(el=>{
-      el.addEventListener('input', ()=>{
-        // If the field now validates, update results silently
-        if(validateAll()){
-          // throttle lightly
-          window.clearTimeout(el._t);
-          el._t = window.setTimeout(compute, 120);
-        }
-      });
-    });
-
-    // Reset
-    resetBtn.addEventListener('click', ()=>{
-      window.setTimeout(()=>{
-        [lmpError, cycleError, periodError, varError].forEach(e=>e.textContent='');
-        [lmpEl, cycleEl, periodEl, varEl].forEach(i=>i.setAttribute('aria-invalid','false'));
-        nextPeriodValue.textContent = '—';
-        periodWindowValue.textContent = '—';
-        ovulationValue.textContent = '—';
-        fertileWindowValue.textContent = '—';
-        upcomingList.innerHTML = '';
-        statusBadge.textContent = 'Ready';
-      }, 0);
-    });
-
-    // Accessibility: keyboard activation for Enter/Space on calculate
-    calcBtn.addEventListener('keydown', (e)=>{
-      if(e.key === 'Enter' || e.key === ' '){
-        e.preventDefault(); compute();
-      }
-    });
-
-    // Prefill LMP with today for convenience (opt-in)
-    // Leave blank by default to avoid assumptions; uncomment to prefill:
-    // const todayStr = new Date().toISOString().slice(0,10);
-    // lmpEl.value = todayStr;
-  })();
-  </script>
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="/assets/js/mobile-menu.js" as="script"><link rel="preload" href="/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1429,12 +980,7 @@ Home / <a href="https://calcdomain.com/health-fitness">Health and Fitness</a> / 
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="main-content" id="main-content">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="main-content" id="main-content">
 <div class="container">
 <nav aria-label="breadcrumb">
 Home / <a href="https://calcdomain.com/health-fitness">Health and Fitness</a> / Pregnancy &amp; Women's Health / Period Calculator
@@ -1493,8 +1039,8 @@ Home / <a href="https://calcdomain.com/health-fitness">Health and Fitness</a> / 
 <div aria-live="polite" class="error-message" id="variationError" role="alert"></div>
 </div>
 <div aria-live="polite" class="form-group">
-<button class="btn btn-primary" id="calcBtn" type="button">Calculate</button>
-<button class="btn btn-secondary" id="resetBtn" type="reset">Reset</button>
+<button class="btn btn-primary" id="calcBtn__dup3" type="button">Calculate</button>
+<button class="btn btn-secondary" id="resetBtn__dup3" type="reset">Reset</button>
 </div>
 </form>
 </section>
@@ -1683,9 +1229,48 @@ Home / <a href="https://calcdomain.com/health-fitness">Health and Fitness</a> / 
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
   (function(){
     'use strict';
 
@@ -1908,6 +1493,450 @@ Home / <a href="https://calcdomain.com/health-fitness">Health and Fitness</a> / 
     // const todayStr = new Date().toISOString().slice(0,10);
     // lmpEl.value = todayStr;
   })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+  (function(){
+    'use strict';
 
-</body></html>
+    // Utility date helpers with timezone-safe local noon
+    function toLocalNoon(date){ const d=new Date(date); d.setHours(12,0,0,0); return d; }
+    function parseDateInput(value){
+      if(!value) return null;
+      const [y,m,d] = value.split('-').map(Number);
+      if(!y || !m || !d) return null;
+      return toLocalNoon(new Date(y, m-1, d));
+    }
+    function addDays(date, days){ const d = new Date(date.getTime()); d.setDate(d.getDate()+days); return toLocalNoon(d); }
+    function formatDate(date){
+      try {
+        return date.toLocaleDateString('en-US', { weekday:'short', year:'numeric', month:'short', day:'numeric' });
+      } catch { return date.toDateString(); }
+    }
+
+    // Elements
+    const form = document.getElementById('calcForm');
+    const lmpEl = document.getElementById('lmp');
+    const cycleEl = document.getElementById('cycleLength');
+    const periodEl = document.getElementById('periodLength');
+    const varEl = document.getElementById('variation');
+
+    const lmpError = document.getElementById('lmpError');
+    const cycleError = document.getElementById('cycleError');
+    const periodError = document.getElementById('periodError');
+    const varError = document.getElementById('variationError');
+
+    const calcBtn = document.getElementById('calcBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    const resultsRegion = document.getElementById('results');
+    const statusBadge = document.getElementById('resultsStatus');
+
+    const nextPeriodValue = document.getElementById('nextPeriodValue');
+    const periodWindowValue = document.getElementById('periodWindowValue');
+    const ovulationValue = document.getElementById('ovulationValue');
+    const fertileWindowValue = document.getElementById('fertileWindowValue');
+    const upcomingList = document.querySelector('#upcomingList ul');
+
+    // Accessible tooltips toggle
+    document.querySelectorAll('.tooltip-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = btn.getAttribute('aria-controls');
+        const tip = document.getElementById(id);
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        tip.hidden = expanded;
+      });
+      btn.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter' || e.key === ' '){
+          e.preventDefault();
+          btn.click();
+        }
+      });
+    });
+
+    // Validation rules
+    function setError(input, elError, message){
+      input.setAttribute('aria-invalid','true');
+      elError.textContent = message;
+    }
+    function clearError(input, elError){
+      input.setAttribute('aria-invalid','false');
+      elError.textContent = '';
+    }
+
+    function validateLMP(){
+      const val = lmpEl.value;
+      const date = parseDateInput(val);
+      if(!date){ setError(lmpEl, lmpError, 'Please enter a valid date (YYYY-MM-DD).'); return false; }
+      const today = toLocalNoon(new Date());
+      const earliest = addDays(today, -365*3); // allow up to 3 years back
+      const latest = addDays(today, 365); // and up to 1 year ahead for planning
+      if(date < earliest) { setError(lmpEl, lmpError, 'That date is too far in the past. Please use a more recent LMP.'); return false; }
+      if(date > latest) { setError(lmpEl, lmpError, 'That date is too far in the future. Please check and try again.'); return false; }
+      clearError(lmpEl, lmpError); return true;
+    }
+    function validateCycle(){
+      const v = Number(cycleEl.value);
+      if(!Number.isFinite(v)){ setError(cycleEl, cycleError, 'Enter your average cycle length as a number of days.'); return false; }
+      if(v < 15 || v > 60){ setError(cycleEl, cycleError, 'Cycle length should be between 15 and 60 days.'); return false; }
+      clearError(cycleEl, cycleError); return true;
+    }
+    function validatePeriod(){
+      const v = Number(periodEl.value);
+      if(!Number.isFinite(v)){ setError(periodEl, periodError, 'Enter your typical period length as a number of days.'); return false; }
+      if(v < 1 || v > 10){ setError(periodEl, periodError, 'Period length should be between 1 and 10 days.'); return false; }
+      clearError(periodEl, periodError); return true;
+    }
+    function validateVariation(){
+      const raw = varEl.value;
+      if(raw === '' || raw === null){ clearError(varEl, varError); return true; }
+      const v = Number(raw);
+      if(!Number.isFinite(v)){ setError(varEl, varError, 'Variation should be a number of days (e.g., 0–10).'); return false; }
+      if(v < 0 || v > 10){ setError(varEl, varError, 'Use a variation from 0 to 10 days.'); return false; }
+      clearError(varEl, varError); return true;
+    }
+
+    function validateAll(){
+      const a = validateLMP();
+      const b = validateCycle();
+      const c = validatePeriod();
+      const d = validateVariation();
+      return a && b && c && d;
+    }
+
+    // Inline validation on blur
+    lmpEl.addEventListener('blur', validateLMP);
+    cycleEl.addEventListener('blur', validateCycle);
+    periodEl.addEventListener('blur', validatePeriod);
+    varEl.addEventListener('blur', validateVariation);
+
+    // Compute logic
+    function compute(){
+      if(!validateAll()) return;
+
+      resultsRegion.setAttribute('aria-busy','true');
+      statusBadge.textContent = 'Calculating…';
+
+      const lmp = parseDateInput(lmpEl.value);
+      const CL = Number(cycleEl.value);
+      const PL = Number(periodEl.value);
+      const V = Number(varEl.value || 0);
+
+      // Next predicted start
+      const nextStart = addDays(lmp, CL);
+      const nextStartEarly = addDays(lmp, CL - V);
+      const nextStartLate = addDays(lmp, CL + V);
+
+      // Period window
+      const periodStart = nextStart;
+      const periodEnd = addDays(periodStart, Math.max(PL - 1, 0));
+
+      const periodStartEarly = nextStartEarly;
+      const periodEndLate = addDays(nextStartLate, Math.max(PL - 1, 0));
+
+      // Ovulation and fertile window
+      const ovulation = addDays(nextStart, -14);
+      const ovulationEarly = addDays(nextStartEarly, -14);
+      const ovulationLate = addDays(nextStartLate, -14);
+
+      const fertileStart = addDays(ovulation, -5);
+      const fertileEnd = addDays(ovulation, 1);
+      const fertileStartEarly = addDays(ovulationEarly, -5);
+      const fertileEndLate = addDays(ovulationLate, 1);
+
+      // Upcoming cycles
+      const upcoming = [];
+      let base = nextStart;
+      for(let i=0;i<6;i++){
+        upcoming.push(formatDate(addDays(base, CL*i)));
+      }
+
+      // Render
+      if(V > 0){
+        nextPeriodValue.textContent = `${formatDate(nextStartEarly)} – ${formatDate(nextStartLate)}`;
+        periodWindowValue.textContent = `${formatDate(periodStartEarly)} – ${formatDate(periodEndLate)} (${PL} days)`;
+        ovulationValue.textContent = `${formatDate(ovulationEarly)} – ${formatDate(ovulationLate)}`;
+        fertileWindowValue.textContent = `${formatDate(fertileStartEarly)} – ${formatDate(fertileEndLate)}`;
+      } else {
+        nextPeriodValue.textContent = `${formatDate(nextStart)}`;
+        periodWindowValue.textContent = `${formatDate(periodStart)} – ${formatDate(periodEnd)} (${PL} days)`;
+        ovulationValue.textContent = `${formatDate(ovulation)}`;
+        fertileWindowValue.textContent = `${formatDate(fertileStart)} – ${formatDate(fertileEnd)}`;
+      }
+
+      // Upcoming list
+      upcomingList.innerHTML = '';
+      upcoming.forEach((d,idx)=>{
+        const li = document.createElement('li');
+        li.textContent = `${idx===0?'Next':'+'+idx} cycle: ${d}`;
+        upcomingList.appendChild(li);
+      });
+
+      statusBadge.textContent = 'Updated';
+      resultsRegion.setAttribute('aria-busy','false');
+    }
+
+    // Bind buttons
+    calcBtn.addEventListener('click', compute);
+
+    // Recalculate as users correct inputs (without being intrusive)
+    [lmpEl, cycleEl, periodEl, varEl].forEach(el=>{
+      el.addEventListener('input', ()=>{
+        // If the field now validates, update results silently
+        if(validateAll()){
+          // throttle lightly
+          window.clearTimeout(el._t);
+          el._t = window.setTimeout(compute, 120);
+        }
+      });
+    });
+
+    // Reset
+    resetBtn.addEventListener('click', ()=>{
+      window.setTimeout(()=>{
+        [lmpError, cycleError, periodError, varError].forEach(e=>e.textContent='');
+        [lmpEl, cycleEl, periodEl, varEl].forEach(i=>i.setAttribute('aria-invalid','false'));
+        nextPeriodValue.textContent = '—';
+        periodWindowValue.textContent = '—';
+        ovulationValue.textContent = '—';
+        fertileWindowValue.textContent = '—';
+        upcomingList.innerHTML = '';
+        statusBadge.textContent = 'Ready';
+      }, 0);
+    });
+
+    // Accessibility: keyboard activation for Enter/Space on calculate
+    calcBtn.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter' || e.key === ' '){
+        e.preventDefault(); compute();
+      }
+    });
+
+    // Prefill LMP with today for convenience (opt-in)
+    // Leave blank by default to avoid assumptions; uncomment to prefill:
+    // const todayStr = new Date().toISOString().slice(0,10);
+    // lmpEl.value = todayStr;
+  })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+  (function(){
+    'use strict';
+
+    // Utility date helpers with timezone-safe local noon
+    function toLocalNoon(date){ const d=new Date(date); d.setHours(12,0,0,0); return d; }
+    function parseDateInput(value){
+      if(!value) return null;
+      const [y,m,d] = value.split('-').map(Number);
+      if(!y || !m || !d) return null;
+      return toLocalNoon(new Date(y, m-1, d));
+    }
+    function addDays(date, days){ const d = new Date(date.getTime()); d.setDate(d.getDate()+days); return toLocalNoon(d); }
+    function formatDate(date){
+      try {
+        return date.toLocaleDateString('en-US', { weekday:'short', year:'numeric', month:'short', day:'numeric' });
+      } catch { return date.toDateString(); }
+    }
+
+    // Elements
+    const form = document.getElementById('calcForm');
+    const lmpEl = document.getElementById('lmp');
+    const cycleEl = document.getElementById('cycleLength');
+    const periodEl = document.getElementById('periodLength');
+    const varEl = document.getElementById('variation');
+
+    const lmpError = document.getElementById('lmpError');
+    const cycleError = document.getElementById('cycleError');
+    const periodError = document.getElementById('periodError');
+    const varError = document.getElementById('variationError');
+
+    const calcBtn = document.getElementById('calcBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    const resultsRegion = document.getElementById('results');
+    const statusBadge = document.getElementById('resultsStatus');
+
+    const nextPeriodValue = document.getElementById('nextPeriodValue');
+    const periodWindowValue = document.getElementById('periodWindowValue');
+    const ovulationValue = document.getElementById('ovulationValue');
+    const fertileWindowValue = document.getElementById('fertileWindowValue');
+    const upcomingList = document.querySelector('#upcomingList ul');
+
+    // Accessible tooltips toggle
+    document.querySelectorAll('.tooltip-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = btn.getAttribute('aria-controls');
+        const tip = document.getElementById(id);
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        tip.hidden = expanded;
+      });
+      btn.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter' || e.key === ' '){
+          e.preventDefault();
+          btn.click();
+        }
+      });
+    });
+
+    // Validation rules
+    function setError(input, elError, message){
+      input.setAttribute('aria-invalid','true');
+      elError.textContent = message;
+    }
+    function clearError(input, elError){
+      input.setAttribute('aria-invalid','false');
+      elError.textContent = '';
+    }
+
+    function validateLMP(){
+      const val = lmpEl.value;
+      const date = parseDateInput(val);
+      if(!date){ setError(lmpEl, lmpError, 'Please enter a valid date (YYYY-MM-DD).'); return false; }
+      const today = toLocalNoon(new Date());
+      const earliest = addDays(today, -365*3); // allow up to 3 years back
+      const latest = addDays(today, 365); // and up to 1 year ahead for planning
+      if(date < earliest) { setError(lmpEl, lmpError, 'That date is too far in the past. Please use a more recent LMP.'); return false; }
+      if(date > latest) { setError(lmpEl, lmpError, 'That date is too far in the future. Please check and try again.'); return false; }
+      clearError(lmpEl, lmpError); return true;
+    }
+    function validateCycle(){
+      const v = Number(cycleEl.value);
+      if(!Number.isFinite(v)){ setError(cycleEl, cycleError, 'Enter your average cycle length as a number of days.'); return false; }
+      if(v < 15 || v > 60){ setError(cycleEl, cycleError, 'Cycle length should be between 15 and 60 days.'); return false; }
+      clearError(cycleEl, cycleError); return true;
+    }
+    function validatePeriod(){
+      const v = Number(periodEl.value);
+      if(!Number.isFinite(v)){ setError(periodEl, periodError, 'Enter your typical period length as a number of days.'); return false; }
+      if(v < 1 || v > 10){ setError(periodEl, periodError, 'Period length should be between 1 and 10 days.'); return false; }
+      clearError(periodEl, periodError); return true;
+    }
+    function validateVariation(){
+      const raw = varEl.value;
+      if(raw === '' || raw === null){ clearError(varEl, varError); return true; }
+      const v = Number(raw);
+      if(!Number.isFinite(v)){ setError(varEl, varError, 'Variation should be a number of days (e.g., 0–10).'); return false; }
+      if(v < 0 || v > 10){ setError(varEl, varError, 'Use a variation from 0 to 10 days.'); return false; }
+      clearError(varEl, varError); return true;
+    }
+
+    function validateAll(){
+      const a = validateLMP();
+      const b = validateCycle();
+      const c = validatePeriod();
+      const d = validateVariation();
+      return a && b && c && d;
+    }
+
+    // Inline validation on blur
+    lmpEl.addEventListener('blur', validateLMP);
+    cycleEl.addEventListener('blur', validateCycle);
+    periodEl.addEventListener('blur', validatePeriod);
+    varEl.addEventListener('blur', validateVariation);
+
+    // Compute logic
+    function compute(){
+      if(!validateAll()) return;
+
+      resultsRegion.setAttribute('aria-busy','true');
+      statusBadge.textContent = 'Calculating…';
+
+      const lmp = parseDateInput(lmpEl.value);
+      const CL = Number(cycleEl.value);
+      const PL = Number(periodEl.value);
+      const V = Number(varEl.value || 0);
+
+      // Next predicted start
+      const nextStart = addDays(lmp, CL);
+      const nextStartEarly = addDays(lmp, CL - V);
+      const nextStartLate = addDays(lmp, CL + V);
+
+      // Period window
+      const periodStart = nextStart;
+      const periodEnd = addDays(periodStart, Math.max(PL - 1, 0));
+
+      const periodStartEarly = nextStartEarly;
+      const periodEndLate = addDays(nextStartLate, Math.max(PL - 1, 0));
+
+      // Ovulation and fertile window
+      const ovulation = addDays(nextStart, -14);
+      const ovulationEarly = addDays(nextStartEarly, -14);
+      const ovulationLate = addDays(nextStartLate, -14);
+
+      const fertileStart = addDays(ovulation, -5);
+      const fertileEnd = addDays(ovulation, 1);
+      const fertileStartEarly = addDays(ovulationEarly, -5);
+      const fertileEndLate = addDays(ovulationLate, 1);
+
+      // Upcoming cycles
+      const upcoming = [];
+      let base = nextStart;
+      for(let i=0;i<6;i++){
+        upcoming.push(formatDate(addDays(base, CL*i)));
+      }
+
+      // Render
+      if(V > 0){
+        nextPeriodValue.textContent = `${formatDate(nextStartEarly)} – ${formatDate(nextStartLate)}`;
+        periodWindowValue.textContent = `${formatDate(periodStartEarly)} – ${formatDate(periodEndLate)} (${PL} days)`;
+        ovulationValue.textContent = `${formatDate(ovulationEarly)} – ${formatDate(ovulationLate)}`;
+        fertileWindowValue.textContent = `${formatDate(fertileStartEarly)} – ${formatDate(fertileEndLate)}`;
+      } else {
+        nextPeriodValue.textContent = `${formatDate(nextStart)}`;
+        periodWindowValue.textContent = `${formatDate(periodStart)} – ${formatDate(periodEnd)} (${PL} days)`;
+        ovulationValue.textContent = `${formatDate(ovulation)}`;
+        fertileWindowValue.textContent = `${formatDate(fertileStart)} – ${formatDate(fertileEnd)}`;
+      }
+
+      // Upcoming list
+      upcomingList.innerHTML = '';
+      upcoming.forEach((d,idx)=>{
+        const li = document.createElement('li');
+        li.textContent = `${idx===0?'Next':'+'+idx} cycle: ${d}`;
+        upcomingList.appendChild(li);
+      });
+
+      statusBadge.textContent = 'Updated';
+      resultsRegion.setAttribute('aria-busy','false');
+    }
+
+    // Bind buttons
+    calcBtn.addEventListener('click', compute);
+
+    // Recalculate as users correct inputs (without being intrusive)
+    [lmpEl, cycleEl, periodEl, varEl].forEach(el=>{
+      el.addEventListener('input', ()=>{
+        // If the field now validates, update results silently
+        if(validateAll()){
+          // throttle lightly
+          window.clearTimeout(el._t);
+          el._t = window.setTimeout(compute, 120);
+        }
+      });
+    });
+
+    // Reset
+    resetBtn.addEventListener('click', ()=>{
+      window.setTimeout(()=>{
+        [lmpError, cycleError, periodError, varError].forEach(e=>e.textContent='');
+        [lmpEl, cycleEl, periodEl, varEl].forEach(i=>i.setAttribute('aria-invalid','false'));
+        nextPeriodValue.textContent = '—';
+        periodWindowValue.textContent = '—';
+        ovulationValue.textContent = '—';
+        fertileWindowValue.textContent = '—';
+        upcomingList.innerHTML = '';
+        statusBadge.textContent = 'Ready';
+      }, 0);
+    });
+
+    // Accessibility: keyboard activation for Enter/Space on calculate
+    calcBtn.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter' || e.key === ' '){
+        e.preventDefault(); compute();
+      }
+    });
+
+    // Prefill LMP with today for convenience (opt-in)
+    // Leave blank by default to avoid assumptions; uncomment to prefill:
+    // const todayStr = new Date().toISOString().slice(0,10);
+    // lmpEl.value = todayStr;
+  })();
+  </script></body></html>

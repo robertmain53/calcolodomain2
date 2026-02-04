@@ -264,10 +264,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
@@ -307,12 +313,24 @@
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
 </style>
 </head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">Ohio State Income Tax Calculator</h1>
+    <p class="sub" id="pageSub">Ohio income tax calculator: estimate your Ohio state income tax, municipal and school district taxes with precision. Mobile-first, WCAG 2.1 AA accessible, and based on official Ohio tax brackets.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<main class="main-content w-full lg:w-2/3" id="main-content" role="main">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main class="main-content w-full lg:w-2/3" id="main-content" role="main">
 <div class="container">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Ohio State Income Tax Calculator</h1>
 <p>This authoritative Ohio income tax calculator estimates your state income tax and optional municipal and school district taxes. Designed for individuals, professionals, and planners, it clarifies your estimated liability using Ohio’s progressive tax schedule with mobile-first, accessible UX.</p>
 <div class="calculator-layout" id="calculatorLayout">
@@ -424,7 +442,7 @@
 <div aria-live="polite" class="error-message" id="schoolError" role="alert"></div>
 </div>
 <div class="form-group" style="display:flex;gap:.5rem;flex-wrap:wrap">
-<button class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button class="btn secondary btnSecondary" id="resetBtn" type="button">Reset</button>
 </div>
 </section>
 </aside>
@@ -628,238 +646,19 @@
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
+
+
 </main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
+</div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-      // Number formatting
-      const fmtCurrency = new Intl.NumberFormat('en-US', {style:'currency', currency:'USD', maximumFractionDigits:2});
-      const fmtPct = new Intl.NumberFormat('en-US', {style:'percent', maximumFractionDigits:2});
-
-      // Elements
-      const grossIncomeEl = document.getElementById('grossIncome');
-      const pretaxPercentEl = document.getElementById('pretaxPercent');
-      const pretaxFixedEl = document.getElementById('pretaxFixed');
-      const exemptionsCountEl = document.getElementById('exemptionsCount');
-      const municipalRateEl = document.getElementById('municipalRate');
-      const schoolRateEl = document.getElementById('schoolRate');
-      const taxYearEl = document.getElementById('taxYear');
-
-      // Results
-      const agiValueEl = document.getElementById('agiValue');
-      const exemptionValueEl = document.getElementById('exemptionValue');
-      const taxableIncomeValueEl = document.getElementById('taxableIncomeValue');
-      const stateTaxValueEl = document.getElementById('stateTaxValue');
-      const municipalTaxValueEl = document.getElementById('municipalTaxValue');
-      const schoolTaxValueEl = document.getElementById('schoolTaxValue');
-      const totalTaxValueEl = document.getElementById('totalTaxValue');
-      const effectiveRateValueEl = document.getElementById('effectiveRateValue');
-      const netIncomeValueEl = document.getElementById('netIncomeValue');
-
-      // Errors
-      const grossError = document.getElementById('grossError');
-      const pretaxPercentError = document.getElementById('pretaxPercentError');
-      const pretaxFixedError = document.getElementById('pretaxFixedError');
-      const exemptionsError = document.getElementById('exemptionsError');
-      const muniError = document.getElementById('muniError');
-      const schoolError = document.getElementById('schoolError');
-
-      // Tooltips
-      setupTooltip('grossHelpBtn','grossHelp');
-      setupTooltip('pretaxPercentBtn','pretaxPercentTip');
-      setupTooltip('exemptionsBtn','exemptionsTip');
-      setupTooltip('muniBtn','muniTip');
-      setupTooltip('schoolBtn','schoolTip');
-
-      // Reset
-      document.getElementById('resetBtn').addEventListener('click', resetForm);
-
-      // Filing status radios (for completeness, does not affect OH brackets)
-      document.querySelectorAll('input[name="filingStatus"]').forEach(r => {
-        r.addEventListener('change', compute);
-      });
-
-      // Validation on blur
-      addInlineValidation(grossIncomeEl, (v)=> v>=0, grossError, "Enter a non-negative amount. Example: 65000");
-      addInlineValidation(pretaxPercentEl, (v)=> v>=0 && v<=100, pretaxPercentError, "Enter 0–100 (percent of gross).");
-      addInlineValidation(pretaxFixedEl, (v)=> v>=0, pretaxFixedError, "Enter a non-negative dollar amount.");
-      addInlineValidation(exemptionsCountEl, (v)=> Number.isInteger(v) && v>=0 && v<=20, exemptionsError, "Enter an integer 0–20.");
-      addInlineValidation(municipalRateEl, (v)=> v>=0 && v<=3.5, muniError, "Enter 0–3.5 (%). Typical city rates: 0–3%.");
-      addInlineValidation(schoolRateEl, (v)=> v>=0 && v<=3.5, schoolError, "Enter 0–3.5 (%). Typical district rates: 0.5–2%.");
-
-      // Recompute on input (debounced)
-      [grossIncomeEl, pretaxPercentEl, pretaxFixedEl, exemptionsCountEl, municipalRateEl, schoolRateEl, taxYearEl]
-        .forEach(el => el.addEventListener('input', debounce(compute, 120)));
-
-      // Ohio tax brackets and personal exemptions (conservative, widely referenced schedule)
-      // Note: Brackets are identical for 2023–2024 in this model.
-      // Each entry: {threshold, baseTax, rate}, where tax = baseTax + rate*(T - threshold) within the band.
-      const OH_BRACKETS = {
-        2023: [
-          { max: 26050, threshold: 0, base: 0, rate: 0.00 },
-          { max: 46100, threshold: 26050, base: 0, rate: 0.0275 },
-          { max: 92150, threshold: 46100, base: 552.38, rate: 0.03226 },
-          { max: 115300, threshold: 92150, base: 2050.23, rate: 0.03688 },
-          { max: Infinity, threshold: 115300, base: 2904.00, rate: 0.0399 }
-        ],
-        2024: [
-          { max: 26050, threshold: 0, base: 0, rate: 0.00 },
-          { max: 46100, threshold: 26050, base: 0, rate: 0.0275 },
-          { max: 92150, threshold: 46100, base: 552.38, rate: 0.03226 },
-          { max: 115300, threshold: 92150, base: 2050.23, rate: 0.03688 },
-          { max: Infinity, threshold: 115300, base: 2904.00, rate: 0.0399 }
-        ]
-      };
-
-      // Personal exemption schedule function of Ohio AGI (approximate widely cited tiers)
-      // AGI <= 40,000: $2,850 per exemption
-      // 40,000 < AGI <= 80,000: $2,050 per exemption
-      // AGI > 80,000: $1,600 per exemption
-      function perExemption(ohAGI){
-        if (ohAGI <= 40000) return 2850;
-        if (ohAGI <= 80000) return 2050;
-        return 1600;
-      }
-
-      function validateNumber(el, errorEl, predicate, message){
-        const raw = el.value.trim();
-        if (raw === '') { clearError(el, errorEl); return true; }
-        const val = Number(raw);
-        if (!Number.isFinite(val) || !predicate(val)){
-          el.setAttribute('aria-invalid','true');
-          errorEl.textContent = message;
-          return false;
-        }
-        clearError(el, errorEl);
-        return true;
-      }
-      function clearError(el, errorEl){
-        el.removeAttribute('aria-invalid');
-        errorEl.textContent = '';
-      }
-      function addInlineValidation(el, predicate, errorEl, message){
-        el.addEventListener('blur', ()=> validateNumber(el, errorEl, predicate, message));
-      }
-
-      function compute(){
-        // Parse inputs with defaults
-        const gross = parseNum(grossIncomeEl.value, 0);
-        const pct = clamp(parseNum(pretaxPercentEl.value, 0), 0, 100);
-        const pretaxFixed = Math.max(0, parseNum(pretaxFixedEl.value, 0));
-        const exemptions = clamp(Math.floor(parseNum(exemptionsCountEl.value, 0)), 0, 20);
-        const muniPct = clamp(parseNum(municipalRateEl.value, 0), 0, 3.5);
-        const schoolPct = clamp(parseNum(schoolRateEl.value, 0), 0, 3.5);
-        const year = (taxYearEl.value === '2023') ? 2023 : 2024;
-
-        // AGI after pretax
-        const pretaxFromPct = (pct/100) * gross;
-        const ohAGI = Math.max(0, gross - pretaxFromPct - pretaxFixed);
-
-        // Exemptions
-        const per = perExemption(ohAGI);
-        const exemptionsDeduction = exemptions * per;
-
-        // Taxable income
-        const taxable = Math.max(0, ohAGI - exemptionsDeduction);
-
-        // State tax via bracket schedule
-        const stateTax = ohioStateTax(taxable, OH_BRACKETS[year]);
-
-        // Local taxes (applied to taxable)
-        const municipalTax = taxable * (muniPct/100);
-        const schoolTax = taxable * (schoolPct/100);
-
-        const totalTax = stateTax + municipalTax + schoolTax;
-
-        // Effective state rate
-        const effRate = taxable > 0 ? (stateTax / taxable) : 0;
-
-        // Net income
-        const net = gross - pretaxFromPct - pretaxFixed - totalTax;
-
-        // Update UI
-        agiValueEl.textContent = fmtCurrency.format(ohAGI);
-        exemptionValueEl.textContent = '-' + fmtCurrency.format(exemptionsDeduction);
-        taxableIncomeValueEl.textContent = fmtCurrency.format(taxable);
-        stateTaxValueEl.textContent = fmtCurrency.format(stateTax);
-        municipalTaxValueEl.textContent = fmtCurrency.format(municipalTax);
-        schoolTaxValueEl.textContent = fmtCurrency.format(schoolTax);
-        totalTaxValueEl.textContent = fmtCurrency.format(totalTax);
-        effectiveRateValueEl.textContent = (effRate*100).toFixed(2) + '%';
-        netIncomeValueEl.textContent = fmtCurrency.format(net);
-      }
-
-      function ohioStateTax(taxable, schedule){
-        if (taxable <= 0) return 0;
-        // Find bracket
-        for (let i=0;i<schedule.length;i++){
-          const b = schedule[i];
-          if (taxable <= b.max){
-            if (b.rate === 0) return 0;
-            return b.base + b.rate * (taxable - b.threshold);
-          }
-        }
-        return 0;
-      }
-
-      function parseNum(v, fallback){ const n = Number(v); return Number.isFinite(n)?n:fallback; }
-      function clamp(x, min, max){ return Math.min(Math.max(x, min), max); }
-
-      function debounce(fn, ms){
-        let t; return function(...args){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,args), ms); }
-      }
-
-      function setupTooltip(btnId, tipId){
-        const btn = document.getElementById(btnId);
-        const tip = document.getElementById(tipId);
-        if (!btn || !tip) return;
-        btn.addEventListener('click', ()=>{
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          tip.setAttribute('aria-hidden', String(expanded));
-        });
-        btn.addEventListener('keydown', (e)=>{
-          if (e.key === 'Escape'){
-            btn.setAttribute('aria-expanded','false');
-            tip.setAttribute('aria-hidden','true');
-            btn.focus();
-          }
-        });
-      }
-
-      function resetForm(){
-        // Clear inputs but keep year
-        grossIncomeEl.value = '';
-        pretaxPercentEl.value = '';
-        pretaxFixedEl.value = '';
-        exemptionsCountEl.value = '';
-        municipalRateEl.value = '';
-        schoolRateEl.value = '';
-
-        [grossError,pretaxPercentError,pretaxFixedError,exemptionsError,muniError,schoolError].forEach(e=>e.textContent='');
-        [grossIncomeEl,pretaxPercentEl,pretaxFixedEl,exemptionsCountEl,municipalRateEl,schoolRateEl].forEach(el=>el.removeAttribute('aria-invalid'));
-
-        compute();
-        grossIncomeEl.focus();
-      }
-
-      // Initial compute
-      compute();
-    })();
-  </script>
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main-content">Skip to main content</a><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -891,14 +690,9 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="main-content" id="main-content" role="main">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="main-content" id="main-content" role="main">
 <div class="container">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Ohio State Income Tax Calculator</h1>
 <p>This authoritative Ohio income tax calculator estimates your state income tax and optional municipal and school district taxes. Designed for individuals, professionals, and planners, it clarifies your estimated liability using Ohio’s progressive tax schedule with mobile-first, accessible UX.</p>
 <div class="calculator-layout" id="calculatorLayout">
@@ -1010,7 +804,7 @@
 <div aria-live="polite" class="error-message" id="schoolError" role="alert"></div>
 </div>
 <div class="form-group" style="display:flex;gap:.5rem;flex-wrap:wrap">
-<button class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button class="btn secondary" id="resetBtn__dup2" type="button">Reset</button>
 </div>
 </section>
 </aside>
@@ -1214,238 +1008,7 @@
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
-
-      // Number formatting
-      const fmtCurrency = new Intl.NumberFormat('en-US', {style:'currency', currency:'USD', maximumFractionDigits:2});
-      const fmtPct = new Intl.NumberFormat('en-US', {style:'percent', maximumFractionDigits:2});
-
-      // Elements
-      const grossIncomeEl = document.getElementById('grossIncome');
-      const pretaxPercentEl = document.getElementById('pretaxPercent');
-      const pretaxFixedEl = document.getElementById('pretaxFixed');
-      const exemptionsCountEl = document.getElementById('exemptionsCount');
-      const municipalRateEl = document.getElementById('municipalRate');
-      const schoolRateEl = document.getElementById('schoolRate');
-      const taxYearEl = document.getElementById('taxYear');
-
-      // Results
-      const agiValueEl = document.getElementById('agiValue');
-      const exemptionValueEl = document.getElementById('exemptionValue');
-      const taxableIncomeValueEl = document.getElementById('taxableIncomeValue');
-      const stateTaxValueEl = document.getElementById('stateTaxValue');
-      const municipalTaxValueEl = document.getElementById('municipalTaxValue');
-      const schoolTaxValueEl = document.getElementById('schoolTaxValue');
-      const totalTaxValueEl = document.getElementById('totalTaxValue');
-      const effectiveRateValueEl = document.getElementById('effectiveRateValue');
-      const netIncomeValueEl = document.getElementById('netIncomeValue');
-
-      // Errors
-      const grossError = document.getElementById('grossError');
-      const pretaxPercentError = document.getElementById('pretaxPercentError');
-      const pretaxFixedError = document.getElementById('pretaxFixedError');
-      const exemptionsError = document.getElementById('exemptionsError');
-      const muniError = document.getElementById('muniError');
-      const schoolError = document.getElementById('schoolError');
-
-      // Tooltips
-      setupTooltip('grossHelpBtn','grossHelp');
-      setupTooltip('pretaxPercentBtn','pretaxPercentTip');
-      setupTooltip('exemptionsBtn','exemptionsTip');
-      setupTooltip('muniBtn','muniTip');
-      setupTooltip('schoolBtn','schoolTip');
-
-      // Reset
-      document.getElementById('resetBtn').addEventListener('click', resetForm);
-
-      // Filing status radios (for completeness, does not affect OH brackets)
-      document.querySelectorAll('input[name="filingStatus"]').forEach(r => {
-        r.addEventListener('change', compute);
-      });
-
-      // Validation on blur
-      addInlineValidation(grossIncomeEl, (v)=> v>=0, grossError, "Enter a non-negative amount. Example: 65000");
-      addInlineValidation(pretaxPercentEl, (v)=> v>=0 && v<=100, pretaxPercentError, "Enter 0–100 (percent of gross).");
-      addInlineValidation(pretaxFixedEl, (v)=> v>=0, pretaxFixedError, "Enter a non-negative dollar amount.");
-      addInlineValidation(exemptionsCountEl, (v)=> Number.isInteger(v) && v>=0 && v<=20, exemptionsError, "Enter an integer 0–20.");
-      addInlineValidation(municipalRateEl, (v)=> v>=0 && v<=3.5, muniError, "Enter 0–3.5 (%). Typical city rates: 0–3%.");
-      addInlineValidation(schoolRateEl, (v)=> v>=0 && v<=3.5, schoolError, "Enter 0–3.5 (%). Typical district rates: 0.5–2%.");
-
-      // Recompute on input (debounced)
-      [grossIncomeEl, pretaxPercentEl, pretaxFixedEl, exemptionsCountEl, municipalRateEl, schoolRateEl, taxYearEl]
-        .forEach(el => el.addEventListener('input', debounce(compute, 120)));
-
-      // Ohio tax brackets and personal exemptions (conservative, widely referenced schedule)
-      // Note: Brackets are identical for 2023–2024 in this model.
-      // Each entry: {threshold, baseTax, rate}, where tax = baseTax + rate*(T - threshold) within the band.
-      const OH_BRACKETS = {
-        2023: [
-          { max: 26050, threshold: 0, base: 0, rate: 0.00 },
-          { max: 46100, threshold: 26050, base: 0, rate: 0.0275 },
-          { max: 92150, threshold: 46100, base: 552.38, rate: 0.03226 },
-          { max: 115300, threshold: 92150, base: 2050.23, rate: 0.03688 },
-          { max: Infinity, threshold: 115300, base: 2904.00, rate: 0.0399 }
-        ],
-        2024: [
-          { max: 26050, threshold: 0, base: 0, rate: 0.00 },
-          { max: 46100, threshold: 26050, base: 0, rate: 0.0275 },
-          { max: 92150, threshold: 46100, base: 552.38, rate: 0.03226 },
-          { max: 115300, threshold: 92150, base: 2050.23, rate: 0.03688 },
-          { max: Infinity, threshold: 115300, base: 2904.00, rate: 0.0399 }
-        ]
-      };
-
-      // Personal exemption schedule function of Ohio AGI (approximate widely cited tiers)
-      // AGI <= 40,000: $2,850 per exemption
-      // 40,000 < AGI <= 80,000: $2,050 per exemption
-      // AGI > 80,000: $1,600 per exemption
-      function perExemption(ohAGI){
-        if (ohAGI <= 40000) return 2850;
-        if (ohAGI <= 80000) return 2050;
-        return 1600;
-      }
-
-      function validateNumber(el, errorEl, predicate, message){
-        const raw = el.value.trim();
-        if (raw === '') { clearError(el, errorEl); return true; }
-        const val = Number(raw);
-        if (!Number.isFinite(val) || !predicate(val)){
-          el.setAttribute('aria-invalid','true');
-          errorEl.textContent = message;
-          return false;
-        }
-        clearError(el, errorEl);
-        return true;
-      }
-      function clearError(el, errorEl){
-        el.removeAttribute('aria-invalid');
-        errorEl.textContent = '';
-      }
-      function addInlineValidation(el, predicate, errorEl, message){
-        el.addEventListener('blur', ()=> validateNumber(el, errorEl, predicate, message));
-      }
-
-      function compute(){
-        // Parse inputs with defaults
-        const gross = parseNum(grossIncomeEl.value, 0);
-        const pct = clamp(parseNum(pretaxPercentEl.value, 0), 0, 100);
-        const pretaxFixed = Math.max(0, parseNum(pretaxFixedEl.value, 0));
-        const exemptions = clamp(Math.floor(parseNum(exemptionsCountEl.value, 0)), 0, 20);
-        const muniPct = clamp(parseNum(municipalRateEl.value, 0), 0, 3.5);
-        const schoolPct = clamp(parseNum(schoolRateEl.value, 0), 0, 3.5);
-        const year = (taxYearEl.value === '2023') ? 2023 : 2024;
-
-        // AGI after pretax
-        const pretaxFromPct = (pct/100) * gross;
-        const ohAGI = Math.max(0, gross - pretaxFromPct - pretaxFixed);
-
-        // Exemptions
-        const per = perExemption(ohAGI);
-        const exemptionsDeduction = exemptions * per;
-
-        // Taxable income
-        const taxable = Math.max(0, ohAGI - exemptionsDeduction);
-
-        // State tax via bracket schedule
-        const stateTax = ohioStateTax(taxable, OH_BRACKETS[year]);
-
-        // Local taxes (applied to taxable)
-        const municipalTax = taxable * (muniPct/100);
-        const schoolTax = taxable * (schoolPct/100);
-
-        const totalTax = stateTax + municipalTax + schoolTax;
-
-        // Effective state rate
-        const effRate = taxable > 0 ? (stateTax / taxable) : 0;
-
-        // Net income
-        const net = gross - pretaxFromPct - pretaxFixed - totalTax;
-
-        // Update UI
-        agiValueEl.textContent = fmtCurrency.format(ohAGI);
-        exemptionValueEl.textContent = '-' + fmtCurrency.format(exemptionsDeduction);
-        taxableIncomeValueEl.textContent = fmtCurrency.format(taxable);
-        stateTaxValueEl.textContent = fmtCurrency.format(stateTax);
-        municipalTaxValueEl.textContent = fmtCurrency.format(municipalTax);
-        schoolTaxValueEl.textContent = fmtCurrency.format(schoolTax);
-        totalTaxValueEl.textContent = fmtCurrency.format(totalTax);
-        effectiveRateValueEl.textContent = (effRate*100).toFixed(2) + '%';
-        netIncomeValueEl.textContent = fmtCurrency.format(net);
-      }
-
-      function ohioStateTax(taxable, schedule){
-        if (taxable <= 0) return 0;
-        // Find bracket
-        for (let i=0;i<schedule.length;i++){
-          const b = schedule[i];
-          if (taxable <= b.max){
-            if (b.rate === 0) return 0;
-            return b.base + b.rate * (taxable - b.threshold);
-          }
-        }
-        return 0;
-      }
-
-      function parseNum(v, fallback){ const n = Number(v); return Number.isFinite(n)?n:fallback; }
-      function clamp(x, min, max){ return Math.min(Math.max(x, min), max); }
-
-      function debounce(fn, ms){
-        let t; return function(...args){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,args), ms); }
-      }
-
-      function setupTooltip(btnId, tipId){
-        const btn = document.getElementById(btnId);
-        const tip = document.getElementById(tipId);
-        if (!btn || !tip) return;
-        btn.addEventListener('click', ()=>{
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          tip.setAttribute('aria-hidden', String(expanded));
-        });
-        btn.addEventListener('keydown', (e)=>{
-          if (e.key === 'Escape'){
-            btn.setAttribute('aria-expanded','false');
-            tip.setAttribute('aria-hidden','true');
-            btn.focus();
-          }
-        });
-      }
-
-      function resetForm(){
-        // Clear inputs but keep year
-        grossIncomeEl.value = '';
-        pretaxPercentEl.value = '';
-        pretaxFixedEl.value = '';
-        exemptionsCountEl.value = '';
-        municipalRateEl.value = '';
-        schoolRateEl.value = '';
-
-        [grossError,pretaxPercentError,pretaxFixedError,exemptionsError,muniError,schoolError].forEach(e=>e.textContent='');
-        [grossIncomeEl,pretaxPercentEl,pretaxFixedEl,exemptionsCountEl,municipalRateEl,schoolRateEl].forEach(el=>el.removeAttribute('aria-invalid'));
-
-        compute();
-        grossIncomeEl.focus();
-      }
-
-      // Initial compute
-      compute();
-    })();
-  </script>
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1477,14 +1040,9 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="main-content" id="main-content" role="main">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="main-content" id="main-content" role="main">
 <div class="container">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Ohio State Income Tax Calculator</h1>
 <p>This authoritative Ohio income tax calculator estimates your state income tax and optional municipal and school district taxes. Designed for individuals, professionals, and planners, it clarifies your estimated liability using Ohio’s progressive tax schedule with mobile-first, accessible UX.</p>
 <div class="calculator-layout" id="calculatorLayout">
@@ -1596,7 +1154,7 @@
 <div aria-live="polite" class="error-message" id="schoolError" role="alert"></div>
 </div>
 <div class="form-group" style="display:flex;gap:.5rem;flex-wrap:wrap">
-<button class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button class="btn secondary" id="resetBtn__dup3" type="button">Reset</button>
 </div>
 </section>
 </aside>
@@ -1800,9 +1358,48 @@
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
     (function(){
       'use strict';
 
@@ -2020,6 +1617,440 @@
       // Initial compute
       compute();
     })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
 
-</body></html>
+      // Number formatting
+      const fmtCurrency = new Intl.NumberFormat('en-US', {style:'currency', currency:'USD', maximumFractionDigits:2});
+      const fmtPct = new Intl.NumberFormat('en-US', {style:'percent', maximumFractionDigits:2});
+
+      // Elements
+      const grossIncomeEl = document.getElementById('grossIncome');
+      const pretaxPercentEl = document.getElementById('pretaxPercent');
+      const pretaxFixedEl = document.getElementById('pretaxFixed');
+      const exemptionsCountEl = document.getElementById('exemptionsCount');
+      const municipalRateEl = document.getElementById('municipalRate');
+      const schoolRateEl = document.getElementById('schoolRate');
+      const taxYearEl = document.getElementById('taxYear');
+
+      // Results
+      const agiValueEl = document.getElementById('agiValue');
+      const exemptionValueEl = document.getElementById('exemptionValue');
+      const taxableIncomeValueEl = document.getElementById('taxableIncomeValue');
+      const stateTaxValueEl = document.getElementById('stateTaxValue');
+      const municipalTaxValueEl = document.getElementById('municipalTaxValue');
+      const schoolTaxValueEl = document.getElementById('schoolTaxValue');
+      const totalTaxValueEl = document.getElementById('totalTaxValue');
+      const effectiveRateValueEl = document.getElementById('effectiveRateValue');
+      const netIncomeValueEl = document.getElementById('netIncomeValue');
+
+      // Errors
+      const grossError = document.getElementById('grossError');
+      const pretaxPercentError = document.getElementById('pretaxPercentError');
+      const pretaxFixedError = document.getElementById('pretaxFixedError');
+      const exemptionsError = document.getElementById('exemptionsError');
+      const muniError = document.getElementById('muniError');
+      const schoolError = document.getElementById('schoolError');
+
+      // Tooltips
+      setupTooltip('grossHelpBtn','grossHelp');
+      setupTooltip('pretaxPercentBtn','pretaxPercentTip');
+      setupTooltip('exemptionsBtn','exemptionsTip');
+      setupTooltip('muniBtn','muniTip');
+      setupTooltip('schoolBtn','schoolTip');
+
+      // Reset
+      document.getElementById('resetBtn').addEventListener('click', resetForm);
+
+      // Filing status radios (for completeness, does not affect OH brackets)
+      document.querySelectorAll('input[name="filingStatus"]').forEach(r => {
+        r.addEventListener('change', compute);
+      });
+
+      // Validation on blur
+      addInlineValidation(grossIncomeEl, (v)=> v>=0, grossError, "Enter a non-negative amount. Example: 65000");
+      addInlineValidation(pretaxPercentEl, (v)=> v>=0 && v<=100, pretaxPercentError, "Enter 0–100 (percent of gross).");
+      addInlineValidation(pretaxFixedEl, (v)=> v>=0, pretaxFixedError, "Enter a non-negative dollar amount.");
+      addInlineValidation(exemptionsCountEl, (v)=> Number.isInteger(v) && v>=0 && v<=20, exemptionsError, "Enter an integer 0–20.");
+      addInlineValidation(municipalRateEl, (v)=> v>=0 && v<=3.5, muniError, "Enter 0–3.5 (%). Typical city rates: 0–3%.");
+      addInlineValidation(schoolRateEl, (v)=> v>=0 && v<=3.5, schoolError, "Enter 0–3.5 (%). Typical district rates: 0.5–2%.");
+
+      // Recompute on input (debounced)
+      [grossIncomeEl, pretaxPercentEl, pretaxFixedEl, exemptionsCountEl, municipalRateEl, schoolRateEl, taxYearEl]
+        .forEach(el => el.addEventListener('input', debounce(compute, 120)));
+
+      // Ohio tax brackets and personal exemptions (conservative, widely referenced schedule)
+      // Note: Brackets are identical for 2023–2024 in this model.
+      // Each entry: {threshold, baseTax, rate}, where tax = baseTax + rate*(T - threshold) within the band.
+      const OH_BRACKETS = {
+        2023: [
+          { max: 26050, threshold: 0, base: 0, rate: 0.00 },
+          { max: 46100, threshold: 26050, base: 0, rate: 0.0275 },
+          { max: 92150, threshold: 46100, base: 552.38, rate: 0.03226 },
+          { max: 115300, threshold: 92150, base: 2050.23, rate: 0.03688 },
+          { max: Infinity, threshold: 115300, base: 2904.00, rate: 0.0399 }
+        ],
+        2024: [
+          { max: 26050, threshold: 0, base: 0, rate: 0.00 },
+          { max: 46100, threshold: 26050, base: 0, rate: 0.0275 },
+          { max: 92150, threshold: 46100, base: 552.38, rate: 0.03226 },
+          { max: 115300, threshold: 92150, base: 2050.23, rate: 0.03688 },
+          { max: Infinity, threshold: 115300, base: 2904.00, rate: 0.0399 }
+        ]
+      };
+
+      // Personal exemption schedule function of Ohio AGI (approximate widely cited tiers)
+      // AGI <= 40,000: $2,850 per exemption
+      // 40,000 < AGI <= 80,000: $2,050 per exemption
+      // AGI > 80,000: $1,600 per exemption
+      function perExemption(ohAGI){
+        if (ohAGI <= 40000) return 2850;
+        if (ohAGI <= 80000) return 2050;
+        return 1600;
+      }
+
+      function validateNumber(el, errorEl, predicate, message){
+        const raw = el.value.trim();
+        if (raw === '') { clearError(el, errorEl); return true; }
+        const val = Number(raw);
+        if (!Number.isFinite(val) || !predicate(val)){
+          el.setAttribute('aria-invalid','true');
+          errorEl.textContent = message;
+          return false;
+        }
+        clearError(el, errorEl);
+        return true;
+      }
+      function clearError(el, errorEl){
+        el.removeAttribute('aria-invalid');
+        errorEl.textContent = '';
+      }
+      function addInlineValidation(el, predicate, errorEl, message){
+        el.addEventListener('blur', ()=> validateNumber(el, errorEl, predicate, message));
+      }
+
+      function compute(){
+        // Parse inputs with defaults
+        const gross = parseNum(grossIncomeEl.value, 0);
+        const pct = clamp(parseNum(pretaxPercentEl.value, 0), 0, 100);
+        const pretaxFixed = Math.max(0, parseNum(pretaxFixedEl.value, 0));
+        const exemptions = clamp(Math.floor(parseNum(exemptionsCountEl.value, 0)), 0, 20);
+        const muniPct = clamp(parseNum(municipalRateEl.value, 0), 0, 3.5);
+        const schoolPct = clamp(parseNum(schoolRateEl.value, 0), 0, 3.5);
+        const year = (taxYearEl.value === '2023') ? 2023 : 2024;
+
+        // AGI after pretax
+        const pretaxFromPct = (pct/100) * gross;
+        const ohAGI = Math.max(0, gross - pretaxFromPct - pretaxFixed);
+
+        // Exemptions
+        const per = perExemption(ohAGI);
+        const exemptionsDeduction = exemptions * per;
+
+        // Taxable income
+        const taxable = Math.max(0, ohAGI - exemptionsDeduction);
+
+        // State tax via bracket schedule
+        const stateTax = ohioStateTax(taxable, OH_BRACKETS[year]);
+
+        // Local taxes (applied to taxable)
+        const municipalTax = taxable * (muniPct/100);
+        const schoolTax = taxable * (schoolPct/100);
+
+        const totalTax = stateTax + municipalTax + schoolTax;
+
+        // Effective state rate
+        const effRate = taxable > 0 ? (stateTax / taxable) : 0;
+
+        // Net income
+        const net = gross - pretaxFromPct - pretaxFixed - totalTax;
+
+        // Update UI
+        agiValueEl.textContent = fmtCurrency.format(ohAGI);
+        exemptionValueEl.textContent = '-' + fmtCurrency.format(exemptionsDeduction);
+        taxableIncomeValueEl.textContent = fmtCurrency.format(taxable);
+        stateTaxValueEl.textContent = fmtCurrency.format(stateTax);
+        municipalTaxValueEl.textContent = fmtCurrency.format(municipalTax);
+        schoolTaxValueEl.textContent = fmtCurrency.format(schoolTax);
+        totalTaxValueEl.textContent = fmtCurrency.format(totalTax);
+        effectiveRateValueEl.textContent = (effRate*100).toFixed(2) + '%';
+        netIncomeValueEl.textContent = fmtCurrency.format(net);
+      }
+
+      function ohioStateTax(taxable, schedule){
+        if (taxable <= 0) return 0;
+        // Find bracket
+        for (let i=0;i<schedule.length;i++){
+          const b = schedule[i];
+          if (taxable <= b.max){
+            if (b.rate === 0) return 0;
+            return b.base + b.rate * (taxable - b.threshold);
+          }
+        }
+        return 0;
+      }
+
+      function parseNum(v, fallback){ const n = Number(v); return Number.isFinite(n)?n:fallback; }
+      function clamp(x, min, max){ return Math.min(Math.max(x, min), max); }
+
+      function debounce(fn, ms){
+        let t; return function(...args){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,args), ms); }
+      }
+
+      function setupTooltip(btnId, tipId){
+        const btn = document.getElementById(btnId);
+        const tip = document.getElementById(tipId);
+        if (!btn || !tip) return;
+        btn.addEventListener('click', ()=>{
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          tip.setAttribute('aria-hidden', String(expanded));
+        });
+        btn.addEventListener('keydown', (e)=>{
+          if (e.key === 'Escape'){
+            btn.setAttribute('aria-expanded','false');
+            tip.setAttribute('aria-hidden','true');
+            btn.focus();
+          }
+        });
+      }
+
+      function resetForm(){
+        // Clear inputs but keep year
+        grossIncomeEl.value = '';
+        pretaxPercentEl.value = '';
+        pretaxFixedEl.value = '';
+        exemptionsCountEl.value = '';
+        municipalRateEl.value = '';
+        schoolRateEl.value = '';
+
+        [grossError,pretaxPercentError,pretaxFixedError,exemptionsError,muniError,schoolError].forEach(e=>e.textContent='');
+        [grossIncomeEl,pretaxPercentEl,pretaxFixedEl,exemptionsCountEl,municipalRateEl,schoolRateEl].forEach(el=>el.removeAttribute('aria-invalid'));
+
+        compute();
+        grossIncomeEl.focus();
+      }
+
+      // Initial compute
+      compute();
+    })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
+
+      // Number formatting
+      const fmtCurrency = new Intl.NumberFormat('en-US', {style:'currency', currency:'USD', maximumFractionDigits:2});
+      const fmtPct = new Intl.NumberFormat('en-US', {style:'percent', maximumFractionDigits:2});
+
+      // Elements
+      const grossIncomeEl = document.getElementById('grossIncome');
+      const pretaxPercentEl = document.getElementById('pretaxPercent');
+      const pretaxFixedEl = document.getElementById('pretaxFixed');
+      const exemptionsCountEl = document.getElementById('exemptionsCount');
+      const municipalRateEl = document.getElementById('municipalRate');
+      const schoolRateEl = document.getElementById('schoolRate');
+      const taxYearEl = document.getElementById('taxYear');
+
+      // Results
+      const agiValueEl = document.getElementById('agiValue');
+      const exemptionValueEl = document.getElementById('exemptionValue');
+      const taxableIncomeValueEl = document.getElementById('taxableIncomeValue');
+      const stateTaxValueEl = document.getElementById('stateTaxValue');
+      const municipalTaxValueEl = document.getElementById('municipalTaxValue');
+      const schoolTaxValueEl = document.getElementById('schoolTaxValue');
+      const totalTaxValueEl = document.getElementById('totalTaxValue');
+      const effectiveRateValueEl = document.getElementById('effectiveRateValue');
+      const netIncomeValueEl = document.getElementById('netIncomeValue');
+
+      // Errors
+      const grossError = document.getElementById('grossError');
+      const pretaxPercentError = document.getElementById('pretaxPercentError');
+      const pretaxFixedError = document.getElementById('pretaxFixedError');
+      const exemptionsError = document.getElementById('exemptionsError');
+      const muniError = document.getElementById('muniError');
+      const schoolError = document.getElementById('schoolError');
+
+      // Tooltips
+      setupTooltip('grossHelpBtn','grossHelp');
+      setupTooltip('pretaxPercentBtn','pretaxPercentTip');
+      setupTooltip('exemptionsBtn','exemptionsTip');
+      setupTooltip('muniBtn','muniTip');
+      setupTooltip('schoolBtn','schoolTip');
+
+      // Reset
+      document.getElementById('resetBtn').addEventListener('click', resetForm);
+
+      // Filing status radios (for completeness, does not affect OH brackets)
+      document.querySelectorAll('input[name="filingStatus"]').forEach(r => {
+        r.addEventListener('change', compute);
+      });
+
+      // Validation on blur
+      addInlineValidation(grossIncomeEl, (v)=> v>=0, grossError, "Enter a non-negative amount. Example: 65000");
+      addInlineValidation(pretaxPercentEl, (v)=> v>=0 && v<=100, pretaxPercentError, "Enter 0–100 (percent of gross).");
+      addInlineValidation(pretaxFixedEl, (v)=> v>=0, pretaxFixedError, "Enter a non-negative dollar amount.");
+      addInlineValidation(exemptionsCountEl, (v)=> Number.isInteger(v) && v>=0 && v<=20, exemptionsError, "Enter an integer 0–20.");
+      addInlineValidation(municipalRateEl, (v)=> v>=0 && v<=3.5, muniError, "Enter 0–3.5 (%). Typical city rates: 0–3%.");
+      addInlineValidation(schoolRateEl, (v)=> v>=0 && v<=3.5, schoolError, "Enter 0–3.5 (%). Typical district rates: 0.5–2%.");
+
+      // Recompute on input (debounced)
+      [grossIncomeEl, pretaxPercentEl, pretaxFixedEl, exemptionsCountEl, municipalRateEl, schoolRateEl, taxYearEl]
+        .forEach(el => el.addEventListener('input', debounce(compute, 120)));
+
+      // Ohio tax brackets and personal exemptions (conservative, widely referenced schedule)
+      // Note: Brackets are identical for 2023–2024 in this model.
+      // Each entry: {threshold, baseTax, rate}, where tax = baseTax + rate*(T - threshold) within the band.
+      const OH_BRACKETS = {
+        2023: [
+          { max: 26050, threshold: 0, base: 0, rate: 0.00 },
+          { max: 46100, threshold: 26050, base: 0, rate: 0.0275 },
+          { max: 92150, threshold: 46100, base: 552.38, rate: 0.03226 },
+          { max: 115300, threshold: 92150, base: 2050.23, rate: 0.03688 },
+          { max: Infinity, threshold: 115300, base: 2904.00, rate: 0.0399 }
+        ],
+        2024: [
+          { max: 26050, threshold: 0, base: 0, rate: 0.00 },
+          { max: 46100, threshold: 26050, base: 0, rate: 0.0275 },
+          { max: 92150, threshold: 46100, base: 552.38, rate: 0.03226 },
+          { max: 115300, threshold: 92150, base: 2050.23, rate: 0.03688 },
+          { max: Infinity, threshold: 115300, base: 2904.00, rate: 0.0399 }
+        ]
+      };
+
+      // Personal exemption schedule function of Ohio AGI (approximate widely cited tiers)
+      // AGI <= 40,000: $2,850 per exemption
+      // 40,000 < AGI <= 80,000: $2,050 per exemption
+      // AGI > 80,000: $1,600 per exemption
+      function perExemption(ohAGI){
+        if (ohAGI <= 40000) return 2850;
+        if (ohAGI <= 80000) return 2050;
+        return 1600;
+      }
+
+      function validateNumber(el, errorEl, predicate, message){
+        const raw = el.value.trim();
+        if (raw === '') { clearError(el, errorEl); return true; }
+        const val = Number(raw);
+        if (!Number.isFinite(val) || !predicate(val)){
+          el.setAttribute('aria-invalid','true');
+          errorEl.textContent = message;
+          return false;
+        }
+        clearError(el, errorEl);
+        return true;
+      }
+      function clearError(el, errorEl){
+        el.removeAttribute('aria-invalid');
+        errorEl.textContent = '';
+      }
+      function addInlineValidation(el, predicate, errorEl, message){
+        el.addEventListener('blur', ()=> validateNumber(el, errorEl, predicate, message));
+      }
+
+      function compute(){
+        // Parse inputs with defaults
+        const gross = parseNum(grossIncomeEl.value, 0);
+        const pct = clamp(parseNum(pretaxPercentEl.value, 0), 0, 100);
+        const pretaxFixed = Math.max(0, parseNum(pretaxFixedEl.value, 0));
+        const exemptions = clamp(Math.floor(parseNum(exemptionsCountEl.value, 0)), 0, 20);
+        const muniPct = clamp(parseNum(municipalRateEl.value, 0), 0, 3.5);
+        const schoolPct = clamp(parseNum(schoolRateEl.value, 0), 0, 3.5);
+        const year = (taxYearEl.value === '2023') ? 2023 : 2024;
+
+        // AGI after pretax
+        const pretaxFromPct = (pct/100) * gross;
+        const ohAGI = Math.max(0, gross - pretaxFromPct - pretaxFixed);
+
+        // Exemptions
+        const per = perExemption(ohAGI);
+        const exemptionsDeduction = exemptions * per;
+
+        // Taxable income
+        const taxable = Math.max(0, ohAGI - exemptionsDeduction);
+
+        // State tax via bracket schedule
+        const stateTax = ohioStateTax(taxable, OH_BRACKETS[year]);
+
+        // Local taxes (applied to taxable)
+        const municipalTax = taxable * (muniPct/100);
+        const schoolTax = taxable * (schoolPct/100);
+
+        const totalTax = stateTax + municipalTax + schoolTax;
+
+        // Effective state rate
+        const effRate = taxable > 0 ? (stateTax / taxable) : 0;
+
+        // Net income
+        const net = gross - pretaxFromPct - pretaxFixed - totalTax;
+
+        // Update UI
+        agiValueEl.textContent = fmtCurrency.format(ohAGI);
+        exemptionValueEl.textContent = '-' + fmtCurrency.format(exemptionsDeduction);
+        taxableIncomeValueEl.textContent = fmtCurrency.format(taxable);
+        stateTaxValueEl.textContent = fmtCurrency.format(stateTax);
+        municipalTaxValueEl.textContent = fmtCurrency.format(municipalTax);
+        schoolTaxValueEl.textContent = fmtCurrency.format(schoolTax);
+        totalTaxValueEl.textContent = fmtCurrency.format(totalTax);
+        effectiveRateValueEl.textContent = (effRate*100).toFixed(2) + '%';
+        netIncomeValueEl.textContent = fmtCurrency.format(net);
+      }
+
+      function ohioStateTax(taxable, schedule){
+        if (taxable <= 0) return 0;
+        // Find bracket
+        for (let i=0;i<schedule.length;i++){
+          const b = schedule[i];
+          if (taxable <= b.max){
+            if (b.rate === 0) return 0;
+            return b.base + b.rate * (taxable - b.threshold);
+          }
+        }
+        return 0;
+      }
+
+      function parseNum(v, fallback){ const n = Number(v); return Number.isFinite(n)?n:fallback; }
+      function clamp(x, min, max){ return Math.min(Math.max(x, min), max); }
+
+      function debounce(fn, ms){
+        let t; return function(...args){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,args), ms); }
+      }
+
+      function setupTooltip(btnId, tipId){
+        const btn = document.getElementById(btnId);
+        const tip = document.getElementById(tipId);
+        if (!btn || !tip) return;
+        btn.addEventListener('click', ()=>{
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          tip.setAttribute('aria-hidden', String(expanded));
+        });
+        btn.addEventListener('keydown', (e)=>{
+          if (e.key === 'Escape'){
+            btn.setAttribute('aria-expanded','false');
+            tip.setAttribute('aria-hidden','true');
+            btn.focus();
+          }
+        });
+      }
+
+      function resetForm(){
+        // Clear inputs but keep year
+        grossIncomeEl.value = '';
+        pretaxPercentEl.value = '';
+        pretaxFixedEl.value = '';
+        exemptionsCountEl.value = '';
+        municipalRateEl.value = '';
+        schoolRateEl.value = '';
+
+        [grossError,pretaxPercentError,pretaxFixedError,exemptionsError,muniError,schoolError].forEach(e=>e.textContent='');
+        [grossIncomeEl,pretaxPercentEl,pretaxFixedEl,exemptionsCountEl,municipalRateEl,schoolRateEl].forEach(el=>el.removeAttribute('aria-invalid'));
+
+        compute();
+        grossIncomeEl.focus();
+      }
+
+      // Initial compute
+      compute();
+    })();
+  </script></body></html>

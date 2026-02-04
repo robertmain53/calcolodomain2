@@ -297,10 +297,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
@@ -355,11 +361,23 @@
 }
 </style>
 </head>
-<body>
-<a class="skip-link" href="#main">Skip to main content</a>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">Net Carbs Calculator</h1>
+    <p class="sub" id="pageSub">Use our net carbs calculator to quickly compute net carbohydrates from total carbs, fiber, and sugar alcohols. Keto-friendly, accessible, and mobile-first.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<main class="container w-full lg:w-2/3" id="main" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/health-fitness" class="hover:text-blue-600">Health & Fitness</a> &raquo; <a href="https://calcdomain.com/subcategories/diet-nutrition" class="hover:text-blue-600">Diet Nutrition</a></nav>
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main class="container w-full lg:w-2/3" id="main" role="main">
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/health-fitness" class="hover:text-blue-600">Health &amp; Fitness</a> » <a href="https://calcdomain.com/subcategories/diet-nutrition" class="hover:text-blue-600">Diet Nutrition</a></nav>
 <h1>Net Carbs Calculator</h1>
 <p class="lead">Instantly calculate net carbohydrates from a nutrition label. Designed for low-carb and keto eaters, dietitians, and anyone tracking carb impact. Enter total carbohydrates, fiber, and sugar alcohols to get precise net carbs per serving and for multiple servings.</p>
 <div class="layout">
@@ -633,223 +651,21 @@
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
+
+
 </main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
 
-      // Utilities
-      const $ = (sel, parent=document) => parent.querySelector(sel);
-      const $$ = (sel, parent=document) => Array.from(parent.querySelectorAll(sel));
-      const clamp0 = n => Math.max(0, n);
-      const toNum = v => {
-        if (v === '' || v === null || v === undefined) return NaN;
-        const n = Number(v);
-        return Number.isFinite(n) ? n : NaN;
-      };
-      const fmt = n => {
-        if (!Number.isFinite(n)) return '—';
-        const fixed = Math.round(n * 100) / 100;
-        return (fixed % 1 === 0 ? fixed.toFixed(0) : fixed.toFixed(2)) + ' g';
-      };
+<button id="resetBtn" type="button" class="btn btnSecondary">Reset</button>
+</div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-      // Elements
-      const els = {
-        servingSize: $('#servingSize'),
-        servingUnit: $('#servingUnit'),
-        totalCarbs: $('#totalCarbs'),
-        fiber: $('#fiber'),
-        sugarAlcohols: $('#sugarAlcohols'),
-        servings: $('#servings'),
-        saMode: $$('input[name="saMode"]'),
-
-        netPerServing: $('#netPerServing'),
-        netForServings: $('#netForServings'),
-        netPer100g: $('#netPer100g'),
-        assessment: $('#assessment'),
-        mathTrace: $('#mathTrace'),
-
-        // errors
-        servingErr: $('#servingErr'),
-        tcErr: $('#tcErr'),
-        fiberErr: $('#fiberErr'),
-        saErr: $('#saErr'),
-        servingsErr: $('#servingsErr'),
-
-        // help buttons
-        servingHelpBtn: $('#servingHelpBtn'),
-        tcHelpBtn: $('#tcHelpBtn'),
-        fiberHelpBtn: $('#fiberHelpBtn'),
-        saHelpBtn: $('#saHelpBtn'),
-      };
-
-      // Tooltip toggles
-      function bindHelp(btnId, paneId){
-        const btn = document.getElementById(btnId);
-        const pane = document.getElementById(paneId);
-        if(!btn || !pane) return;
-        btn.addEventListener('click', () => {
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          pane.setAttribute('aria-hidden', String(expanded));
-        }, {passive:true});
-      }
-      bindHelp('servingHelpBtn','servingHelp');
-      bindHelp('tcHelpBtn','tcHelp');
-      bindHelp('fiberHelpBtn','fiberHelp');
-      bindHelp('saHelpBtn','saHelp');
-
-      // Validation
-      function showError(el, errEl, msg){
-        el.setAttribute('aria-invalid', 'true');
-        errEl.textContent = msg || '';
-      }
-      function clearError(el, errEl){
-        el.removeAttribute('aria-invalid');
-        errEl.textContent = '';
-      }
-
-      function validateTotalCarbs(){
-        const val = toNum(els.totalCarbs.value.trim());
-        if (!Number.isFinite(val)) { showError(els.totalCarbs, els.tcErr, 'Enter a numeric value for total carbohydrates.'); return false; }
-        if (val < 0) { showError(els.totalCarbs, els.tcErr, 'Total carbohydrates cannot be negative.'); return false; }
-        clearError(els.totalCarbs, els.tcErr);
-        return true;
-      }
-      function validateFiber(){
-        const t = toNum(els.totalCarbs.value.trim());
-        const f = toNum(els.fiber.value.trim() || '0');
-        if (!Number.isFinite(f)) { showError(els.fiber, els.fiberErr, 'Enter a numeric value for fiber or leave blank.'); return false; }
-        if (f < 0) { showError(els.fiber, els.fiberErr, 'Fiber cannot be negative.'); return false; }
-        if (Number.isFinite(t) && f > t) { showError(els.fiber, els.fiberErr, 'Fiber should not exceed total carbohydrates.'); return false; }
-        clearError(els.fiber, els.fiberErr);
-        return true;
-      }
-      function validateSA(){
-        const t = toNum(els.totalCarbs.value.trim());
-        const sa = toNum(els.sugarAlcohols.value.trim() || '0');
-        if (!Number.isFinite(sa)) { showError(els.sugarAlcohols, els.saErr, 'Enter a numeric value for sugar alcohols or leave blank.'); return false; }
-        if (sa < 0) { showError(els.sugarAlcohols, els.saErr, 'Sugar alcohols cannot be negative.'); return false; }
-        if (Number.isFinite(t) && sa > t) { showError(els.sugarAlcohols, els.saErr, 'Sugar alcohols should not exceed total carbohydrates.'); return false; }
-        clearError(els.sugarAlcohols, els.saErr);
-        return true;
-      }
-      function validateServingSize(){
-        const s = els.servingSize.value.trim();
-        if (s === '') { clearError(els.servingSize, els.servingErr); return true; } // optional
-        const v = toNum(s);
-        if (!Number.isFinite(v)) { showError(els.servingSize, els.servingErr, 'Enter a numeric value for serving size or leave blank.'); return false; }
-        if (v <= 0) { showError(els.servingSize, els.servingErr, 'Serving size must be greater than 0.'); return false; }
-        clearError(els.servingSize, els.servingErr);
-        return true;
-      }
-      function validateServings(){
-        const n = toNum(els.servings.value.trim());
-        if (!Number.isFinite(n)) { showError(els.servings, els.servingsErr, 'Enter the number of servings (e.g., 1 or 1.5).'); return false; }
-        if (n < 0) { showError(els.servings, els.servingsErr, 'Servings cannot be negative.'); return false; }
-        clearError(els.servings, els.servingsErr);
-        return true;
-      }
-
-      // Compute
-      function currentSaFactor(){
-        const checked = els.saMode.find(r => r.checked);
-        return checked ? Number(checked.value) : 1;
-      }
-
-      function compute(){
-        // Validate required total carbs
-        if (!validateTotalCarbs()) {
-          els.netPerServing.textContent = '0 g';
-          els.netForServings.textContent = '0 g';
-          els.netPer100g.textContent = '—';
-          els.assessment.innerHTML = '<span class="badge">Enter values</span>';
-          els.mathTrace.textContent = '';
-          return;
-        }
-        // Optional fields validations
-        if (!validateFiber() || !validateSA() || !validateServingSize() || !validateServings()) {
-          // proceed with computation but show errors
-        }
-
-        const TC = clamp0(toNum(els.totalCarbs.value.trim()));
-        const F  = clamp0(toNum(els.fiber.value.trim() || '0'));
-        const SA = clamp0(toNum(els.sugarAlcohols.value.trim() || '0'));
-        const fsa = currentSaFactor();
-        let net = TC - F - fsa * SA;
-        if (!Number.isFinite(net)) net = 0;
-        net = clamp0(net);
-
-        const servings = clamp0(toNum(els.servings.value.trim() || '1')) || 0;
-        const total = net * servings;
-
-        // per 100 g
-        let per100 = NaN;
-        const sVal = els.servingSize.value.trim();
-        if (sVal !== '') {
-          const mass = clamp0(toNum(sVal));
-          if (mass > 0) {
-            const unit = els.servingUnit.value;
-            const grams = unit === 'oz' ? mass * 28.349523125 : mass;
-            if (grams > 0) per100 = net * (100 / grams);
-          }
-        }
-
-        // Update UI
-        els.netPerServing.textContent = fmt(net);
-        els.netForServings.textContent = fmt(total);
-        els.netPer100g.textContent = Number.isFinite(per100) ? fmt(per100) : '—';
-
-        // Assessment
-        let label = 'Enter values';
-        let cls = 'badge';
-        if (TC > 0 || F > 0 || SA > 0) {
-          if (net <= 5) { label = 'Very low net carbs'; cls = 'badge'; }
-          else if (net <= 10) { label = 'Low net carbs'; cls = 'badge'; }
-          else if (net <= 20) { label = 'Moderate net carbs'; cls = 'badge'; }
-          else { label = 'High net carbs'; cls = 'badge'; }
-        }
-        els.assessment.innerHTML = '<span class="'+cls+'">'+label+'</span>';
-
-        // Math trace
-        els.mathTrace.textContent =
-          `Calculation: NetCarbs = ${TC} − ${F} − ${fsa} × ${SA} = ${net} g per serving.`;
-      }
-
-      // Bind events
-      // On input: compute live; on blur: validate inline
-      [
-        els.totalCarbs, els.fiber, els.sugarAlcohols,
-        els.servingSize, els.servingUnit, els.servings
-      ].forEach(el => {
-        el.addEventListener('input', compute, {passive:true});
-      });
-
-      els.totalCarbs.addEventListener('blur', validateTotalCarbs, {passive:true});
-      els.fiber.addEventListener('blur', validateFiber, {passive:true});
-      els.sugarAlcohols.addEventListener('blur', validateSA, {passive:true});
-      els.servingSize.addEventListener('blur', validateServingSize, {passive:true});
-      els.servings.addEventListener('blur', validateServings, {passive:true});
-      els.servingUnit.addEventListener('change', compute, {passive:true});
-
-      els.saMode.forEach(r => r.addEventListener('change', compute, {passive:true}));
-
-      // Initial compute
-      compute();
-    })();
-  </script>
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main">Skip to main content</a><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -896,13 +712,8 @@
   border-color:#fed7aa;
   color:#9a3412;
 }
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main">Skip to main content</a>
-
-<main class="container" id="main" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/health-fitness" class="hover:text-blue-600">Health & Fitness</a> &raquo; <a href="https://calcdomain.com/subcategories/diet-nutrition" class="hover:text-blue-600">Diet Nutrition</a></nav>
+</style><a class="skip-link" href="#main">Skip to main content</a><main class="container" id="main" role="main">
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/health-fitness" class="hover:text-blue-600">Health &amp; Fitness</a> » <a href="https://calcdomain.com/subcategories/diet-nutrition" class="hover:text-blue-600">Diet Nutrition</a></nav>
 <h1>Net Carbs Calculator</h1>
 <p class="lead">Instantly calculate net carbohydrates from a nutrition label. Designed for low-carb and keto eaters, dietitians, and anyone tracking carb impact. Enter total carbohydrates, fiber, and sugar alcohols to get precise net carbs per serving and for multiple servings.</p>
 <div class="layout">
@@ -1176,223 +987,7 @@
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
-
-      // Utilities
-      const $ = (sel, parent=document) => parent.querySelector(sel);
-      const $$ = (sel, parent=document) => Array.from(parent.querySelectorAll(sel));
-      const clamp0 = n => Math.max(0, n);
-      const toNum = v => {
-        if (v === '' || v === null || v === undefined) return NaN;
-        const n = Number(v);
-        return Number.isFinite(n) ? n : NaN;
-      };
-      const fmt = n => {
-        if (!Number.isFinite(n)) return '—';
-        const fixed = Math.round(n * 100) / 100;
-        return (fixed % 1 === 0 ? fixed.toFixed(0) : fixed.toFixed(2)) + ' g';
-      };
-
-      // Elements
-      const els = {
-        servingSize: $('#servingSize'),
-        servingUnit: $('#servingUnit'),
-        totalCarbs: $('#totalCarbs'),
-        fiber: $('#fiber'),
-        sugarAlcohols: $('#sugarAlcohols'),
-        servings: $('#servings'),
-        saMode: $$('input[name="saMode"]'),
-
-        netPerServing: $('#netPerServing'),
-        netForServings: $('#netForServings'),
-        netPer100g: $('#netPer100g'),
-        assessment: $('#assessment'),
-        mathTrace: $('#mathTrace'),
-
-        // errors
-        servingErr: $('#servingErr'),
-        tcErr: $('#tcErr'),
-        fiberErr: $('#fiberErr'),
-        saErr: $('#saErr'),
-        servingsErr: $('#servingsErr'),
-
-        // help buttons
-        servingHelpBtn: $('#servingHelpBtn'),
-        tcHelpBtn: $('#tcHelpBtn'),
-        fiberHelpBtn: $('#fiberHelpBtn'),
-        saHelpBtn: $('#saHelpBtn'),
-      };
-
-      // Tooltip toggles
-      function bindHelp(btnId, paneId){
-        const btn = document.getElementById(btnId);
-        const pane = document.getElementById(paneId);
-        if(!btn || !pane) return;
-        btn.addEventListener('click', () => {
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          pane.setAttribute('aria-hidden', String(expanded));
-        }, {passive:true});
-      }
-      bindHelp('servingHelpBtn','servingHelp');
-      bindHelp('tcHelpBtn','tcHelp');
-      bindHelp('fiberHelpBtn','fiberHelp');
-      bindHelp('saHelpBtn','saHelp');
-
-      // Validation
-      function showError(el, errEl, msg){
-        el.setAttribute('aria-invalid', 'true');
-        errEl.textContent = msg || '';
-      }
-      function clearError(el, errEl){
-        el.removeAttribute('aria-invalid');
-        errEl.textContent = '';
-      }
-
-      function validateTotalCarbs(){
-        const val = toNum(els.totalCarbs.value.trim());
-        if (!Number.isFinite(val)) { showError(els.totalCarbs, els.tcErr, 'Enter a numeric value for total carbohydrates.'); return false; }
-        if (val < 0) { showError(els.totalCarbs, els.tcErr, 'Total carbohydrates cannot be negative.'); return false; }
-        clearError(els.totalCarbs, els.tcErr);
-        return true;
-      }
-      function validateFiber(){
-        const t = toNum(els.totalCarbs.value.trim());
-        const f = toNum(els.fiber.value.trim() || '0');
-        if (!Number.isFinite(f)) { showError(els.fiber, els.fiberErr, 'Enter a numeric value for fiber or leave blank.'); return false; }
-        if (f < 0) { showError(els.fiber, els.fiberErr, 'Fiber cannot be negative.'); return false; }
-        if (Number.isFinite(t) && f > t) { showError(els.fiber, els.fiberErr, 'Fiber should not exceed total carbohydrates.'); return false; }
-        clearError(els.fiber, els.fiberErr);
-        return true;
-      }
-      function validateSA(){
-        const t = toNum(els.totalCarbs.value.trim());
-        const sa = toNum(els.sugarAlcohols.value.trim() || '0');
-        if (!Number.isFinite(sa)) { showError(els.sugarAlcohols, els.saErr, 'Enter a numeric value for sugar alcohols or leave blank.'); return false; }
-        if (sa < 0) { showError(els.sugarAlcohols, els.saErr, 'Sugar alcohols cannot be negative.'); return false; }
-        if (Number.isFinite(t) && sa > t) { showError(els.sugarAlcohols, els.saErr, 'Sugar alcohols should not exceed total carbohydrates.'); return false; }
-        clearError(els.sugarAlcohols, els.saErr);
-        return true;
-      }
-      function validateServingSize(){
-        const s = els.servingSize.value.trim();
-        if (s === '') { clearError(els.servingSize, els.servingErr); return true; } // optional
-        const v = toNum(s);
-        if (!Number.isFinite(v)) { showError(els.servingSize, els.servingErr, 'Enter a numeric value for serving size or leave blank.'); return false; }
-        if (v <= 0) { showError(els.servingSize, els.servingErr, 'Serving size must be greater than 0.'); return false; }
-        clearError(els.servingSize, els.servingErr);
-        return true;
-      }
-      function validateServings(){
-        const n = toNum(els.servings.value.trim());
-        if (!Number.isFinite(n)) { showError(els.servings, els.servingsErr, 'Enter the number of servings (e.g., 1 or 1.5).'); return false; }
-        if (n < 0) { showError(els.servings, els.servingsErr, 'Servings cannot be negative.'); return false; }
-        clearError(els.servings, els.servingsErr);
-        return true;
-      }
-
-      // Compute
-      function currentSaFactor(){
-        const checked = els.saMode.find(r => r.checked);
-        return checked ? Number(checked.value) : 1;
-      }
-
-      function compute(){
-        // Validate required total carbs
-        if (!validateTotalCarbs()) {
-          els.netPerServing.textContent = '0 g';
-          els.netForServings.textContent = '0 g';
-          els.netPer100g.textContent = '—';
-          els.assessment.innerHTML = '<span class="badge">Enter values</span>';
-          els.mathTrace.textContent = '';
-          return;
-        }
-        // Optional fields validations
-        if (!validateFiber() || !validateSA() || !validateServingSize() || !validateServings()) {
-          // proceed with computation but show errors
-        }
-
-        const TC = clamp0(toNum(els.totalCarbs.value.trim()));
-        const F  = clamp0(toNum(els.fiber.value.trim() || '0'));
-        const SA = clamp0(toNum(els.sugarAlcohols.value.trim() || '0'));
-        const fsa = currentSaFactor();
-        let net = TC - F - fsa * SA;
-        if (!Number.isFinite(net)) net = 0;
-        net = clamp0(net);
-
-        const servings = clamp0(toNum(els.servings.value.trim() || '1')) || 0;
-        const total = net * servings;
-
-        // per 100 g
-        let per100 = NaN;
-        const sVal = els.servingSize.value.trim();
-        if (sVal !== '') {
-          const mass = clamp0(toNum(sVal));
-          if (mass > 0) {
-            const unit = els.servingUnit.value;
-            const grams = unit === 'oz' ? mass * 28.349523125 : mass;
-            if (grams > 0) per100 = net * (100 / grams);
-          }
-        }
-
-        // Update UI
-        els.netPerServing.textContent = fmt(net);
-        els.netForServings.textContent = fmt(total);
-        els.netPer100g.textContent = Number.isFinite(per100) ? fmt(per100) : '—';
-
-        // Assessment
-        let label = 'Enter values';
-        let cls = 'badge';
-        if (TC > 0 || F > 0 || SA > 0) {
-          if (net <= 5) { label = 'Very low net carbs'; cls = 'badge'; }
-          else if (net <= 10) { label = 'Low net carbs'; cls = 'badge'; }
-          else if (net <= 20) { label = 'Moderate net carbs'; cls = 'badge'; }
-          else { label = 'High net carbs'; cls = 'badge'; }
-        }
-        els.assessment.innerHTML = '<span class="'+cls+'">'+label+'</span>';
-
-        // Math trace
-        els.mathTrace.textContent =
-          `Calculation: NetCarbs = ${TC} − ${F} − ${fsa} × ${SA} = ${net} g per serving.`;
-      }
-
-      // Bind events
-      // On input: compute live; on blur: validate inline
-      [
-        els.totalCarbs, els.fiber, els.sugarAlcohols,
-        els.servingSize, els.servingUnit, els.servings
-      ].forEach(el => {
-        el.addEventListener('input', compute, {passive:true});
-      });
-
-      els.totalCarbs.addEventListener('blur', validateTotalCarbs, {passive:true});
-      els.fiber.addEventListener('blur', validateFiber, {passive:true});
-      els.sugarAlcohols.addEventListener('blur', validateSA, {passive:true});
-      els.servingSize.addEventListener('blur', validateServingSize, {passive:true});
-      els.servings.addEventListener('blur', validateServings, {passive:true});
-      els.servingUnit.addEventListener('change', compute, {passive:true});
-
-      els.saMode.forEach(r => r.addEventListener('change', compute, {passive:true}));
-
-      // Initial compute
-      compute();
-    })();
-  </script>
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1439,13 +1034,8 @@
   border-color:#fed7aa;
   color:#9a3412;
 }
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main">Skip to main content</a>
-
-<main class="container" id="main" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/health-fitness" class="hover:text-blue-600">Health & Fitness</a> &raquo; <a href="https://calcdomain.com/subcategories/diet-nutrition" class="hover:text-blue-600">Diet Nutrition</a></nav>
+</style><a class="skip-link" href="#main">Skip to main content</a><main class="container" id="main" role="main">
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/health-fitness" class="hover:text-blue-600">Health &amp; Fitness</a> » <a href="https://calcdomain.com/subcategories/diet-nutrition" class="hover:text-blue-600">Diet Nutrition</a></nav>
 <h1>Net Carbs Calculator</h1>
 <p class="lead">Instantly calculate net carbohydrates from a nutrition label. Designed for low-carb and keto eaters, dietitians, and anyone tracking carb impact. Enter total carbohydrates, fiber, and sugar alcohols to get precise net carbs per serving and for multiple servings.</p>
 <div class="layout">
@@ -1719,9 +1309,48 @@
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
     (function(){
       'use strict';
 
@@ -1924,6 +1553,410 @@
       // Initial compute
       compute();
     })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
 
-</body></html>
+      // Utilities
+      const $ = (sel, parent=document) => parent.querySelector(sel);
+      const $$ = (sel, parent=document) => Array.from(parent.querySelectorAll(sel));
+      const clamp0 = n => Math.max(0, n);
+      const toNum = v => {
+        if (v === '' || v === null || v === undefined) return NaN;
+        const n = Number(v);
+        return Number.isFinite(n) ? n : NaN;
+      };
+      const fmt = n => {
+        if (!Number.isFinite(n)) return '—';
+        const fixed = Math.round(n * 100) / 100;
+        return (fixed % 1 === 0 ? fixed.toFixed(0) : fixed.toFixed(2)) + ' g';
+      };
+
+      // Elements
+      const els = {
+        servingSize: $('#servingSize'),
+        servingUnit: $('#servingUnit'),
+        totalCarbs: $('#totalCarbs'),
+        fiber: $('#fiber'),
+        sugarAlcohols: $('#sugarAlcohols'),
+        servings: $('#servings'),
+        saMode: $$('input[name="saMode"]'),
+
+        netPerServing: $('#netPerServing'),
+        netForServings: $('#netForServings'),
+        netPer100g: $('#netPer100g'),
+        assessment: $('#assessment'),
+        mathTrace: $('#mathTrace'),
+
+        // errors
+        servingErr: $('#servingErr'),
+        tcErr: $('#tcErr'),
+        fiberErr: $('#fiberErr'),
+        saErr: $('#saErr'),
+        servingsErr: $('#servingsErr'),
+
+        // help buttons
+        servingHelpBtn: $('#servingHelpBtn'),
+        tcHelpBtn: $('#tcHelpBtn'),
+        fiberHelpBtn: $('#fiberHelpBtn'),
+        saHelpBtn: $('#saHelpBtn'),
+      };
+
+      // Tooltip toggles
+      function bindHelp(btnId, paneId){
+        const btn = document.getElementById(btnId);
+        const pane = document.getElementById(paneId);
+        if(!btn || !pane) return;
+        btn.addEventListener('click', () => {
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          pane.setAttribute('aria-hidden', String(expanded));
+        }, {passive:true});
+      }
+      bindHelp('servingHelpBtn','servingHelp');
+      bindHelp('tcHelpBtn','tcHelp');
+      bindHelp('fiberHelpBtn','fiberHelp');
+      bindHelp('saHelpBtn','saHelp');
+
+      // Validation
+      function showError(el, errEl, msg){
+        el.setAttribute('aria-invalid', 'true');
+        errEl.textContent = msg || '';
+      }
+      function clearError(el, errEl){
+        el.removeAttribute('aria-invalid');
+        errEl.textContent = '';
+      }
+
+      function validateTotalCarbs(){
+        const val = toNum(els.totalCarbs.value.trim());
+        if (!Number.isFinite(val)) { showError(els.totalCarbs, els.tcErr, 'Enter a numeric value for total carbohydrates.'); return false; }
+        if (val < 0) { showError(els.totalCarbs, els.tcErr, 'Total carbohydrates cannot be negative.'); return false; }
+        clearError(els.totalCarbs, els.tcErr);
+        return true;
+      }
+      function validateFiber(){
+        const t = toNum(els.totalCarbs.value.trim());
+        const f = toNum(els.fiber.value.trim() || '0');
+        if (!Number.isFinite(f)) { showError(els.fiber, els.fiberErr, 'Enter a numeric value for fiber or leave blank.'); return false; }
+        if (f < 0) { showError(els.fiber, els.fiberErr, 'Fiber cannot be negative.'); return false; }
+        if (Number.isFinite(t) && f > t) { showError(els.fiber, els.fiberErr, 'Fiber should not exceed total carbohydrates.'); return false; }
+        clearError(els.fiber, els.fiberErr);
+        return true;
+      }
+      function validateSA(){
+        const t = toNum(els.totalCarbs.value.trim());
+        const sa = toNum(els.sugarAlcohols.value.trim() || '0');
+        if (!Number.isFinite(sa)) { showError(els.sugarAlcohols, els.saErr, 'Enter a numeric value for sugar alcohols or leave blank.'); return false; }
+        if (sa < 0) { showError(els.sugarAlcohols, els.saErr, 'Sugar alcohols cannot be negative.'); return false; }
+        if (Number.isFinite(t) && sa > t) { showError(els.sugarAlcohols, els.saErr, 'Sugar alcohols should not exceed total carbohydrates.'); return false; }
+        clearError(els.sugarAlcohols, els.saErr);
+        return true;
+      }
+      function validateServingSize(){
+        const s = els.servingSize.value.trim();
+        if (s === '') { clearError(els.servingSize, els.servingErr); return true; } // optional
+        const v = toNum(s);
+        if (!Number.isFinite(v)) { showError(els.servingSize, els.servingErr, 'Enter a numeric value for serving size or leave blank.'); return false; }
+        if (v <= 0) { showError(els.servingSize, els.servingErr, 'Serving size must be greater than 0.'); return false; }
+        clearError(els.servingSize, els.servingErr);
+        return true;
+      }
+      function validateServings(){
+        const n = toNum(els.servings.value.trim());
+        if (!Number.isFinite(n)) { showError(els.servings, els.servingsErr, 'Enter the number of servings (e.g., 1 or 1.5).'); return false; }
+        if (n < 0) { showError(els.servings, els.servingsErr, 'Servings cannot be negative.'); return false; }
+        clearError(els.servings, els.servingsErr);
+        return true;
+      }
+
+      // Compute
+      function currentSaFactor(){
+        const checked = els.saMode.find(r => r.checked);
+        return checked ? Number(checked.value) : 1;
+      }
+
+      function compute(){
+        // Validate required total carbs
+        if (!validateTotalCarbs()) {
+          els.netPerServing.textContent = '0 g';
+          els.netForServings.textContent = '0 g';
+          els.netPer100g.textContent = '—';
+          els.assessment.innerHTML = '<span class="badge">Enter values</span>';
+          els.mathTrace.textContent = '';
+          return;
+        }
+        // Optional fields validations
+        if (!validateFiber() || !validateSA() || !validateServingSize() || !validateServings()) {
+          // proceed with computation but show errors
+        }
+
+        const TC = clamp0(toNum(els.totalCarbs.value.trim()));
+        const F  = clamp0(toNum(els.fiber.value.trim() || '0'));
+        const SA = clamp0(toNum(els.sugarAlcohols.value.trim() || '0'));
+        const fsa = currentSaFactor();
+        let net = TC - F - fsa * SA;
+        if (!Number.isFinite(net)) net = 0;
+        net = clamp0(net);
+
+        const servings = clamp0(toNum(els.servings.value.trim() || '1')) || 0;
+        const total = net * servings;
+
+        // per 100 g
+        let per100 = NaN;
+        const sVal = els.servingSize.value.trim();
+        if (sVal !== '') {
+          const mass = clamp0(toNum(sVal));
+          if (mass > 0) {
+            const unit = els.servingUnit.value;
+            const grams = unit === 'oz' ? mass * 28.349523125 : mass;
+            if (grams > 0) per100 = net * (100 / grams);
+          }
+        }
+
+        // Update UI
+        els.netPerServing.textContent = fmt(net);
+        els.netForServings.textContent = fmt(total);
+        els.netPer100g.textContent = Number.isFinite(per100) ? fmt(per100) : '—';
+
+        // Assessment
+        let label = 'Enter values';
+        let cls = 'badge';
+        if (TC > 0 || F > 0 || SA > 0) {
+          if (net <= 5) { label = 'Very low net carbs'; cls = 'badge'; }
+          else if (net <= 10) { label = 'Low net carbs'; cls = 'badge'; }
+          else if (net <= 20) { label = 'Moderate net carbs'; cls = 'badge'; }
+          else { label = 'High net carbs'; cls = 'badge'; }
+        }
+        els.assessment.innerHTML = '<span class="'+cls+'">'+label+'</span>';
+
+        // Math trace
+        els.mathTrace.textContent =
+          `Calculation: NetCarbs = ${TC} − ${F} − ${fsa} × ${SA} = ${net} g per serving.`;
+      }
+
+      // Bind events
+      // On input: compute live; on blur: validate inline
+      [
+        els.totalCarbs, els.fiber, els.sugarAlcohols,
+        els.servingSize, els.servingUnit, els.servings
+      ].forEach(el => {
+        el.addEventListener('input', compute, {passive:true});
+      });
+
+      els.totalCarbs.addEventListener('blur', validateTotalCarbs, {passive:true});
+      els.fiber.addEventListener('blur', validateFiber, {passive:true});
+      els.sugarAlcohols.addEventListener('blur', validateSA, {passive:true});
+      els.servingSize.addEventListener('blur', validateServingSize, {passive:true});
+      els.servings.addEventListener('blur', validateServings, {passive:true});
+      els.servingUnit.addEventListener('change', compute, {passive:true});
+
+      els.saMode.forEach(r => r.addEventListener('change', compute, {passive:true}));
+
+      // Initial compute
+      compute();
+    })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
+
+      // Utilities
+      const $ = (sel, parent=document) => parent.querySelector(sel);
+      const $$ = (sel, parent=document) => Array.from(parent.querySelectorAll(sel));
+      const clamp0 = n => Math.max(0, n);
+      const toNum = v => {
+        if (v === '' || v === null || v === undefined) return NaN;
+        const n = Number(v);
+        return Number.isFinite(n) ? n : NaN;
+      };
+      const fmt = n => {
+        if (!Number.isFinite(n)) return '—';
+        const fixed = Math.round(n * 100) / 100;
+        return (fixed % 1 === 0 ? fixed.toFixed(0) : fixed.toFixed(2)) + ' g';
+      };
+
+      // Elements
+      const els = {
+        servingSize: $('#servingSize'),
+        servingUnit: $('#servingUnit'),
+        totalCarbs: $('#totalCarbs'),
+        fiber: $('#fiber'),
+        sugarAlcohols: $('#sugarAlcohols'),
+        servings: $('#servings'),
+        saMode: $$('input[name="saMode"]'),
+
+        netPerServing: $('#netPerServing'),
+        netForServings: $('#netForServings'),
+        netPer100g: $('#netPer100g'),
+        assessment: $('#assessment'),
+        mathTrace: $('#mathTrace'),
+
+        // errors
+        servingErr: $('#servingErr'),
+        tcErr: $('#tcErr'),
+        fiberErr: $('#fiberErr'),
+        saErr: $('#saErr'),
+        servingsErr: $('#servingsErr'),
+
+        // help buttons
+        servingHelpBtn: $('#servingHelpBtn'),
+        tcHelpBtn: $('#tcHelpBtn'),
+        fiberHelpBtn: $('#fiberHelpBtn'),
+        saHelpBtn: $('#saHelpBtn'),
+      };
+
+      // Tooltip toggles
+      function bindHelp(btnId, paneId){
+        const btn = document.getElementById(btnId);
+        const pane = document.getElementById(paneId);
+        if(!btn || !pane) return;
+        btn.addEventListener('click', () => {
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          pane.setAttribute('aria-hidden', String(expanded));
+        }, {passive:true});
+      }
+      bindHelp('servingHelpBtn','servingHelp');
+      bindHelp('tcHelpBtn','tcHelp');
+      bindHelp('fiberHelpBtn','fiberHelp');
+      bindHelp('saHelpBtn','saHelp');
+
+      // Validation
+      function showError(el, errEl, msg){
+        el.setAttribute('aria-invalid', 'true');
+        errEl.textContent = msg || '';
+      }
+      function clearError(el, errEl){
+        el.removeAttribute('aria-invalid');
+        errEl.textContent = '';
+      }
+
+      function validateTotalCarbs(){
+        const val = toNum(els.totalCarbs.value.trim());
+        if (!Number.isFinite(val)) { showError(els.totalCarbs, els.tcErr, 'Enter a numeric value for total carbohydrates.'); return false; }
+        if (val < 0) { showError(els.totalCarbs, els.tcErr, 'Total carbohydrates cannot be negative.'); return false; }
+        clearError(els.totalCarbs, els.tcErr);
+        return true;
+      }
+      function validateFiber(){
+        const t = toNum(els.totalCarbs.value.trim());
+        const f = toNum(els.fiber.value.trim() || '0');
+        if (!Number.isFinite(f)) { showError(els.fiber, els.fiberErr, 'Enter a numeric value for fiber or leave blank.'); return false; }
+        if (f < 0) { showError(els.fiber, els.fiberErr, 'Fiber cannot be negative.'); return false; }
+        if (Number.isFinite(t) && f > t) { showError(els.fiber, els.fiberErr, 'Fiber should not exceed total carbohydrates.'); return false; }
+        clearError(els.fiber, els.fiberErr);
+        return true;
+      }
+      function validateSA(){
+        const t = toNum(els.totalCarbs.value.trim());
+        const sa = toNum(els.sugarAlcohols.value.trim() || '0');
+        if (!Number.isFinite(sa)) { showError(els.sugarAlcohols, els.saErr, 'Enter a numeric value for sugar alcohols or leave blank.'); return false; }
+        if (sa < 0) { showError(els.sugarAlcohols, els.saErr, 'Sugar alcohols cannot be negative.'); return false; }
+        if (Number.isFinite(t) && sa > t) { showError(els.sugarAlcohols, els.saErr, 'Sugar alcohols should not exceed total carbohydrates.'); return false; }
+        clearError(els.sugarAlcohols, els.saErr);
+        return true;
+      }
+      function validateServingSize(){
+        const s = els.servingSize.value.trim();
+        if (s === '') { clearError(els.servingSize, els.servingErr); return true; } // optional
+        const v = toNum(s);
+        if (!Number.isFinite(v)) { showError(els.servingSize, els.servingErr, 'Enter a numeric value for serving size or leave blank.'); return false; }
+        if (v <= 0) { showError(els.servingSize, els.servingErr, 'Serving size must be greater than 0.'); return false; }
+        clearError(els.servingSize, els.servingErr);
+        return true;
+      }
+      function validateServings(){
+        const n = toNum(els.servings.value.trim());
+        if (!Number.isFinite(n)) { showError(els.servings, els.servingsErr, 'Enter the number of servings (e.g., 1 or 1.5).'); return false; }
+        if (n < 0) { showError(els.servings, els.servingsErr, 'Servings cannot be negative.'); return false; }
+        clearError(els.servings, els.servingsErr);
+        return true;
+      }
+
+      // Compute
+      function currentSaFactor(){
+        const checked = els.saMode.find(r => r.checked);
+        return checked ? Number(checked.value) : 1;
+      }
+
+      function compute(){
+        // Validate required total carbs
+        if (!validateTotalCarbs()) {
+          els.netPerServing.textContent = '0 g';
+          els.netForServings.textContent = '0 g';
+          els.netPer100g.textContent = '—';
+          els.assessment.innerHTML = '<span class="badge">Enter values</span>';
+          els.mathTrace.textContent = '';
+          return;
+        }
+        // Optional fields validations
+        if (!validateFiber() || !validateSA() || !validateServingSize() || !validateServings()) {
+          // proceed with computation but show errors
+        }
+
+        const TC = clamp0(toNum(els.totalCarbs.value.trim()));
+        const F  = clamp0(toNum(els.fiber.value.trim() || '0'));
+        const SA = clamp0(toNum(els.sugarAlcohols.value.trim() || '0'));
+        const fsa = currentSaFactor();
+        let net = TC - F - fsa * SA;
+        if (!Number.isFinite(net)) net = 0;
+        net = clamp0(net);
+
+        const servings = clamp0(toNum(els.servings.value.trim() || '1')) || 0;
+        const total = net * servings;
+
+        // per 100 g
+        let per100 = NaN;
+        const sVal = els.servingSize.value.trim();
+        if (sVal !== '') {
+          const mass = clamp0(toNum(sVal));
+          if (mass > 0) {
+            const unit = els.servingUnit.value;
+            const grams = unit === 'oz' ? mass * 28.349523125 : mass;
+            if (grams > 0) per100 = net * (100 / grams);
+          }
+        }
+
+        // Update UI
+        els.netPerServing.textContent = fmt(net);
+        els.netForServings.textContent = fmt(total);
+        els.netPer100g.textContent = Number.isFinite(per100) ? fmt(per100) : '—';
+
+        // Assessment
+        let label = 'Enter values';
+        let cls = 'badge';
+        if (TC > 0 || F > 0 || SA > 0) {
+          if (net <= 5) { label = 'Very low net carbs'; cls = 'badge'; }
+          else if (net <= 10) { label = 'Low net carbs'; cls = 'badge'; }
+          else if (net <= 20) { label = 'Moderate net carbs'; cls = 'badge'; }
+          else { label = 'High net carbs'; cls = 'badge'; }
+        }
+        els.assessment.innerHTML = '<span class="'+cls+'">'+label+'</span>';
+
+        // Math trace
+        els.mathTrace.textContent =
+          `Calculation: NetCarbs = ${TC} − ${F} − ${fsa} × ${SA} = ${net} g per serving.`;
+      }
+
+      // Bind events
+      // On input: compute live; on blur: validate inline
+      [
+        els.totalCarbs, els.fiber, els.sugarAlcohols,
+        els.servingSize, els.servingUnit, els.servings
+      ].forEach(el => {
+        el.addEventListener('input', compute, {passive:true});
+      });
+
+      els.totalCarbs.addEventListener('blur', validateTotalCarbs, {passive:true});
+      els.fiber.addEventListener('blur', validateFiber, {passive:true});
+      els.sugarAlcohols.addEventListener('blur', validateSA, {passive:true});
+      els.servingSize.addEventListener('blur', validateServingSize, {passive:true});
+      els.servings.addEventListener('blur', validateServings, {passive:true});
+      els.servingUnit.addEventListener('change', compute, {passive:true});
+
+      els.saMode.forEach(r => r.addEventListener('change', compute, {passive:true}));
+
+      // Initial compute
+      compute();
+    })();
+  </script></body></html>

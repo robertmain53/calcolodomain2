@@ -241,10 +241,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
@@ -284,10 +290,22 @@
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
 </style>
 </head>
-<body>
-<a class="skip-link" href="#main">Skip to main content</a>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">W-4 Withholding Calculator</h1>
+    <p class="sub" id="pageSub">Estimate your federal income tax withholding per paycheck and generate ready-to-use W‑4 entries (Steps 3 and 4). Accurate, mobile‑first, and WCAG-compliant.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<main class="container w-full lg:w-2/3" id="main" role="main">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main class="container w-full lg:w-2/3" id="main" role="main">
 <nav aria-label="Breadcrumb" class="breadcrumb">Home / Finance / US Taxation / W‑4 Withholding Calculator</nav>
 <h1>W-4 Withholding Calculator</h1>
 <p class="lead">Quickly estimate your federal income tax withholding per paycheck and generate ready-to-use W‑4 entries (Steps 3 and 4). Ideal for employees, HR, and payroll planners who want accurate, transparent figures without guesswork.</p>
@@ -422,7 +440,7 @@
 </div>
 <div class="actions">
 <button aria-label="Calculate withholding" class="btn" id="calcBtn" type="button">Calculate</button>
-<button aria-label="Reset form" class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button aria-label="Reset form" class="btn secondary btnSecondary" id="resetBtn" type="button">Reset</button>
 </div>
 </section>
 </aside>
@@ -663,321 +681,17 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
+
+
 </main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;"></div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-      // Utilities
-      const $ = (sel, ctx=document) => ctx.querySelector(sel);
-      const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
-      const money = (n) => new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits:2 }).format(Number.isFinite(n)? n : 0);
-      const clampNonNeg = (v) => isNaN(v)||v<0 ? 0 : v;
-
-      // Elements
-      const els = {
-        filingStatus: $$('input[name="filingStatus"]'),
-        frequency: $('#frequency'),
-        grossPerPay: $('#grossPerPay'),
-        pretaxPerPay: $('#pretaxPerPay'),
-        otherJobsIncome: $('#otherJobsIncome'),
-        otherIncome: $('#otherIncome'),
-        itemized: $('#itemized'),
-        kidsU17: $('#kidsU17'),
-        otherDeps: $('#otherDeps'),
-        currentWithheld: $('#currentWithheld'),
-        calcBtn: $('#calcBtn'),
-        resetBtn: $('#resetBtn'),
-        // errors
-        freqErr: $('#freqErr'),
-        grossErr: $('#grossErr'),
-        pretaxErr: $('#pretaxErr'),
-        ojErr: $('#ojErr'),
-        oincErr: $('#oincErr'),
-        itemErr: $('#itemErr'),
-        kidsErr: $('#kidsErr'),
-        odepsErr: $('#odepsErr'),
-        cwErr: $('#cwErr'),
-        // results
-        resAnnualThis: $('#resAnnualThis'),
-        resAGI: $('#resAGI'),
-        resDeductionUsed: $('#resDeductionUsed'),
-        resTaxable: $('#resTaxable'),
-        resTaxBefore: $('#resTaxBefore'),
-        resCredits: $('#resCredits'),
-        resTaxAfter: $('#resTaxAfter'),
-        resPerPay: $('#resPerPay'),
-        resStep3: $('#resStep3'),
-        resStep4a: $('#resStep4a'),
-        resStep4b: $('#resStep4b'),
-        resStep4c: $('#resStep4c')
-      };
-
-      // Tooltips
-      $$('.tooltip-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const id = btn.getAttribute('aria-controls');
-          const panel = document.getElementById(id);
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          panel.setAttribute('aria-hidden', String(expanded));
-        });
-        btn.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault(); btn.click();
-          }
-        });
-      });
-
-      // Parameters (2024)
-      const STANDARD_DEDUCTION = {
-        single: 14600,
-        mfj: 29200,
-        hoh: 21900
-      };
-      const BRACKETS_2024 = {
-        single: [
-          [0, 11600, 0.10],
-          [11600, 47150, 0.12],
-          [47150, 100525, 0.22],
-          [100525, 191950, 0.24],
-          [191950, 243725, 0.32],
-          [243725, 609350, 0.35],
-          [609350, Infinity, 0.37]
-        ],
-        mfj: [
-          [0, 23200, 0.10],
-          [23200, 94300, 0.12],
-          [94300, 201050, 0.22],
-          [201050, 383900, 0.24],
-          [383900, 487450, 0.32],
-          [487450, 731200, 0.35],
-          [731200, Infinity, 0.37]
-        ],
-        hoh: [
-          [0, 16550, 0.10],
-          [16550, 63100, 0.12],
-          [63100, 100500, 0.22],
-          [100500, 191950, 0.24],
-          [191950, 243700, 0.32],
-          [243700, 609350, 0.35],
-          [609350, Infinity, 0.37]
-        ]
-      };
-      const CTC_PHASEOUT = { single:200000, hoh:200000, mfj:400000 };
-
-      const PERIODS = {
-        weekly: 52, biweekly: 26, semimonthly: 24, monthly: 12, annually: 1
-      };
-
-      function getFilingStatus() {
-        const checked = els.filingStatus.find(r => r.checked);
-        return checked ? checked.value : 'single';
-      }
-      function getPeriods() {
-        return PERIODS[els.frequency.value] || 26;
-      }
-
-      // Validation
-      function setError(input, errEl, message) {
-        if (!errEl) return;
-        if (message) {
-          input?.setAttribute('aria-invalid', 'true');
-          errEl.textContent = message;
-        } else {
-          input?.setAttribute('aria-invalid', 'false');
-          errEl.textContent = '';
-        }
-      }
-
-      function validate() {
-        let ok = true;
-        // frequency
-        if (!PERIODS.hasOwnProperty(els.frequency.value)) {
-          setError(els.frequency, els.freqErr, 'Please choose a valid pay frequency.');
-          ok = false;
-        } else {
-          setError(els.frequency, els.freqErr, '');
-        }
-        // gross
-        const gross = parseFloat(els.grossPerPay.value);
-        if (isNaN(gross) || gross <= 0) {
-          setError(els.grossPerPay, els.grossErr, 'Enter a positive gross pay per period (e.g., 3000).');
-          ok = false;
-        } else {
-          setError(els.grossPerPay, els.grossErr, '');
-        }
-        // pretax not exceeding gross
-        const pretax = clampNonNeg(parseFloat(els.pretaxPerPay.value));
-        if (!isNaN(gross) && pretax > gross) {
-          setError(els.pretaxPerPay, els.pretaxErr, 'Pre-tax deductions cannot exceed your gross pay.');
-          ok = false;
-        } else {
-          setError(els.pretaxPerPay, els.pretaxErr, '');
-        }
-        // integers for dependents
-        const kids = Number(els.kidsU17.value);
-        const odep = Number(els.otherDeps.value);
-        if (!Number.isInteger(kids) || kids < 0) {
-          setError(els.kidsU17, els.kidsErr, 'Enter a whole number of children under 17 (0 or more).');
-          ok = false;
-        } else setError(els.kidsU17, els.kidsErr, '');
-        if (!Number.isInteger(odep) || odep < 0) {
-          setError(els.otherDeps, els.odepsErr, 'Enter a whole number of other dependents (0 or more).');
-          ok = false;
-        } else setError(els.otherDeps, els.odepsErr, '');
-        // other numeric fields sanity
-        const fields = [
-          [els.otherJobsIncome, els.ojErr, 'Enter a non-negative annual amount or leave blank.'],
-          [els.otherIncome, els.oincErr, 'Enter a non-negative annual amount or leave blank.'],
-          [els.itemized, els.itemErr, 'Enter a non-negative annual amount or leave blank.'],
-          [els.currentWithheld, els.cwErr, 'Enter a non-negative amount or leave blank.']
-        ];
-        for (const [input, err, msg] of fields) {
-          const val = parseFloat(input.value);
-          if (input.value !== '' && (isNaN(val) || val < 0)) {
-            setError(input, err, msg);
-            ok = false;
-          } else {
-            setError(input, err, '');
-          }
-        }
-        return ok;
-      }
-
-      function taxFromBrackets(fstatus, taxable) {
-        const brackets = BRACKETS_2024[fstatus] || BRACKETS_2024.single;
-        let tax = 0;
-        let remaining = taxable;
-        if (remaining <= 0) return 0;
-
-        for (const [l,u,r] of brackets) {
-          if (remaining <= 0) break;
-          const lower = l;
-          const upper = Math.min(u, taxable);
-          if (upper > lower) {
-            const slice = upper - lower;
-            tax += slice * r;
-          }
-        }
-        return tax;
-      }
-
-      function compute() {
-        if (!validate()) return;
-
-        const fstatus = getFilingStatus();
-        const periods = getPeriods();
-
-        const gross = clampNonNeg(parseFloat(els.grossPerPay.value));
-        const pretax = clampNonNeg(parseFloat(els.pretaxPerPay.value));
-        const otherJobs = clampNonNeg(parseFloat(els.otherJobsIncome.value));
-        const otherInc = clampNonNeg(parseFloat(els.otherIncome.value));
-        const itemized = clampNonNeg(parseFloat(els.itemized.value));
-        const kids = clampNonNeg(parseFloat(els.kidsU17.value));
-        const odep = clampNonNeg(parseFloat(els.otherDeps.value));
-        const currentWithheld = clampNonNeg(parseFloat(els.currentWithheld.value));
-
-        const taxablePerPay = Math.max(0, gross - pretax);
-        const annualThisJob = taxablePerPay * periods;
-        const totalEarned = annualThisJob + otherJobs;
-        const AGI = totalEarned + otherInc;
-
-        const stdDed = STANDARD_DEDUCTION[fstatus] || STANDARD_DEDUCTION.single;
-        const deductionUsed = Math.max(stdDed, itemized);
-        const taxableIncome = Math.max(0, AGI - deductionUsed);
-
-        const taxBefore = taxFromBrackets(fstatus, taxableIncome);
-
-        // Credits
-        const baseCredit = 2000 * Math.round(kids) + 500 * Math.round(odep);
-        const phaseThr = CTC_PHASEOUT[fstatus] || 200000;
-        const excess = Math.max(0, AGI - phaseThr);
-        const reduction = excess > 0 ? 50 * Math.ceil(excess / 1000) : 0;
-        const creditAfterPhase = Math.max(0, baseCredit - reduction);
-        const creditApplied = Math.min(creditAfterPhase, taxBefore);
-        const taxAfter = Math.max(0, taxBefore - creditApplied);
-
-        // Allocation to this job
-        const share = totalEarned > 0 ? (annualThisJob / totalEarned) : 1;
-        const perPayNeeded = (taxAfter * share) / Math.max(1, periods);
-
-        // W-4 suggestions
-        const step3 = baseCredit; // Amount entered on Step 3 equals estimated nonrefundable credits total
-        const step4a = otherInc; // as entered
-        const step4b = Math.max(0, itemized - stdDed); // excess over standard
-        let step4c; // per paycheck extra withholding
-        if (currentWithheld > 0) {
-          step4c = Math.max(0, perPayNeeded - currentWithheld);
-        } else {
-          // If user doesn't know current withholding, show full target per-pay withholding as a conservative guide
-          step4c = perPayNeeded;
-        }
-
-        // Update UI
-        els.resAnnualThis.textContent = money(annualThisJob);
-        els.resAGI.textContent = money(AGI);
-        els.resDeductionUsed.textContent = money(deductionUsed);
-        els.resTaxable.textContent = money(taxableIncome);
-        els.resTaxBefore.textContent = money(taxBefore);
-        els.resCredits.textContent = money(creditApplied);
-        els.resTaxAfter.textContent = money(taxAfter);
-        els.resPerPay.textContent = money(perPayNeeded);
-        els.resStep3.textContent = money(step3);
-        els.resStep4a.textContent = money(step4a);
-        els.resStep4b.textContent = money(step4b);
-        els.resStep4c.textContent = money(step4c);
-      }
-
-      // Events
-      ['blur','change','input'].forEach(ev => {
-        els.grossPerPay.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
-        els.pretaxPerPay.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
-        els.otherJobsIncome.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
-        els.otherIncome.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
-        els.itemized.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
-        els.kidsU17.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
-        els.otherDeps.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
-        els.currentWithheld.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
-      });
-      els.frequency.addEventListener('change', () => { validate(); compute(); });
-      els.filingStatus.forEach(r => r.addEventListener('change', () => { validate(); compute(); }));
-      els.calcBtn.addEventListener('click', compute);
-      els.resetBtn.addEventListener('click', () => {
-        $('#fsSingle').checked = true;
-        els.frequency.value = 'biweekly';
-        els.grossPerPay.value = '';
-        els.pretaxPerPay.value = '';
-        els.otherJobsIncome.value = '';
-        els.otherIncome.value = '';
-        els.itemized.value = '';
-        els.kidsU17.value = '0';
-        els.otherDeps.value = '0';
-        els.currentWithheld.value = '';
-        // clear errors
-        [els.freqErr, els.grossErr, els.pretaxErr, els.ojErr, els.oincErr, els.itemErr, els.kidsErr, els.odepsErr, els.cwErr].forEach(e => e.textContent = '');
-        $$('input,select').forEach(i => i.setAttribute('aria-invalid','false'));
-        // reset results
-        [els.resAnnualThis,els.resAGI,els.resDeductionUsed,els.resTaxable,els.resTaxBefore,els.resCredits,els.resTaxAfter,els.resPerPay,els.resStep3,els.resStep4a,els.resStep4b,els.resStep4c]
-          .forEach(el => el.textContent = '$0.00');
-      });
-
-      // Initial compute (keeps CLS low since results panel has min-height)
-      compute();
-    })();
-  </script>
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main">Skip to main content</a><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1009,12 +723,7 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main">Skip to main content</a>
-
-<main class="container" id="main" role="main">
+</style><a class="skip-link" href="#main">Skip to main content</a><main class="container" id="main" role="main">
 <nav aria-label="Breadcrumb" class="breadcrumb">Home / Finance / US Taxation / W‑4 Withholding Calculator</nav>
 <h1>W-4 Withholding Calculator</h1>
 <p class="lead">Quickly estimate your federal income tax withholding per paycheck and generate ready-to-use W‑4 entries (Steps 3 and 4). Ideal for employees, HR, and payroll planners who want accurate, transparent figures without guesswork.</p>
@@ -1148,8 +857,8 @@
 <div aria-live="polite" class="error" id="cwErr" role="alert"></div>
 </div>
 <div class="actions">
-<button aria-label="Calculate withholding" class="btn" id="calcBtn" type="button">Calculate</button>
-<button aria-label="Reset form" class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button aria-label="Calculate withholding" class="btn" id="calcBtn__dup2" type="button">Calculate</button>
+<button aria-label="Reset form" class="btn secondary" id="resetBtn__dup2" type="button">Reset</button>
 </div>
 </section>
 </aside>
@@ -1390,321 +1099,7 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
-
-      // Utilities
-      const $ = (sel, ctx=document) => ctx.querySelector(sel);
-      const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
-      const money = (n) => new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits:2 }).format(Number.isFinite(n)? n : 0);
-      const clampNonNeg = (v) => isNaN(v)||v<0 ? 0 : v;
-
-      // Elements
-      const els = {
-        filingStatus: $$('input[name="filingStatus"]'),
-        frequency: $('#frequency'),
-        grossPerPay: $('#grossPerPay'),
-        pretaxPerPay: $('#pretaxPerPay'),
-        otherJobsIncome: $('#otherJobsIncome'),
-        otherIncome: $('#otherIncome'),
-        itemized: $('#itemized'),
-        kidsU17: $('#kidsU17'),
-        otherDeps: $('#otherDeps'),
-        currentWithheld: $('#currentWithheld'),
-        calcBtn: $('#calcBtn'),
-        resetBtn: $('#resetBtn'),
-        // errors
-        freqErr: $('#freqErr'),
-        grossErr: $('#grossErr'),
-        pretaxErr: $('#pretaxErr'),
-        ojErr: $('#ojErr'),
-        oincErr: $('#oincErr'),
-        itemErr: $('#itemErr'),
-        kidsErr: $('#kidsErr'),
-        odepsErr: $('#odepsErr'),
-        cwErr: $('#cwErr'),
-        // results
-        resAnnualThis: $('#resAnnualThis'),
-        resAGI: $('#resAGI'),
-        resDeductionUsed: $('#resDeductionUsed'),
-        resTaxable: $('#resTaxable'),
-        resTaxBefore: $('#resTaxBefore'),
-        resCredits: $('#resCredits'),
-        resTaxAfter: $('#resTaxAfter'),
-        resPerPay: $('#resPerPay'),
-        resStep3: $('#resStep3'),
-        resStep4a: $('#resStep4a'),
-        resStep4b: $('#resStep4b'),
-        resStep4c: $('#resStep4c')
-      };
-
-      // Tooltips
-      $$('.tooltip-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const id = btn.getAttribute('aria-controls');
-          const panel = document.getElementById(id);
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          panel.setAttribute('aria-hidden', String(expanded));
-        });
-        btn.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault(); btn.click();
-          }
-        });
-      });
-
-      // Parameters (2024)
-      const STANDARD_DEDUCTION = {
-        single: 14600,
-        mfj: 29200,
-        hoh: 21900
-      };
-      const BRACKETS_2024 = {
-        single: [
-          [0, 11600, 0.10],
-          [11600, 47150, 0.12],
-          [47150, 100525, 0.22],
-          [100525, 191950, 0.24],
-          [191950, 243725, 0.32],
-          [243725, 609350, 0.35],
-          [609350, Infinity, 0.37]
-        ],
-        mfj: [
-          [0, 23200, 0.10],
-          [23200, 94300, 0.12],
-          [94300, 201050, 0.22],
-          [201050, 383900, 0.24],
-          [383900, 487450, 0.32],
-          [487450, 731200, 0.35],
-          [731200, Infinity, 0.37]
-        ],
-        hoh: [
-          [0, 16550, 0.10],
-          [16550, 63100, 0.12],
-          [63100, 100500, 0.22],
-          [100500, 191950, 0.24],
-          [191950, 243700, 0.32],
-          [243700, 609350, 0.35],
-          [609350, Infinity, 0.37]
-        ]
-      };
-      const CTC_PHASEOUT = { single:200000, hoh:200000, mfj:400000 };
-
-      const PERIODS = {
-        weekly: 52, biweekly: 26, semimonthly: 24, monthly: 12, annually: 1
-      };
-
-      function getFilingStatus() {
-        const checked = els.filingStatus.find(r => r.checked);
-        return checked ? checked.value : 'single';
-      }
-      function getPeriods() {
-        return PERIODS[els.frequency.value] || 26;
-      }
-
-      // Validation
-      function setError(input, errEl, message) {
-        if (!errEl) return;
-        if (message) {
-          input?.setAttribute('aria-invalid', 'true');
-          errEl.textContent = message;
-        } else {
-          input?.setAttribute('aria-invalid', 'false');
-          errEl.textContent = '';
-        }
-      }
-
-      function validate() {
-        let ok = true;
-        // frequency
-        if (!PERIODS.hasOwnProperty(els.frequency.value)) {
-          setError(els.frequency, els.freqErr, 'Please choose a valid pay frequency.');
-          ok = false;
-        } else {
-          setError(els.frequency, els.freqErr, '');
-        }
-        // gross
-        const gross = parseFloat(els.grossPerPay.value);
-        if (isNaN(gross) || gross <= 0) {
-          setError(els.grossPerPay, els.grossErr, 'Enter a positive gross pay per period (e.g., 3000).');
-          ok = false;
-        } else {
-          setError(els.grossPerPay, els.grossErr, '');
-        }
-        // pretax not exceeding gross
-        const pretax = clampNonNeg(parseFloat(els.pretaxPerPay.value));
-        if (!isNaN(gross) && pretax > gross) {
-          setError(els.pretaxPerPay, els.pretaxErr, 'Pre-tax deductions cannot exceed your gross pay.');
-          ok = false;
-        } else {
-          setError(els.pretaxPerPay, els.pretaxErr, '');
-        }
-        // integers for dependents
-        const kids = Number(els.kidsU17.value);
-        const odep = Number(els.otherDeps.value);
-        if (!Number.isInteger(kids) || kids < 0) {
-          setError(els.kidsU17, els.kidsErr, 'Enter a whole number of children under 17 (0 or more).');
-          ok = false;
-        } else setError(els.kidsU17, els.kidsErr, '');
-        if (!Number.isInteger(odep) || odep < 0) {
-          setError(els.otherDeps, els.odepsErr, 'Enter a whole number of other dependents (0 or more).');
-          ok = false;
-        } else setError(els.otherDeps, els.odepsErr, '');
-        // other numeric fields sanity
-        const fields = [
-          [els.otherJobsIncome, els.ojErr, 'Enter a non-negative annual amount or leave blank.'],
-          [els.otherIncome, els.oincErr, 'Enter a non-negative annual amount or leave blank.'],
-          [els.itemized, els.itemErr, 'Enter a non-negative annual amount or leave blank.'],
-          [els.currentWithheld, els.cwErr, 'Enter a non-negative amount or leave blank.']
-        ];
-        for (const [input, err, msg] of fields) {
-          const val = parseFloat(input.value);
-          if (input.value !== '' && (isNaN(val) || val < 0)) {
-            setError(input, err, msg);
-            ok = false;
-          } else {
-            setError(input, err, '');
-          }
-        }
-        return ok;
-      }
-
-      function taxFromBrackets(fstatus, taxable) {
-        const brackets = BRACKETS_2024[fstatus] || BRACKETS_2024.single;
-        let tax = 0;
-        let remaining = taxable;
-        if (remaining <= 0) return 0;
-
-        for (const [l,u,r] of brackets) {
-          if (remaining <= 0) break;
-          const lower = l;
-          const upper = Math.min(u, taxable);
-          if (upper > lower) {
-            const slice = upper - lower;
-            tax += slice * r;
-          }
-        }
-        return tax;
-      }
-
-      function compute() {
-        if (!validate()) return;
-
-        const fstatus = getFilingStatus();
-        const periods = getPeriods();
-
-        const gross = clampNonNeg(parseFloat(els.grossPerPay.value));
-        const pretax = clampNonNeg(parseFloat(els.pretaxPerPay.value));
-        const otherJobs = clampNonNeg(parseFloat(els.otherJobsIncome.value));
-        const otherInc = clampNonNeg(parseFloat(els.otherIncome.value));
-        const itemized = clampNonNeg(parseFloat(els.itemized.value));
-        const kids = clampNonNeg(parseFloat(els.kidsU17.value));
-        const odep = clampNonNeg(parseFloat(els.otherDeps.value));
-        const currentWithheld = clampNonNeg(parseFloat(els.currentWithheld.value));
-
-        const taxablePerPay = Math.max(0, gross - pretax);
-        const annualThisJob = taxablePerPay * periods;
-        const totalEarned = annualThisJob + otherJobs;
-        const AGI = totalEarned + otherInc;
-
-        const stdDed = STANDARD_DEDUCTION[fstatus] || STANDARD_DEDUCTION.single;
-        const deductionUsed = Math.max(stdDed, itemized);
-        const taxableIncome = Math.max(0, AGI - deductionUsed);
-
-        const taxBefore = taxFromBrackets(fstatus, taxableIncome);
-
-        // Credits
-        const baseCredit = 2000 * Math.round(kids) + 500 * Math.round(odep);
-        const phaseThr = CTC_PHASEOUT[fstatus] || 200000;
-        const excess = Math.max(0, AGI - phaseThr);
-        const reduction = excess > 0 ? 50 * Math.ceil(excess / 1000) : 0;
-        const creditAfterPhase = Math.max(0, baseCredit - reduction);
-        const creditApplied = Math.min(creditAfterPhase, taxBefore);
-        const taxAfter = Math.max(0, taxBefore - creditApplied);
-
-        // Allocation to this job
-        const share = totalEarned > 0 ? (annualThisJob / totalEarned) : 1;
-        const perPayNeeded = (taxAfter * share) / Math.max(1, periods);
-
-        // W-4 suggestions
-        const step3 = baseCredit; // Amount entered on Step 3 equals estimated nonrefundable credits total
-        const step4a = otherInc; // as entered
-        const step4b = Math.max(0, itemized - stdDed); // excess over standard
-        let step4c; // per paycheck extra withholding
-        if (currentWithheld > 0) {
-          step4c = Math.max(0, perPayNeeded - currentWithheld);
-        } else {
-          // If user doesn't know current withholding, show full target per-pay withholding as a conservative guide
-          step4c = perPayNeeded;
-        }
-
-        // Update UI
-        els.resAnnualThis.textContent = money(annualThisJob);
-        els.resAGI.textContent = money(AGI);
-        els.resDeductionUsed.textContent = money(deductionUsed);
-        els.resTaxable.textContent = money(taxableIncome);
-        els.resTaxBefore.textContent = money(taxBefore);
-        els.resCredits.textContent = money(creditApplied);
-        els.resTaxAfter.textContent = money(taxAfter);
-        els.resPerPay.textContent = money(perPayNeeded);
-        els.resStep3.textContent = money(step3);
-        els.resStep4a.textContent = money(step4a);
-        els.resStep4b.textContent = money(step4b);
-        els.resStep4c.textContent = money(step4c);
-      }
-
-      // Events
-      ['blur','change','input'].forEach(ev => {
-        els.grossPerPay.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
-        els.pretaxPerPay.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
-        els.otherJobsIncome.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
-        els.otherIncome.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
-        els.itemized.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
-        els.kidsU17.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
-        els.otherDeps.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
-        els.currentWithheld.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
-      });
-      els.frequency.addEventListener('change', () => { validate(); compute(); });
-      els.filingStatus.forEach(r => r.addEventListener('change', () => { validate(); compute(); }));
-      els.calcBtn.addEventListener('click', compute);
-      els.resetBtn.addEventListener('click', () => {
-        $('#fsSingle').checked = true;
-        els.frequency.value = 'biweekly';
-        els.grossPerPay.value = '';
-        els.pretaxPerPay.value = '';
-        els.otherJobsIncome.value = '';
-        els.otherIncome.value = '';
-        els.itemized.value = '';
-        els.kidsU17.value = '0';
-        els.otherDeps.value = '0';
-        els.currentWithheld.value = '';
-        // clear errors
-        [els.freqErr, els.grossErr, els.pretaxErr, els.ojErr, els.oincErr, els.itemErr, els.kidsErr, els.odepsErr, els.cwErr].forEach(e => e.textContent = '');
-        $$('input,select').forEach(i => i.setAttribute('aria-invalid','false'));
-        // reset results
-        [els.resAnnualThis,els.resAGI,els.resDeductionUsed,els.resTaxable,els.resTaxBefore,els.resCredits,els.resTaxAfter,els.resPerPay,els.resStep3,els.resStep4a,els.resStep4b,els.resStep4c]
-          .forEach(el => el.textContent = '$0.00');
-      });
-
-      // Initial compute (keeps CLS low since results panel has min-height)
-      compute();
-    })();
-  </script>
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1736,12 +1131,7 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main">Skip to main content</a>
-
-<main class="container" id="main" role="main">
+</style><a class="skip-link" href="#main">Skip to main content</a><main class="container" id="main" role="main">
 <nav aria-label="Breadcrumb" class="breadcrumb">Home / Finance / US Taxation / W‑4 Withholding Calculator</nav>
 <h1>W-4 Withholding Calculator</h1>
 <p class="lead">Quickly estimate your federal income tax withholding per paycheck and generate ready-to-use W‑4 entries (Steps 3 and 4). Ideal for employees, HR, and payroll planners who want accurate, transparent figures without guesswork.</p>
@@ -1875,8 +1265,8 @@
 <div aria-live="polite" class="error" id="cwErr" role="alert"></div>
 </div>
 <div class="actions">
-<button aria-label="Calculate withholding" class="btn" id="calcBtn" type="button">Calculate</button>
-<button aria-label="Reset form" class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button aria-label="Calculate withholding" class="btn" id="calcBtn__dup3" type="button">Calculate</button>
+<button aria-label="Reset form" class="btn secondary" id="resetBtn__dup3" type="button">Reset</button>
 </div>
 </section>
 </aside>
@@ -2117,9 +1507,48 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
     (function(){
       'use strict';
 
@@ -2420,6 +1849,606 @@
       // Initial compute (keeps CLS low since results panel has min-height)
       compute();
     })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
 
-</body></html>
+      // Utilities
+      const $ = (sel, ctx=document) => ctx.querySelector(sel);
+      const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+      const money = (n) => new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits:2 }).format(Number.isFinite(n)? n : 0);
+      const clampNonNeg = (v) => isNaN(v)||v<0 ? 0 : v;
+
+      // Elements
+      const els = {
+        filingStatus: $$('input[name="filingStatus"]'),
+        frequency: $('#frequency'),
+        grossPerPay: $('#grossPerPay'),
+        pretaxPerPay: $('#pretaxPerPay'),
+        otherJobsIncome: $('#otherJobsIncome'),
+        otherIncome: $('#otherIncome'),
+        itemized: $('#itemized'),
+        kidsU17: $('#kidsU17'),
+        otherDeps: $('#otherDeps'),
+        currentWithheld: $('#currentWithheld'),
+        calcBtn: $('#calcBtn'),
+        resetBtn: $('#resetBtn'),
+        // errors
+        freqErr: $('#freqErr'),
+        grossErr: $('#grossErr'),
+        pretaxErr: $('#pretaxErr'),
+        ojErr: $('#ojErr'),
+        oincErr: $('#oincErr'),
+        itemErr: $('#itemErr'),
+        kidsErr: $('#kidsErr'),
+        odepsErr: $('#odepsErr'),
+        cwErr: $('#cwErr'),
+        // results
+        resAnnualThis: $('#resAnnualThis'),
+        resAGI: $('#resAGI'),
+        resDeductionUsed: $('#resDeductionUsed'),
+        resTaxable: $('#resTaxable'),
+        resTaxBefore: $('#resTaxBefore'),
+        resCredits: $('#resCredits'),
+        resTaxAfter: $('#resTaxAfter'),
+        resPerPay: $('#resPerPay'),
+        resStep3: $('#resStep3'),
+        resStep4a: $('#resStep4a'),
+        resStep4b: $('#resStep4b'),
+        resStep4c: $('#resStep4c')
+      };
+
+      // Tooltips
+      $$('.tooltip-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('aria-controls');
+          const panel = document.getElementById(id);
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          panel.setAttribute('aria-hidden', String(expanded));
+        });
+        btn.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault(); btn.click();
+          }
+        });
+      });
+
+      // Parameters (2024)
+      const STANDARD_DEDUCTION = {
+        single: 14600,
+        mfj: 29200,
+        hoh: 21900
+      };
+      const BRACKETS_2024 = {
+        single: [
+          [0, 11600, 0.10],
+          [11600, 47150, 0.12],
+          [47150, 100525, 0.22],
+          [100525, 191950, 0.24],
+          [191950, 243725, 0.32],
+          [243725, 609350, 0.35],
+          [609350, Infinity, 0.37]
+        ],
+        mfj: [
+          [0, 23200, 0.10],
+          [23200, 94300, 0.12],
+          [94300, 201050, 0.22],
+          [201050, 383900, 0.24],
+          [383900, 487450, 0.32],
+          [487450, 731200, 0.35],
+          [731200, Infinity, 0.37]
+        ],
+        hoh: [
+          [0, 16550, 0.10],
+          [16550, 63100, 0.12],
+          [63100, 100500, 0.22],
+          [100500, 191950, 0.24],
+          [191950, 243700, 0.32],
+          [243700, 609350, 0.35],
+          [609350, Infinity, 0.37]
+        ]
+      };
+      const CTC_PHASEOUT = { single:200000, hoh:200000, mfj:400000 };
+
+      const PERIODS = {
+        weekly: 52, biweekly: 26, semimonthly: 24, monthly: 12, annually: 1
+      };
+
+      function getFilingStatus() {
+        const checked = els.filingStatus.find(r => r.checked);
+        return checked ? checked.value : 'single';
+      }
+      function getPeriods() {
+        return PERIODS[els.frequency.value] || 26;
+      }
+
+      // Validation
+      function setError(input, errEl, message) {
+        if (!errEl) return;
+        if (message) {
+          input?.setAttribute('aria-invalid', 'true');
+          errEl.textContent = message;
+        } else {
+          input?.setAttribute('aria-invalid', 'false');
+          errEl.textContent = '';
+        }
+      }
+
+      function validate() {
+        let ok = true;
+        // frequency
+        if (!PERIODS.hasOwnProperty(els.frequency.value)) {
+          setError(els.frequency, els.freqErr, 'Please choose a valid pay frequency.');
+          ok = false;
+        } else {
+          setError(els.frequency, els.freqErr, '');
+        }
+        // gross
+        const gross = parseFloat(els.grossPerPay.value);
+        if (isNaN(gross) || gross <= 0) {
+          setError(els.grossPerPay, els.grossErr, 'Enter a positive gross pay per period (e.g., 3000).');
+          ok = false;
+        } else {
+          setError(els.grossPerPay, els.grossErr, '');
+        }
+        // pretax not exceeding gross
+        const pretax = clampNonNeg(parseFloat(els.pretaxPerPay.value));
+        if (!isNaN(gross) && pretax > gross) {
+          setError(els.pretaxPerPay, els.pretaxErr, 'Pre-tax deductions cannot exceed your gross pay.');
+          ok = false;
+        } else {
+          setError(els.pretaxPerPay, els.pretaxErr, '');
+        }
+        // integers for dependents
+        const kids = Number(els.kidsU17.value);
+        const odep = Number(els.otherDeps.value);
+        if (!Number.isInteger(kids) || kids < 0) {
+          setError(els.kidsU17, els.kidsErr, 'Enter a whole number of children under 17 (0 or more).');
+          ok = false;
+        } else setError(els.kidsU17, els.kidsErr, '');
+        if (!Number.isInteger(odep) || odep < 0) {
+          setError(els.otherDeps, els.odepsErr, 'Enter a whole number of other dependents (0 or more).');
+          ok = false;
+        } else setError(els.otherDeps, els.odepsErr, '');
+        // other numeric fields sanity
+        const fields = [
+          [els.otherJobsIncome, els.ojErr, 'Enter a non-negative annual amount or leave blank.'],
+          [els.otherIncome, els.oincErr, 'Enter a non-negative annual amount or leave blank.'],
+          [els.itemized, els.itemErr, 'Enter a non-negative annual amount or leave blank.'],
+          [els.currentWithheld, els.cwErr, 'Enter a non-negative amount or leave blank.']
+        ];
+        for (const [input, err, msg] of fields) {
+          const val = parseFloat(input.value);
+          if (input.value !== '' && (isNaN(val) || val < 0)) {
+            setError(input, err, msg);
+            ok = false;
+          } else {
+            setError(input, err, '');
+          }
+        }
+        return ok;
+      }
+
+      function taxFromBrackets(fstatus, taxable) {
+        const brackets = BRACKETS_2024[fstatus] || BRACKETS_2024.single;
+        let tax = 0;
+        let remaining = taxable;
+        if (remaining <= 0) return 0;
+
+        for (const [l,u,r] of brackets) {
+          if (remaining <= 0) break;
+          const lower = l;
+          const upper = Math.min(u, taxable);
+          if (upper > lower) {
+            const slice = upper - lower;
+            tax += slice * r;
+          }
+        }
+        return tax;
+      }
+
+      function compute() {
+        if (!validate()) return;
+
+        const fstatus = getFilingStatus();
+        const periods = getPeriods();
+
+        const gross = clampNonNeg(parseFloat(els.grossPerPay.value));
+        const pretax = clampNonNeg(parseFloat(els.pretaxPerPay.value));
+        const otherJobs = clampNonNeg(parseFloat(els.otherJobsIncome.value));
+        const otherInc = clampNonNeg(parseFloat(els.otherIncome.value));
+        const itemized = clampNonNeg(parseFloat(els.itemized.value));
+        const kids = clampNonNeg(parseFloat(els.kidsU17.value));
+        const odep = clampNonNeg(parseFloat(els.otherDeps.value));
+        const currentWithheld = clampNonNeg(parseFloat(els.currentWithheld.value));
+
+        const taxablePerPay = Math.max(0, gross - pretax);
+        const annualThisJob = taxablePerPay * periods;
+        const totalEarned = annualThisJob + otherJobs;
+        const AGI = totalEarned + otherInc;
+
+        const stdDed = STANDARD_DEDUCTION[fstatus] || STANDARD_DEDUCTION.single;
+        const deductionUsed = Math.max(stdDed, itemized);
+        const taxableIncome = Math.max(0, AGI - deductionUsed);
+
+        const taxBefore = taxFromBrackets(fstatus, taxableIncome);
+
+        // Credits
+        const baseCredit = 2000 * Math.round(kids) + 500 * Math.round(odep);
+        const phaseThr = CTC_PHASEOUT[fstatus] || 200000;
+        const excess = Math.max(0, AGI - phaseThr);
+        const reduction = excess > 0 ? 50 * Math.ceil(excess / 1000) : 0;
+        const creditAfterPhase = Math.max(0, baseCredit - reduction);
+        const creditApplied = Math.min(creditAfterPhase, taxBefore);
+        const taxAfter = Math.max(0, taxBefore - creditApplied);
+
+        // Allocation to this job
+        const share = totalEarned > 0 ? (annualThisJob / totalEarned) : 1;
+        const perPayNeeded = (taxAfter * share) / Math.max(1, periods);
+
+        // W-4 suggestions
+        const step3 = baseCredit; // Amount entered on Step 3 equals estimated nonrefundable credits total
+        const step4a = otherInc; // as entered
+        const step4b = Math.max(0, itemized - stdDed); // excess over standard
+        let step4c; // per paycheck extra withholding
+        if (currentWithheld > 0) {
+          step4c = Math.max(0, perPayNeeded - currentWithheld);
+        } else {
+          // If user doesn't know current withholding, show full target per-pay withholding as a conservative guide
+          step4c = perPayNeeded;
+        }
+
+        // Update UI
+        els.resAnnualThis.textContent = money(annualThisJob);
+        els.resAGI.textContent = money(AGI);
+        els.resDeductionUsed.textContent = money(deductionUsed);
+        els.resTaxable.textContent = money(taxableIncome);
+        els.resTaxBefore.textContent = money(taxBefore);
+        els.resCredits.textContent = money(creditApplied);
+        els.resTaxAfter.textContent = money(taxAfter);
+        els.resPerPay.textContent = money(perPayNeeded);
+        els.resStep3.textContent = money(step3);
+        els.resStep4a.textContent = money(step4a);
+        els.resStep4b.textContent = money(step4b);
+        els.resStep4c.textContent = money(step4c);
+      }
+
+      // Events
+      ['blur','change','input'].forEach(ev => {
+        els.grossPerPay.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
+        els.pretaxPerPay.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
+        els.otherJobsIncome.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
+        els.otherIncome.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
+        els.itemized.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
+        els.kidsU17.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
+        els.otherDeps.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
+        els.currentWithheld.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
+      });
+      els.frequency.addEventListener('change', () => { validate(); compute(); });
+      els.filingStatus.forEach(r => r.addEventListener('change', () => { validate(); compute(); }));
+      els.calcBtn.addEventListener('click', compute);
+      els.resetBtn.addEventListener('click', () => {
+        $('#fsSingle').checked = true;
+        els.frequency.value = 'biweekly';
+        els.grossPerPay.value = '';
+        els.pretaxPerPay.value = '';
+        els.otherJobsIncome.value = '';
+        els.otherIncome.value = '';
+        els.itemized.value = '';
+        els.kidsU17.value = '0';
+        els.otherDeps.value = '0';
+        els.currentWithheld.value = '';
+        // clear errors
+        [els.freqErr, els.grossErr, els.pretaxErr, els.ojErr, els.oincErr, els.itemErr, els.kidsErr, els.odepsErr, els.cwErr].forEach(e => e.textContent = '');
+        $$('input,select').forEach(i => i.setAttribute('aria-invalid','false'));
+        // reset results
+        [els.resAnnualThis,els.resAGI,els.resDeductionUsed,els.resTaxable,els.resTaxBefore,els.resCredits,els.resTaxAfter,els.resPerPay,els.resStep3,els.resStep4a,els.resStep4b,els.resStep4c]
+          .forEach(el => el.textContent = '$0.00');
+      });
+
+      // Initial compute (keeps CLS low since results panel has min-height)
+      compute();
+    })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
+
+      // Utilities
+      const $ = (sel, ctx=document) => ctx.querySelector(sel);
+      const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+      const money = (n) => new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits:2 }).format(Number.isFinite(n)? n : 0);
+      const clampNonNeg = (v) => isNaN(v)||v<0 ? 0 : v;
+
+      // Elements
+      const els = {
+        filingStatus: $$('input[name="filingStatus"]'),
+        frequency: $('#frequency'),
+        grossPerPay: $('#grossPerPay'),
+        pretaxPerPay: $('#pretaxPerPay'),
+        otherJobsIncome: $('#otherJobsIncome'),
+        otherIncome: $('#otherIncome'),
+        itemized: $('#itemized'),
+        kidsU17: $('#kidsU17'),
+        otherDeps: $('#otherDeps'),
+        currentWithheld: $('#currentWithheld'),
+        calcBtn: $('#calcBtn'),
+        resetBtn: $('#resetBtn'),
+        // errors
+        freqErr: $('#freqErr'),
+        grossErr: $('#grossErr'),
+        pretaxErr: $('#pretaxErr'),
+        ojErr: $('#ojErr'),
+        oincErr: $('#oincErr'),
+        itemErr: $('#itemErr'),
+        kidsErr: $('#kidsErr'),
+        odepsErr: $('#odepsErr'),
+        cwErr: $('#cwErr'),
+        // results
+        resAnnualThis: $('#resAnnualThis'),
+        resAGI: $('#resAGI'),
+        resDeductionUsed: $('#resDeductionUsed'),
+        resTaxable: $('#resTaxable'),
+        resTaxBefore: $('#resTaxBefore'),
+        resCredits: $('#resCredits'),
+        resTaxAfter: $('#resTaxAfter'),
+        resPerPay: $('#resPerPay'),
+        resStep3: $('#resStep3'),
+        resStep4a: $('#resStep4a'),
+        resStep4b: $('#resStep4b'),
+        resStep4c: $('#resStep4c')
+      };
+
+      // Tooltips
+      $$('.tooltip-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('aria-controls');
+          const panel = document.getElementById(id);
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          panel.setAttribute('aria-hidden', String(expanded));
+        });
+        btn.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault(); btn.click();
+          }
+        });
+      });
+
+      // Parameters (2024)
+      const STANDARD_DEDUCTION = {
+        single: 14600,
+        mfj: 29200,
+        hoh: 21900
+      };
+      const BRACKETS_2024 = {
+        single: [
+          [0, 11600, 0.10],
+          [11600, 47150, 0.12],
+          [47150, 100525, 0.22],
+          [100525, 191950, 0.24],
+          [191950, 243725, 0.32],
+          [243725, 609350, 0.35],
+          [609350, Infinity, 0.37]
+        ],
+        mfj: [
+          [0, 23200, 0.10],
+          [23200, 94300, 0.12],
+          [94300, 201050, 0.22],
+          [201050, 383900, 0.24],
+          [383900, 487450, 0.32],
+          [487450, 731200, 0.35],
+          [731200, Infinity, 0.37]
+        ],
+        hoh: [
+          [0, 16550, 0.10],
+          [16550, 63100, 0.12],
+          [63100, 100500, 0.22],
+          [100500, 191950, 0.24],
+          [191950, 243700, 0.32],
+          [243700, 609350, 0.35],
+          [609350, Infinity, 0.37]
+        ]
+      };
+      const CTC_PHASEOUT = { single:200000, hoh:200000, mfj:400000 };
+
+      const PERIODS = {
+        weekly: 52, biweekly: 26, semimonthly: 24, monthly: 12, annually: 1
+      };
+
+      function getFilingStatus() {
+        const checked = els.filingStatus.find(r => r.checked);
+        return checked ? checked.value : 'single';
+      }
+      function getPeriods() {
+        return PERIODS[els.frequency.value] || 26;
+      }
+
+      // Validation
+      function setError(input, errEl, message) {
+        if (!errEl) return;
+        if (message) {
+          input?.setAttribute('aria-invalid', 'true');
+          errEl.textContent = message;
+        } else {
+          input?.setAttribute('aria-invalid', 'false');
+          errEl.textContent = '';
+        }
+      }
+
+      function validate() {
+        let ok = true;
+        // frequency
+        if (!PERIODS.hasOwnProperty(els.frequency.value)) {
+          setError(els.frequency, els.freqErr, 'Please choose a valid pay frequency.');
+          ok = false;
+        } else {
+          setError(els.frequency, els.freqErr, '');
+        }
+        // gross
+        const gross = parseFloat(els.grossPerPay.value);
+        if (isNaN(gross) || gross <= 0) {
+          setError(els.grossPerPay, els.grossErr, 'Enter a positive gross pay per period (e.g., 3000).');
+          ok = false;
+        } else {
+          setError(els.grossPerPay, els.grossErr, '');
+        }
+        // pretax not exceeding gross
+        const pretax = clampNonNeg(parseFloat(els.pretaxPerPay.value));
+        if (!isNaN(gross) && pretax > gross) {
+          setError(els.pretaxPerPay, els.pretaxErr, 'Pre-tax deductions cannot exceed your gross pay.');
+          ok = false;
+        } else {
+          setError(els.pretaxPerPay, els.pretaxErr, '');
+        }
+        // integers for dependents
+        const kids = Number(els.kidsU17.value);
+        const odep = Number(els.otherDeps.value);
+        if (!Number.isInteger(kids) || kids < 0) {
+          setError(els.kidsU17, els.kidsErr, 'Enter a whole number of children under 17 (0 or more).');
+          ok = false;
+        } else setError(els.kidsU17, els.kidsErr, '');
+        if (!Number.isInteger(odep) || odep < 0) {
+          setError(els.otherDeps, els.odepsErr, 'Enter a whole number of other dependents (0 or more).');
+          ok = false;
+        } else setError(els.otherDeps, els.odepsErr, '');
+        // other numeric fields sanity
+        const fields = [
+          [els.otherJobsIncome, els.ojErr, 'Enter a non-negative annual amount or leave blank.'],
+          [els.otherIncome, els.oincErr, 'Enter a non-negative annual amount or leave blank.'],
+          [els.itemized, els.itemErr, 'Enter a non-negative annual amount or leave blank.'],
+          [els.currentWithheld, els.cwErr, 'Enter a non-negative amount or leave blank.']
+        ];
+        for (const [input, err, msg] of fields) {
+          const val = parseFloat(input.value);
+          if (input.value !== '' && (isNaN(val) || val < 0)) {
+            setError(input, err, msg);
+            ok = false;
+          } else {
+            setError(input, err, '');
+          }
+        }
+        return ok;
+      }
+
+      function taxFromBrackets(fstatus, taxable) {
+        const brackets = BRACKETS_2024[fstatus] || BRACKETS_2024.single;
+        let tax = 0;
+        let remaining = taxable;
+        if (remaining <= 0) return 0;
+
+        for (const [l,u,r] of brackets) {
+          if (remaining <= 0) break;
+          const lower = l;
+          const upper = Math.min(u, taxable);
+          if (upper > lower) {
+            const slice = upper - lower;
+            tax += slice * r;
+          }
+        }
+        return tax;
+      }
+
+      function compute() {
+        if (!validate()) return;
+
+        const fstatus = getFilingStatus();
+        const periods = getPeriods();
+
+        const gross = clampNonNeg(parseFloat(els.grossPerPay.value));
+        const pretax = clampNonNeg(parseFloat(els.pretaxPerPay.value));
+        const otherJobs = clampNonNeg(parseFloat(els.otherJobsIncome.value));
+        const otherInc = clampNonNeg(parseFloat(els.otherIncome.value));
+        const itemized = clampNonNeg(parseFloat(els.itemized.value));
+        const kids = clampNonNeg(parseFloat(els.kidsU17.value));
+        const odep = clampNonNeg(parseFloat(els.otherDeps.value));
+        const currentWithheld = clampNonNeg(parseFloat(els.currentWithheld.value));
+
+        const taxablePerPay = Math.max(0, gross - pretax);
+        const annualThisJob = taxablePerPay * periods;
+        const totalEarned = annualThisJob + otherJobs;
+        const AGI = totalEarned + otherInc;
+
+        const stdDed = STANDARD_DEDUCTION[fstatus] || STANDARD_DEDUCTION.single;
+        const deductionUsed = Math.max(stdDed, itemized);
+        const taxableIncome = Math.max(0, AGI - deductionUsed);
+
+        const taxBefore = taxFromBrackets(fstatus, taxableIncome);
+
+        // Credits
+        const baseCredit = 2000 * Math.round(kids) + 500 * Math.round(odep);
+        const phaseThr = CTC_PHASEOUT[fstatus] || 200000;
+        const excess = Math.max(0, AGI - phaseThr);
+        const reduction = excess > 0 ? 50 * Math.ceil(excess / 1000) : 0;
+        const creditAfterPhase = Math.max(0, baseCredit - reduction);
+        const creditApplied = Math.min(creditAfterPhase, taxBefore);
+        const taxAfter = Math.max(0, taxBefore - creditApplied);
+
+        // Allocation to this job
+        const share = totalEarned > 0 ? (annualThisJob / totalEarned) : 1;
+        const perPayNeeded = (taxAfter * share) / Math.max(1, periods);
+
+        // W-4 suggestions
+        const step3 = baseCredit; // Amount entered on Step 3 equals estimated nonrefundable credits total
+        const step4a = otherInc; // as entered
+        const step4b = Math.max(0, itemized - stdDed); // excess over standard
+        let step4c; // per paycheck extra withholding
+        if (currentWithheld > 0) {
+          step4c = Math.max(0, perPayNeeded - currentWithheld);
+        } else {
+          // If user doesn't know current withholding, show full target per-pay withholding as a conservative guide
+          step4c = perPayNeeded;
+        }
+
+        // Update UI
+        els.resAnnualThis.textContent = money(annualThisJob);
+        els.resAGI.textContent = money(AGI);
+        els.resDeductionUsed.textContent = money(deductionUsed);
+        els.resTaxable.textContent = money(taxableIncome);
+        els.resTaxBefore.textContent = money(taxBefore);
+        els.resCredits.textContent = money(creditApplied);
+        els.resTaxAfter.textContent = money(taxAfter);
+        els.resPerPay.textContent = money(perPayNeeded);
+        els.resStep3.textContent = money(step3);
+        els.resStep4a.textContent = money(step4a);
+        els.resStep4b.textContent = money(step4b);
+        els.resStep4c.textContent = money(step4c);
+      }
+
+      // Events
+      ['blur','change','input'].forEach(ev => {
+        els.grossPerPay.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
+        els.pretaxPerPay.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
+        els.otherJobsIncome.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
+        els.otherIncome.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
+        els.itemized.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
+        els.kidsU17.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
+        els.otherDeps.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
+        els.currentWithheld.addEventListener(ev, () => { if (ev==='blur' || ev==='change') validate(); compute(); });
+      });
+      els.frequency.addEventListener('change', () => { validate(); compute(); });
+      els.filingStatus.forEach(r => r.addEventListener('change', () => { validate(); compute(); }));
+      els.calcBtn.addEventListener('click', compute);
+      els.resetBtn.addEventListener('click', () => {
+        $('#fsSingle').checked = true;
+        els.frequency.value = 'biweekly';
+        els.grossPerPay.value = '';
+        els.pretaxPerPay.value = '';
+        els.otherJobsIncome.value = '';
+        els.otherIncome.value = '';
+        els.itemized.value = '';
+        els.kidsU17.value = '0';
+        els.otherDeps.value = '0';
+        els.currentWithheld.value = '';
+        // clear errors
+        [els.freqErr, els.grossErr, els.pretaxErr, els.ojErr, els.oincErr, els.itemErr, els.kidsErr, els.odepsErr, els.cwErr].forEach(e => e.textContent = '');
+        $$('input,select').forEach(i => i.setAttribute('aria-invalid','false'));
+        // reset results
+        [els.resAnnualThis,els.resAGI,els.resDeductionUsed,els.resTaxable,els.resTaxBefore,els.resCredits,els.resTaxAfter,els.resPerPay,els.resStep3,els.resStep4a,els.resStep4b,els.resStep4c]
+          .forEach(el => el.textContent = '$0.00');
+      });
+
+      // Initial compute (keeps CLS low since results panel has min-height)
+      compute();
+    })();
+  </script></body></html>

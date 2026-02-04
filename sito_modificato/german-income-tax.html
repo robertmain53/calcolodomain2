@@ -270,10 +270,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="/assets/js/page-enhancements.js" as="script">
@@ -340,11 +346,23 @@
 }
 </script>
 </head>
-<body>
-<a class="skip-link" href="#main">Skip to main content</a>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">German Income Tax Calculator</h1>
+    <p class="sub" id="pageSub">Authoritative German income tax calculator for 2024. Estimate your income tax (ESt), church tax, and solidarity surcharge with spouse splitting. WCAG 2.1 AA accessible, mobile-first, fast.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<main class="container" id="main" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main class="container" id="main" role="main">
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>German Income Tax Calculator</h1>
 <p>
       This professional tool estimates your German income tax (Einkommensteuer), solidarity surcharge, and church tax for tax year 2024.
@@ -422,7 +440,7 @@
 </div>
 <div class="actions">
 <button aria-describedby="calcNote" class="btn" id="calcBtn" type="button">Calculate</button>
-<button class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button class="btn secondary btnSecondary" id="resetBtn" type="button">Reset</button>
 <span class="sr-only" id="calcNote">Results update below</span>
 </div>
 </section>
@@ -659,186 +677,17 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
+
+
 </main>
-<!-- Standard Footer --> 
-<!-- Calculator logic (defer) -->
-<script defer="">
-  (function(){
-    'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;"></div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-    // Elements
-    const incomeEl = document.getElementById('income');
-    const incomeErr = document.getElementById('income-err');
-    const churchEl = document.getElementById('churchRate');
-    const soliEl = document.getElementById('soliMode');
-    const results = {
-      est: document.getElementById('incomeTax'),
-      soli: document.getElementById('solidarity'),
-      church: document.getElementById('churchTax'),
-      total: document.getElementById('totalTax'),
-      eff: document.getElementById('effectiveRate')
-    };
-    const calcBtn = document.getElementById('calcBtn');
-    const resetBtn = document.getElementById('resetBtn');
-
-    // Radio
-    const statusRadios = Array.from(document.querySelectorAll('input[name="status"]'));
-
-    // Helpers
-    const fmtMoney = new Intl.NumberFormat('en-IE', { style:'currency', currency:'EUR', maximumFractionDigits:2 });
-    const fmtPct = new Intl.NumberFormat('en-US', { style:'percent', maximumFractionDigits:2 });
-
-    function getStatus(){
-      const checked = statusRadios.find(r => r.checked);
-      return checked ? checked.value : 'single';
-    }
-
-    // Accessible tooltips
-    document.querySelectorAll('.help-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('aria-controls');
-        const tip = document.getElementById(id);
-        const expanded = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!expanded));
-        tip.setAttribute('aria-hidden', String(expanded));
-      });
-      btn.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-          const id = btn.getAttribute('aria-controls');
-          const tip = document.getElementById(id);
-          btn.setAttribute('aria-expanded', 'false');
-          tip.setAttribute('aria-hidden', 'true');
-        }
-      });
-    });
-
-    // Validation
-    function validateIncome(){
-      const val = incomeEl.value.trim();
-      let msg = '';
-      if (val === '') msg = 'Please enter your annual taxable income.';
-      else {
-        const num = Number(val);
-        if (!isFinite(num)) msg = 'Value must be a number.';
-        else if (num < 0) msg = 'Income cannot be negative.';
-        else if (num > 10000000) msg = 'Please enter an income below €10,000,000.';
-      }
-      if (msg){
-        incomeEl.setAttribute('aria-invalid', 'true');
-        incomeErr.textContent = msg;
-        return false;
-      } else {
-        incomeEl.removeAttribute('aria-invalid');
-        incomeErr.textContent = '';
-        return true;
-      }
-    }
-    incomeEl.addEventListener('blur', validateIncome);
-
-    // Core tax approximation (aligned with 2024 tariff levels)
-    // Piecewise progressive approximation; see "The Formula Explained".
-    function basicTaxApprox_2024_single(x){
-      if (x <= 11604) return 0;
-      if (x <= 66760) return 0.14 * (x - 11604);
-      if (x <= 277825) return 0.14 * (66760 - 11604) + 0.42 * (x - 66760);
-      return 0.14*(66760-11604) + 0.42*(277825-66760) + 0.45*(x - 277825);
-    }
-
-    function est2024(x, status){
-      if (status === 'married'){
-        // Income splitting
-        const half = x / 2;
-        return 2 * basicTaxApprox_2024_single(half);
-      }
-      return basicTaxApprox_2024_single(x);
-    }
-
-    function soliAmount(est, status, mode){
-      if (mode === 'off' || est <= 0) return 0;
-      const rate = 0.055;
-      if (mode === 'on') return est * rate;
-
-      // Auto thresholds (2024 indicative)
-      const t1 = (status === 'married') ? 33912 : 16956;
-      const t2 = (status === 'married') ? 63055 : 31527;
-
-      if (est <= t1) return 0;
-      if (est >= t2) return est * rate;
-
-      // Linear phase-in between t1 and t2
-      const progress = (est - t1) / (t2 - t1);
-      return est * rate * progress;
-    }
-
-    function churchAmount(est, rate){
-      return est * rate;
-    }
-
-    function calculate(){
-      if (!validateIncome()) return;
-
-      const x = Number(incomeEl.value);
-      const status = getStatus();
-      const est = Math.max(0, est2024(x, status));
-      const soli = soliAmount(est, status, soliEl.value);
-      const church = churchAmount(est, Number(churchEl.value));
-      const total = est + soli + church;
-      const eff = x > 0 ? (total / x) : 0;
-
-      results.est.textContent = fmtMoney.format(est);
-      results.soli.textContent = fmtMoney.format(soli);
-      results.church.textContent = fmtMoney.format(church);
-      results.total.textContent = fmtMoney.format(total);
-      results.eff.textContent = fmtPct.format(eff);
-    }
-
-    // Bind
-    calcBtn.addEventListener('click', calculate);
-    [incomeEl, churchEl, soliEl, ...statusRadios].forEach(el => {
-      el.addEventListener('input', () => { /* live compute without jank */ });
-      el.addEventListener('change', calculate);
-    });
-
-    resetBtn.addEventListener('click', () => {
-      incomeEl.value = '';
-      document.getElementById('statusSingle').checked = true;
-      churchEl.value = '0.09';
-      soliEl.value = 'auto';
-      incomeEl.removeAttribute('aria-invalid');
-      incomeErr.textContent = '';
-      results.est.textContent = fmtMoney.format(0);
-      results.soli.textContent = fmtMoney.format(0);
-      results.church.textContent = fmtMoney.format(0);
-      results.total.textContent = fmtMoney.format(0);
-      results.eff.textContent = fmtPct.format(0);
-      // Hide any open tooltips
-      document.querySelectorAll('.help-btn').forEach(btn => {
-        const id = btn.getAttribute('aria-controls');
-        const tip = document.getElementById(id);
-        btn.setAttribute('aria-expanded', 'false');
-        tip.setAttribute('aria-hidden', 'true');
-      });
-      incomeEl.focus();
-    });
-
-    // Initialize
-    // Prefill an example for better UX and instant results
-    incomeEl.value = '55000';
-    calculate();
-  })();
-  </script>
-
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main">Skip to main content</a><link rel="preload" href="/assets/js/mobile-menu.js" as="script"><link rel="preload" href="/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -870,40 +719,8 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "General",
-      "item": "https://calcdomain.com/categories/general"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Miscellaneous",
-      "item": "https://calcdomain.com/subcategories/miscellaneous"
-    }
-  ]
-}
-</script>
-</head>
-<body>
-<a class="skip-link" href="#main">Skip to main content</a>
-
-<main class="container" id="main" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+</style><a class="skip-link" href="#main">Skip to main content</a><main class="container" id="main" role="main">
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>German Income Tax Calculator</h1>
 <p>
       This professional tool estimates your German income tax (Einkommensteuer), solidarity surcharge, and church tax for tax year 2024.
@@ -980,8 +797,8 @@
           </p>
 </div>
 <div class="actions">
-<button aria-describedby="calcNote" class="btn" id="calcBtn" type="button">Calculate</button>
-<button class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button aria-describedby="calcNote" class="btn" id="calcBtn__dup2" type="button">Calculate</button>
+<button class="btn secondary" id="resetBtn__dup2" type="button">Reset</button>
 <span class="sr-only" id="calcNote">Results update below</span>
 </div>
 </section>
@@ -1218,186 +1035,7 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<!-- Calculator logic (defer) -->
-<script defer="">
-  (function(){
-    'use strict';
-
-    // Elements
-    const incomeEl = document.getElementById('income');
-    const incomeErr = document.getElementById('income-err');
-    const churchEl = document.getElementById('churchRate');
-    const soliEl = document.getElementById('soliMode');
-    const results = {
-      est: document.getElementById('incomeTax'),
-      soli: document.getElementById('solidarity'),
-      church: document.getElementById('churchTax'),
-      total: document.getElementById('totalTax'),
-      eff: document.getElementById('effectiveRate')
-    };
-    const calcBtn = document.getElementById('calcBtn');
-    const resetBtn = document.getElementById('resetBtn');
-
-    // Radio
-    const statusRadios = Array.from(document.querySelectorAll('input[name="status"]'));
-
-    // Helpers
-    const fmtMoney = new Intl.NumberFormat('en-IE', { style:'currency', currency:'EUR', maximumFractionDigits:2 });
-    const fmtPct = new Intl.NumberFormat('en-US', { style:'percent', maximumFractionDigits:2 });
-
-    function getStatus(){
-      const checked = statusRadios.find(r => r.checked);
-      return checked ? checked.value : 'single';
-    }
-
-    // Accessible tooltips
-    document.querySelectorAll('.help-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('aria-controls');
-        const tip = document.getElementById(id);
-        const expanded = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!expanded));
-        tip.setAttribute('aria-hidden', String(expanded));
-      });
-      btn.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-          const id = btn.getAttribute('aria-controls');
-          const tip = document.getElementById(id);
-          btn.setAttribute('aria-expanded', 'false');
-          tip.setAttribute('aria-hidden', 'true');
-        }
-      });
-    });
-
-    // Validation
-    function validateIncome(){
-      const val = incomeEl.value.trim();
-      let msg = '';
-      if (val === '') msg = 'Please enter your annual taxable income.';
-      else {
-        const num = Number(val);
-        if (!isFinite(num)) msg = 'Value must be a number.';
-        else if (num < 0) msg = 'Income cannot be negative.';
-        else if (num > 10000000) msg = 'Please enter an income below €10,000,000.';
-      }
-      if (msg){
-        incomeEl.setAttribute('aria-invalid', 'true');
-        incomeErr.textContent = msg;
-        return false;
-      } else {
-        incomeEl.removeAttribute('aria-invalid');
-        incomeErr.textContent = '';
-        return true;
-      }
-    }
-    incomeEl.addEventListener('blur', validateIncome);
-
-    // Core tax approximation (aligned with 2024 tariff levels)
-    // Piecewise progressive approximation; see "The Formula Explained".
-    function basicTaxApprox_2024_single(x){
-      if (x <= 11604) return 0;
-      if (x <= 66760) return 0.14 * (x - 11604);
-      if (x <= 277825) return 0.14 * (66760 - 11604) + 0.42 * (x - 66760);
-      return 0.14*(66760-11604) + 0.42*(277825-66760) + 0.45*(x - 277825);
-    }
-
-    function est2024(x, status){
-      if (status === 'married'){
-        // Income splitting
-        const half = x / 2;
-        return 2 * basicTaxApprox_2024_single(half);
-      }
-      return basicTaxApprox_2024_single(x);
-    }
-
-    function soliAmount(est, status, mode){
-      if (mode === 'off' || est <= 0) return 0;
-      const rate = 0.055;
-      if (mode === 'on') return est * rate;
-
-      // Auto thresholds (2024 indicative)
-      const t1 = (status === 'married') ? 33912 : 16956;
-      const t2 = (status === 'married') ? 63055 : 31527;
-
-      if (est <= t1) return 0;
-      if (est >= t2) return est * rate;
-
-      // Linear phase-in between t1 and t2
-      const progress = (est - t1) / (t2 - t1);
-      return est * rate * progress;
-    }
-
-    function churchAmount(est, rate){
-      return est * rate;
-    }
-
-    function calculate(){
-      if (!validateIncome()) return;
-
-      const x = Number(incomeEl.value);
-      const status = getStatus();
-      const est = Math.max(0, est2024(x, status));
-      const soli = soliAmount(est, status, soliEl.value);
-      const church = churchAmount(est, Number(churchEl.value));
-      const total = est + soli + church;
-      const eff = x > 0 ? (total / x) : 0;
-
-      results.est.textContent = fmtMoney.format(est);
-      results.soli.textContent = fmtMoney.format(soli);
-      results.church.textContent = fmtMoney.format(church);
-      results.total.textContent = fmtMoney.format(total);
-      results.eff.textContent = fmtPct.format(eff);
-    }
-
-    // Bind
-    calcBtn.addEventListener('click', calculate);
-    [incomeEl, churchEl, soliEl, ...statusRadios].forEach(el => {
-      el.addEventListener('input', () => { /* live compute without jank */ });
-      el.addEventListener('change', calculate);
-    });
-
-    resetBtn.addEventListener('click', () => {
-      incomeEl.value = '';
-      document.getElementById('statusSingle').checked = true;
-      churchEl.value = '0.09';
-      soliEl.value = 'auto';
-      incomeEl.removeAttribute('aria-invalid');
-      incomeErr.textContent = '';
-      results.est.textContent = fmtMoney.format(0);
-      results.soli.textContent = fmtMoney.format(0);
-      results.church.textContent = fmtMoney.format(0);
-      results.total.textContent = fmtMoney.format(0);
-      results.eff.textContent = fmtPct.format(0);
-      // Hide any open tooltips
-      document.querySelectorAll('.help-btn').forEach(btn => {
-        const id = btn.getAttribute('aria-controls');
-        const tip = document.getElementById(id);
-        btn.setAttribute('aria-expanded', 'false');
-        tip.setAttribute('aria-hidden', 'true');
-      });
-      incomeEl.focus();
-    });
-
-    // Initialize
-    // Prefill an example for better UX and instant results
-    incomeEl.value = '55000';
-    calculate();
-  })();
-  </script>
-
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="/assets/js/mobile-menu.js" as="script"><link rel="preload" href="/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1429,40 +1067,8 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "General",
-      "item": "https://calcdomain.com/categories/general"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Miscellaneous",
-      "item": "https://calcdomain.com/subcategories/miscellaneous"
-    }
-  ]
-}
-</script>
-</head>
-<body>
-<a class="skip-link" href="#main">Skip to main content</a>
-
-<main class="container" id="main" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+</style><a class="skip-link" href="#main">Skip to main content</a><main class="container" id="main" role="main">
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>German Income Tax Calculator</h1>
 <p>
       This professional tool estimates your German income tax (Einkommensteuer), solidarity surcharge, and church tax for tax year 2024.
@@ -1539,8 +1145,8 @@
           </p>
 </div>
 <div class="actions">
-<button aria-describedby="calcNote" class="btn" id="calcBtn" type="button">Calculate</button>
-<button class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button aria-describedby="calcNote" class="btn" id="calcBtn__dup3" type="button">Calculate</button>
+<button class="btn secondary" id="resetBtn__dup3" type="button">Reset</button>
 <span class="sr-only" id="calcNote">Results update below</span>
 </div>
 </section>
@@ -1777,10 +1383,48 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<!-- Calculator logic (defer) -->
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
   (function(){
     'use strict';
 
@@ -1944,7 +1588,382 @@
     incomeEl.value = '55000';
     calculate();
   })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "General",
+      "item": "https://calcdomain.com/categories/general"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Miscellaneous",
+      "item": "https://calcdomain.com/subcategories/miscellaneous"
+    }
+  ]
+}
+</script><script defer="">
+  (function(){
+    'use strict';
 
+    // Elements
+    const incomeEl = document.getElementById('income');
+    const incomeErr = document.getElementById('income-err');
+    const churchEl = document.getElementById('churchRate');
+    const soliEl = document.getElementById('soliMode');
+    const results = {
+      est: document.getElementById('incomeTax'),
+      soli: document.getElementById('solidarity'),
+      church: document.getElementById('churchTax'),
+      total: document.getElementById('totalTax'),
+      eff: document.getElementById('effectiveRate')
+    };
+    const calcBtn = document.getElementById('calcBtn');
+    const resetBtn = document.getElementById('resetBtn');
 
-</body></html>
+    // Radio
+    const statusRadios = Array.from(document.querySelectorAll('input[name="status"]'));
+
+    // Helpers
+    const fmtMoney = new Intl.NumberFormat('en-IE', { style:'currency', currency:'EUR', maximumFractionDigits:2 });
+    const fmtPct = new Intl.NumberFormat('en-US', { style:'percent', maximumFractionDigits:2 });
+
+    function getStatus(){
+      const checked = statusRadios.find(r => r.checked);
+      return checked ? checked.value : 'single';
+    }
+
+    // Accessible tooltips
+    document.querySelectorAll('.help-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('aria-controls');
+        const tip = document.getElementById(id);
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        tip.setAttribute('aria-hidden', String(expanded));
+      });
+      btn.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          const id = btn.getAttribute('aria-controls');
+          const tip = document.getElementById(id);
+          btn.setAttribute('aria-expanded', 'false');
+          tip.setAttribute('aria-hidden', 'true');
+        }
+      });
+    });
+
+    // Validation
+    function validateIncome(){
+      const val = incomeEl.value.trim();
+      let msg = '';
+      if (val === '') msg = 'Please enter your annual taxable income.';
+      else {
+        const num = Number(val);
+        if (!isFinite(num)) msg = 'Value must be a number.';
+        else if (num < 0) msg = 'Income cannot be negative.';
+        else if (num > 10000000) msg = 'Please enter an income below €10,000,000.';
+      }
+      if (msg){
+        incomeEl.setAttribute('aria-invalid', 'true');
+        incomeErr.textContent = msg;
+        return false;
+      } else {
+        incomeEl.removeAttribute('aria-invalid');
+        incomeErr.textContent = '';
+        return true;
+      }
+    }
+    incomeEl.addEventListener('blur', validateIncome);
+
+    // Core tax approximation (aligned with 2024 tariff levels)
+    // Piecewise progressive approximation; see "The Formula Explained".
+    function basicTaxApprox_2024_single(x){
+      if (x <= 11604) return 0;
+      if (x <= 66760) return 0.14 * (x - 11604);
+      if (x <= 277825) return 0.14 * (66760 - 11604) + 0.42 * (x - 66760);
+      return 0.14*(66760-11604) + 0.42*(277825-66760) + 0.45*(x - 277825);
+    }
+
+    function est2024(x, status){
+      if (status === 'married'){
+        // Income splitting
+        const half = x / 2;
+        return 2 * basicTaxApprox_2024_single(half);
+      }
+      return basicTaxApprox_2024_single(x);
+    }
+
+    function soliAmount(est, status, mode){
+      if (mode === 'off' || est <= 0) return 0;
+      const rate = 0.055;
+      if (mode === 'on') return est * rate;
+
+      // Auto thresholds (2024 indicative)
+      const t1 = (status === 'married') ? 33912 : 16956;
+      const t2 = (status === 'married') ? 63055 : 31527;
+
+      if (est <= t1) return 0;
+      if (est >= t2) return est * rate;
+
+      // Linear phase-in between t1 and t2
+      const progress = (est - t1) / (t2 - t1);
+      return est * rate * progress;
+    }
+
+    function churchAmount(est, rate){
+      return est * rate;
+    }
+
+    function calculate(){
+      if (!validateIncome()) return;
+
+      const x = Number(incomeEl.value);
+      const status = getStatus();
+      const est = Math.max(0, est2024(x, status));
+      const soli = soliAmount(est, status, soliEl.value);
+      const church = churchAmount(est, Number(churchEl.value));
+      const total = est + soli + church;
+      const eff = x > 0 ? (total / x) : 0;
+
+      results.est.textContent = fmtMoney.format(est);
+      results.soli.textContent = fmtMoney.format(soli);
+      results.church.textContent = fmtMoney.format(church);
+      results.total.textContent = fmtMoney.format(total);
+      results.eff.textContent = fmtPct.format(eff);
+    }
+
+    // Bind
+    calcBtn.addEventListener('click', calculate);
+    [incomeEl, churchEl, soliEl, ...statusRadios].forEach(el => {
+      el.addEventListener('input', () => { /* live compute without jank */ });
+      el.addEventListener('change', calculate);
+    });
+
+    resetBtn.addEventListener('click', () => {
+      incomeEl.value = '';
+      document.getElementById('statusSingle').checked = true;
+      churchEl.value = '0.09';
+      soliEl.value = 'auto';
+      incomeEl.removeAttribute('aria-invalid');
+      incomeErr.textContent = '';
+      results.est.textContent = fmtMoney.format(0);
+      results.soli.textContent = fmtMoney.format(0);
+      results.church.textContent = fmtMoney.format(0);
+      results.total.textContent = fmtMoney.format(0);
+      results.eff.textContent = fmtPct.format(0);
+      // Hide any open tooltips
+      document.querySelectorAll('.help-btn').forEach(btn => {
+        const id = btn.getAttribute('aria-controls');
+        const tip = document.getElementById(id);
+        btn.setAttribute('aria-expanded', 'false');
+        tip.setAttribute('aria-hidden', 'true');
+      });
+      incomeEl.focus();
+    });
+
+    // Initialize
+    // Prefill an example for better UX and instant results
+    incomeEl.value = '55000';
+    calculate();
+  })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "General",
+      "item": "https://calcdomain.com/categories/general"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Miscellaneous",
+      "item": "https://calcdomain.com/subcategories/miscellaneous"
+    }
+  ]
+}
+</script><script defer="">
+  (function(){
+    'use strict';
+
+    // Elements
+    const incomeEl = document.getElementById('income');
+    const incomeErr = document.getElementById('income-err');
+    const churchEl = document.getElementById('churchRate');
+    const soliEl = document.getElementById('soliMode');
+    const results = {
+      est: document.getElementById('incomeTax'),
+      soli: document.getElementById('solidarity'),
+      church: document.getElementById('churchTax'),
+      total: document.getElementById('totalTax'),
+      eff: document.getElementById('effectiveRate')
+    };
+    const calcBtn = document.getElementById('calcBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    // Radio
+    const statusRadios = Array.from(document.querySelectorAll('input[name="status"]'));
+
+    // Helpers
+    const fmtMoney = new Intl.NumberFormat('en-IE', { style:'currency', currency:'EUR', maximumFractionDigits:2 });
+    const fmtPct = new Intl.NumberFormat('en-US', { style:'percent', maximumFractionDigits:2 });
+
+    function getStatus(){
+      const checked = statusRadios.find(r => r.checked);
+      return checked ? checked.value : 'single';
+    }
+
+    // Accessible tooltips
+    document.querySelectorAll('.help-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('aria-controls');
+        const tip = document.getElementById(id);
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        tip.setAttribute('aria-hidden', String(expanded));
+      });
+      btn.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          const id = btn.getAttribute('aria-controls');
+          const tip = document.getElementById(id);
+          btn.setAttribute('aria-expanded', 'false');
+          tip.setAttribute('aria-hidden', 'true');
+        }
+      });
+    });
+
+    // Validation
+    function validateIncome(){
+      const val = incomeEl.value.trim();
+      let msg = '';
+      if (val === '') msg = 'Please enter your annual taxable income.';
+      else {
+        const num = Number(val);
+        if (!isFinite(num)) msg = 'Value must be a number.';
+        else if (num < 0) msg = 'Income cannot be negative.';
+        else if (num > 10000000) msg = 'Please enter an income below €10,000,000.';
+      }
+      if (msg){
+        incomeEl.setAttribute('aria-invalid', 'true');
+        incomeErr.textContent = msg;
+        return false;
+      } else {
+        incomeEl.removeAttribute('aria-invalid');
+        incomeErr.textContent = '';
+        return true;
+      }
+    }
+    incomeEl.addEventListener('blur', validateIncome);
+
+    // Core tax approximation (aligned with 2024 tariff levels)
+    // Piecewise progressive approximation; see "The Formula Explained".
+    function basicTaxApprox_2024_single(x){
+      if (x <= 11604) return 0;
+      if (x <= 66760) return 0.14 * (x - 11604);
+      if (x <= 277825) return 0.14 * (66760 - 11604) + 0.42 * (x - 66760);
+      return 0.14*(66760-11604) + 0.42*(277825-66760) + 0.45*(x - 277825);
+    }
+
+    function est2024(x, status){
+      if (status === 'married'){
+        // Income splitting
+        const half = x / 2;
+        return 2 * basicTaxApprox_2024_single(half);
+      }
+      return basicTaxApprox_2024_single(x);
+    }
+
+    function soliAmount(est, status, mode){
+      if (mode === 'off' || est <= 0) return 0;
+      const rate = 0.055;
+      if (mode === 'on') return est * rate;
+
+      // Auto thresholds (2024 indicative)
+      const t1 = (status === 'married') ? 33912 : 16956;
+      const t2 = (status === 'married') ? 63055 : 31527;
+
+      if (est <= t1) return 0;
+      if (est >= t2) return est * rate;
+
+      // Linear phase-in between t1 and t2
+      const progress = (est - t1) / (t2 - t1);
+      return est * rate * progress;
+    }
+
+    function churchAmount(est, rate){
+      return est * rate;
+    }
+
+    function calculate(){
+      if (!validateIncome()) return;
+
+      const x = Number(incomeEl.value);
+      const status = getStatus();
+      const est = Math.max(0, est2024(x, status));
+      const soli = soliAmount(est, status, soliEl.value);
+      const church = churchAmount(est, Number(churchEl.value));
+      const total = est + soli + church;
+      const eff = x > 0 ? (total / x) : 0;
+
+      results.est.textContent = fmtMoney.format(est);
+      results.soli.textContent = fmtMoney.format(soli);
+      results.church.textContent = fmtMoney.format(church);
+      results.total.textContent = fmtMoney.format(total);
+      results.eff.textContent = fmtPct.format(eff);
+    }
+
+    // Bind
+    calcBtn.addEventListener('click', calculate);
+    [incomeEl, churchEl, soliEl, ...statusRadios].forEach(el => {
+      el.addEventListener('input', () => { /* live compute without jank */ });
+      el.addEventListener('change', calculate);
+    });
+
+    resetBtn.addEventListener('click', () => {
+      incomeEl.value = '';
+      document.getElementById('statusSingle').checked = true;
+      churchEl.value = '0.09';
+      soliEl.value = 'auto';
+      incomeEl.removeAttribute('aria-invalid');
+      incomeErr.textContent = '';
+      results.est.textContent = fmtMoney.format(0);
+      results.soli.textContent = fmtMoney.format(0);
+      results.church.textContent = fmtMoney.format(0);
+      results.total.textContent = fmtMoney.format(0);
+      results.eff.textContent = fmtPct.format(0);
+      // Hide any open tooltips
+      document.querySelectorAll('.help-btn').forEach(btn => {
+        const id = btn.getAttribute('aria-controls');
+        const tip = document.getElementById(id);
+        btn.setAttribute('aria-expanded', 'false');
+        tip.setAttribute('aria-hidden', 'true');
+      });
+      incomeEl.focus();
+    });
+
+    // Initialize
+    // Prefill an example for better UX and instant results
+    incomeEl.value = '55000';
+    calculate();
+  })();
+  </script></body></html>

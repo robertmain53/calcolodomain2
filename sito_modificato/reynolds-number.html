@@ -276,10 +276,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
@@ -334,10 +340,22 @@
 }
 </style>
 </head>
-<body>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">Reynolds Number Calculator</h1>
+    <p class="sub" id="pageSub">Professional Reynolds number calculator for engineers and students. Compute Reynolds number using fluid density and dynamic viscosity or kinematic viscosity, with unit conversions, fluid presets (air, water, oil), and flow regime classification.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<a class="skip-link" href="#main">Skip to main content</a>
-<main class="main container w-full lg:w-2/3" id="main" role="main">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main class="main container w-full lg:w-2/3" id="main" role="main">
 <h1>Reynolds Number Calculator</h1>
 <p>
       This professional-grade Reynolds number calculator helps engineers, researchers, and students quickly predict flow regime for internal and external flows. Enter velocity and characteristic length, then choose to use density and dynamic viscosity or kinematic viscosity. The tool offers authoritative unit handling, trusted fluid presets, and clear, accessible results.
@@ -653,436 +671,21 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
+
+
 </main>
-<script defer="">
-    (function(){
-      "use strict";
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
 
-      // Shortcuts
-      const $ = (id) => document.getElementById(id);
+<button id="resetBtn" type="button" class="btn btnSecondary">Reset</button>
+</div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-      // Elements
-      const modeRhoMu = $("modeRhoMu");
-      const modeNu = $("modeNu");
-      const fluidSelect = $("fluidSelect");
-      const temperatureGroup = $("temperatureGroup");
-      const temperature = $("temperature");
-      const tempUnit = $("tempUnit");
-
-      const velocity = $("velocity");
-      const velocityUnit = $("velocityUnit");
-
-      const lengthEl = $("length");
-      const lengthUnit = $("lengthUnit");
-
-      const density = $("density");
-      const densityUnit = $("densityUnit");
-
-      const mu = $("mu");
-      const muUnit = $("muUnit");
-
-      const nu = $("nu");
-      const nuUnit = $("nuUnit");
-
-      const rhoMuFields = $("rhoMuFields");
-      const nuField = $("nuField");
-
-      const reValue = $("reValue");
-      const regimeBadge = $("regimeBadge");
-      const nuComputed = $("nuComputed");
-      const notesText = $("notesText");
-
-      // Errors
-      const velError = $("velError");
-      const lenError = $("lenError");
-      const rhoError = $("rhoError");
-      const muError = $("muError");
-      const nuError = $("nuError");
-      const tempError = $("tempError");
-
-      // Tooltips
-      const tt = [
-        ["fluidInfoBtn","fluidInfo"],
-        ["tempInfoBtn","tempInfo"],
-        ["velInfoBtn","velInfo"],
-        ["lenInfoBtn","lenInfo"],
-        ["rhoInfoBtn","rhoInfo"],
-        ["muInfoBtn","muInfo"],
-        ["nuInfoBtn","nuInfo"]
-      ];
-      tt.forEach(([btnId,popId])=>{
-        const b = $(btnId), p = $(popId);
-        if(!b || !p) return;
-        b.addEventListener("click",()=>{
-          const open = b.getAttribute("aria-expanded")==="true";
-          b.setAttribute("aria-expanded", String(!open));
-          p.hidden = open;
-          if(!open){ p.focus?.(); }
-        });
-        b.addEventListener("keydown",(e)=>{
-          if((e.key === "Escape" || e.key === "Esc") && b.getAttribute("aria-expanded")==="true"){
-            b.setAttribute("aria-expanded","false");
-            p.hidden = true;
-            b.focus();
-          }
-        });
-      });
-
-      // Validation helpers
-      function setError(input, errorEl, message){
-        input.setAttribute("aria-invalid","true");
-        errorEl.textContent = message || "";
-      }
-      function clearError(input, errorEl){
-        input.setAttribute("aria-invalid","false");
-        errorEl.textContent = "";
-      }
-      function isPositiveNumber(val){
-        return typeof val === "number" && isFinite(val) && val > 0;
-      }
-
-      // Unit conversions
-      const toSI = {
-        // Velocity to m/s
-        vel(value, unit){
-          switch(unit){
-            case "m_s": return value;
-            case "ft_s": return value * 0.3048;
-            case "km_h": return value / 3.6;
-            case "mph": return value * 0.44704;
-          }
-          return NaN;
-        },
-        // Length to m
-        len(value, unit){
-          switch(unit){
-            case "m": return value;
-            case "mm": return value / 1000;
-            case "cm": return value / 100;
-            case "in": return value * 0.0254;
-            case "ft": return value * 0.3048;
-          }
-          return NaN;
-        },
-        // Density to kg/m3
-        rho(value, unit){
-          switch(unit){
-            case "kg_m3": return value;
-            case "lb_ft3": return value * 16.01846337396;
-          }
-          return NaN;
-        },
-        // Dynamic viscosity to Pa·s
-        mu(value, unit){
-          switch(unit){
-            case "Pa_s": return value;
-            case "mPa_s": return value / 1000;
-            case "cP": return value / 1000;
-          }
-          return NaN;
-        },
-        // Kinematic viscosity to m2/s
-        nu(value, unit){
-          switch(unit){
-            case "m2_s": return value;
-            case "cSt": return value * 1e-6;
-          }
-          return NaN;
-        },
-        // Temperature to K
-        tempK(value, unit){
-          switch(unit){
-            case "C": return value + 273.15;
-            case "K": return value;
-            case "F": return (value - 32) * 5/9 + 273.15;
-          }
-          return NaN;
-        }
-      };
-
-      // Fluid property correlations/presets
-      function waterMuPaS_C(Tc){
-        // Andrade’s correlation: μ [Pa·s] = 2.414e-5 * 10^(247.8/(T+133.15))
-        return 2.414e-5 * Math.pow(10, 247.8/(Tc + 133.15));
-      }
-      function waterRho_kgm3(Tc){
-        // Approximate density near ambient; simple linear fit around 20°C
-        return 998.2 - 0.3*(Tc - 20);
-      }
-      function airMuPaS_K(Tk){
-        // Sutherland's law (air): μ = μ0 * (T0 + C)/(T + C) * (T/T0)^(3/2)
-        const mu0 = 1.716e-5, T0 = 273.15, C = 110.4;
-        return mu0 * ((T0 + C)/(Tk + C)) * Math.pow(Tk/T0, 1.5);
-      }
-      function airRho_kgm3_K(Tk){
-        // Ideal gas at 1 atm
-        const p = 101325; const R = 287.058;
-        return p/(R*Tk);
-      }
-
-      function applyFluidPreset(){
-        const val = fluidSelect.value;
-        const showTemp = (val === "water" || val === "air");
-        temperatureGroup.hidden = !showTemp;
-
-        if(val === "custom"){
-          return; // do not override user inputs
-        }
-
-        let rhoSI, muSI;
-        let Tc = 20;
-        let Tk = 293.15;
-
-        // Convert current temperature to needed scale
-        const T_in = Number(temperature.value);
-        const Tunit = tempUnit.value;
-        const TkNow = toSI.tempK(T_in, Tunit);
-        const TcNow = TkNow - 273.15;
-
-        if(val === "water"){
-          Tc = isFinite(Cc(TcNow)) ? TcNow : 20;
-          muSI = waterMuPaS_C(Tc);
-          rhoSI = waterRho_kgm3(Tc);
-        }else if(val === "air"){
-          Tk = isFinite(Ck(TkNow)) ? TkNow : 293.15;
-          muSI = airMuPaS_K(Tk);
-          rhoSI = airRho_kgm3_K(Tk);
-        }else if(val === "glycerin"){
-          // 100% glycerin at ≈20°C
-          rhoSI = 1260; muSI = 1.49;
-        }else if(val === "sae30"){
-          // Representative SAE 30 oil near 20°C
-          rhoSI = 890; muSI = 0.29;
-        }
-
-        // Update fields using current units
-        if(isFinite(rhoSI)){
-          if(densityUnit.value === "kg_m3"){ density.value = roundSmart(rhoSI); }
-          else if(densityUnit.value === "lb_ft3"){ density.value = roundSmart(rhoSI / 16.01846337396); }
-        }
-        if(isFinite(muSI)){
-          if(muUnit.value === "Pa_s"){ mu.value = sciIfNeeded(muSI); }
-          else if(muUnit.value === "mPa_s" || muUnit.value === "cP"){ mu.value = sciIfNeeded(muSI * 1000); }
-        }
-
-        // If in ν mode and preset provides μ and ρ, compute ν and populate
-        if(modeNu.checked && isFinite(muSI) && isFinite(rhoSI)){
-          const nuSI = muSI/rhoSI;
-          if(nuUnit.value === "m2_s"){ nu.value = sciIfNeeded(nuSI); }
-          else if(nuUnit.value === "cSt"){ nu.value = roundSmart(nuSI * 1e6); }
-        }
-      }
-
-      function Ck(x){ return x; }  // allow simple finite checks
-      function Cc(x){ return x; }
-
-      // Toggle property mode
-      function updateMode(){
-        const mode = modeRhoMu.checked ? "rhoMu" : "nu";
-        if(mode === "rhoMu"){
-          rhoMuFields.hidden = false;
-          nuField.hidden = true;
-        } else {
-          rhoMuFields.hidden = true;
-          nuField.hidden = false;
-        }
-        // Recalculate
-        calculate();
-      }
-
-      // Input validation on blur
-      function validateField(input, errorEl, name){
-        const raw = input.value.trim();
-        if(!raw){
-          setError(input, errorEl, name + " is required.");
-          return false;
-        }
-        const num = Number(raw);
-        if(!isFinite(num)){
-          setError(input, errorEl, "Please enter a valid number for " + name + ".");
-          return false;
-        }
-        if(num <= 0){
-          setError(input, errorEl, name + " must be greater than zero.");
-          return false;
-        }
-        clearError(input, errorEl);
-        return true;
-      }
-
-      velocity.addEventListener("blur", () => validateField(velocity, velError, "Velocity"));
-      lengthEl.addEventListener("blur", () => validateField(lengthEl, lenError, "Characteristic length"));
-      density.addEventListener("blur", () => { if(!rhoMuFields.hidden) validateField(density, rhoError, "Density"); });
-      mu.addEventListener("blur", () => { if(!rhoMuFields.hidden) validateField(mu, muError, "Dynamic viscosity"); });
-      nu.addEventListener("blur", () => { if(!nuField.hidden) validateField(nu, nuError, "Kinematic viscosity"); });
-      temperature.addEventListener("blur", ()=>{
-        if(temperatureGroup.hidden) return;
-        const ok = validateField(temperature, tempError, "Temperature");
-        if(ok) applyFluidPreset();
-      });
-
-      // Debounced calculation on input for responsiveness
-      let t;
-      const onChange = () => {
-        clearTimeout(t);
-        t = setTimeout(calculate, 60);
-      };
-
-      // Attach events
-      [modeRhoMu, modeNu].forEach(r => r.addEventListener("change", updateMode));
-      [fluidSelect, temperature, tempUnit, velocity, velocityUnit, lengthEl, lengthUnit, density, densityUnit, mu, muUnit, nu, nuUnit]
-        .forEach(el => el.addEventListener("input", onChange));
-      [fluidSelect, tempUnit, velocityUnit, lengthUnit, densityUnit, muUnit, nuUnit]
-        .forEach(el => el.addEventListener("change", onChange));
-
-      // Apply preset when fluid or temp changes explicitly
-      fluidSelect.addEventListener("change", applyFluidPreset);
-      temperature.addEventListener("input", ()=>{
-        if(!temperatureGroup.hidden) applyFluidPreset();
-      });
-      tempUnit.addEventListener("change", ()=>{
-        if(!temperatureGroup.hidden) applyFluidPreset();
-      });
-
-      // Calculation
-      function calculate(){
-        // Ensure required inputs
-        const vOk = validateField(velocity, velError, "Velocity");
-        const LOk = validateField(lengthEl, lenError, "Characteristic length");
-        if(!vOk || !LOk){
-          showPending();
-          return;
-        }
-        const vSI = toSI.vel(Number(velocity.value), velocityUnit.value);
-        const LSI = toSI.len(Number(lengthEl.value), lengthUnit.value);
-
-        let Re = NaN, nuSI_show = NaN;
-
-        if(modeRhoMu.checked){
-          const rhoOk = validateField(density, rhoError, "Density");
-          const muOk = validateField(mu, muError, "Dynamic viscosity");
-          if(!rhoOk || !muOk){ showPending(); return; }
-          const rhoSI = toSI.rho(Number(density.value), densityUnit.value);
-          const muSIv = toSI.mu(Number(mu.value), muUnit.value);
-          if(!isPositiveNumber(rhoSI) || !isPositiveNumber(muSIv)){ showPending(); return; }
-          Re = (rhoSI * vSI * LSI) / muSIv;
-          nuSI_show = muSIv / rhoSI;
-        } else {
-          const nuOk = validateField(nu, nuError, "Kinematic viscosity");
-          if(!nuOk){ showPending(); return; }
-          const nuSIv = toSI.nu(Number(nu.value), nuUnit.value);
-          if(!isPositiveNumber(nuSIv)){ showPending(); return; }
-          Re = (vSI * LSI) / nuSIv;
-          nuSI_show = nuSIv;
-        }
-
-        // Update UI
-        if(isFinite(Re)){
-          reValue.textContent = formatRe(Re);
-          updateRegimeBadge(Re);
-        } else {
-          reValue.textContent = "—";
-          regimeBadge.textContent = "—";
-          regimeBadge.className = "badge";
-        }
-
-        if(isFinite(nuSI_show)){
-          nuComputed.textContent = formatNu(nuSI_show);
-        } else {
-          nuComputed.textContent = "—";
-        }
-      }
-
-      function showPending(){
-        reValue.textContent = "—";
-        regimeBadge.textContent = "—";
-        regimeBadge.className = "badge";
-        nuComputed.textContent = "—";
-      }
-
-      function updateRegimeBadge(Re){
-        // Thresholds typical for internal pipe flow
-        let label = "—", cls = "badge";
-        if(Re < 2300){ label = "Laminar"; cls = "badge success"; }
-        else if(Re <= 4000){ label = "Transitional"; cls = "badge warn"; }
-        else { label = "Turbulent"; cls = "badge danger"; }
-        regimeBadge.textContent = label + " (pipe)";
-        regimeBadge.className = cls;
-      }
-
-      // Formatting helpers
-      function sciIfNeeded(x){
-        const absx = Math.abs(x);
-        if((absx !== 0 && (absx < 1e-3 || absx >= 1e5))){
-          return x.toExponential(3);
-        }
-        return String(roundSmart(x));
-      }
-      function roundSmart(x){
-        // Adaptive rounding for UI readability
-        const absx = Math.abs(x);
-        if(absx >= 1000) return Math.round(x);
-        if(absx >= 100) return Math.round(x * 10)/10;
-        if(absx >= 10) return Math.round(x * 100)/100;
-        if(absx >= 1) return Math.round(x * 1000)/1000;
-        if(absx >= 1e-2) return Math.round(x * 1e5)/1e5;
-        return Number.parseFloat(x.toExponential(3));
-      }
-      function formatRe(Re){
-        if(Re < 1e5){ return roundSmart(Re).toLocaleString(); }
-        // show scientific for large values
-        return Re.toExponential(3).replace("e","×10^");
-      }
-      function formatNu(nuSI){
-        // Render both m²/s and cSt
-        const cSt = nuSI * 1e6;
-        const a = sciIfNeeded(nuSI) + " m²/s";
-        const b = roundSmart(cSt) + " cSt";
-        return a + " (" + b + ")";
-      }
-
-      // Initialize defaults
-      (function init(){
-        // Set some sensible defaults for faster first paint
-        velocity.value = "1.5";
-        lengthEl.value = "0.05";
-        density.value = "998.2";
-        mu.value = "0.001002";
-        nu.value = "1.004e-6";
-
-        // Validation ARIA wires: ensure describedby includes tooltip and error
-        const wire = [
-          [velocity, "velInfo", velError.id],
-          [lengthEl, "lenInfo", lenError.id],
-          [density, "rhoInfo", rhoError.id],
-          [mu, "muInfo", muError.id],
-          [nu, "nuInfo", nuError.id],
-          [temperature, "tempInfo", tempError.id]
-        ];
-        wire.forEach(([input, tipId, errId])=>{
-          if(!input) return;
-          const ids = [tipId, errId].filter(Boolean).join(" ");
-          input.setAttribute("aria-describedby", ids);
-        });
-
-        updateMode();
-        calculate();
-      })();
-
-    })();
-  </script>
-
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main">Skip to main content</a><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1129,12 +732,7 @@
   border-color:#fed7aa;
   color:#9a3412;
 }
-</style>
-</head>
-<body>
-
-<a class="skip-link" href="#main">Skip to main content</a>
-<main class="main container" id="main" role="main">
+</style><a class="skip-link" href="#main">Skip to main content</a><main class="main container" id="main" role="main">
 <h1>Reynolds Number Calculator</h1>
 <p>
       This professional-grade Reynolds number calculator helps engineers, researchers, and students quickly predict flow regime for internal and external flows. Enter velocity and characteristic length, then choose to use density and dynamic viscosity or kinematic viscosity. The tool offers authoritative unit handling, trusted fluid presets, and clear, accessible results.
@@ -1450,436 +1048,7 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<script defer="">
-    (function(){
-      "use strict";
-
-      // Shortcuts
-      const $ = (id) => document.getElementById(id);
-
-      // Elements
-      const modeRhoMu = $("modeRhoMu");
-      const modeNu = $("modeNu");
-      const fluidSelect = $("fluidSelect");
-      const temperatureGroup = $("temperatureGroup");
-      const temperature = $("temperature");
-      const tempUnit = $("tempUnit");
-
-      const velocity = $("velocity");
-      const velocityUnit = $("velocityUnit");
-
-      const lengthEl = $("length");
-      const lengthUnit = $("lengthUnit");
-
-      const density = $("density");
-      const densityUnit = $("densityUnit");
-
-      const mu = $("mu");
-      const muUnit = $("muUnit");
-
-      const nu = $("nu");
-      const nuUnit = $("nuUnit");
-
-      const rhoMuFields = $("rhoMuFields");
-      const nuField = $("nuField");
-
-      const reValue = $("reValue");
-      const regimeBadge = $("regimeBadge");
-      const nuComputed = $("nuComputed");
-      const notesText = $("notesText");
-
-      // Errors
-      const velError = $("velError");
-      const lenError = $("lenError");
-      const rhoError = $("rhoError");
-      const muError = $("muError");
-      const nuError = $("nuError");
-      const tempError = $("tempError");
-
-      // Tooltips
-      const tt = [
-        ["fluidInfoBtn","fluidInfo"],
-        ["tempInfoBtn","tempInfo"],
-        ["velInfoBtn","velInfo"],
-        ["lenInfoBtn","lenInfo"],
-        ["rhoInfoBtn","rhoInfo"],
-        ["muInfoBtn","muInfo"],
-        ["nuInfoBtn","nuInfo"]
-      ];
-      tt.forEach(([btnId,popId])=>{
-        const b = $(btnId), p = $(popId);
-        if(!b || !p) return;
-        b.addEventListener("click",()=>{
-          const open = b.getAttribute("aria-expanded")==="true";
-          b.setAttribute("aria-expanded", String(!open));
-          p.hidden = open;
-          if(!open){ p.focus?.(); }
-        });
-        b.addEventListener("keydown",(e)=>{
-          if((e.key === "Escape" || e.key === "Esc") && b.getAttribute("aria-expanded")==="true"){
-            b.setAttribute("aria-expanded","false");
-            p.hidden = true;
-            b.focus();
-          }
-        });
-      });
-
-      // Validation helpers
-      function setError(input, errorEl, message){
-        input.setAttribute("aria-invalid","true");
-        errorEl.textContent = message || "";
-      }
-      function clearError(input, errorEl){
-        input.setAttribute("aria-invalid","false");
-        errorEl.textContent = "";
-      }
-      function isPositiveNumber(val){
-        return typeof val === "number" && isFinite(val) && val > 0;
-      }
-
-      // Unit conversions
-      const toSI = {
-        // Velocity to m/s
-        vel(value, unit){
-          switch(unit){
-            case "m_s": return value;
-            case "ft_s": return value * 0.3048;
-            case "km_h": return value / 3.6;
-            case "mph": return value * 0.44704;
-          }
-          return NaN;
-        },
-        // Length to m
-        len(value, unit){
-          switch(unit){
-            case "m": return value;
-            case "mm": return value / 1000;
-            case "cm": return value / 100;
-            case "in": return value * 0.0254;
-            case "ft": return value * 0.3048;
-          }
-          return NaN;
-        },
-        // Density to kg/m3
-        rho(value, unit){
-          switch(unit){
-            case "kg_m3": return value;
-            case "lb_ft3": return value * 16.01846337396;
-          }
-          return NaN;
-        },
-        // Dynamic viscosity to Pa·s
-        mu(value, unit){
-          switch(unit){
-            case "Pa_s": return value;
-            case "mPa_s": return value / 1000;
-            case "cP": return value / 1000;
-          }
-          return NaN;
-        },
-        // Kinematic viscosity to m2/s
-        nu(value, unit){
-          switch(unit){
-            case "m2_s": return value;
-            case "cSt": return value * 1e-6;
-          }
-          return NaN;
-        },
-        // Temperature to K
-        tempK(value, unit){
-          switch(unit){
-            case "C": return value + 273.15;
-            case "K": return value;
-            case "F": return (value - 32) * 5/9 + 273.15;
-          }
-          return NaN;
-        }
-      };
-
-      // Fluid property correlations/presets
-      function waterMuPaS_C(Tc){
-        // Andrade’s correlation: μ [Pa·s] = 2.414e-5 * 10^(247.8/(T+133.15))
-        return 2.414e-5 * Math.pow(10, 247.8/(Tc + 133.15));
-      }
-      function waterRho_kgm3(Tc){
-        // Approximate density near ambient; simple linear fit around 20°C
-        return 998.2 - 0.3*(Tc - 20);
-      }
-      function airMuPaS_K(Tk){
-        // Sutherland's law (air): μ = μ0 * (T0 + C)/(T + C) * (T/T0)^(3/2)
-        const mu0 = 1.716e-5, T0 = 273.15, C = 110.4;
-        return mu0 * ((T0 + C)/(Tk + C)) * Math.pow(Tk/T0, 1.5);
-      }
-      function airRho_kgm3_K(Tk){
-        // Ideal gas at 1 atm
-        const p = 101325; const R = 287.058;
-        return p/(R*Tk);
-      }
-
-      function applyFluidPreset(){
-        const val = fluidSelect.value;
-        const showTemp = (val === "water" || val === "air");
-        temperatureGroup.hidden = !showTemp;
-
-        if(val === "custom"){
-          return; // do not override user inputs
-        }
-
-        let rhoSI, muSI;
-        let Tc = 20;
-        let Tk = 293.15;
-
-        // Convert current temperature to needed scale
-        const T_in = Number(temperature.value);
-        const Tunit = tempUnit.value;
-        const TkNow = toSI.tempK(T_in, Tunit);
-        const TcNow = TkNow - 273.15;
-
-        if(val === "water"){
-          Tc = isFinite(Cc(TcNow)) ? TcNow : 20;
-          muSI = waterMuPaS_C(Tc);
-          rhoSI = waterRho_kgm3(Tc);
-        }else if(val === "air"){
-          Tk = isFinite(Ck(TkNow)) ? TkNow : 293.15;
-          muSI = airMuPaS_K(Tk);
-          rhoSI = airRho_kgm3_K(Tk);
-        }else if(val === "glycerin"){
-          // 100% glycerin at ≈20°C
-          rhoSI = 1260; muSI = 1.49;
-        }else if(val === "sae30"){
-          // Representative SAE 30 oil near 20°C
-          rhoSI = 890; muSI = 0.29;
-        }
-
-        // Update fields using current units
-        if(isFinite(rhoSI)){
-          if(densityUnit.value === "kg_m3"){ density.value = roundSmart(rhoSI); }
-          else if(densityUnit.value === "lb_ft3"){ density.value = roundSmart(rhoSI / 16.01846337396); }
-        }
-        if(isFinite(muSI)){
-          if(muUnit.value === "Pa_s"){ mu.value = sciIfNeeded(muSI); }
-          else if(muUnit.value === "mPa_s" || muUnit.value === "cP"){ mu.value = sciIfNeeded(muSI * 1000); }
-        }
-
-        // If in ν mode and preset provides μ and ρ, compute ν and populate
-        if(modeNu.checked && isFinite(muSI) && isFinite(rhoSI)){
-          const nuSI = muSI/rhoSI;
-          if(nuUnit.value === "m2_s"){ nu.value = sciIfNeeded(nuSI); }
-          else if(nuUnit.value === "cSt"){ nu.value = roundSmart(nuSI * 1e6); }
-        }
-      }
-
-      function Ck(x){ return x; }  // allow simple finite checks
-      function Cc(x){ return x; }
-
-      // Toggle property mode
-      function updateMode(){
-        const mode = modeRhoMu.checked ? "rhoMu" : "nu";
-        if(mode === "rhoMu"){
-          rhoMuFields.hidden = false;
-          nuField.hidden = true;
-        } else {
-          rhoMuFields.hidden = true;
-          nuField.hidden = false;
-        }
-        // Recalculate
-        calculate();
-      }
-
-      // Input validation on blur
-      function validateField(input, errorEl, name){
-        const raw = input.value.trim();
-        if(!raw){
-          setError(input, errorEl, name + " is required.");
-          return false;
-        }
-        const num = Number(raw);
-        if(!isFinite(num)){
-          setError(input, errorEl, "Please enter a valid number for " + name + ".");
-          return false;
-        }
-        if(num <= 0){
-          setError(input, errorEl, name + " must be greater than zero.");
-          return false;
-        }
-        clearError(input, errorEl);
-        return true;
-      }
-
-      velocity.addEventListener("blur", () => validateField(velocity, velError, "Velocity"));
-      lengthEl.addEventListener("blur", () => validateField(lengthEl, lenError, "Characteristic length"));
-      density.addEventListener("blur", () => { if(!rhoMuFields.hidden) validateField(density, rhoError, "Density"); });
-      mu.addEventListener("blur", () => { if(!rhoMuFields.hidden) validateField(mu, muError, "Dynamic viscosity"); });
-      nu.addEventListener("blur", () => { if(!nuField.hidden) validateField(nu, nuError, "Kinematic viscosity"); });
-      temperature.addEventListener("blur", ()=>{
-        if(temperatureGroup.hidden) return;
-        const ok = validateField(temperature, tempError, "Temperature");
-        if(ok) applyFluidPreset();
-      });
-
-      // Debounced calculation on input for responsiveness
-      let t;
-      const onChange = () => {
-        clearTimeout(t);
-        t = setTimeout(calculate, 60);
-      };
-
-      // Attach events
-      [modeRhoMu, modeNu].forEach(r => r.addEventListener("change", updateMode));
-      [fluidSelect, temperature, tempUnit, velocity, velocityUnit, lengthEl, lengthUnit, density, densityUnit, mu, muUnit, nu, nuUnit]
-        .forEach(el => el.addEventListener("input", onChange));
-      [fluidSelect, tempUnit, velocityUnit, lengthUnit, densityUnit, muUnit, nuUnit]
-        .forEach(el => el.addEventListener("change", onChange));
-
-      // Apply preset when fluid or temp changes explicitly
-      fluidSelect.addEventListener("change", applyFluidPreset);
-      temperature.addEventListener("input", ()=>{
-        if(!temperatureGroup.hidden) applyFluidPreset();
-      });
-      tempUnit.addEventListener("change", ()=>{
-        if(!temperatureGroup.hidden) applyFluidPreset();
-      });
-
-      // Calculation
-      function calculate(){
-        // Ensure required inputs
-        const vOk = validateField(velocity, velError, "Velocity");
-        const LOk = validateField(lengthEl, lenError, "Characteristic length");
-        if(!vOk || !LOk){
-          showPending();
-          return;
-        }
-        const vSI = toSI.vel(Number(velocity.value), velocityUnit.value);
-        const LSI = toSI.len(Number(lengthEl.value), lengthUnit.value);
-
-        let Re = NaN, nuSI_show = NaN;
-
-        if(modeRhoMu.checked){
-          const rhoOk = validateField(density, rhoError, "Density");
-          const muOk = validateField(mu, muError, "Dynamic viscosity");
-          if(!rhoOk || !muOk){ showPending(); return; }
-          const rhoSI = toSI.rho(Number(density.value), densityUnit.value);
-          const muSIv = toSI.mu(Number(mu.value), muUnit.value);
-          if(!isPositiveNumber(rhoSI) || !isPositiveNumber(muSIv)){ showPending(); return; }
-          Re = (rhoSI * vSI * LSI) / muSIv;
-          nuSI_show = muSIv / rhoSI;
-        } else {
-          const nuOk = validateField(nu, nuError, "Kinematic viscosity");
-          if(!nuOk){ showPending(); return; }
-          const nuSIv = toSI.nu(Number(nu.value), nuUnit.value);
-          if(!isPositiveNumber(nuSIv)){ showPending(); return; }
-          Re = (vSI * LSI) / nuSIv;
-          nuSI_show = nuSIv;
-        }
-
-        // Update UI
-        if(isFinite(Re)){
-          reValue.textContent = formatRe(Re);
-          updateRegimeBadge(Re);
-        } else {
-          reValue.textContent = "—";
-          regimeBadge.textContent = "—";
-          regimeBadge.className = "badge";
-        }
-
-        if(isFinite(nuSI_show)){
-          nuComputed.textContent = formatNu(nuSI_show);
-        } else {
-          nuComputed.textContent = "—";
-        }
-      }
-
-      function showPending(){
-        reValue.textContent = "—";
-        regimeBadge.textContent = "—";
-        regimeBadge.className = "badge";
-        nuComputed.textContent = "—";
-      }
-
-      function updateRegimeBadge(Re){
-        // Thresholds typical for internal pipe flow
-        let label = "—", cls = "badge";
-        if(Re < 2300){ label = "Laminar"; cls = "badge success"; }
-        else if(Re <= 4000){ label = "Transitional"; cls = "badge warn"; }
-        else { label = "Turbulent"; cls = "badge danger"; }
-        regimeBadge.textContent = label + " (pipe)";
-        regimeBadge.className = cls;
-      }
-
-      // Formatting helpers
-      function sciIfNeeded(x){
-        const absx = Math.abs(x);
-        if((absx !== 0 && (absx < 1e-3 || absx >= 1e5))){
-          return x.toExponential(3);
-        }
-        return String(roundSmart(x));
-      }
-      function roundSmart(x){
-        // Adaptive rounding for UI readability
-        const absx = Math.abs(x);
-        if(absx >= 1000) return Math.round(x);
-        if(absx >= 100) return Math.round(x * 10)/10;
-        if(absx >= 10) return Math.round(x * 100)/100;
-        if(absx >= 1) return Math.round(x * 1000)/1000;
-        if(absx >= 1e-2) return Math.round(x * 1e5)/1e5;
-        return Number.parseFloat(x.toExponential(3));
-      }
-      function formatRe(Re){
-        if(Re < 1e5){ return roundSmart(Re).toLocaleString(); }
-        // show scientific for large values
-        return Re.toExponential(3).replace("e","×10^");
-      }
-      function formatNu(nuSI){
-        // Render both m²/s and cSt
-        const cSt = nuSI * 1e6;
-        const a = sciIfNeeded(nuSI) + " m²/s";
-        const b = roundSmart(cSt) + " cSt";
-        return a + " (" + b + ")";
-      }
-
-      // Initialize defaults
-      (function init(){
-        // Set some sensible defaults for faster first paint
-        velocity.value = "1.5";
-        lengthEl.value = "0.05";
-        density.value = "998.2";
-        mu.value = "0.001002";
-        nu.value = "1.004e-6";
-
-        // Validation ARIA wires: ensure describedby includes tooltip and error
-        const wire = [
-          [velocity, "velInfo", velError.id],
-          [lengthEl, "lenInfo", lenError.id],
-          [density, "rhoInfo", rhoError.id],
-          [mu, "muInfo", muError.id],
-          [nu, "nuInfo", nuError.id],
-          [temperature, "tempInfo", tempError.id]
-        ];
-        wire.forEach(([input, tipId, errId])=>{
-          if(!input) return;
-          const ids = [tipId, errId].filter(Boolean).join(" ");
-          input.setAttribute("aria-describedby", ids);
-        });
-
-        updateMode();
-        calculate();
-      })();
-
-    })();
-  </script>
-
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1926,12 +1095,7 @@
   border-color:#fed7aa;
   color:#9a3412;
 }
-</style>
-</head>
-<body>
-
-<a class="skip-link" href="#main">Skip to main content</a>
-<main class="main container" id="main" role="main">
+</style><a class="skip-link" href="#main">Skip to main content</a><main class="main container" id="main" role="main">
 <h1>Reynolds Number Calculator</h1>
 <p>
       This professional-grade Reynolds number calculator helps engineers, researchers, and students quickly predict flow regime for internal and external flows. Enter velocity and characteristic length, then choose to use density and dynamic viscosity or kinematic viscosity. The tool offers authoritative unit handling, trusted fluid presets, and clear, accessible results.
@@ -2247,8 +1411,48 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
     (function(){
       "use strict";
 
@@ -2664,7 +1868,836 @@
       })();
 
     })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      "use strict";
 
+      // Shortcuts
+      const $ = (id) => document.getElementById(id);
 
-</body></html>
+      // Elements
+      const modeRhoMu = $("modeRhoMu");
+      const modeNu = $("modeNu");
+      const fluidSelect = $("fluidSelect");
+      const temperatureGroup = $("temperatureGroup");
+      const temperature = $("temperature");
+      const tempUnit = $("tempUnit");
+
+      const velocity = $("velocity");
+      const velocityUnit = $("velocityUnit");
+
+      const lengthEl = $("length");
+      const lengthUnit = $("lengthUnit");
+
+      const density = $("density");
+      const densityUnit = $("densityUnit");
+
+      const mu = $("mu");
+      const muUnit = $("muUnit");
+
+      const nu = $("nu");
+      const nuUnit = $("nuUnit");
+
+      const rhoMuFields = $("rhoMuFields");
+      const nuField = $("nuField");
+
+      const reValue = $("reValue");
+      const regimeBadge = $("regimeBadge");
+      const nuComputed = $("nuComputed");
+      const notesText = $("notesText");
+
+      // Errors
+      const velError = $("velError");
+      const lenError = $("lenError");
+      const rhoError = $("rhoError");
+      const muError = $("muError");
+      const nuError = $("nuError");
+      const tempError = $("tempError");
+
+      // Tooltips
+      const tt = [
+        ["fluidInfoBtn","fluidInfo"],
+        ["tempInfoBtn","tempInfo"],
+        ["velInfoBtn","velInfo"],
+        ["lenInfoBtn","lenInfo"],
+        ["rhoInfoBtn","rhoInfo"],
+        ["muInfoBtn","muInfo"],
+        ["nuInfoBtn","nuInfo"]
+      ];
+      tt.forEach(([btnId,popId])=>{
+        const b = $(btnId), p = $(popId);
+        if(!b || !p) return;
+        b.addEventListener("click",()=>{
+          const open = b.getAttribute("aria-expanded")==="true";
+          b.setAttribute("aria-expanded", String(!open));
+          p.hidden = open;
+          if(!open){ p.focus?.(); }
+        });
+        b.addEventListener("keydown",(e)=>{
+          if((e.key === "Escape" || e.key === "Esc") && b.getAttribute("aria-expanded")==="true"){
+            b.setAttribute("aria-expanded","false");
+            p.hidden = true;
+            b.focus();
+          }
+        });
+      });
+
+      // Validation helpers
+      function setError(input, errorEl, message){
+        input.setAttribute("aria-invalid","true");
+        errorEl.textContent = message || "";
+      }
+      function clearError(input, errorEl){
+        input.setAttribute("aria-invalid","false");
+        errorEl.textContent = "";
+      }
+      function isPositiveNumber(val){
+        return typeof val === "number" && isFinite(val) && val > 0;
+      }
+
+      // Unit conversions
+      const toSI = {
+        // Velocity to m/s
+        vel(value, unit){
+          switch(unit){
+            case "m_s": return value;
+            case "ft_s": return value * 0.3048;
+            case "km_h": return value / 3.6;
+            case "mph": return value * 0.44704;
+          }
+          return NaN;
+        },
+        // Length to m
+        len(value, unit){
+          switch(unit){
+            case "m": return value;
+            case "mm": return value / 1000;
+            case "cm": return value / 100;
+            case "in": return value * 0.0254;
+            case "ft": return value * 0.3048;
+          }
+          return NaN;
+        },
+        // Density to kg/m3
+        rho(value, unit){
+          switch(unit){
+            case "kg_m3": return value;
+            case "lb_ft3": return value * 16.01846337396;
+          }
+          return NaN;
+        },
+        // Dynamic viscosity to Pa·s
+        mu(value, unit){
+          switch(unit){
+            case "Pa_s": return value;
+            case "mPa_s": return value / 1000;
+            case "cP": return value / 1000;
+          }
+          return NaN;
+        },
+        // Kinematic viscosity to m2/s
+        nu(value, unit){
+          switch(unit){
+            case "m2_s": return value;
+            case "cSt": return value * 1e-6;
+          }
+          return NaN;
+        },
+        // Temperature to K
+        tempK(value, unit){
+          switch(unit){
+            case "C": return value + 273.15;
+            case "K": return value;
+            case "F": return (value - 32) * 5/9 + 273.15;
+          }
+          return NaN;
+        }
+      };
+
+      // Fluid property correlations/presets
+      function waterMuPaS_C(Tc){
+        // Andrade’s correlation: μ [Pa·s] = 2.414e-5 * 10^(247.8/(T+133.15))
+        return 2.414e-5 * Math.pow(10, 247.8/(Tc + 133.15));
+      }
+      function waterRho_kgm3(Tc){
+        // Approximate density near ambient; simple linear fit around 20°C
+        return 998.2 - 0.3*(Tc - 20);
+      }
+      function airMuPaS_K(Tk){
+        // Sutherland's law (air): μ = μ0 * (T0 + C)/(T + C) * (T/T0)^(3/2)
+        const mu0 = 1.716e-5, T0 = 273.15, C = 110.4;
+        return mu0 * ((T0 + C)/(Tk + C)) * Math.pow(Tk/T0, 1.5);
+      }
+      function airRho_kgm3_K(Tk){
+        // Ideal gas at 1 atm
+        const p = 101325; const R = 287.058;
+        return p/(R*Tk);
+      }
+
+      function applyFluidPreset(){
+        const val = fluidSelect.value;
+        const showTemp = (val === "water" || val === "air");
+        temperatureGroup.hidden = !showTemp;
+
+        if(val === "custom"){
+          return; // do not override user inputs
+        }
+
+        let rhoSI, muSI;
+        let Tc = 20;
+        let Tk = 293.15;
+
+        // Convert current temperature to needed scale
+        const T_in = Number(temperature.value);
+        const Tunit = tempUnit.value;
+        const TkNow = toSI.tempK(T_in, Tunit);
+        const TcNow = TkNow - 273.15;
+
+        if(val === "water"){
+          Tc = isFinite(Cc(TcNow)) ? TcNow : 20;
+          muSI = waterMuPaS_C(Tc);
+          rhoSI = waterRho_kgm3(Tc);
+        }else if(val === "air"){
+          Tk = isFinite(Ck(TkNow)) ? TkNow : 293.15;
+          muSI = airMuPaS_K(Tk);
+          rhoSI = airRho_kgm3_K(Tk);
+        }else if(val === "glycerin"){
+          // 100% glycerin at ≈20°C
+          rhoSI = 1260; muSI = 1.49;
+        }else if(val === "sae30"){
+          // Representative SAE 30 oil near 20°C
+          rhoSI = 890; muSI = 0.29;
+        }
+
+        // Update fields using current units
+        if(isFinite(rhoSI)){
+          if(densityUnit.value === "kg_m3"){ density.value = roundSmart(rhoSI); }
+          else if(densityUnit.value === "lb_ft3"){ density.value = roundSmart(rhoSI / 16.01846337396); }
+        }
+        if(isFinite(muSI)){
+          if(muUnit.value === "Pa_s"){ mu.value = sciIfNeeded(muSI); }
+          else if(muUnit.value === "mPa_s" || muUnit.value === "cP"){ mu.value = sciIfNeeded(muSI * 1000); }
+        }
+
+        // If in ν mode and preset provides μ and ρ, compute ν and populate
+        if(modeNu.checked && isFinite(muSI) && isFinite(rhoSI)){
+          const nuSI = muSI/rhoSI;
+          if(nuUnit.value === "m2_s"){ nu.value = sciIfNeeded(nuSI); }
+          else if(nuUnit.value === "cSt"){ nu.value = roundSmart(nuSI * 1e6); }
+        }
+      }
+
+      function Ck(x){ return x; }  // allow simple finite checks
+      function Cc(x){ return x; }
+
+      // Toggle property mode
+      function updateMode(){
+        const mode = modeRhoMu.checked ? "rhoMu" : "nu";
+        if(mode === "rhoMu"){
+          rhoMuFields.hidden = false;
+          nuField.hidden = true;
+        } else {
+          rhoMuFields.hidden = true;
+          nuField.hidden = false;
+        }
+        // Recalculate
+        calculate();
+      }
+
+      // Input validation on blur
+      function validateField(input, errorEl, name){
+        const raw = input.value.trim();
+        if(!raw){
+          setError(input, errorEl, name + " is required.");
+          return false;
+        }
+        const num = Number(raw);
+        if(!isFinite(num)){
+          setError(input, errorEl, "Please enter a valid number for " + name + ".");
+          return false;
+        }
+        if(num <= 0){
+          setError(input, errorEl, name + " must be greater than zero.");
+          return false;
+        }
+        clearError(input, errorEl);
+        return true;
+      }
+
+      velocity.addEventListener("blur", () => validateField(velocity, velError, "Velocity"));
+      lengthEl.addEventListener("blur", () => validateField(lengthEl, lenError, "Characteristic length"));
+      density.addEventListener("blur", () => { if(!rhoMuFields.hidden) validateField(density, rhoError, "Density"); });
+      mu.addEventListener("blur", () => { if(!rhoMuFields.hidden) validateField(mu, muError, "Dynamic viscosity"); });
+      nu.addEventListener("blur", () => { if(!nuField.hidden) validateField(nu, nuError, "Kinematic viscosity"); });
+      temperature.addEventListener("blur", ()=>{
+        if(temperatureGroup.hidden) return;
+        const ok = validateField(temperature, tempError, "Temperature");
+        if(ok) applyFluidPreset();
+      });
+
+      // Debounced calculation on input for responsiveness
+      let t;
+      const onChange = () => {
+        clearTimeout(t);
+        t = setTimeout(calculate, 60);
+      };
+
+      // Attach events
+      [modeRhoMu, modeNu].forEach(r => r.addEventListener("change", updateMode));
+      [fluidSelect, temperature, tempUnit, velocity, velocityUnit, lengthEl, lengthUnit, density, densityUnit, mu, muUnit, nu, nuUnit]
+        .forEach(el => el.addEventListener("input", onChange));
+      [fluidSelect, tempUnit, velocityUnit, lengthUnit, densityUnit, muUnit, nuUnit]
+        .forEach(el => el.addEventListener("change", onChange));
+
+      // Apply preset when fluid or temp changes explicitly
+      fluidSelect.addEventListener("change", applyFluidPreset);
+      temperature.addEventListener("input", ()=>{
+        if(!temperatureGroup.hidden) applyFluidPreset();
+      });
+      tempUnit.addEventListener("change", ()=>{
+        if(!temperatureGroup.hidden) applyFluidPreset();
+      });
+
+      // Calculation
+      function calculate(){
+        // Ensure required inputs
+        const vOk = validateField(velocity, velError, "Velocity");
+        const LOk = validateField(lengthEl, lenError, "Characteristic length");
+        if(!vOk || !LOk){
+          showPending();
+          return;
+        }
+        const vSI = toSI.vel(Number(velocity.value), velocityUnit.value);
+        const LSI = toSI.len(Number(lengthEl.value), lengthUnit.value);
+
+        let Re = NaN, nuSI_show = NaN;
+
+        if(modeRhoMu.checked){
+          const rhoOk = validateField(density, rhoError, "Density");
+          const muOk = validateField(mu, muError, "Dynamic viscosity");
+          if(!rhoOk || !muOk){ showPending(); return; }
+          const rhoSI = toSI.rho(Number(density.value), densityUnit.value);
+          const muSIv = toSI.mu(Number(mu.value), muUnit.value);
+          if(!isPositiveNumber(rhoSI) || !isPositiveNumber(muSIv)){ showPending(); return; }
+          Re = (rhoSI * vSI * LSI) / muSIv;
+          nuSI_show = muSIv / rhoSI;
+        } else {
+          const nuOk = validateField(nu, nuError, "Kinematic viscosity");
+          if(!nuOk){ showPending(); return; }
+          const nuSIv = toSI.nu(Number(nu.value), nuUnit.value);
+          if(!isPositiveNumber(nuSIv)){ showPending(); return; }
+          Re = (vSI * LSI) / nuSIv;
+          nuSI_show = nuSIv;
+        }
+
+        // Update UI
+        if(isFinite(Re)){
+          reValue.textContent = formatRe(Re);
+          updateRegimeBadge(Re);
+        } else {
+          reValue.textContent = "—";
+          regimeBadge.textContent = "—";
+          regimeBadge.className = "badge";
+        }
+
+        if(isFinite(nuSI_show)){
+          nuComputed.textContent = formatNu(nuSI_show);
+        } else {
+          nuComputed.textContent = "—";
+        }
+      }
+
+      function showPending(){
+        reValue.textContent = "—";
+        regimeBadge.textContent = "—";
+        regimeBadge.className = "badge";
+        nuComputed.textContent = "—";
+      }
+
+      function updateRegimeBadge(Re){
+        // Thresholds typical for internal pipe flow
+        let label = "—", cls = "badge";
+        if(Re < 2300){ label = "Laminar"; cls = "badge success"; }
+        else if(Re <= 4000){ label = "Transitional"; cls = "badge warn"; }
+        else { label = "Turbulent"; cls = "badge danger"; }
+        regimeBadge.textContent = label + " (pipe)";
+        regimeBadge.className = cls;
+      }
+
+      // Formatting helpers
+      function sciIfNeeded(x){
+        const absx = Math.abs(x);
+        if((absx !== 0 && (absx < 1e-3 || absx >= 1e5))){
+          return x.toExponential(3);
+        }
+        return String(roundSmart(x));
+      }
+      function roundSmart(x){
+        // Adaptive rounding for UI readability
+        const absx = Math.abs(x);
+        if(absx >= 1000) return Math.round(x);
+        if(absx >= 100) return Math.round(x * 10)/10;
+        if(absx >= 10) return Math.round(x * 100)/100;
+        if(absx >= 1) return Math.round(x * 1000)/1000;
+        if(absx >= 1e-2) return Math.round(x * 1e5)/1e5;
+        return Number.parseFloat(x.toExponential(3));
+      }
+      function formatRe(Re){
+        if(Re < 1e5){ return roundSmart(Re).toLocaleString(); }
+        // show scientific for large values
+        return Re.toExponential(3).replace("e","×10^");
+      }
+      function formatNu(nuSI){
+        // Render both m²/s and cSt
+        const cSt = nuSI * 1e6;
+        const a = sciIfNeeded(nuSI) + " m²/s";
+        const b = roundSmart(cSt) + " cSt";
+        return a + " (" + b + ")";
+      }
+
+      // Initialize defaults
+      (function init(){
+        // Set some sensible defaults for faster first paint
+        velocity.value = "1.5";
+        lengthEl.value = "0.05";
+        density.value = "998.2";
+        mu.value = "0.001002";
+        nu.value = "1.004e-6";
+
+        // Validation ARIA wires: ensure describedby includes tooltip and error
+        const wire = [
+          [velocity, "velInfo", velError.id],
+          [lengthEl, "lenInfo", lenError.id],
+          [density, "rhoInfo", rhoError.id],
+          [mu, "muInfo", muError.id],
+          [nu, "nuInfo", nuError.id],
+          [temperature, "tempInfo", tempError.id]
+        ];
+        wire.forEach(([input, tipId, errId])=>{
+          if(!input) return;
+          const ids = [tipId, errId].filter(Boolean).join(" ");
+          input.setAttribute("aria-describedby", ids);
+        });
+
+        updateMode();
+        calculate();
+      })();
+
+    })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      "use strict";
+
+      // Shortcuts
+      const $ = (id) => document.getElementById(id);
+
+      // Elements
+      const modeRhoMu = $("modeRhoMu");
+      const modeNu = $("modeNu");
+      const fluidSelect = $("fluidSelect");
+      const temperatureGroup = $("temperatureGroup");
+      const temperature = $("temperature");
+      const tempUnit = $("tempUnit");
+
+      const velocity = $("velocity");
+      const velocityUnit = $("velocityUnit");
+
+      const lengthEl = $("length");
+      const lengthUnit = $("lengthUnit");
+
+      const density = $("density");
+      const densityUnit = $("densityUnit");
+
+      const mu = $("mu");
+      const muUnit = $("muUnit");
+
+      const nu = $("nu");
+      const nuUnit = $("nuUnit");
+
+      const rhoMuFields = $("rhoMuFields");
+      const nuField = $("nuField");
+
+      const reValue = $("reValue");
+      const regimeBadge = $("regimeBadge");
+      const nuComputed = $("nuComputed");
+      const notesText = $("notesText");
+
+      // Errors
+      const velError = $("velError");
+      const lenError = $("lenError");
+      const rhoError = $("rhoError");
+      const muError = $("muError");
+      const nuError = $("nuError");
+      const tempError = $("tempError");
+
+      // Tooltips
+      const tt = [
+        ["fluidInfoBtn","fluidInfo"],
+        ["tempInfoBtn","tempInfo"],
+        ["velInfoBtn","velInfo"],
+        ["lenInfoBtn","lenInfo"],
+        ["rhoInfoBtn","rhoInfo"],
+        ["muInfoBtn","muInfo"],
+        ["nuInfoBtn","nuInfo"]
+      ];
+      tt.forEach(([btnId,popId])=>{
+        const b = $(btnId), p = $(popId);
+        if(!b || !p) return;
+        b.addEventListener("click",()=>{
+          const open = b.getAttribute("aria-expanded")==="true";
+          b.setAttribute("aria-expanded", String(!open));
+          p.hidden = open;
+          if(!open){ p.focus?.(); }
+        });
+        b.addEventListener("keydown",(e)=>{
+          if((e.key === "Escape" || e.key === "Esc") && b.getAttribute("aria-expanded")==="true"){
+            b.setAttribute("aria-expanded","false");
+            p.hidden = true;
+            b.focus();
+          }
+        });
+      });
+
+      // Validation helpers
+      function setError(input, errorEl, message){
+        input.setAttribute("aria-invalid","true");
+        errorEl.textContent = message || "";
+      }
+      function clearError(input, errorEl){
+        input.setAttribute("aria-invalid","false");
+        errorEl.textContent = "";
+      }
+      function isPositiveNumber(val){
+        return typeof val === "number" && isFinite(val) && val > 0;
+      }
+
+      // Unit conversions
+      const toSI = {
+        // Velocity to m/s
+        vel(value, unit){
+          switch(unit){
+            case "m_s": return value;
+            case "ft_s": return value * 0.3048;
+            case "km_h": return value / 3.6;
+            case "mph": return value * 0.44704;
+          }
+          return NaN;
+        },
+        // Length to m
+        len(value, unit){
+          switch(unit){
+            case "m": return value;
+            case "mm": return value / 1000;
+            case "cm": return value / 100;
+            case "in": return value * 0.0254;
+            case "ft": return value * 0.3048;
+          }
+          return NaN;
+        },
+        // Density to kg/m3
+        rho(value, unit){
+          switch(unit){
+            case "kg_m3": return value;
+            case "lb_ft3": return value * 16.01846337396;
+          }
+          return NaN;
+        },
+        // Dynamic viscosity to Pa·s
+        mu(value, unit){
+          switch(unit){
+            case "Pa_s": return value;
+            case "mPa_s": return value / 1000;
+            case "cP": return value / 1000;
+          }
+          return NaN;
+        },
+        // Kinematic viscosity to m2/s
+        nu(value, unit){
+          switch(unit){
+            case "m2_s": return value;
+            case "cSt": return value * 1e-6;
+          }
+          return NaN;
+        },
+        // Temperature to K
+        tempK(value, unit){
+          switch(unit){
+            case "C": return value + 273.15;
+            case "K": return value;
+            case "F": return (value - 32) * 5/9 + 273.15;
+          }
+          return NaN;
+        }
+      };
+
+      // Fluid property correlations/presets
+      function waterMuPaS_C(Tc){
+        // Andrade’s correlation: μ [Pa·s] = 2.414e-5 * 10^(247.8/(T+133.15))
+        return 2.414e-5 * Math.pow(10, 247.8/(Tc + 133.15));
+      }
+      function waterRho_kgm3(Tc){
+        // Approximate density near ambient; simple linear fit around 20°C
+        return 998.2 - 0.3*(Tc - 20);
+      }
+      function airMuPaS_K(Tk){
+        // Sutherland's law (air): μ = μ0 * (T0 + C)/(T + C) * (T/T0)^(3/2)
+        const mu0 = 1.716e-5, T0 = 273.15, C = 110.4;
+        return mu0 * ((T0 + C)/(Tk + C)) * Math.pow(Tk/T0, 1.5);
+      }
+      function airRho_kgm3_K(Tk){
+        // Ideal gas at 1 atm
+        const p = 101325; const R = 287.058;
+        return p/(R*Tk);
+      }
+
+      function applyFluidPreset(){
+        const val = fluidSelect.value;
+        const showTemp = (val === "water" || val === "air");
+        temperatureGroup.hidden = !showTemp;
+
+        if(val === "custom"){
+          return; // do not override user inputs
+        }
+
+        let rhoSI, muSI;
+        let Tc = 20;
+        let Tk = 293.15;
+
+        // Convert current temperature to needed scale
+        const T_in = Number(temperature.value);
+        const Tunit = tempUnit.value;
+        const TkNow = toSI.tempK(T_in, Tunit);
+        const TcNow = TkNow - 273.15;
+
+        if(val === "water"){
+          Tc = isFinite(Cc(TcNow)) ? TcNow : 20;
+          muSI = waterMuPaS_C(Tc);
+          rhoSI = waterRho_kgm3(Tc);
+        }else if(val === "air"){
+          Tk = isFinite(Ck(TkNow)) ? TkNow : 293.15;
+          muSI = airMuPaS_K(Tk);
+          rhoSI = airRho_kgm3_K(Tk);
+        }else if(val === "glycerin"){
+          // 100% glycerin at ≈20°C
+          rhoSI = 1260; muSI = 1.49;
+        }else if(val === "sae30"){
+          // Representative SAE 30 oil near 20°C
+          rhoSI = 890; muSI = 0.29;
+        }
+
+        // Update fields using current units
+        if(isFinite(rhoSI)){
+          if(densityUnit.value === "kg_m3"){ density.value = roundSmart(rhoSI); }
+          else if(densityUnit.value === "lb_ft3"){ density.value = roundSmart(rhoSI / 16.01846337396); }
+        }
+        if(isFinite(muSI)){
+          if(muUnit.value === "Pa_s"){ mu.value = sciIfNeeded(muSI); }
+          else if(muUnit.value === "mPa_s" || muUnit.value === "cP"){ mu.value = sciIfNeeded(muSI * 1000); }
+        }
+
+        // If in ν mode and preset provides μ and ρ, compute ν and populate
+        if(modeNu.checked && isFinite(muSI) && isFinite(rhoSI)){
+          const nuSI = muSI/rhoSI;
+          if(nuUnit.value === "m2_s"){ nu.value = sciIfNeeded(nuSI); }
+          else if(nuUnit.value === "cSt"){ nu.value = roundSmart(nuSI * 1e6); }
+        }
+      }
+
+      function Ck(x){ return x; }  // allow simple finite checks
+      function Cc(x){ return x; }
+
+      // Toggle property mode
+      function updateMode(){
+        const mode = modeRhoMu.checked ? "rhoMu" : "nu";
+        if(mode === "rhoMu"){
+          rhoMuFields.hidden = false;
+          nuField.hidden = true;
+        } else {
+          rhoMuFields.hidden = true;
+          nuField.hidden = false;
+        }
+        // Recalculate
+        calculate();
+      }
+
+      // Input validation on blur
+      function validateField(input, errorEl, name){
+        const raw = input.value.trim();
+        if(!raw){
+          setError(input, errorEl, name + " is required.");
+          return false;
+        }
+        const num = Number(raw);
+        if(!isFinite(num)){
+          setError(input, errorEl, "Please enter a valid number for " + name + ".");
+          return false;
+        }
+        if(num <= 0){
+          setError(input, errorEl, name + " must be greater than zero.");
+          return false;
+        }
+        clearError(input, errorEl);
+        return true;
+      }
+
+      velocity.addEventListener("blur", () => validateField(velocity, velError, "Velocity"));
+      lengthEl.addEventListener("blur", () => validateField(lengthEl, lenError, "Characteristic length"));
+      density.addEventListener("blur", () => { if(!rhoMuFields.hidden) validateField(density, rhoError, "Density"); });
+      mu.addEventListener("blur", () => { if(!rhoMuFields.hidden) validateField(mu, muError, "Dynamic viscosity"); });
+      nu.addEventListener("blur", () => { if(!nuField.hidden) validateField(nu, nuError, "Kinematic viscosity"); });
+      temperature.addEventListener("blur", ()=>{
+        if(temperatureGroup.hidden) return;
+        const ok = validateField(temperature, tempError, "Temperature");
+        if(ok) applyFluidPreset();
+      });
+
+      // Debounced calculation on input for responsiveness
+      let t;
+      const onChange = () => {
+        clearTimeout(t);
+        t = setTimeout(calculate, 60);
+      };
+
+      // Attach events
+      [modeRhoMu, modeNu].forEach(r => r.addEventListener("change", updateMode));
+      [fluidSelect, temperature, tempUnit, velocity, velocityUnit, lengthEl, lengthUnit, density, densityUnit, mu, muUnit, nu, nuUnit]
+        .forEach(el => el.addEventListener("input", onChange));
+      [fluidSelect, tempUnit, velocityUnit, lengthUnit, densityUnit, muUnit, nuUnit]
+        .forEach(el => el.addEventListener("change", onChange));
+
+      // Apply preset when fluid or temp changes explicitly
+      fluidSelect.addEventListener("change", applyFluidPreset);
+      temperature.addEventListener("input", ()=>{
+        if(!temperatureGroup.hidden) applyFluidPreset();
+      });
+      tempUnit.addEventListener("change", ()=>{
+        if(!temperatureGroup.hidden) applyFluidPreset();
+      });
+
+      // Calculation
+      function calculate(){
+        // Ensure required inputs
+        const vOk = validateField(velocity, velError, "Velocity");
+        const LOk = validateField(lengthEl, lenError, "Characteristic length");
+        if(!vOk || !LOk){
+          showPending();
+          return;
+        }
+        const vSI = toSI.vel(Number(velocity.value), velocityUnit.value);
+        const LSI = toSI.len(Number(lengthEl.value), lengthUnit.value);
+
+        let Re = NaN, nuSI_show = NaN;
+
+        if(modeRhoMu.checked){
+          const rhoOk = validateField(density, rhoError, "Density");
+          const muOk = validateField(mu, muError, "Dynamic viscosity");
+          if(!rhoOk || !muOk){ showPending(); return; }
+          const rhoSI = toSI.rho(Number(density.value), densityUnit.value);
+          const muSIv = toSI.mu(Number(mu.value), muUnit.value);
+          if(!isPositiveNumber(rhoSI) || !isPositiveNumber(muSIv)){ showPending(); return; }
+          Re = (rhoSI * vSI * LSI) / muSIv;
+          nuSI_show = muSIv / rhoSI;
+        } else {
+          const nuOk = validateField(nu, nuError, "Kinematic viscosity");
+          if(!nuOk){ showPending(); return; }
+          const nuSIv = toSI.nu(Number(nu.value), nuUnit.value);
+          if(!isPositiveNumber(nuSIv)){ showPending(); return; }
+          Re = (vSI * LSI) / nuSIv;
+          nuSI_show = nuSIv;
+        }
+
+        // Update UI
+        if(isFinite(Re)){
+          reValue.textContent = formatRe(Re);
+          updateRegimeBadge(Re);
+        } else {
+          reValue.textContent = "—";
+          regimeBadge.textContent = "—";
+          regimeBadge.className = "badge";
+        }
+
+        if(isFinite(nuSI_show)){
+          nuComputed.textContent = formatNu(nuSI_show);
+        } else {
+          nuComputed.textContent = "—";
+        }
+      }
+
+      function showPending(){
+        reValue.textContent = "—";
+        regimeBadge.textContent = "—";
+        regimeBadge.className = "badge";
+        nuComputed.textContent = "—";
+      }
+
+      function updateRegimeBadge(Re){
+        // Thresholds typical for internal pipe flow
+        let label = "—", cls = "badge";
+        if(Re < 2300){ label = "Laminar"; cls = "badge success"; }
+        else if(Re <= 4000){ label = "Transitional"; cls = "badge warn"; }
+        else { label = "Turbulent"; cls = "badge danger"; }
+        regimeBadge.textContent = label + " (pipe)";
+        regimeBadge.className = cls;
+      }
+
+      // Formatting helpers
+      function sciIfNeeded(x){
+        const absx = Math.abs(x);
+        if((absx !== 0 && (absx < 1e-3 || absx >= 1e5))){
+          return x.toExponential(3);
+        }
+        return String(roundSmart(x));
+      }
+      function roundSmart(x){
+        // Adaptive rounding for UI readability
+        const absx = Math.abs(x);
+        if(absx >= 1000) return Math.round(x);
+        if(absx >= 100) return Math.round(x * 10)/10;
+        if(absx >= 10) return Math.round(x * 100)/100;
+        if(absx >= 1) return Math.round(x * 1000)/1000;
+        if(absx >= 1e-2) return Math.round(x * 1e5)/1e5;
+        return Number.parseFloat(x.toExponential(3));
+      }
+      function formatRe(Re){
+        if(Re < 1e5){ return roundSmart(Re).toLocaleString(); }
+        // show scientific for large values
+        return Re.toExponential(3).replace("e","×10^");
+      }
+      function formatNu(nuSI){
+        // Render both m²/s and cSt
+        const cSt = nuSI * 1e6;
+        const a = sciIfNeeded(nuSI) + " m²/s";
+        const b = roundSmart(cSt) + " cSt";
+        return a + " (" + b + ")";
+      }
+
+      // Initialize defaults
+      (function init(){
+        // Set some sensible defaults for faster first paint
+        velocity.value = "1.5";
+        lengthEl.value = "0.05";
+        density.value = "998.2";
+        mu.value = "0.001002";
+        nu.value = "1.004e-6";
+
+        // Validation ARIA wires: ensure describedby includes tooltip and error
+        const wire = [
+          [velocity, "velInfo", velError.id],
+          [lengthEl, "lenInfo", lenError.id],
+          [density, "rhoInfo", rhoError.id],
+          [mu, "muInfo", muError.id],
+          [nu, "nuInfo", nuError.id],
+          [temperature, "tempInfo", tempError.id]
+        ];
+        wire.forEach(([input, tipId, errId])=>{
+          if(!input) return;
+          const ids = [tipId, errId].filter(Boolean).join(" ");
+          input.setAttribute("aria-describedby", ids);
+        });
+
+        updateMode();
+        calculate();
+      })();
+
+    })();
+  </script></body></html>

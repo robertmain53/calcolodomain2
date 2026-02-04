@@ -257,10 +257,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
@@ -300,10 +306,22 @@
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
 </style>
 </head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">Roof Pitch Calculator</h1>
+    <p class="sub" id="pageSub">Professional roof pitch calculator. Convert between pitch (in-12), angle (degrees), slope (%), and rise:run. Compute rafter length and actual rise from any input method. WCAG 2.1 AA accessible and mobile-first.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<main class="main w-full lg:w-2/3" id="main-content" role="main">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main class="main w-full lg:w-2/3" id="main-content" role="main">
 <div class="container">
 <h1>Roof Pitch Calculator</h1>
 <p>This professional roof pitch calculator converts between pitch (in-12), roof angle (degrees), slope percentage, and rise:run. It also computes actual rise and rafter length for any horizontal run. Built for roofers, framers, architects, inspectors, and DIYers who need fast, accurate, and accessible results on any device.</p>
@@ -613,314 +631,21 @@
 </article>
 </div>
 </div>
+
+
 </main>
-<!-- Standard Footer --> 
-<!-- MathJax for LaTeX rendering -->
-<script crossorigin="anonymous" defer="" integrity="sha384-QoB1pUHyTbS9sPlw9Sdlr2b9E8xKkz7pX5qvBiYo4+0Y54iVqb6lYl4zU3TtJH9G" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<script defer="">
-  (function(){
-    'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
 
-    // DOM helpers
-    const $ = (sel) => document.querySelector(sel);
-    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
-    const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
+<button id="resetBtn" type="button" class="btn btnSecondary">Reset</button>
+</div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-    // Elements
-    const methodRadios = $$('input[name="method"]');
-    const groups = {
-      riseRun: $('#grpRiseRun'),
-      angle: $('#grpAngle'),
-      percent: $('#grpPercent'),
-      pitch12: $('#grpPitch12')
-    };
-
-    const riseEl = $('#riseValue');
-    const riseUnitEl = $('#riseUnit');
-    const runEl = $('#runValue');
-    const runUnitEl = $('#runUnit');
-
-    const angleEl = $('#angleDeg');
-    const percentEl = $('#slopePercent');
-    const pitch12El = $('#pitchIn12');
-
-    const actRunEl = $('#actualRun');
-    const actRunUnitEl = $('#actualRunUnit');
-
-    const resPitch12 = $('#resPitch12');
-    const resRatio = $('#resRatio');
-    const resAngle = $('#resAngle');
-    const resPercent = $('#resPercent');
-    const resActualRise = $('#resActualRise');
-    const resRafterLen = $('#resRafterLen');
-
-    const resultsPanel = document.querySelector('.results');
-
-    // Tooltips
-    function bindTooltip(buttonId, panelId){
-      const btn = document.getElementById(buttonId);
-      const panel = document.getElementById(panelId);
-      if(!btn || !panel) return;
-      btn.addEventListener('click', () => {
-        const expanded = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!expanded));
-        panel.hidden = expanded;
-      });
-    }
-    bindTooltip('tipRiseBtn', 'tipRise');
-    bindTooltip('tipRunBtn', 'tipRun');
-    bindTooltip('tipAngleBtn', 'tipAngle');
-    bindTooltip('tipActualRunBtn', 'tipActualRun');
-
-    // Units conversion to meters for neutral math when needed
-    const toMeters = (val, unit) => {
-      const n = Number(val);
-      if (!isFinite(n)) return NaN;
-      switch(unit){
-        case 'mm': return n / 1000;
-        case 'cm': return n / 100;
-        case 'm': return n;
-        case 'in': return n * 0.0254;
-        case 'ft': return n * 0.3048;
-        default: return NaN;
-      }
-    };
-    const fromMeters = (meters, unit) => {
-      switch(unit){
-        case 'mm': return meters * 1000;
-        case 'cm': return meters * 100;
-        case 'm': return meters;
-        case 'in': return meters / 0.0254;
-        case 'ft': return meters / 0.3048;
-        default: return NaN;
-      }
-    };
-
-    // Validation
-    const showError = (id, msg, input) => {
-      const el = document.getElementById(id);
-      if (el) { el.textContent = msg || ''; }
-      if (input) { input.setAttribute('aria-invalid', msg ? 'true' : 'false'); }
-    };
-
-    function validateRiseRun(){
-      const rise = parseFloat(riseEl.value);
-      const run = parseFloat(runEl.value);
-      let ok = true;
-
-      if (isNaN(rise) || rise < 0){
-        showError('riseError', 'Please enter a rise value greater than or equal to 0.', riseEl);
-        ok = false;
-      } else {
-        showError('riseError', '', riseEl);
-      }
-
-      if (isNaN(run) || run <= 0){
-        showError('runError', 'Please enter a run value greater than 0.', runEl);
-        ok = false;
-      } else {
-        showError('runError', '', runEl);
-      }
-      return ok;
-    }
-
-    function validateAngle(){
-      const ang = parseFloat(angleEl.value);
-      if (isNaN(ang) || ang < 0 || ang >= 90){
-        showError('angleError', 'Enter an angle between 0 and less than 90 degrees.', angleEl);
-        return false;
-      }
-      showError('angleError', '', angleEl);
-      return true;
-    }
-
-    function validatePercent(){
-      const p = parseFloat(percentEl.value);
-      if (isNaN(p) || p < 0){
-        showError('percentError', 'Enter a non-negative slope percentage.', percentEl);
-        return false;
-      }
-      showError('percentError', '', percentEl);
-      return true;
-    }
-
-    function validatePitch12(){
-      const x = parseFloat(pitch12El.value);
-      if (isNaN(x) || x < 0){
-        showError('pitch12Error', 'Enter a non-negative pitch value (x-in-12).', pitch12El);
-        return false;
-      }
-      showError('pitch12Error', '', pitch12El);
-      return true;
-    }
-
-    function validateActualRun(){
-      const v = actRunEl.value.trim();
-      if (!v){
-        showError('actualRunError', '', actRunEl);
-        return true;
-      }
-      const n = parseFloat(v);
-      if (isNaN(n) || n <= 0){
-        showError('actualRunError', 'Enter a value greater than 0 for actual run, or leave blank.', actRunEl);
-        return false;
-      }
-      showError('actualRunError', '', actRunEl);
-      return true;
-    }
-
-    // Bind blur events for inline validation
-    [riseEl, runEl].forEach(el => el && el.addEventListener('blur', validateRiseRun));
-    angleEl && angleEl.addEventListener('blur', validateAngle);
-    percentEl && percentEl.addEventListener('blur', validatePercent);
-    pitch12El && pitch12El.addEventListener('blur', validatePitch12);
-    actRunEl && actRunEl.addEventListener('blur', validateActualRun);
-
-    // Method switching
-    function switchMethod(m){
-      Object.keys(groups).forEach(key => {
-        groups[key].hidden = (key !== m);
-      });
-      // Clear errors when switching
-      ['riseError','runError','angleError','percentError','pitch12Error'].forEach(id => showError(id,''));
-      calculate(); // recalc on switch
-    }
-
-    methodRadios.forEach(r => {
-      r.addEventListener('change', (e) => switchMethod(e.target.value));
-    });
-
-    // Default values
-    runEl.value = '12';
-    runUnitEl.value = 'in';
-    riseUnitEl.value = 'in';
-    actRunUnitEl.value = 'ft';
-
-    // Simplify ratio helper (rise:run to simplest integer form, within reason)
-    function simplifyRatio(ratio){
-      if (!isFinite(ratio) || ratio < 0) return null;
-      // scale to avoid floating noise, target denominator 12 first for display  x:12
-      const x12 = ratio * 12;
-      const num = Math.round(x12);
-      const den = 12;
-      // Also compute simplest 1:n form
-      // Another representation using integers up to reasonable max
-      function gcd(a,b){ return b ? gcd(b, a % b) : a; }
-      let a = Math.round(ratio * 10000), b = 10000; // high precision
-      const g = gcd(a,b);
-      a = a / g; b = b / g;
-      // limit to avoid gigantic numbers
-      if (a > 1000 || b > 1000){
-        a = Math.round(ratio * 100); b = 100;
-        const g2 = gcd(a,b); a/=g2; b/=g2;
-      }
-      return {
-        pitch12: `${num}:${den}`,
-        simple: `${a}:${b}`
-      };
-    }
-
-    // Format number
-    const fmt = (n, digits=2) => {
-      if (!isFinite(n)) return '—';
-      return new Intl.NumberFormat(undefined, {maximumFractionDigits: digits}).format(n);
-    };
-
-    // Calculation core: derive ratio k = rise/run from active method
-    function getRatio(){
-      const active = document.querySelector('input[name="method"]:checked').value;
-      if (active === 'riseRun'){
-        if (!validateRiseRun()) return null;
-        const r = toMeters(riseEl.value, riseUnitEl.value);
-        const a = toMeters(runEl.value, runUnitEl.value);
-        if (!isFinite(r) || !isFinite(a) || a <= 0 || r < 0) return null;
-        return r / a;
-      }
-      if (active === 'angle'){
-        if (!validateAngle()) return null;
-        const ang = parseFloat(angleEl.value) * Math.PI / 180;
-        return Math.tan(ang);
-      }
-      if (active === 'percent'){
-        if (!validatePercent()) return null;
-        return parseFloat(percentEl.value) / 100;
-      }
-      if (active === 'pitch12'){
-        if (!validatePitch12()) return null;
-        return parseFloat(pitch12El.value) / 12;
-      }
-      return null;
-    }
-
-    function calculate(){
-      resultsPanel.setAttribute('aria-busy', 'true');
-      const k = getRatio(); // rise/run
-      if (k === null){
-        resPitch12.textContent = '—';
-        resRatio.textContent = '—';
-        resAngle.textContent = '—';
-        resPercent.textContent = '—';
-        resActualRise.textContent = '—';
-        resRafterLen.textContent = '—';
-        resultsPanel.setAttribute('aria-busy', 'false');
-        return;
-      }
-
-      // Derived primary outputs
-      const pitch12 = 12 * k;
-      const angleDeg = Math.atan(k) * 180 / Math.PI;
-      const percent = 100 * k;
-
-      resPitch12.textContent = fmt(pitch12, 3) + ' in-12';
-      const simp = simplifyRatio(k);
-      resRatio.textContent = simp ? `${fmt(k,4)} (rise/run)  •  as 12-base ${simp.pitch12}  •  simplified ${simp.simple}` : fmt(k,4);
-
-      resAngle.textContent = fmt(angleDeg, 3) + '°';
-      resPercent.textContent = fmt(percent, 3) + ' %';
-
-      // Actual run dependent
-      let arText = '—', rlText = '—';
-      const actVal = actRunEl.value.trim();
-      if (validateActualRun() && actVal){
-        const A_m = toMeters(parseFloat(actVal), actRunUnitEl.value);
-        if (isFinite(A_m) && A_m > 0){
-          const R_m = A_m * k;
-          const L_m = A_m * Math.sqrt(1 + k*k);
-          // Display in the same unit chosen for actual run
-          const unit = actRunUnitEl.value;
-          const R_out = fromMeters(R_m, unit);
-          const L_out = fromMeters(L_m, unit);
-          arText = fmt(R_out, 3) + ' ' + unit;
-          rlText = fmt(L_out, 3) + ' ' + unit;
-        }
-      }
-      resActualRise.textContent = arText;
-      resRafterLen.textContent = rlText;
-      resultsPanel.setAttribute('aria-busy', 'false');
-    }
-
-    // Recalculate on input changes
-    [
-      riseEl, riseUnitEl, runEl, runUnitEl, angleEl, percentEl, pitch12El, actRunEl, actRunUnitEl
-    ].forEach(el => el && el.addEventListener('input', calculate));
-
-    // Init
-    switchMethod('riseRun');
-    riseEl.value = '6';
-    calculate();
-  })();
-  </script>
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main-content">Skip to main content</a><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -952,12 +677,7 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="main" id="main-content" role="main">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="main" id="main-content" role="main">
 <div class="container">
 <h1>Roof Pitch Calculator</h1>
 <p>This professional roof pitch calculator converts between pitch (in-12), roof angle (degrees), slope percentage, and rise:run. It also computes actual rise and rafter length for any horizontal run. Built for roofers, framers, architects, inspectors, and DIYers who need fast, accurate, and accessible results on any device.</p>
@@ -1267,314 +987,7 @@
 </article>
 </div>
 </div>
-</main>
-<!-- Standard Footer --> 
-<!-- MathJax for LaTeX rendering -->
-<script crossorigin="anonymous" defer="" integrity="sha384-QoB1pUHyTbS9sPlw9Sdlr2b9E8xKkz7pX5qvBiYo4+0Y54iVqb6lYl4zU3TtJH9G" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<script defer="">
-  (function(){
-    'use strict';
-
-    // DOM helpers
-    const $ = (sel) => document.querySelector(sel);
-    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
-    const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
-
-    // Elements
-    const methodRadios = $$('input[name="method"]');
-    const groups = {
-      riseRun: $('#grpRiseRun'),
-      angle: $('#grpAngle'),
-      percent: $('#grpPercent'),
-      pitch12: $('#grpPitch12')
-    };
-
-    const riseEl = $('#riseValue');
-    const riseUnitEl = $('#riseUnit');
-    const runEl = $('#runValue');
-    const runUnitEl = $('#runUnit');
-
-    const angleEl = $('#angleDeg');
-    const percentEl = $('#slopePercent');
-    const pitch12El = $('#pitchIn12');
-
-    const actRunEl = $('#actualRun');
-    const actRunUnitEl = $('#actualRunUnit');
-
-    const resPitch12 = $('#resPitch12');
-    const resRatio = $('#resRatio');
-    const resAngle = $('#resAngle');
-    const resPercent = $('#resPercent');
-    const resActualRise = $('#resActualRise');
-    const resRafterLen = $('#resRafterLen');
-
-    const resultsPanel = document.querySelector('.results');
-
-    // Tooltips
-    function bindTooltip(buttonId, panelId){
-      const btn = document.getElementById(buttonId);
-      const panel = document.getElementById(panelId);
-      if(!btn || !panel) return;
-      btn.addEventListener('click', () => {
-        const expanded = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!expanded));
-        panel.hidden = expanded;
-      });
-    }
-    bindTooltip('tipRiseBtn', 'tipRise');
-    bindTooltip('tipRunBtn', 'tipRun');
-    bindTooltip('tipAngleBtn', 'tipAngle');
-    bindTooltip('tipActualRunBtn', 'tipActualRun');
-
-    // Units conversion to meters for neutral math when needed
-    const toMeters = (val, unit) => {
-      const n = Number(val);
-      if (!isFinite(n)) return NaN;
-      switch(unit){
-        case 'mm': return n / 1000;
-        case 'cm': return n / 100;
-        case 'm': return n;
-        case 'in': return n * 0.0254;
-        case 'ft': return n * 0.3048;
-        default: return NaN;
-      }
-    };
-    const fromMeters = (meters, unit) => {
-      switch(unit){
-        case 'mm': return meters * 1000;
-        case 'cm': return meters * 100;
-        case 'm': return meters;
-        case 'in': return meters / 0.0254;
-        case 'ft': return meters / 0.3048;
-        default: return NaN;
-      }
-    };
-
-    // Validation
-    const showError = (id, msg, input) => {
-      const el = document.getElementById(id);
-      if (el) { el.textContent = msg || ''; }
-      if (input) { input.setAttribute('aria-invalid', msg ? 'true' : 'false'); }
-    };
-
-    function validateRiseRun(){
-      const rise = parseFloat(riseEl.value);
-      const run = parseFloat(runEl.value);
-      let ok = true;
-
-      if (isNaN(rise) || rise < 0){
-        showError('riseError', 'Please enter a rise value greater than or equal to 0.', riseEl);
-        ok = false;
-      } else {
-        showError('riseError', '', riseEl);
-      }
-
-      if (isNaN(run) || run <= 0){
-        showError('runError', 'Please enter a run value greater than 0.', runEl);
-        ok = false;
-      } else {
-        showError('runError', '', runEl);
-      }
-      return ok;
-    }
-
-    function validateAngle(){
-      const ang = parseFloat(angleEl.value);
-      if (isNaN(ang) || ang < 0 || ang >= 90){
-        showError('angleError', 'Enter an angle between 0 and less than 90 degrees.', angleEl);
-        return false;
-      }
-      showError('angleError', '', angleEl);
-      return true;
-    }
-
-    function validatePercent(){
-      const p = parseFloat(percentEl.value);
-      if (isNaN(p) || p < 0){
-        showError('percentError', 'Enter a non-negative slope percentage.', percentEl);
-        return false;
-      }
-      showError('percentError', '', percentEl);
-      return true;
-    }
-
-    function validatePitch12(){
-      const x = parseFloat(pitch12El.value);
-      if (isNaN(x) || x < 0){
-        showError('pitch12Error', 'Enter a non-negative pitch value (x-in-12).', pitch12El);
-        return false;
-      }
-      showError('pitch12Error', '', pitch12El);
-      return true;
-    }
-
-    function validateActualRun(){
-      const v = actRunEl.value.trim();
-      if (!v){
-        showError('actualRunError', '', actRunEl);
-        return true;
-      }
-      const n = parseFloat(v);
-      if (isNaN(n) || n <= 0){
-        showError('actualRunError', 'Enter a value greater than 0 for actual run, or leave blank.', actRunEl);
-        return false;
-      }
-      showError('actualRunError', '', actRunEl);
-      return true;
-    }
-
-    // Bind blur events for inline validation
-    [riseEl, runEl].forEach(el => el && el.addEventListener('blur', validateRiseRun));
-    angleEl && angleEl.addEventListener('blur', validateAngle);
-    percentEl && percentEl.addEventListener('blur', validatePercent);
-    pitch12El && pitch12El.addEventListener('blur', validatePitch12);
-    actRunEl && actRunEl.addEventListener('blur', validateActualRun);
-
-    // Method switching
-    function switchMethod(m){
-      Object.keys(groups).forEach(key => {
-        groups[key].hidden = (key !== m);
-      });
-      // Clear errors when switching
-      ['riseError','runError','angleError','percentError','pitch12Error'].forEach(id => showError(id,''));
-      calculate(); // recalc on switch
-    }
-
-    methodRadios.forEach(r => {
-      r.addEventListener('change', (e) => switchMethod(e.target.value));
-    });
-
-    // Default values
-    runEl.value = '12';
-    runUnitEl.value = 'in';
-    riseUnitEl.value = 'in';
-    actRunUnitEl.value = 'ft';
-
-    // Simplify ratio helper (rise:run to simplest integer form, within reason)
-    function simplifyRatio(ratio){
-      if (!isFinite(ratio) || ratio < 0) return null;
-      // scale to avoid floating noise, target denominator 12 first for display  x:12
-      const x12 = ratio * 12;
-      const num = Math.round(x12);
-      const den = 12;
-      // Also compute simplest 1:n form
-      // Another representation using integers up to reasonable max
-      function gcd(a,b){ return b ? gcd(b, a % b) : a; }
-      let a = Math.round(ratio * 10000), b = 10000; // high precision
-      const g = gcd(a,b);
-      a = a / g; b = b / g;
-      // limit to avoid gigantic numbers
-      if (a > 1000 || b > 1000){
-        a = Math.round(ratio * 100); b = 100;
-        const g2 = gcd(a,b); a/=g2; b/=g2;
-      }
-      return {
-        pitch12: `${num}:${den}`,
-        simple: `${a}:${b}`
-      };
-    }
-
-    // Format number
-    const fmt = (n, digits=2) => {
-      if (!isFinite(n)) return '—';
-      return new Intl.NumberFormat(undefined, {maximumFractionDigits: digits}).format(n);
-    };
-
-    // Calculation core: derive ratio k = rise/run from active method
-    function getRatio(){
-      const active = document.querySelector('input[name="method"]:checked').value;
-      if (active === 'riseRun'){
-        if (!validateRiseRun()) return null;
-        const r = toMeters(riseEl.value, riseUnitEl.value);
-        const a = toMeters(runEl.value, runUnitEl.value);
-        if (!isFinite(r) || !isFinite(a) || a <= 0 || r < 0) return null;
-        return r / a;
-      }
-      if (active === 'angle'){
-        if (!validateAngle()) return null;
-        const ang = parseFloat(angleEl.value) * Math.PI / 180;
-        return Math.tan(ang);
-      }
-      if (active === 'percent'){
-        if (!validatePercent()) return null;
-        return parseFloat(percentEl.value) / 100;
-      }
-      if (active === 'pitch12'){
-        if (!validatePitch12()) return null;
-        return parseFloat(pitch12El.value) / 12;
-      }
-      return null;
-    }
-
-    function calculate(){
-      resultsPanel.setAttribute('aria-busy', 'true');
-      const k = getRatio(); // rise/run
-      if (k === null){
-        resPitch12.textContent = '—';
-        resRatio.textContent = '—';
-        resAngle.textContent = '—';
-        resPercent.textContent = '—';
-        resActualRise.textContent = '—';
-        resRafterLen.textContent = '—';
-        resultsPanel.setAttribute('aria-busy', 'false');
-        return;
-      }
-
-      // Derived primary outputs
-      const pitch12 = 12 * k;
-      const angleDeg = Math.atan(k) * 180 / Math.PI;
-      const percent = 100 * k;
-
-      resPitch12.textContent = fmt(pitch12, 3) + ' in-12';
-      const simp = simplifyRatio(k);
-      resRatio.textContent = simp ? `${fmt(k,4)} (rise/run)  •  as 12-base ${simp.pitch12}  •  simplified ${simp.simple}` : fmt(k,4);
-
-      resAngle.textContent = fmt(angleDeg, 3) + '°';
-      resPercent.textContent = fmt(percent, 3) + ' %';
-
-      // Actual run dependent
-      let arText = '—', rlText = '—';
-      const actVal = actRunEl.value.trim();
-      if (validateActualRun() && actVal){
-        const A_m = toMeters(parseFloat(actVal), actRunUnitEl.value);
-        if (isFinite(A_m) && A_m > 0){
-          const R_m = A_m * k;
-          const L_m = A_m * Math.sqrt(1 + k*k);
-          // Display in the same unit chosen for actual run
-          const unit = actRunUnitEl.value;
-          const R_out = fromMeters(R_m, unit);
-          const L_out = fromMeters(L_m, unit);
-          arText = fmt(R_out, 3) + ' ' + unit;
-          rlText = fmt(L_out, 3) + ' ' + unit;
-        }
-      }
-      resActualRise.textContent = arText;
-      resRafterLen.textContent = rlText;
-      resultsPanel.setAttribute('aria-busy', 'false');
-    }
-
-    // Recalculate on input changes
-    [
-      riseEl, riseUnitEl, runEl, runUnitEl, angleEl, percentEl, pitch12El, actRunEl, actRunUnitEl
-    ].forEach(el => el && el.addEventListener('input', calculate));
-
-    // Init
-    switchMethod('riseRun');
-    riseEl.value = '6';
-    calculate();
-  })();
-  </script>
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1606,12 +1019,7 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="main" id="main-content" role="main">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="main" id="main-content" role="main">
 <div class="container">
 <h1>Roof Pitch Calculator</h1>
 <p>This professional roof pitch calculator converts between pitch (in-12), roof angle (degrees), slope percentage, and rise:run. It also computes actual rise and rafter length for any horizontal run. Built for roofers, framers, architects, inspectors, and DIYers who need fast, accurate, and accessible results on any device.</p>
@@ -1921,11 +1329,48 @@
 </article>
 </div>
 </div>
-</main>
-<!-- Standard Footer --> 
-<!-- MathJax for LaTeX rendering -->
-<script crossorigin="anonymous" defer="" integrity="sha384-QoB1pUHyTbS9sPlw9Sdlr2b9E8xKkz7pX5qvBiYo4+0Y54iVqb6lYl4zU3TtJH9G" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script crossorigin="anonymous" defer="" integrity="sha384-QoB1pUHyTbS9sPlw9Sdlr2b9E8xKkz7pX5qvBiYo4+0Y54iVqb6lYl4zU3TtJH9G" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
   (function(){
     'use strict';
 
@@ -2217,6 +1662,588 @@
     riseEl.value = '6';
     calculate();
   })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script crossorigin="anonymous" defer="" integrity="sha384-QoB1pUHyTbS9sPlw9Sdlr2b9E8xKkz7pX5qvBiYo4+0Y54iVqb6lYl4zU3TtJH9G" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+  (function(){
+    'use strict';
 
-</body></html>
+    // DOM helpers
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+    const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
+
+    // Elements
+    const methodRadios = $$('input[name="method"]');
+    const groups = {
+      riseRun: $('#grpRiseRun'),
+      angle: $('#grpAngle'),
+      percent: $('#grpPercent'),
+      pitch12: $('#grpPitch12')
+    };
+
+    const riseEl = $('#riseValue');
+    const riseUnitEl = $('#riseUnit');
+    const runEl = $('#runValue');
+    const runUnitEl = $('#runUnit');
+
+    const angleEl = $('#angleDeg');
+    const percentEl = $('#slopePercent');
+    const pitch12El = $('#pitchIn12');
+
+    const actRunEl = $('#actualRun');
+    const actRunUnitEl = $('#actualRunUnit');
+
+    const resPitch12 = $('#resPitch12');
+    const resRatio = $('#resRatio');
+    const resAngle = $('#resAngle');
+    const resPercent = $('#resPercent');
+    const resActualRise = $('#resActualRise');
+    const resRafterLen = $('#resRafterLen');
+
+    const resultsPanel = document.querySelector('.results');
+
+    // Tooltips
+    function bindTooltip(buttonId, panelId){
+      const btn = document.getElementById(buttonId);
+      const panel = document.getElementById(panelId);
+      if(!btn || !panel) return;
+      btn.addEventListener('click', () => {
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        panel.hidden = expanded;
+      });
+    }
+    bindTooltip('tipRiseBtn', 'tipRise');
+    bindTooltip('tipRunBtn', 'tipRun');
+    bindTooltip('tipAngleBtn', 'tipAngle');
+    bindTooltip('tipActualRunBtn', 'tipActualRun');
+
+    // Units conversion to meters for neutral math when needed
+    const toMeters = (val, unit) => {
+      const n = Number(val);
+      if (!isFinite(n)) return NaN;
+      switch(unit){
+        case 'mm': return n / 1000;
+        case 'cm': return n / 100;
+        case 'm': return n;
+        case 'in': return n * 0.0254;
+        case 'ft': return n * 0.3048;
+        default: return NaN;
+      }
+    };
+    const fromMeters = (meters, unit) => {
+      switch(unit){
+        case 'mm': return meters * 1000;
+        case 'cm': return meters * 100;
+        case 'm': return meters;
+        case 'in': return meters / 0.0254;
+        case 'ft': return meters / 0.3048;
+        default: return NaN;
+      }
+    };
+
+    // Validation
+    const showError = (id, msg, input) => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = msg || ''; }
+      if (input) { input.setAttribute('aria-invalid', msg ? 'true' : 'false'); }
+    };
+
+    function validateRiseRun(){
+      const rise = parseFloat(riseEl.value);
+      const run = parseFloat(runEl.value);
+      let ok = true;
+
+      if (isNaN(rise) || rise < 0){
+        showError('riseError', 'Please enter a rise value greater than or equal to 0.', riseEl);
+        ok = false;
+      } else {
+        showError('riseError', '', riseEl);
+      }
+
+      if (isNaN(run) || run <= 0){
+        showError('runError', 'Please enter a run value greater than 0.', runEl);
+        ok = false;
+      } else {
+        showError('runError', '', runEl);
+      }
+      return ok;
+    }
+
+    function validateAngle(){
+      const ang = parseFloat(angleEl.value);
+      if (isNaN(ang) || ang < 0 || ang >= 90){
+        showError('angleError', 'Enter an angle between 0 and less than 90 degrees.', angleEl);
+        return false;
+      }
+      showError('angleError', '', angleEl);
+      return true;
+    }
+
+    function validatePercent(){
+      const p = parseFloat(percentEl.value);
+      if (isNaN(p) || p < 0){
+        showError('percentError', 'Enter a non-negative slope percentage.', percentEl);
+        return false;
+      }
+      showError('percentError', '', percentEl);
+      return true;
+    }
+
+    function validatePitch12(){
+      const x = parseFloat(pitch12El.value);
+      if (isNaN(x) || x < 0){
+        showError('pitch12Error', 'Enter a non-negative pitch value (x-in-12).', pitch12El);
+        return false;
+      }
+      showError('pitch12Error', '', pitch12El);
+      return true;
+    }
+
+    function validateActualRun(){
+      const v = actRunEl.value.trim();
+      if (!v){
+        showError('actualRunError', '', actRunEl);
+        return true;
+      }
+      const n = parseFloat(v);
+      if (isNaN(n) || n <= 0){
+        showError('actualRunError', 'Enter a value greater than 0 for actual run, or leave blank.', actRunEl);
+        return false;
+      }
+      showError('actualRunError', '', actRunEl);
+      return true;
+    }
+
+    // Bind blur events for inline validation
+    [riseEl, runEl].forEach(el => el && el.addEventListener('blur', validateRiseRun));
+    angleEl && angleEl.addEventListener('blur', validateAngle);
+    percentEl && percentEl.addEventListener('blur', validatePercent);
+    pitch12El && pitch12El.addEventListener('blur', validatePitch12);
+    actRunEl && actRunEl.addEventListener('blur', validateActualRun);
+
+    // Method switching
+    function switchMethod(m){
+      Object.keys(groups).forEach(key => {
+        groups[key].hidden = (key !== m);
+      });
+      // Clear errors when switching
+      ['riseError','runError','angleError','percentError','pitch12Error'].forEach(id => showError(id,''));
+      calculate(); // recalc on switch
+    }
+
+    methodRadios.forEach(r => {
+      r.addEventListener('change', (e) => switchMethod(e.target.value));
+    });
+
+    // Default values
+    runEl.value = '12';
+    runUnitEl.value = 'in';
+    riseUnitEl.value = 'in';
+    actRunUnitEl.value = 'ft';
+
+    // Simplify ratio helper (rise:run to simplest integer form, within reason)
+    function simplifyRatio(ratio){
+      if (!isFinite(ratio) || ratio < 0) return null;
+      // scale to avoid floating noise, target denominator 12 first for display  x:12
+      const x12 = ratio * 12;
+      const num = Math.round(x12);
+      const den = 12;
+      // Also compute simplest 1:n form
+      // Another representation using integers up to reasonable max
+      function gcd(a,b){ return b ? gcd(b, a % b) : a; }
+      let a = Math.round(ratio * 10000), b = 10000; // high precision
+      const g = gcd(a,b);
+      a = a / g; b = b / g;
+      // limit to avoid gigantic numbers
+      if (a > 1000 || b > 1000){
+        a = Math.round(ratio * 100); b = 100;
+        const g2 = gcd(a,b); a/=g2; b/=g2;
+      }
+      return {
+        pitch12: `${num}:${den}`,
+        simple: `${a}:${b}`
+      };
+    }
+
+    // Format number
+    const fmt = (n, digits=2) => {
+      if (!isFinite(n)) return '—';
+      return new Intl.NumberFormat(undefined, {maximumFractionDigits: digits}).format(n);
+    };
+
+    // Calculation core: derive ratio k = rise/run from active method
+    function getRatio(){
+      const active = document.querySelector('input[name="method"]:checked').value;
+      if (active === 'riseRun'){
+        if (!validateRiseRun()) return null;
+        const r = toMeters(riseEl.value, riseUnitEl.value);
+        const a = toMeters(runEl.value, runUnitEl.value);
+        if (!isFinite(r) || !isFinite(a) || a <= 0 || r < 0) return null;
+        return r / a;
+      }
+      if (active === 'angle'){
+        if (!validateAngle()) return null;
+        const ang = parseFloat(angleEl.value) * Math.PI / 180;
+        return Math.tan(ang);
+      }
+      if (active === 'percent'){
+        if (!validatePercent()) return null;
+        return parseFloat(percentEl.value) / 100;
+      }
+      if (active === 'pitch12'){
+        if (!validatePitch12()) return null;
+        return parseFloat(pitch12El.value) / 12;
+      }
+      return null;
+    }
+
+    function calculate(){
+      resultsPanel.setAttribute('aria-busy', 'true');
+      const k = getRatio(); // rise/run
+      if (k === null){
+        resPitch12.textContent = '—';
+        resRatio.textContent = '—';
+        resAngle.textContent = '—';
+        resPercent.textContent = '—';
+        resActualRise.textContent = '—';
+        resRafterLen.textContent = '—';
+        resultsPanel.setAttribute('aria-busy', 'false');
+        return;
+      }
+
+      // Derived primary outputs
+      const pitch12 = 12 * k;
+      const angleDeg = Math.atan(k) * 180 / Math.PI;
+      const percent = 100 * k;
+
+      resPitch12.textContent = fmt(pitch12, 3) + ' in-12';
+      const simp = simplifyRatio(k);
+      resRatio.textContent = simp ? `${fmt(k,4)} (rise/run)  •  as 12-base ${simp.pitch12}  •  simplified ${simp.simple}` : fmt(k,4);
+
+      resAngle.textContent = fmt(angleDeg, 3) + '°';
+      resPercent.textContent = fmt(percent, 3) + ' %';
+
+      // Actual run dependent
+      let arText = '—', rlText = '—';
+      const actVal = actRunEl.value.trim();
+      if (validateActualRun() && actVal){
+        const A_m = toMeters(parseFloat(actVal), actRunUnitEl.value);
+        if (isFinite(A_m) && A_m > 0){
+          const R_m = A_m * k;
+          const L_m = A_m * Math.sqrt(1 + k*k);
+          // Display in the same unit chosen for actual run
+          const unit = actRunUnitEl.value;
+          const R_out = fromMeters(R_m, unit);
+          const L_out = fromMeters(L_m, unit);
+          arText = fmt(R_out, 3) + ' ' + unit;
+          rlText = fmt(L_out, 3) + ' ' + unit;
+        }
+      }
+      resActualRise.textContent = arText;
+      resRafterLen.textContent = rlText;
+      resultsPanel.setAttribute('aria-busy', 'false');
+    }
+
+    // Recalculate on input changes
+    [
+      riseEl, riseUnitEl, runEl, runUnitEl, angleEl, percentEl, pitch12El, actRunEl, actRunUnitEl
+    ].forEach(el => el && el.addEventListener('input', calculate));
+
+    // Init
+    switchMethod('riseRun');
+    riseEl.value = '6';
+    calculate();
+  })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script crossorigin="anonymous" defer="" integrity="sha384-QoB1pUHyTbS9sPlw9Sdlr2b9E8xKkz7pX5qvBiYo4+0Y54iVqb6lYl4zU3TtJH9G" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+  (function(){
+    'use strict';
+
+    // DOM helpers
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+    const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
+
+    // Elements
+    const methodRadios = $$('input[name="method"]');
+    const groups = {
+      riseRun: $('#grpRiseRun'),
+      angle: $('#grpAngle'),
+      percent: $('#grpPercent'),
+      pitch12: $('#grpPitch12')
+    };
+
+    const riseEl = $('#riseValue');
+    const riseUnitEl = $('#riseUnit');
+    const runEl = $('#runValue');
+    const runUnitEl = $('#runUnit');
+
+    const angleEl = $('#angleDeg');
+    const percentEl = $('#slopePercent');
+    const pitch12El = $('#pitchIn12');
+
+    const actRunEl = $('#actualRun');
+    const actRunUnitEl = $('#actualRunUnit');
+
+    const resPitch12 = $('#resPitch12');
+    const resRatio = $('#resRatio');
+    const resAngle = $('#resAngle');
+    const resPercent = $('#resPercent');
+    const resActualRise = $('#resActualRise');
+    const resRafterLen = $('#resRafterLen');
+
+    const resultsPanel = document.querySelector('.results');
+
+    // Tooltips
+    function bindTooltip(buttonId, panelId){
+      const btn = document.getElementById(buttonId);
+      const panel = document.getElementById(panelId);
+      if(!btn || !panel) return;
+      btn.addEventListener('click', () => {
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        panel.hidden = expanded;
+      });
+    }
+    bindTooltip('tipRiseBtn', 'tipRise');
+    bindTooltip('tipRunBtn', 'tipRun');
+    bindTooltip('tipAngleBtn', 'tipAngle');
+    bindTooltip('tipActualRunBtn', 'tipActualRun');
+
+    // Units conversion to meters for neutral math when needed
+    const toMeters = (val, unit) => {
+      const n = Number(val);
+      if (!isFinite(n)) return NaN;
+      switch(unit){
+        case 'mm': return n / 1000;
+        case 'cm': return n / 100;
+        case 'm': return n;
+        case 'in': return n * 0.0254;
+        case 'ft': return n * 0.3048;
+        default: return NaN;
+      }
+    };
+    const fromMeters = (meters, unit) => {
+      switch(unit){
+        case 'mm': return meters * 1000;
+        case 'cm': return meters * 100;
+        case 'm': return meters;
+        case 'in': return meters / 0.0254;
+        case 'ft': return meters / 0.3048;
+        default: return NaN;
+      }
+    };
+
+    // Validation
+    const showError = (id, msg, input) => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = msg || ''; }
+      if (input) { input.setAttribute('aria-invalid', msg ? 'true' : 'false'); }
+    };
+
+    function validateRiseRun(){
+      const rise = parseFloat(riseEl.value);
+      const run = parseFloat(runEl.value);
+      let ok = true;
+
+      if (isNaN(rise) || rise < 0){
+        showError('riseError', 'Please enter a rise value greater than or equal to 0.', riseEl);
+        ok = false;
+      } else {
+        showError('riseError', '', riseEl);
+      }
+
+      if (isNaN(run) || run <= 0){
+        showError('runError', 'Please enter a run value greater than 0.', runEl);
+        ok = false;
+      } else {
+        showError('runError', '', runEl);
+      }
+      return ok;
+    }
+
+    function validateAngle(){
+      const ang = parseFloat(angleEl.value);
+      if (isNaN(ang) || ang < 0 || ang >= 90){
+        showError('angleError', 'Enter an angle between 0 and less than 90 degrees.', angleEl);
+        return false;
+      }
+      showError('angleError', '', angleEl);
+      return true;
+    }
+
+    function validatePercent(){
+      const p = parseFloat(percentEl.value);
+      if (isNaN(p) || p < 0){
+        showError('percentError', 'Enter a non-negative slope percentage.', percentEl);
+        return false;
+      }
+      showError('percentError', '', percentEl);
+      return true;
+    }
+
+    function validatePitch12(){
+      const x = parseFloat(pitch12El.value);
+      if (isNaN(x) || x < 0){
+        showError('pitch12Error', 'Enter a non-negative pitch value (x-in-12).', pitch12El);
+        return false;
+      }
+      showError('pitch12Error', '', pitch12El);
+      return true;
+    }
+
+    function validateActualRun(){
+      const v = actRunEl.value.trim();
+      if (!v){
+        showError('actualRunError', '', actRunEl);
+        return true;
+      }
+      const n = parseFloat(v);
+      if (isNaN(n) || n <= 0){
+        showError('actualRunError', 'Enter a value greater than 0 for actual run, or leave blank.', actRunEl);
+        return false;
+      }
+      showError('actualRunError', '', actRunEl);
+      return true;
+    }
+
+    // Bind blur events for inline validation
+    [riseEl, runEl].forEach(el => el && el.addEventListener('blur', validateRiseRun));
+    angleEl && angleEl.addEventListener('blur', validateAngle);
+    percentEl && percentEl.addEventListener('blur', validatePercent);
+    pitch12El && pitch12El.addEventListener('blur', validatePitch12);
+    actRunEl && actRunEl.addEventListener('blur', validateActualRun);
+
+    // Method switching
+    function switchMethod(m){
+      Object.keys(groups).forEach(key => {
+        groups[key].hidden = (key !== m);
+      });
+      // Clear errors when switching
+      ['riseError','runError','angleError','percentError','pitch12Error'].forEach(id => showError(id,''));
+      calculate(); // recalc on switch
+    }
+
+    methodRadios.forEach(r => {
+      r.addEventListener('change', (e) => switchMethod(e.target.value));
+    });
+
+    // Default values
+    runEl.value = '12';
+    runUnitEl.value = 'in';
+    riseUnitEl.value = 'in';
+    actRunUnitEl.value = 'ft';
+
+    // Simplify ratio helper (rise:run to simplest integer form, within reason)
+    function simplifyRatio(ratio){
+      if (!isFinite(ratio) || ratio < 0) return null;
+      // scale to avoid floating noise, target denominator 12 first for display  x:12
+      const x12 = ratio * 12;
+      const num = Math.round(x12);
+      const den = 12;
+      // Also compute simplest 1:n form
+      // Another representation using integers up to reasonable max
+      function gcd(a,b){ return b ? gcd(b, a % b) : a; }
+      let a = Math.round(ratio * 10000), b = 10000; // high precision
+      const g = gcd(a,b);
+      a = a / g; b = b / g;
+      // limit to avoid gigantic numbers
+      if (a > 1000 || b > 1000){
+        a = Math.round(ratio * 100); b = 100;
+        const g2 = gcd(a,b); a/=g2; b/=g2;
+      }
+      return {
+        pitch12: `${num}:${den}`,
+        simple: `${a}:${b}`
+      };
+    }
+
+    // Format number
+    const fmt = (n, digits=2) => {
+      if (!isFinite(n)) return '—';
+      return new Intl.NumberFormat(undefined, {maximumFractionDigits: digits}).format(n);
+    };
+
+    // Calculation core: derive ratio k = rise/run from active method
+    function getRatio(){
+      const active = document.querySelector('input[name="method"]:checked').value;
+      if (active === 'riseRun'){
+        if (!validateRiseRun()) return null;
+        const r = toMeters(riseEl.value, riseUnitEl.value);
+        const a = toMeters(runEl.value, runUnitEl.value);
+        if (!isFinite(r) || !isFinite(a) || a <= 0 || r < 0) return null;
+        return r / a;
+      }
+      if (active === 'angle'){
+        if (!validateAngle()) return null;
+        const ang = parseFloat(angleEl.value) * Math.PI / 180;
+        return Math.tan(ang);
+      }
+      if (active === 'percent'){
+        if (!validatePercent()) return null;
+        return parseFloat(percentEl.value) / 100;
+      }
+      if (active === 'pitch12'){
+        if (!validatePitch12()) return null;
+        return parseFloat(pitch12El.value) / 12;
+      }
+      return null;
+    }
+
+    function calculate(){
+      resultsPanel.setAttribute('aria-busy', 'true');
+      const k = getRatio(); // rise/run
+      if (k === null){
+        resPitch12.textContent = '—';
+        resRatio.textContent = '—';
+        resAngle.textContent = '—';
+        resPercent.textContent = '—';
+        resActualRise.textContent = '—';
+        resRafterLen.textContent = '—';
+        resultsPanel.setAttribute('aria-busy', 'false');
+        return;
+      }
+
+      // Derived primary outputs
+      const pitch12 = 12 * k;
+      const angleDeg = Math.atan(k) * 180 / Math.PI;
+      const percent = 100 * k;
+
+      resPitch12.textContent = fmt(pitch12, 3) + ' in-12';
+      const simp = simplifyRatio(k);
+      resRatio.textContent = simp ? `${fmt(k,4)} (rise/run)  •  as 12-base ${simp.pitch12}  •  simplified ${simp.simple}` : fmt(k,4);
+
+      resAngle.textContent = fmt(angleDeg, 3) + '°';
+      resPercent.textContent = fmt(percent, 3) + ' %';
+
+      // Actual run dependent
+      let arText = '—', rlText = '—';
+      const actVal = actRunEl.value.trim();
+      if (validateActualRun() && actVal){
+        const A_m = toMeters(parseFloat(actVal), actRunUnitEl.value);
+        if (isFinite(A_m) && A_m > 0){
+          const R_m = A_m * k;
+          const L_m = A_m * Math.sqrt(1 + k*k);
+          // Display in the same unit chosen for actual run
+          const unit = actRunUnitEl.value;
+          const R_out = fromMeters(R_m, unit);
+          const L_out = fromMeters(L_m, unit);
+          arText = fmt(R_out, 3) + ' ' + unit;
+          rlText = fmt(L_out, 3) + ' ' + unit;
+        }
+      }
+      resActualRise.textContent = arText;
+      resRafterLen.textContent = rlText;
+      resultsPanel.setAttribute('aria-busy', 'false');
+    }
+
+    // Recalculate on input changes
+    [
+      riseEl, riseUnitEl, runEl, runUnitEl, angleEl, percentEl, pitch12El, actRunEl, actRunUnitEl
+    ].forEach(el => el && el.addEventListener('input', calculate));
+
+    // Init
+    switchMethod('riseRun');
+    riseEl.value = '6';
+    calculate();
+  })();
+  </script></body></html>

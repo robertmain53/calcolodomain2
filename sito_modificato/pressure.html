@@ -211,10 +211,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
@@ -269,10 +275,22 @@
 }
 </style>
 </head>
-<body>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">Pressure Calculator</h1>
+    <p class="sub" id="pageSub">Professional pressure calculator for physics and engineering. Compute pressure from force and area, force from pressure and area, or hydrostatic pressure. Includes unit conversions (Pa, kPa, bar, atm, psi) and WCAG 2.1 AA accessibility.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<a class="skip-link" href="#main">Skip to main content</a>
-<main class="container" id="main" role="main">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main class="container" id="main" role="main">
 <h1>Pressure Calculator</h1>
 <p>
       This professional-grade pressure calculator helps students, engineers, and scientists compute:
@@ -795,326 +813,21 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
+
+
 </main>
-<script defer="">
-    (function(){
-      'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
 
-      // ======= Unit conversion definitions =======
-      const pressureToPa = {
-        Pa: v => v,
-        kPa: v => v * 1e3,
-        MPa: v => v * 1e6,
-        bar: v => v * 1e5,
-        atm: v => v * 101325,
-        psi: v => v * 6894.757293168,
-        torr: v => v * 133.32236842105263
-      };
-      const paToPressure = {
-        Pa: v => v,
-        kPa: v => v / 1e3,
-        MPa: v => v / 1e6,
-        bar: v => v / 1e5,
-        atm: v => v / 101325,
-        psi: v => v / 6894.757293168,
-        torr: v => v / 133.32236842105263
-      };
+<button id="resetBtn" type="button" class="btn btnSecondary">Reset</button>
+</div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-      const forceToN = {
-        N: v => v,
-        kN: v => v * 1e3,
-        lbf: v => v * 4.4482216152605,
-        kgf: v => v * 9.80665
-      };
-      const nToForce = {
-        N: v => v,
-        kN: v => v / 1e3,
-        lbf: v => v / 4.4482216152605,
-        kgf: v => v / 9.80665
-      };
-
-      const areaToM2 = {
-        m2: v => v,
-        cm2: v => v * 1e-4,
-        mm2: v => v * 1e-6,
-        in2: v => v * 0.00064516,
-        ft2: v => v * 0.09290304
-      };
-      const m2ToArea = {
-        m2: v => v,
-        cm2: v => v / 1e-4,
-        mm2: v => v / 1e-6,
-        in2: v => v / 0.00064516,
-        ft2: v => v / 0.09290304
-      };
-
-      const ftToM = ft => ft * 0.3048;
-      const ftps2ToMps2 = g => g * 0.3048;
-
-      // ======= Helpers =======
-      const $ = sel => document.querySelector(sel);
-      const byId = id => document.getElementById(id);
-      const fmt = (v) => {
-        if (!isFinite(v)) return '—';
-        const abs = Math.abs(v);
-        if (abs === 0) return '0';
-        if (abs >= 1000 || abs < 0.01) return v.toExponential(6).replace(/(\.\d*?[1-9])0+e/,'$1e').replace(/\.e/,'e');
-        return v.toLocaleString(undefined,{maximumFractionDigits:6});
-      };
-      const clearResults = () => { byId('resultsContainer').innerHTML = ''; };
-      const showErrors = (inputEl, errorEl, message) => {
-        inputEl.setAttribute('aria-invalid', 'true');
-        errorEl.textContent = message || '';
-      };
-      const clearError = (inputEl, errorEl) => {
-        inputEl.setAttribute('aria-invalid', 'false');
-        errorEl.textContent = '';
-      };
-
-      // ======= Mode switching =======
-      const modeRadios = document.querySelectorAll('input[name="mode"]');
-      const panels = {
-        pressure: byId('panel-pressure'),
-        force: byId('panel-force'),
-        area: byId('panel-area'),
-        hydro: byId('panel-hydro')
-      };
-
-      function activateMode(mode){
-        Object.keys(panels).forEach(k=>{
-          const active = (k===mode);
-          panels[k].dataset.active = active ? 'true' : 'false';
-          panels[k].hidden = !active;
-          const radio = byId('mode-'+k);
-          if (radio) {
-            radio.setAttribute('aria-selected', active ? 'true' : 'false');
-            radio.checked = active;
-          }
-        });
-        clearResults();
-      }
-      modeRadios.forEach(r=>{
-        r.addEventListener('change', ()=> activateMode(r.value));
-      });
-
-      // ======= Tooltip toggles =======
-      function bindTooltip(btnId, tipId){
-        const btn = byId(btnId), tip = byId(tipId);
-        btn.addEventListener('click', ()=>{
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          tip.setAttribute('aria-hidden', String(expanded));
-        });
-      }
-      bindTooltip('forceTipBtn','forceTip');
-      bindTooltip('areaTipBtn','areaTip');
-      bindTooltip('densityTipBtn','densityTip');
-      bindTooltip('depthTipBtn','depthTip');
-      bindTooltip('atmTipBtn','atmTip');
-
-      // ======= Hydrostatic extra UI =======
-      const gStd = byId('gStd'), gCustom = byId('gCustom'), gRow = byId('gCustomRow');
-      const pGauge = byId('pgauge'), pAbs = byId('pabs'), atmRow = byId('atmRow');
-
-      function toggleG(){
-        const custom = gCustom.checked;
-        gRow.hidden = !custom;
-      }
-      function toggleAtm(){
-        const abs = pAbs.checked;
-        atmRow.hidden = !abs;
-      }
-      gStd.addEventListener('change', toggleG);
-      gCustom.addEventListener('change', toggleG);
-      pGauge.addEventListener('change', toggleAtm);
-      pAbs.addEventListener('change', toggleAtm);
-
-      // ======= Validation (on blur) =======
-      function requirePositive(idValue, idError, label){
-        const el = byId(idValue), err = byId(idError);
-        const val = parseFloat(el.value);
-        if (isNaN(val)){ showErrors(el, err, `${label} is required. Enter a number.`); return null; }
-        if (val <= 0){ showErrors(el, err, `${label} must be greater than zero.`); return null; }
-        clearError(el, err); return val;
-      }
-      [
-        ['forceValue','forceValueError','Force'],
-        ['areaValue','areaValueError','Area'],
-        ['pressureForForce','pressureForForceError','Pressure'],
-        ['areaForForce','areaForForceError','Area'],
-        ['forceForArea','forceForAreaError','Force'],
-        ['pressureForArea','pressureForAreaError','Pressure'],
-        ['density','densityError','Density'],
-        ['depth','depthError','Depth'],
-        ['gValue','gError','g value'],
-        ['atmPressure','atmError','Atmospheric pressure']
-      ].forEach(([id,err,label])=>{
-        const el = byId(id);
-        if (!el) return;
-        el.addEventListener('blur', ()=> requirePositive(id, err, label));
-      });
-
-      // ======= Results rendering =======
-      function renderPressureResults(paValue, primaryUnit){
-        const out = byId('resultsContainer');
-        out.innerHTML = '';
-        const primary = paToPressure[primaryUnit](paValue);
-        const items = [
-          { label: `Primary result (${primaryUnit})`, value: primary },
-          { label: 'Pascal (Pa)', value: paValue },
-          { label: 'Kilopascal (kPa)', value: paToPressure.kPa(paValue) },
-          { label: 'Megapascal (MPa)', value: paToPressure.MPa(paValue) },
-          { label: 'bar', value: paToPressure.bar(paValue) },
-          { label: 'atm', value: paToPressure.atm(paValue) },
-          { label: 'psi', value: paToPressure.psi(paValue) },
-          { label: 'torr', value: paToPressure.torr(paValue) }
-        ];
-        items.forEach(it=>{
-          const div = document.createElement('div');
-          div.className='result-item';
-          const lab = document.createElement('span'); lab.className='result-label'; lab.textContent = it.label;
-          const val = document.createElement('span'); val.className='result-value'; val.textContent = fmt(it.value);
-          div.appendChild(lab); div.appendChild(val);
-          out.appendChild(div);
-        });
-      }
-
-      function renderScalarResult(label, value, unit, secondary = []){
-        const out = byId('resultsContainer');
-        out.innerHTML = '';
-        const primary = document.createElement('div');
-        primary.className='result-item';
-        const lab = document.createElement('span'); lab.className='result-label'; lab.innerHTML = `${label} <span class="badge">${unit}</span>`;
-        const val = document.createElement('span'); val.className='result-value'; val.textContent = fmt(value);
-        primary.appendChild(lab); primary.appendChild(val);
-        out.appendChild(primary);
-
-        if (secondary.length){
-          secondary.forEach(x=>{
-            const row = document.createElement('div'); row.className='result-item';
-            const l2 = document.createElement('span'); l2.className='result-label'; l2.textContent = x.label;
-            const v2 = document.createElement('span'); v2.className='result-value'; v2.textContent = fmt(x.value);
-            row.appendChild(l2); row.appendChild(v2); out.appendChild(row);
-          });
-        }
-      }
-
-      // ======= Calculate handlers =======
-      function calcPressure(){
-        const f = requirePositive('forceValue','forceValueError','Force');
-        const a = requirePositive('areaValue','areaValueError','Area');
-        if (f===null || a===null){ return; }
-        const fN = forceToN[$('#forceUnit').value](f);
-        const aM2 = areaToM2[$('#areaUnit').value](a);
-        const pa = fN / aM2;
-        renderPressureResults(pa, $('#pressureOutUnit').value);
-      }
-
-      function calcForce(){
-        const p = requirePositive('pressureForForce','pressureForForceError','Pressure');
-        const a = requirePositive('areaForForce','areaForForceError','Area');
-        if (p===null || a===null){ return; }
-        const pPa = pressureToPa[$('#pressureForForceUnit').value](p);
-        const aM2 = areaToM2[$('#areaForForceUnit').value](a);
-        const forceN = pPa * aM2;
-        const unit = $('#forceOutUnit').value;
-        const primary = nToForce[unit](forceN);
-        const secondary = [
-          {label:'N', value: forceN},
-          {label:'kN', value: nToForce.kN(forceN)},
-          {label:'lbf', value: nToForce.lbf(forceN)},
-          {label:'kgf', value: nToForce.kgf(forceN)}
-        ];
-        renderScalarResult('Force', primary, unit, secondary);
-      }
-
-      function calcArea(){
-        const f = requirePositive('forceForArea','forceForAreaError','Force');
-        const p = requirePositive('pressureForArea','pressureForAreaError','Pressure');
-        if (f===null || p===null){ return; }
-        const fN = forceToN[$('#forceForAreaUnit').value](f);
-        const pPa = pressureToPa[$('#pressureForAreaUnit').value](p);
-        const areaM2 = fN / pPa;
-        const unit = $('#areaOutUnit').value;
-        const primary = m2ToArea[unit](areaM2);
-        const secondary = [
-          {label:'m²', value: areaM2},
-          {label:'cm²', value: m2ToArea.cm2(areaM2)},
-          {label:'mm²', value: m2ToArea.mm2(areaM2)},
-          {label:'in²', value: m2ToArea.in2(areaM2)},
-          {label:'ft²', value: m2ToArea.ft2(areaM2)}
-        ];
-        renderScalarResult('Area', primary, unit, secondary);
-      }
-
-      function calcHydro(){
-        const rho = requirePositive('density','densityError','Density'); if (rho===null) return;
-        const h = requirePositive('depth','depthError','Depth'); if (h===null) return;
-
-        // density to kg/m3
-        const rhoSI = ($('#densityUnit').value === 'kgm3') ? rho : rho * 1000; // 1 g/cm3 = 1000 kg/m3
-        // depth to m
-        const hSI = ($('#depthUnit').value === 'm') ? h : ftToM(h);
-        // gravity
-        let gSI = 9.80665;
-        if (byId('gCustom').checked){
-          const gVal = requirePositive('gValue','gError','g value'); if (gVal===null) return;
-          gSI = ($('#gUnit').value === 'mps2') ? gVal : ftps2ToMps2(gVal);
-        } else {
-          clearError(byId('gValue'), byId('gError'));
-        }
-        // gauge pressure
-        let pa = rhoSI * gSI * hSI;
-        // absolute?
-        if (byId('pabs').checked){
-          const atm = requirePositive('atmPressure','atmError','Atmospheric pressure'); if (atm===null) return;
-          const atmPa = pressureToPa[$('#atmUnit').value](atm);
-          pa += atmPa;
-        } else {
-          clearError(byId('atmPressure'), byId('atmError'));
-        }
-        renderPressureResults(pa, $('#hydroOutUnit').value);
-      }
-
-      // Buttons
-      byId('calcPressureBtn').addEventListener('click', calcPressure);
-      byId('calcForceBtn').addEventListener('click', calcForce);
-      byId('calcAreaBtn').addEventListener('click', calcArea);
-      byId('calcHydroBtn').addEventListener('click', calcHydro);
-
-      // Recalculate on input changes for responsiveness (debounced)
-      let t;
-      function autoCalc(){
-        clearTimeout(t);
-        t = setTimeout(()=>{
-          if (byId('mode-pressure').checked) calcPressure();
-          else if (byId('mode-force').checked) calcForce();
-          else if (byId('mode-area').checked) calcArea();
-          else if (byId('mode-hydro').checked) calcHydro();
-        }, 120);
-      }
-      document.querySelectorAll('.calculator input, .calculator select').forEach(el=>{
-        el.addEventListener('input', autoCalc);
-        el.addEventListener('change', autoCalc);
-      });
-
-      // Initialize states
-      toggleG(); toggleAtm();
-      activateMode('pressure');
-    })();
-  </script>
-
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main">Skip to main content</a><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1161,12 +874,7 @@
   border-color:#fed7aa;
   color:#9a3412;
 }
-</style>
-</head>
-<body>
-
-<a class="skip-link" href="#main">Skip to main content</a>
-<main class="container" id="main" role="main">
+</style><a class="skip-link" href="#main">Skip to main content</a><main class="container" id="main" role="main">
 <h1>Pressure Calculator</h1>
 <p>
       This professional-grade pressure calculator helps students, engineers, and scientists compute:
@@ -1689,326 +1397,7 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<script defer="">
-    (function(){
-      'use strict';
-
-      // ======= Unit conversion definitions =======
-      const pressureToPa = {
-        Pa: v => v,
-        kPa: v => v * 1e3,
-        MPa: v => v * 1e6,
-        bar: v => v * 1e5,
-        atm: v => v * 101325,
-        psi: v => v * 6894.757293168,
-        torr: v => v * 133.32236842105263
-      };
-      const paToPressure = {
-        Pa: v => v,
-        kPa: v => v / 1e3,
-        MPa: v => v / 1e6,
-        bar: v => v / 1e5,
-        atm: v => v / 101325,
-        psi: v => v / 6894.757293168,
-        torr: v => v / 133.32236842105263
-      };
-
-      const forceToN = {
-        N: v => v,
-        kN: v => v * 1e3,
-        lbf: v => v * 4.4482216152605,
-        kgf: v => v * 9.80665
-      };
-      const nToForce = {
-        N: v => v,
-        kN: v => v / 1e3,
-        lbf: v => v / 4.4482216152605,
-        kgf: v => v / 9.80665
-      };
-
-      const areaToM2 = {
-        m2: v => v,
-        cm2: v => v * 1e-4,
-        mm2: v => v * 1e-6,
-        in2: v => v * 0.00064516,
-        ft2: v => v * 0.09290304
-      };
-      const m2ToArea = {
-        m2: v => v,
-        cm2: v => v / 1e-4,
-        mm2: v => v / 1e-6,
-        in2: v => v / 0.00064516,
-        ft2: v => v / 0.09290304
-      };
-
-      const ftToM = ft => ft * 0.3048;
-      const ftps2ToMps2 = g => g * 0.3048;
-
-      // ======= Helpers =======
-      const $ = sel => document.querySelector(sel);
-      const byId = id => document.getElementById(id);
-      const fmt = (v) => {
-        if (!isFinite(v)) return '—';
-        const abs = Math.abs(v);
-        if (abs === 0) return '0';
-        if (abs >= 1000 || abs < 0.01) return v.toExponential(6).replace(/(\.\d*?[1-9])0+e/,'$1e').replace(/\.e/,'e');
-        return v.toLocaleString(undefined,{maximumFractionDigits:6});
-      };
-      const clearResults = () => { byId('resultsContainer').innerHTML = ''; };
-      const showErrors = (inputEl, errorEl, message) => {
-        inputEl.setAttribute('aria-invalid', 'true');
-        errorEl.textContent = message || '';
-      };
-      const clearError = (inputEl, errorEl) => {
-        inputEl.setAttribute('aria-invalid', 'false');
-        errorEl.textContent = '';
-      };
-
-      // ======= Mode switching =======
-      const modeRadios = document.querySelectorAll('input[name="mode"]');
-      const panels = {
-        pressure: byId('panel-pressure'),
-        force: byId('panel-force'),
-        area: byId('panel-area'),
-        hydro: byId('panel-hydro')
-      };
-
-      function activateMode(mode){
-        Object.keys(panels).forEach(k=>{
-          const active = (k===mode);
-          panels[k].dataset.active = active ? 'true' : 'false';
-          panels[k].hidden = !active;
-          const radio = byId('mode-'+k);
-          if (radio) {
-            radio.setAttribute('aria-selected', active ? 'true' : 'false');
-            radio.checked = active;
-          }
-        });
-        clearResults();
-      }
-      modeRadios.forEach(r=>{
-        r.addEventListener('change', ()=> activateMode(r.value));
-      });
-
-      // ======= Tooltip toggles =======
-      function bindTooltip(btnId, tipId){
-        const btn = byId(btnId), tip = byId(tipId);
-        btn.addEventListener('click', ()=>{
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          tip.setAttribute('aria-hidden', String(expanded));
-        });
-      }
-      bindTooltip('forceTipBtn','forceTip');
-      bindTooltip('areaTipBtn','areaTip');
-      bindTooltip('densityTipBtn','densityTip');
-      bindTooltip('depthTipBtn','depthTip');
-      bindTooltip('atmTipBtn','atmTip');
-
-      // ======= Hydrostatic extra UI =======
-      const gStd = byId('gStd'), gCustom = byId('gCustom'), gRow = byId('gCustomRow');
-      const pGauge = byId('pgauge'), pAbs = byId('pabs'), atmRow = byId('atmRow');
-
-      function toggleG(){
-        const custom = gCustom.checked;
-        gRow.hidden = !custom;
-      }
-      function toggleAtm(){
-        const abs = pAbs.checked;
-        atmRow.hidden = !abs;
-      }
-      gStd.addEventListener('change', toggleG);
-      gCustom.addEventListener('change', toggleG);
-      pGauge.addEventListener('change', toggleAtm);
-      pAbs.addEventListener('change', toggleAtm);
-
-      // ======= Validation (on blur) =======
-      function requirePositive(idValue, idError, label){
-        const el = byId(idValue), err = byId(idError);
-        const val = parseFloat(el.value);
-        if (isNaN(val)){ showErrors(el, err, `${label} is required. Enter a number.`); return null; }
-        if (val <= 0){ showErrors(el, err, `${label} must be greater than zero.`); return null; }
-        clearError(el, err); return val;
-      }
-      [
-        ['forceValue','forceValueError','Force'],
-        ['areaValue','areaValueError','Area'],
-        ['pressureForForce','pressureForForceError','Pressure'],
-        ['areaForForce','areaForForceError','Area'],
-        ['forceForArea','forceForAreaError','Force'],
-        ['pressureForArea','pressureForAreaError','Pressure'],
-        ['density','densityError','Density'],
-        ['depth','depthError','Depth'],
-        ['gValue','gError','g value'],
-        ['atmPressure','atmError','Atmospheric pressure']
-      ].forEach(([id,err,label])=>{
-        const el = byId(id);
-        if (!el) return;
-        el.addEventListener('blur', ()=> requirePositive(id, err, label));
-      });
-
-      // ======= Results rendering =======
-      function renderPressureResults(paValue, primaryUnit){
-        const out = byId('resultsContainer');
-        out.innerHTML = '';
-        const primary = paToPressure[primaryUnit](paValue);
-        const items = [
-          { label: `Primary result (${primaryUnit})`, value: primary },
-          { label: 'Pascal (Pa)', value: paValue },
-          { label: 'Kilopascal (kPa)', value: paToPressure.kPa(paValue) },
-          { label: 'Megapascal (MPa)', value: paToPressure.MPa(paValue) },
-          { label: 'bar', value: paToPressure.bar(paValue) },
-          { label: 'atm', value: paToPressure.atm(paValue) },
-          { label: 'psi', value: paToPressure.psi(paValue) },
-          { label: 'torr', value: paToPressure.torr(paValue) }
-        ];
-        items.forEach(it=>{
-          const div = document.createElement('div');
-          div.className='result-item';
-          const lab = document.createElement('span'); lab.className='result-label'; lab.textContent = it.label;
-          const val = document.createElement('span'); val.className='result-value'; val.textContent = fmt(it.value);
-          div.appendChild(lab); div.appendChild(val);
-          out.appendChild(div);
-        });
-      }
-
-      function renderScalarResult(label, value, unit, secondary = []){
-        const out = byId('resultsContainer');
-        out.innerHTML = '';
-        const primary = document.createElement('div');
-        primary.className='result-item';
-        const lab = document.createElement('span'); lab.className='result-label'; lab.innerHTML = `${label} <span class="badge">${unit}</span>`;
-        const val = document.createElement('span'); val.className='result-value'; val.textContent = fmt(value);
-        primary.appendChild(lab); primary.appendChild(val);
-        out.appendChild(primary);
-
-        if (secondary.length){
-          secondary.forEach(x=>{
-            const row = document.createElement('div'); row.className='result-item';
-            const l2 = document.createElement('span'); l2.className='result-label'; l2.textContent = x.label;
-            const v2 = document.createElement('span'); v2.className='result-value'; v2.textContent = fmt(x.value);
-            row.appendChild(l2); row.appendChild(v2); out.appendChild(row);
-          });
-        }
-      }
-
-      // ======= Calculate handlers =======
-      function calcPressure(){
-        const f = requirePositive('forceValue','forceValueError','Force');
-        const a = requirePositive('areaValue','areaValueError','Area');
-        if (f===null || a===null){ return; }
-        const fN = forceToN[$('#forceUnit').value](f);
-        const aM2 = areaToM2[$('#areaUnit').value](a);
-        const pa = fN / aM2;
-        renderPressureResults(pa, $('#pressureOutUnit').value);
-      }
-
-      function calcForce(){
-        const p = requirePositive('pressureForForce','pressureForForceError','Pressure');
-        const a = requirePositive('areaForForce','areaForForceError','Area');
-        if (p===null || a===null){ return; }
-        const pPa = pressureToPa[$('#pressureForForceUnit').value](p);
-        const aM2 = areaToM2[$('#areaForForceUnit').value](a);
-        const forceN = pPa * aM2;
-        const unit = $('#forceOutUnit').value;
-        const primary = nToForce[unit](forceN);
-        const secondary = [
-          {label:'N', value: forceN},
-          {label:'kN', value: nToForce.kN(forceN)},
-          {label:'lbf', value: nToForce.lbf(forceN)},
-          {label:'kgf', value: nToForce.kgf(forceN)}
-        ];
-        renderScalarResult('Force', primary, unit, secondary);
-      }
-
-      function calcArea(){
-        const f = requirePositive('forceForArea','forceForAreaError','Force');
-        const p = requirePositive('pressureForArea','pressureForAreaError','Pressure');
-        if (f===null || p===null){ return; }
-        const fN = forceToN[$('#forceForAreaUnit').value](f);
-        const pPa = pressureToPa[$('#pressureForAreaUnit').value](p);
-        const areaM2 = fN / pPa;
-        const unit = $('#areaOutUnit').value;
-        const primary = m2ToArea[unit](areaM2);
-        const secondary = [
-          {label:'m²', value: areaM2},
-          {label:'cm²', value: m2ToArea.cm2(areaM2)},
-          {label:'mm²', value: m2ToArea.mm2(areaM2)},
-          {label:'in²', value: m2ToArea.in2(areaM2)},
-          {label:'ft²', value: m2ToArea.ft2(areaM2)}
-        ];
-        renderScalarResult('Area', primary, unit, secondary);
-      }
-
-      function calcHydro(){
-        const rho = requirePositive('density','densityError','Density'); if (rho===null) return;
-        const h = requirePositive('depth','depthError','Depth'); if (h===null) return;
-
-        // density to kg/m3
-        const rhoSI = ($('#densityUnit').value === 'kgm3') ? rho : rho * 1000; // 1 g/cm3 = 1000 kg/m3
-        // depth to m
-        const hSI = ($('#depthUnit').value === 'm') ? h : ftToM(h);
-        // gravity
-        let gSI = 9.80665;
-        if (byId('gCustom').checked){
-          const gVal = requirePositive('gValue','gError','g value'); if (gVal===null) return;
-          gSI = ($('#gUnit').value === 'mps2') ? gVal : ftps2ToMps2(gVal);
-        } else {
-          clearError(byId('gValue'), byId('gError'));
-        }
-        // gauge pressure
-        let pa = rhoSI * gSI * hSI;
-        // absolute?
-        if (byId('pabs').checked){
-          const atm = requirePositive('atmPressure','atmError','Atmospheric pressure'); if (atm===null) return;
-          const atmPa = pressureToPa[$('#atmUnit').value](atm);
-          pa += atmPa;
-        } else {
-          clearError(byId('atmPressure'), byId('atmError'));
-        }
-        renderPressureResults(pa, $('#hydroOutUnit').value);
-      }
-
-      // Buttons
-      byId('calcPressureBtn').addEventListener('click', calcPressure);
-      byId('calcForceBtn').addEventListener('click', calcForce);
-      byId('calcAreaBtn').addEventListener('click', calcArea);
-      byId('calcHydroBtn').addEventListener('click', calcHydro);
-
-      // Recalculate on input changes for responsiveness (debounced)
-      let t;
-      function autoCalc(){
-        clearTimeout(t);
-        t = setTimeout(()=>{
-          if (byId('mode-pressure').checked) calcPressure();
-          else if (byId('mode-force').checked) calcForce();
-          else if (byId('mode-area').checked) calcArea();
-          else if (byId('mode-hydro').checked) calcHydro();
-        }, 120);
-      }
-      document.querySelectorAll('.calculator input, .calculator select').forEach(el=>{
-        el.addEventListener('input', autoCalc);
-        el.addEventListener('change', autoCalc);
-      });
-
-      // Initialize states
-      toggleG(); toggleAtm();
-      activateMode('pressure');
-    })();
-  </script>
-
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -2055,12 +1444,7 @@
   border-color:#fed7aa;
   color:#9a3412;
 }
-</style>
-</head>
-<body>
-
-<a class="skip-link" href="#main">Skip to main content</a>
-<main class="container" id="main" role="main">
+</style><a class="skip-link" href="#main">Skip to main content</a><main class="container" id="main" role="main">
 <h1>Pressure Calculator</h1>
 <p>
       This professional-grade pressure calculator helps students, engineers, and scientists compute:
@@ -2583,8 +1967,48 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
     (function(){
       'use strict';
 
@@ -2890,7 +2314,616 @@
       toggleG(); toggleAtm();
       activateMode('pressure');
     })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
 
+      // ======= Unit conversion definitions =======
+      const pressureToPa = {
+        Pa: v => v,
+        kPa: v => v * 1e3,
+        MPa: v => v * 1e6,
+        bar: v => v * 1e5,
+        atm: v => v * 101325,
+        psi: v => v * 6894.757293168,
+        torr: v => v * 133.32236842105263
+      };
+      const paToPressure = {
+        Pa: v => v,
+        kPa: v => v / 1e3,
+        MPa: v => v / 1e6,
+        bar: v => v / 1e5,
+        atm: v => v / 101325,
+        psi: v => v / 6894.757293168,
+        torr: v => v / 133.32236842105263
+      };
 
-</body></html>
+      const forceToN = {
+        N: v => v,
+        kN: v => v * 1e3,
+        lbf: v => v * 4.4482216152605,
+        kgf: v => v * 9.80665
+      };
+      const nToForce = {
+        N: v => v,
+        kN: v => v / 1e3,
+        lbf: v => v / 4.4482216152605,
+        kgf: v => v / 9.80665
+      };
+
+      const areaToM2 = {
+        m2: v => v,
+        cm2: v => v * 1e-4,
+        mm2: v => v * 1e-6,
+        in2: v => v * 0.00064516,
+        ft2: v => v * 0.09290304
+      };
+      const m2ToArea = {
+        m2: v => v,
+        cm2: v => v / 1e-4,
+        mm2: v => v / 1e-6,
+        in2: v => v / 0.00064516,
+        ft2: v => v / 0.09290304
+      };
+
+      const ftToM = ft => ft * 0.3048;
+      const ftps2ToMps2 = g => g * 0.3048;
+
+      // ======= Helpers =======
+      const $ = sel => document.querySelector(sel);
+      const byId = id => document.getElementById(id);
+      const fmt = (v) => {
+        if (!isFinite(v)) return '—';
+        const abs = Math.abs(v);
+        if (abs === 0) return '0';
+        if (abs >= 1000 || abs < 0.01) return v.toExponential(6).replace(/(\.\d*?[1-9])0+e/,'$1e').replace(/\.e/,'e');
+        return v.toLocaleString(undefined,{maximumFractionDigits:6});
+      };
+      const clearResults = () => { byId('resultsContainer').innerHTML = ''; };
+      const showErrors = (inputEl, errorEl, message) => {
+        inputEl.setAttribute('aria-invalid', 'true');
+        errorEl.textContent = message || '';
+      };
+      const clearError = (inputEl, errorEl) => {
+        inputEl.setAttribute('aria-invalid', 'false');
+        errorEl.textContent = '';
+      };
+
+      // ======= Mode switching =======
+      const modeRadios = document.querySelectorAll('input[name="mode"]');
+      const panels = {
+        pressure: byId('panel-pressure'),
+        force: byId('panel-force'),
+        area: byId('panel-area'),
+        hydro: byId('panel-hydro')
+      };
+
+      function activateMode(mode){
+        Object.keys(panels).forEach(k=>{
+          const active = (k===mode);
+          panels[k].dataset.active = active ? 'true' : 'false';
+          panels[k].hidden = !active;
+          const radio = byId('mode-'+k);
+          if (radio) {
+            radio.setAttribute('aria-selected', active ? 'true' : 'false');
+            radio.checked = active;
+          }
+        });
+        clearResults();
+      }
+      modeRadios.forEach(r=>{
+        r.addEventListener('change', ()=> activateMode(r.value));
+      });
+
+      // ======= Tooltip toggles =======
+      function bindTooltip(btnId, tipId){
+        const btn = byId(btnId), tip = byId(tipId);
+        btn.addEventListener('click', ()=>{
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          tip.setAttribute('aria-hidden', String(expanded));
+        });
+      }
+      bindTooltip('forceTipBtn','forceTip');
+      bindTooltip('areaTipBtn','areaTip');
+      bindTooltip('densityTipBtn','densityTip');
+      bindTooltip('depthTipBtn','depthTip');
+      bindTooltip('atmTipBtn','atmTip');
+
+      // ======= Hydrostatic extra UI =======
+      const gStd = byId('gStd'), gCustom = byId('gCustom'), gRow = byId('gCustomRow');
+      const pGauge = byId('pgauge'), pAbs = byId('pabs'), atmRow = byId('atmRow');
+
+      function toggleG(){
+        const custom = gCustom.checked;
+        gRow.hidden = !custom;
+      }
+      function toggleAtm(){
+        const abs = pAbs.checked;
+        atmRow.hidden = !abs;
+      }
+      gStd.addEventListener('change', toggleG);
+      gCustom.addEventListener('change', toggleG);
+      pGauge.addEventListener('change', toggleAtm);
+      pAbs.addEventListener('change', toggleAtm);
+
+      // ======= Validation (on blur) =======
+      function requirePositive(idValue, idError, label){
+        const el = byId(idValue), err = byId(idError);
+        const val = parseFloat(el.value);
+        if (isNaN(val)){ showErrors(el, err, `${label} is required. Enter a number.`); return null; }
+        if (val <= 0){ showErrors(el, err, `${label} must be greater than zero.`); return null; }
+        clearError(el, err); return val;
+      }
+      [
+        ['forceValue','forceValueError','Force'],
+        ['areaValue','areaValueError','Area'],
+        ['pressureForForce','pressureForForceError','Pressure'],
+        ['areaForForce','areaForForceError','Area'],
+        ['forceForArea','forceForAreaError','Force'],
+        ['pressureForArea','pressureForAreaError','Pressure'],
+        ['density','densityError','Density'],
+        ['depth','depthError','Depth'],
+        ['gValue','gError','g value'],
+        ['atmPressure','atmError','Atmospheric pressure']
+      ].forEach(([id,err,label])=>{
+        const el = byId(id);
+        if (!el) return;
+        el.addEventListener('blur', ()=> requirePositive(id, err, label));
+      });
+
+      // ======= Results rendering =======
+      function renderPressureResults(paValue, primaryUnit){
+        const out = byId('resultsContainer');
+        out.innerHTML = '';
+        const primary = paToPressure[primaryUnit](paValue);
+        const items = [
+          { label: `Primary result (${primaryUnit})`, value: primary },
+          { label: 'Pascal (Pa)', value: paValue },
+          { label: 'Kilopascal (kPa)', value: paToPressure.kPa(paValue) },
+          { label: 'Megapascal (MPa)', value: paToPressure.MPa(paValue) },
+          { label: 'bar', value: paToPressure.bar(paValue) },
+          { label: 'atm', value: paToPressure.atm(paValue) },
+          { label: 'psi', value: paToPressure.psi(paValue) },
+          { label: 'torr', value: paToPressure.torr(paValue) }
+        ];
+        items.forEach(it=>{
+          const div = document.createElement('div');
+          div.className='result-item';
+          const lab = document.createElement('span'); lab.className='result-label'; lab.textContent = it.label;
+          const val = document.createElement('span'); val.className='result-value'; val.textContent = fmt(it.value);
+          div.appendChild(lab); div.appendChild(val);
+          out.appendChild(div);
+        });
+      }
+
+      function renderScalarResult(label, value, unit, secondary = []){
+        const out = byId('resultsContainer');
+        out.innerHTML = '';
+        const primary = document.createElement('div');
+        primary.className='result-item';
+        const lab = document.createElement('span'); lab.className='result-label'; lab.innerHTML = `${label} <span class="badge">${unit}</span>`;
+        const val = document.createElement('span'); val.className='result-value'; val.textContent = fmt(value);
+        primary.appendChild(lab); primary.appendChild(val);
+        out.appendChild(primary);
+
+        if (secondary.length){
+          secondary.forEach(x=>{
+            const row = document.createElement('div'); row.className='result-item';
+            const l2 = document.createElement('span'); l2.className='result-label'; l2.textContent = x.label;
+            const v2 = document.createElement('span'); v2.className='result-value'; v2.textContent = fmt(x.value);
+            row.appendChild(l2); row.appendChild(v2); out.appendChild(row);
+          });
+        }
+      }
+
+      // ======= Calculate handlers =======
+      function calcPressure(){
+        const f = requirePositive('forceValue','forceValueError','Force');
+        const a = requirePositive('areaValue','areaValueError','Area');
+        if (f===null || a===null){ return; }
+        const fN = forceToN[$('#forceUnit').value](f);
+        const aM2 = areaToM2[$('#areaUnit').value](a);
+        const pa = fN / aM2;
+        renderPressureResults(pa, $('#pressureOutUnit').value);
+      }
+
+      function calcForce(){
+        const p = requirePositive('pressureForForce','pressureForForceError','Pressure');
+        const a = requirePositive('areaForForce','areaForForceError','Area');
+        if (p===null || a===null){ return; }
+        const pPa = pressureToPa[$('#pressureForForceUnit').value](p);
+        const aM2 = areaToM2[$('#areaForForceUnit').value](a);
+        const forceN = pPa * aM2;
+        const unit = $('#forceOutUnit').value;
+        const primary = nToForce[unit](forceN);
+        const secondary = [
+          {label:'N', value: forceN},
+          {label:'kN', value: nToForce.kN(forceN)},
+          {label:'lbf', value: nToForce.lbf(forceN)},
+          {label:'kgf', value: nToForce.kgf(forceN)}
+        ];
+        renderScalarResult('Force', primary, unit, secondary);
+      }
+
+      function calcArea(){
+        const f = requirePositive('forceForArea','forceForAreaError','Force');
+        const p = requirePositive('pressureForArea','pressureForAreaError','Pressure');
+        if (f===null || p===null){ return; }
+        const fN = forceToN[$('#forceForAreaUnit').value](f);
+        const pPa = pressureToPa[$('#pressureForAreaUnit').value](p);
+        const areaM2 = fN / pPa;
+        const unit = $('#areaOutUnit').value;
+        const primary = m2ToArea[unit](areaM2);
+        const secondary = [
+          {label:'m²', value: areaM2},
+          {label:'cm²', value: m2ToArea.cm2(areaM2)},
+          {label:'mm²', value: m2ToArea.mm2(areaM2)},
+          {label:'in²', value: m2ToArea.in2(areaM2)},
+          {label:'ft²', value: m2ToArea.ft2(areaM2)}
+        ];
+        renderScalarResult('Area', primary, unit, secondary);
+      }
+
+      function calcHydro(){
+        const rho = requirePositive('density','densityError','Density'); if (rho===null) return;
+        const h = requirePositive('depth','depthError','Depth'); if (h===null) return;
+
+        // density to kg/m3
+        const rhoSI = ($('#densityUnit').value === 'kgm3') ? rho : rho * 1000; // 1 g/cm3 = 1000 kg/m3
+        // depth to m
+        const hSI = ($('#depthUnit').value === 'm') ? h : ftToM(h);
+        // gravity
+        let gSI = 9.80665;
+        if (byId('gCustom').checked){
+          const gVal = requirePositive('gValue','gError','g value'); if (gVal===null) return;
+          gSI = ($('#gUnit').value === 'mps2') ? gVal : ftps2ToMps2(gVal);
+        } else {
+          clearError(byId('gValue'), byId('gError'));
+        }
+        // gauge pressure
+        let pa = rhoSI * gSI * hSI;
+        // absolute?
+        if (byId('pabs').checked){
+          const atm = requirePositive('atmPressure','atmError','Atmospheric pressure'); if (atm===null) return;
+          const atmPa = pressureToPa[$('#atmUnit').value](atm);
+          pa += atmPa;
+        } else {
+          clearError(byId('atmPressure'), byId('atmError'));
+        }
+        renderPressureResults(pa, $('#hydroOutUnit').value);
+      }
+
+      // Buttons
+      byId('calcPressureBtn').addEventListener('click', calcPressure);
+      byId('calcForceBtn').addEventListener('click', calcForce);
+      byId('calcAreaBtn').addEventListener('click', calcArea);
+      byId('calcHydroBtn').addEventListener('click', calcHydro);
+
+      // Recalculate on input changes for responsiveness (debounced)
+      let t;
+      function autoCalc(){
+        clearTimeout(t);
+        t = setTimeout(()=>{
+          if (byId('mode-pressure').checked) calcPressure();
+          else if (byId('mode-force').checked) calcForce();
+          else if (byId('mode-area').checked) calcArea();
+          else if (byId('mode-hydro').checked) calcHydro();
+        }, 120);
+      }
+      document.querySelectorAll('.calculator input, .calculator select').forEach(el=>{
+        el.addEventListener('input', autoCalc);
+        el.addEventListener('change', autoCalc);
+      });
+
+      // Initialize states
+      toggleG(); toggleAtm();
+      activateMode('pressure');
+    })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
+
+      // ======= Unit conversion definitions =======
+      const pressureToPa = {
+        Pa: v => v,
+        kPa: v => v * 1e3,
+        MPa: v => v * 1e6,
+        bar: v => v * 1e5,
+        atm: v => v * 101325,
+        psi: v => v * 6894.757293168,
+        torr: v => v * 133.32236842105263
+      };
+      const paToPressure = {
+        Pa: v => v,
+        kPa: v => v / 1e3,
+        MPa: v => v / 1e6,
+        bar: v => v / 1e5,
+        atm: v => v / 101325,
+        psi: v => v / 6894.757293168,
+        torr: v => v / 133.32236842105263
+      };
+
+      const forceToN = {
+        N: v => v,
+        kN: v => v * 1e3,
+        lbf: v => v * 4.4482216152605,
+        kgf: v => v * 9.80665
+      };
+      const nToForce = {
+        N: v => v,
+        kN: v => v / 1e3,
+        lbf: v => v / 4.4482216152605,
+        kgf: v => v / 9.80665
+      };
+
+      const areaToM2 = {
+        m2: v => v,
+        cm2: v => v * 1e-4,
+        mm2: v => v * 1e-6,
+        in2: v => v * 0.00064516,
+        ft2: v => v * 0.09290304
+      };
+      const m2ToArea = {
+        m2: v => v,
+        cm2: v => v / 1e-4,
+        mm2: v => v / 1e-6,
+        in2: v => v / 0.00064516,
+        ft2: v => v / 0.09290304
+      };
+
+      const ftToM = ft => ft * 0.3048;
+      const ftps2ToMps2 = g => g * 0.3048;
+
+      // ======= Helpers =======
+      const $ = sel => document.querySelector(sel);
+      const byId = id => document.getElementById(id);
+      const fmt = (v) => {
+        if (!isFinite(v)) return '—';
+        const abs = Math.abs(v);
+        if (abs === 0) return '0';
+        if (abs >= 1000 || abs < 0.01) return v.toExponential(6).replace(/(\.\d*?[1-9])0+e/,'$1e').replace(/\.e/,'e');
+        return v.toLocaleString(undefined,{maximumFractionDigits:6});
+      };
+      const clearResults = () => { byId('resultsContainer').innerHTML = ''; };
+      const showErrors = (inputEl, errorEl, message) => {
+        inputEl.setAttribute('aria-invalid', 'true');
+        errorEl.textContent = message || '';
+      };
+      const clearError = (inputEl, errorEl) => {
+        inputEl.setAttribute('aria-invalid', 'false');
+        errorEl.textContent = '';
+      };
+
+      // ======= Mode switching =======
+      const modeRadios = document.querySelectorAll('input[name="mode"]');
+      const panels = {
+        pressure: byId('panel-pressure'),
+        force: byId('panel-force'),
+        area: byId('panel-area'),
+        hydro: byId('panel-hydro')
+      };
+
+      function activateMode(mode){
+        Object.keys(panels).forEach(k=>{
+          const active = (k===mode);
+          panels[k].dataset.active = active ? 'true' : 'false';
+          panels[k].hidden = !active;
+          const radio = byId('mode-'+k);
+          if (radio) {
+            radio.setAttribute('aria-selected', active ? 'true' : 'false');
+            radio.checked = active;
+          }
+        });
+        clearResults();
+      }
+      modeRadios.forEach(r=>{
+        r.addEventListener('change', ()=> activateMode(r.value));
+      });
+
+      // ======= Tooltip toggles =======
+      function bindTooltip(btnId, tipId){
+        const btn = byId(btnId), tip = byId(tipId);
+        btn.addEventListener('click', ()=>{
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          tip.setAttribute('aria-hidden', String(expanded));
+        });
+      }
+      bindTooltip('forceTipBtn','forceTip');
+      bindTooltip('areaTipBtn','areaTip');
+      bindTooltip('densityTipBtn','densityTip');
+      bindTooltip('depthTipBtn','depthTip');
+      bindTooltip('atmTipBtn','atmTip');
+
+      // ======= Hydrostatic extra UI =======
+      const gStd = byId('gStd'), gCustom = byId('gCustom'), gRow = byId('gCustomRow');
+      const pGauge = byId('pgauge'), pAbs = byId('pabs'), atmRow = byId('atmRow');
+
+      function toggleG(){
+        const custom = gCustom.checked;
+        gRow.hidden = !custom;
+      }
+      function toggleAtm(){
+        const abs = pAbs.checked;
+        atmRow.hidden = !abs;
+      }
+      gStd.addEventListener('change', toggleG);
+      gCustom.addEventListener('change', toggleG);
+      pGauge.addEventListener('change', toggleAtm);
+      pAbs.addEventListener('change', toggleAtm);
+
+      // ======= Validation (on blur) =======
+      function requirePositive(idValue, idError, label){
+        const el = byId(idValue), err = byId(idError);
+        const val = parseFloat(el.value);
+        if (isNaN(val)){ showErrors(el, err, `${label} is required. Enter a number.`); return null; }
+        if (val <= 0){ showErrors(el, err, `${label} must be greater than zero.`); return null; }
+        clearError(el, err); return val;
+      }
+      [
+        ['forceValue','forceValueError','Force'],
+        ['areaValue','areaValueError','Area'],
+        ['pressureForForce','pressureForForceError','Pressure'],
+        ['areaForForce','areaForForceError','Area'],
+        ['forceForArea','forceForAreaError','Force'],
+        ['pressureForArea','pressureForAreaError','Pressure'],
+        ['density','densityError','Density'],
+        ['depth','depthError','Depth'],
+        ['gValue','gError','g value'],
+        ['atmPressure','atmError','Atmospheric pressure']
+      ].forEach(([id,err,label])=>{
+        const el = byId(id);
+        if (!el) return;
+        el.addEventListener('blur', ()=> requirePositive(id, err, label));
+      });
+
+      // ======= Results rendering =======
+      function renderPressureResults(paValue, primaryUnit){
+        const out = byId('resultsContainer');
+        out.innerHTML = '';
+        const primary = paToPressure[primaryUnit](paValue);
+        const items = [
+          { label: `Primary result (${primaryUnit})`, value: primary },
+          { label: 'Pascal (Pa)', value: paValue },
+          { label: 'Kilopascal (kPa)', value: paToPressure.kPa(paValue) },
+          { label: 'Megapascal (MPa)', value: paToPressure.MPa(paValue) },
+          { label: 'bar', value: paToPressure.bar(paValue) },
+          { label: 'atm', value: paToPressure.atm(paValue) },
+          { label: 'psi', value: paToPressure.psi(paValue) },
+          { label: 'torr', value: paToPressure.torr(paValue) }
+        ];
+        items.forEach(it=>{
+          const div = document.createElement('div');
+          div.className='result-item';
+          const lab = document.createElement('span'); lab.className='result-label'; lab.textContent = it.label;
+          const val = document.createElement('span'); val.className='result-value'; val.textContent = fmt(it.value);
+          div.appendChild(lab); div.appendChild(val);
+          out.appendChild(div);
+        });
+      }
+
+      function renderScalarResult(label, value, unit, secondary = []){
+        const out = byId('resultsContainer');
+        out.innerHTML = '';
+        const primary = document.createElement('div');
+        primary.className='result-item';
+        const lab = document.createElement('span'); lab.className='result-label'; lab.innerHTML = `${label} <span class="badge">${unit}</span>`;
+        const val = document.createElement('span'); val.className='result-value'; val.textContent = fmt(value);
+        primary.appendChild(lab); primary.appendChild(val);
+        out.appendChild(primary);
+
+        if (secondary.length){
+          secondary.forEach(x=>{
+            const row = document.createElement('div'); row.className='result-item';
+            const l2 = document.createElement('span'); l2.className='result-label'; l2.textContent = x.label;
+            const v2 = document.createElement('span'); v2.className='result-value'; v2.textContent = fmt(x.value);
+            row.appendChild(l2); row.appendChild(v2); out.appendChild(row);
+          });
+        }
+      }
+
+      // ======= Calculate handlers =======
+      function calcPressure(){
+        const f = requirePositive('forceValue','forceValueError','Force');
+        const a = requirePositive('areaValue','areaValueError','Area');
+        if (f===null || a===null){ return; }
+        const fN = forceToN[$('#forceUnit').value](f);
+        const aM2 = areaToM2[$('#areaUnit').value](a);
+        const pa = fN / aM2;
+        renderPressureResults(pa, $('#pressureOutUnit').value);
+      }
+
+      function calcForce(){
+        const p = requirePositive('pressureForForce','pressureForForceError','Pressure');
+        const a = requirePositive('areaForForce','areaForForceError','Area');
+        if (p===null || a===null){ return; }
+        const pPa = pressureToPa[$('#pressureForForceUnit').value](p);
+        const aM2 = areaToM2[$('#areaForForceUnit').value](a);
+        const forceN = pPa * aM2;
+        const unit = $('#forceOutUnit').value;
+        const primary = nToForce[unit](forceN);
+        const secondary = [
+          {label:'N', value: forceN},
+          {label:'kN', value: nToForce.kN(forceN)},
+          {label:'lbf', value: nToForce.lbf(forceN)},
+          {label:'kgf', value: nToForce.kgf(forceN)}
+        ];
+        renderScalarResult('Force', primary, unit, secondary);
+      }
+
+      function calcArea(){
+        const f = requirePositive('forceForArea','forceForAreaError','Force');
+        const p = requirePositive('pressureForArea','pressureForAreaError','Pressure');
+        if (f===null || p===null){ return; }
+        const fN = forceToN[$('#forceForAreaUnit').value](f);
+        const pPa = pressureToPa[$('#pressureForAreaUnit').value](p);
+        const areaM2 = fN / pPa;
+        const unit = $('#areaOutUnit').value;
+        const primary = m2ToArea[unit](areaM2);
+        const secondary = [
+          {label:'m²', value: areaM2},
+          {label:'cm²', value: m2ToArea.cm2(areaM2)},
+          {label:'mm²', value: m2ToArea.mm2(areaM2)},
+          {label:'in²', value: m2ToArea.in2(areaM2)},
+          {label:'ft²', value: m2ToArea.ft2(areaM2)}
+        ];
+        renderScalarResult('Area', primary, unit, secondary);
+      }
+
+      function calcHydro(){
+        const rho = requirePositive('density','densityError','Density'); if (rho===null) return;
+        const h = requirePositive('depth','depthError','Depth'); if (h===null) return;
+
+        // density to kg/m3
+        const rhoSI = ($('#densityUnit').value === 'kgm3') ? rho : rho * 1000; // 1 g/cm3 = 1000 kg/m3
+        // depth to m
+        const hSI = ($('#depthUnit').value === 'm') ? h : ftToM(h);
+        // gravity
+        let gSI = 9.80665;
+        if (byId('gCustom').checked){
+          const gVal = requirePositive('gValue','gError','g value'); if (gVal===null) return;
+          gSI = ($('#gUnit').value === 'mps2') ? gVal : ftps2ToMps2(gVal);
+        } else {
+          clearError(byId('gValue'), byId('gError'));
+        }
+        // gauge pressure
+        let pa = rhoSI * gSI * hSI;
+        // absolute?
+        if (byId('pabs').checked){
+          const atm = requirePositive('atmPressure','atmError','Atmospheric pressure'); if (atm===null) return;
+          const atmPa = pressureToPa[$('#atmUnit').value](atm);
+          pa += atmPa;
+        } else {
+          clearError(byId('atmPressure'), byId('atmError'));
+        }
+        renderPressureResults(pa, $('#hydroOutUnit').value);
+      }
+
+      // Buttons
+      byId('calcPressureBtn').addEventListener('click', calcPressure);
+      byId('calcForceBtn').addEventListener('click', calcForce);
+      byId('calcAreaBtn').addEventListener('click', calcArea);
+      byId('calcHydroBtn').addEventListener('click', calcHydro);
+
+      // Recalculate on input changes for responsiveness (debounced)
+      let t;
+      function autoCalc(){
+        clearTimeout(t);
+        t = setTimeout(()=>{
+          if (byId('mode-pressure').checked) calcPressure();
+          else if (byId('mode-force').checked) calcForce();
+          else if (byId('mode-area').checked) calcArea();
+          else if (byId('mode-hydro').checked) calcHydro();
+        }, 120);
+      }
+      document.querySelectorAll('.calculator input, .calculator select').forEach(el=>{
+        el.addEventListener('input', autoCalc);
+        el.addEventListener('change', autoCalc);
+      });
+
+      // Initialize states
+      toggleG(); toggleAtm();
+      activateMode('pressure');
+    })();
+  </script></body></html>

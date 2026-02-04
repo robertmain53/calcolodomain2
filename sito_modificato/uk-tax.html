@@ -207,10 +207,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
@@ -265,10 +271,22 @@
 }
 </style>
 </head>
-<body>
-<a class="skip-link" href="#main">Skip to main content</a>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">UK Income Tax Calculator (England &amp; NI)</h1>
+    <p class="sub" id="pageSub">Professional UK tax calculator for England &amp; Northern Ireland. Estimate Income Tax, National Insurance, Student Loan repayments, and take-home pay for annual, monthly or weekly periods.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<main id="main" tabindex="-1">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main id="main" tabindex="-1">
 <h1>UK Income Tax Calculator (England &amp; NI)</h1>
 <p class="lead">Use this professional UK tax calculator to estimate your Income Tax, National Insurance, and Student Loan repayments for England and Northern Ireland. Get instant annual, monthly, or weekly take-home pay with transparent band-by-band breakdowns.</p>
 <div class="layout">
@@ -367,7 +385,7 @@
 <input aria-readonly="true" class="form-control" readonly="" value="2024/25 (6 Apr 2024 – 5 Apr 2025)">
 </div>
 <div aria-live="polite" class="form-group">
-<button class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button class="btn secondary btnSecondary" id="resetBtn" type="button">Reset</button>
 </div>
 </section>
 <!-- Results -->
@@ -610,249 +628,19 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
+
+
 </main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
+</div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-      // Currency formatter
-      const fmt = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 2 });
-
-      // Elements
-      const grossEl = document.getElementById('grossIncome');
-      const pensionPercentEl = document.getElementById('pensionPercent');
-      const pensionModeEl = document.getElementById('pensionMode');
-      const loanPlanEl = document.getElementById('loanPlan');
-      const pgLoanEl = document.getElementById('pgLoan');
-      const includeNIEl = document.getElementById('includeNI');
-      const periodRadios = Array.from(document.querySelectorAll('input[name="period"]'));
-      const resetBtn = document.getElementById('resetBtn');
-
-      // Errors
-      const grossError = document.getElementById('grossError');
-      const pensionError = document.getElementById('pensionError');
-
-      // Outputs
-      const out = {
-        gross: document.getElementById('out-gross'),
-        pension: document.getElementById('out-pension'),
-        taxable: document.getElementById('out-taxable'),
-        tax: document.getElementById('out-tax'),
-        ni: document.getElementById('out-ni'),
-        loan: document.getElementById('out-loan'),
-        net: document.getElementById('out-net'),
-        rate: document.getElementById('out-rate')
-      };
-      const bandBody = document.getElementById('bandBody');
-
-      // Tooltips
-      function toggleTooltip(btn, id){
-        const tip = document.getElementById(id);
-        const expanded = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!expanded));
-        tip.setAttribute('aria-hidden', String(expanded));
-      }
-      document.querySelectorAll('.help-btn').forEach(btn=>{
-        btn.addEventListener('click', e=>{
-          const id = btn.getAttribute('aria-controls');
-          toggleTooltip(btn, id);
-        });
-        btn.addEventListener('keydown', e=>{
-          if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); btn.click(); }
-        });
-      });
-
-      // Validation
-      function validateNumberInput(el, errEl, opts={min:0, max:Infinity}){
-        const v = el.value.trim();
-        let msg = '';
-        if(v === ''){
-          msg = 'Please enter a value.';
-        } else {
-          const num = Number(v);
-          if(Number.isNaN(num)){
-            msg = 'Please enter a valid number.';
-          } else if(num < (opts.min ?? 0)){
-            msg = `Value must be at least ${opts.min}.`;
-          } else if(num > (opts.max ?? Infinity)){
-            msg = `Value must be no more than ${opts.max}.`;
-          }
-        }
-        errEl.textContent = msg;
-        el.setAttribute('aria-invalid', msg ? 'true' : 'false');
-        return !msg;
-      }
-      grossEl.addEventListener('blur', ()=>validateNumberInput(grossEl, grossError, {min:0, max:10_000_000}));
-      pensionPercentEl.addEventListener('blur', ()=>validateNumberInput(pensionPercentEl, pensionError, {min:0, max:100}));
-
-      // Constants for 2024/25
-      const PA_BASE = 12570;
-      const PA_TAPER_START = 100000;
-      const ADDITIONAL_RATE_START = 125140; // total income threshold at which PA is nil
-      const BASIC_BAND = 37700; // taxable income at 20%
-      const NI_PT = 12570;
-      const NI_UEL = 50270;
-      const NI_MAIN = 0.08;
-      const NI_ADD = 0.02;
-      const SL_THRESHOLDS = {
-        plan1: 22015,
-        plan2: 27295,
-        plan4: 31395,
-        plan5: 25000
-      };
-      const SL_RATE = 0.09;
-      const PGL_THRESHOLD = 21000;
-      const PGL_RATE = 0.06;
-
-      function clamp(n, a, b){ return Math.min(Math.max(n, a), b); }
-
-      function getPeriod(){
-        const sel = periodRadios.find(r=>r.checked)?.value || 'annual';
-        const factor = sel === 'annual' ? 1 : sel === 'monthly' ? 1/12 : 1/52;
-        return { key: sel, factor };
-      }
-
-      function toPeriod(v){
-        const { factor } = getPeriod();
-        return v * factor;
-      }
-
-      function bandRows(taxable, PA){
-        // Compute banded taxes on ANNUAL taxable income
-        const basicTaxable = Math.min(taxable, BASIC_BAND);
-        const higherCap = Math.max(0, ADDITIONAL_RATE_START - PA - BASIC_BAND);
-        const higherTaxable = Math.min(Math.max(0, taxable - BASIC_BAND), higherCap);
-        const addTaxable = Math.max(0, taxable - BASIC_BAND - higherCap);
-
-        const b20 = 0.20 * basicTaxable;
-        const b40 = 0.40 * higherTaxable;
-        const b45 = 0.45 * addTaxable;
-
-        return [
-          { band: 'Basic rate', amount: basicTaxable, rate: '20%', tax: b20 },
-          { band: 'Higher rate', amount: higherTaxable, rate: '40%', tax: b40 },
-          { band: 'Additional rate', amount: addTaxable, rate: '45%', tax: b45 }
-        ];
-      }
-
-      function compute(){
-        // Validate
-        const okGross = validateNumberInput(grossEl, grossError, {min:0, max:10_000_000});
-        const okPension = validateNumberInput(pensionPercentEl, pensionError, {min:0, max:100});
-        if(!okGross || !okPension) return;
-
-        const G = Number(grossEl.value || 0);
-        const p = Number(pensionPercentEl.value || 0) / 100;
-        const mode = pensionModeEl.value; // 'none' | 'salsac' | 'netpay'
-        const includeNI = includeNIEl.value === 'yes';
-        const plan = loanPlanEl.value; // 'none' | 'plan1'|...
-        const pgl = pgLoanEl.value === 'pgl';
-
-        const pension = (p > 0 && (mode === 'salsac' || mode === 'netpay')) ? (p * G) : 0;
-
-        // Adjusted income (for PA taper)
-        const AI = (mode === 'salsac') ? (G - pension) : G;
-
-        // Personal allowance taper
-        const taper = Math.max(0, AI - PA_TAPER_START) / 2;
-        const PA = Math.max(0, PA_BASE - taper);
-
-        // Taxable income
-        const TI = (mode === 'netpay') ? Math.max(0, AI - PA - pension) : Math.max(0, AI - PA);
-
-        // Income tax bands
-        const rows = bandRows(TI, PA);
-        const taxAnnual = rows.reduce((s,r)=>s+r.tax,0);
-
-        // NI earnings
-        const NIearn = (mode === 'salsac') ? (G - pension) : G;
-        let niAnnual = 0;
-        if(includeNI){
-          const mainBand = Math.min(Math.max(0, NIearn - NI_PT), NI_UEL - NI_PT);
-          const addBand = Math.max(0, NIearn - NI_UEL);
-          niAnnual = mainBand * NI_MAIN + addBand * NI_ADD;
-        }
-
-        // Student loan base (salary sacrifice reduces it)
-        const SLbase = (mode === 'salsac') ? (G - pension) : G;
-        let slAnnual = 0;
-        if(plan !== 'none'){
-          const thr = SL_THRESHOLDS[plan];
-          slAnnual += Math.max(0, SLbase - thr) * SL_RATE;
-        }
-        if(pgl){
-          slAnnual += Math.max(0, SLbase - PGL_THRESHOLD) * PGL_RATE;
-        }
-
-        const netAnnual = G - pension - taxAnnual - niAnnual - slAnnual;
-
-        // Period conversion
-        const toF = v => toPeriod(v);
-        out.gross.textContent   = fmt.format(toF(G));
-        out.pension.textContent = fmt.format(toF(pension));
-        // Taxable income is TI (annual)
-        out.taxable.textContent = fmt.format(toF(TI));
-        out.tax.textContent     = fmt.format(toF(taxAnnual));
-        out.ni.textContent      = fmt.format(toF(niAnnual));
-        out.loan.textContent    = fmt.format(toF(slAnnual));
-        out.net.textContent     = fmt.format(toF(netAnnual));
-        const totalDed = taxAnnual + (includeNI ? niAnnual : 0) + slAnnual + pension;
-        const effRate = G > 0 ? (totalDed / G) * 100 : 0;
-        out.rate.textContent = effRate.toFixed(1) + '%';
-
-        // Render band breakdown (period-adjusted for consistency in UI)
-        const { factor } = getPeriod();
-        bandBody.innerHTML = '';
-        rows.forEach(r=>{
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${r.band}</td>
-            <td>${fmt.format(r.amount * factor)}</td>
-            <td>${r.rate}</td>
-            <td>${fmt.format(r.tax * factor)}</td>
-          `;
-          bandBody.appendChild(tr);
-        });
-      }
-
-      // Events
-      [grossEl, pensionPercentEl, pensionModeEl, loanPlanEl, pgLoanEl, includeNIEl, ...periodRadios]
-        .forEach(el => el.addEventListener('input', compute));
-      [grossEl, pensionPercentEl].forEach(el => el.addEventListener('change', compute));
-
-      resetBtn.addEventListener('click', ()=>{
-        grossEl.value = '';
-        pensionPercentEl.value = '0';
-        pensionModeEl.value = 'none';
-        loanPlanEl.value = 'none';
-        pgLoanEl.value = 'none';
-        includeNIEl.value = 'yes';
-        document.getElementById('per-annual').checked = true;
-        grossError.textContent = '';
-        pensionError.textContent = '';
-        compute();
-        grossEl.focus();
-      });
-
-      // Initialize with example-friendly defaults
-      grossEl.value = '60000';
-      pensionPercentEl.value = '5';
-      pensionModeEl.value = 'salsac';
-      compute();
-    })();
-  </script>
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main">Skip to main content</a><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -899,12 +687,7 @@
   border-color:#fed7aa;
   color:#9a3412;
 }
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main">Skip to main content</a>
-
-<main id="main" tabindex="-1">
+</style><a class="skip-link" href="#main">Skip to main content</a><main id="main" tabindex="-1">
 <h1>UK Income Tax Calculator (England &amp; NI)</h1>
 <p class="lead">Use this professional UK tax calculator to estimate your Income Tax, National Insurance, and Student Loan repayments for England and Northern Ireland. Get instant annual, monthly, or weekly take-home pay with transparent band-by-band breakdowns.</p>
 <div class="layout">
@@ -1003,7 +786,7 @@
 <input aria-readonly="true" class="form-control" readonly="" value="2024/25 (6 Apr 2024 – 5 Apr 2025)">
 </div>
 <div aria-live="polite" class="form-group">
-<button class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button class="btn secondary" id="resetBtn__dup2" type="button">Reset</button>
 </div>
 </section>
 <!-- Results -->
@@ -1246,249 +1029,7 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
-
-      // Currency formatter
-      const fmt = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 2 });
-
-      // Elements
-      const grossEl = document.getElementById('grossIncome');
-      const pensionPercentEl = document.getElementById('pensionPercent');
-      const pensionModeEl = document.getElementById('pensionMode');
-      const loanPlanEl = document.getElementById('loanPlan');
-      const pgLoanEl = document.getElementById('pgLoan');
-      const includeNIEl = document.getElementById('includeNI');
-      const periodRadios = Array.from(document.querySelectorAll('input[name="period"]'));
-      const resetBtn = document.getElementById('resetBtn');
-
-      // Errors
-      const grossError = document.getElementById('grossError');
-      const pensionError = document.getElementById('pensionError');
-
-      // Outputs
-      const out = {
-        gross: document.getElementById('out-gross'),
-        pension: document.getElementById('out-pension'),
-        taxable: document.getElementById('out-taxable'),
-        tax: document.getElementById('out-tax'),
-        ni: document.getElementById('out-ni'),
-        loan: document.getElementById('out-loan'),
-        net: document.getElementById('out-net'),
-        rate: document.getElementById('out-rate')
-      };
-      const bandBody = document.getElementById('bandBody');
-
-      // Tooltips
-      function toggleTooltip(btn, id){
-        const tip = document.getElementById(id);
-        const expanded = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!expanded));
-        tip.setAttribute('aria-hidden', String(expanded));
-      }
-      document.querySelectorAll('.help-btn').forEach(btn=>{
-        btn.addEventListener('click', e=>{
-          const id = btn.getAttribute('aria-controls');
-          toggleTooltip(btn, id);
-        });
-        btn.addEventListener('keydown', e=>{
-          if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); btn.click(); }
-        });
-      });
-
-      // Validation
-      function validateNumberInput(el, errEl, opts={min:0, max:Infinity}){
-        const v = el.value.trim();
-        let msg = '';
-        if(v === ''){
-          msg = 'Please enter a value.';
-        } else {
-          const num = Number(v);
-          if(Number.isNaN(num)){
-            msg = 'Please enter a valid number.';
-          } else if(num < (opts.min ?? 0)){
-            msg = `Value must be at least ${opts.min}.`;
-          } else if(num > (opts.max ?? Infinity)){
-            msg = `Value must be no more than ${opts.max}.`;
-          }
-        }
-        errEl.textContent = msg;
-        el.setAttribute('aria-invalid', msg ? 'true' : 'false');
-        return !msg;
-      }
-      grossEl.addEventListener('blur', ()=>validateNumberInput(grossEl, grossError, {min:0, max:10_000_000}));
-      pensionPercentEl.addEventListener('blur', ()=>validateNumberInput(pensionPercentEl, pensionError, {min:0, max:100}));
-
-      // Constants for 2024/25
-      const PA_BASE = 12570;
-      const PA_TAPER_START = 100000;
-      const ADDITIONAL_RATE_START = 125140; // total income threshold at which PA is nil
-      const BASIC_BAND = 37700; // taxable income at 20%
-      const NI_PT = 12570;
-      const NI_UEL = 50270;
-      const NI_MAIN = 0.08;
-      const NI_ADD = 0.02;
-      const SL_THRESHOLDS = {
-        plan1: 22015,
-        plan2: 27295,
-        plan4: 31395,
-        plan5: 25000
-      };
-      const SL_RATE = 0.09;
-      const PGL_THRESHOLD = 21000;
-      const PGL_RATE = 0.06;
-
-      function clamp(n, a, b){ return Math.min(Math.max(n, a), b); }
-
-      function getPeriod(){
-        const sel = periodRadios.find(r=>r.checked)?.value || 'annual';
-        const factor = sel === 'annual' ? 1 : sel === 'monthly' ? 1/12 : 1/52;
-        return { key: sel, factor };
-      }
-
-      function toPeriod(v){
-        const { factor } = getPeriod();
-        return v * factor;
-      }
-
-      function bandRows(taxable, PA){
-        // Compute banded taxes on ANNUAL taxable income
-        const basicTaxable = Math.min(taxable, BASIC_BAND);
-        const higherCap = Math.max(0, ADDITIONAL_RATE_START - PA - BASIC_BAND);
-        const higherTaxable = Math.min(Math.max(0, taxable - BASIC_BAND), higherCap);
-        const addTaxable = Math.max(0, taxable - BASIC_BAND - higherCap);
-
-        const b20 = 0.20 * basicTaxable;
-        const b40 = 0.40 * higherTaxable;
-        const b45 = 0.45 * addTaxable;
-
-        return [
-          { band: 'Basic rate', amount: basicTaxable, rate: '20%', tax: b20 },
-          { band: 'Higher rate', amount: higherTaxable, rate: '40%', tax: b40 },
-          { band: 'Additional rate', amount: addTaxable, rate: '45%', tax: b45 }
-        ];
-      }
-
-      function compute(){
-        // Validate
-        const okGross = validateNumberInput(grossEl, grossError, {min:0, max:10_000_000});
-        const okPension = validateNumberInput(pensionPercentEl, pensionError, {min:0, max:100});
-        if(!okGross || !okPension) return;
-
-        const G = Number(grossEl.value || 0);
-        const p = Number(pensionPercentEl.value || 0) / 100;
-        const mode = pensionModeEl.value; // 'none' | 'salsac' | 'netpay'
-        const includeNI = includeNIEl.value === 'yes';
-        const plan = loanPlanEl.value; // 'none' | 'plan1'|...
-        const pgl = pgLoanEl.value === 'pgl';
-
-        const pension = (p > 0 && (mode === 'salsac' || mode === 'netpay')) ? (p * G) : 0;
-
-        // Adjusted income (for PA taper)
-        const AI = (mode === 'salsac') ? (G - pension) : G;
-
-        // Personal allowance taper
-        const taper = Math.max(0, AI - PA_TAPER_START) / 2;
-        const PA = Math.max(0, PA_BASE - taper);
-
-        // Taxable income
-        const TI = (mode === 'netpay') ? Math.max(0, AI - PA - pension) : Math.max(0, AI - PA);
-
-        // Income tax bands
-        const rows = bandRows(TI, PA);
-        const taxAnnual = rows.reduce((s,r)=>s+r.tax,0);
-
-        // NI earnings
-        const NIearn = (mode === 'salsac') ? (G - pension) : G;
-        let niAnnual = 0;
-        if(includeNI){
-          const mainBand = Math.min(Math.max(0, NIearn - NI_PT), NI_UEL - NI_PT);
-          const addBand = Math.max(0, NIearn - NI_UEL);
-          niAnnual = mainBand * NI_MAIN + addBand * NI_ADD;
-        }
-
-        // Student loan base (salary sacrifice reduces it)
-        const SLbase = (mode === 'salsac') ? (G - pension) : G;
-        let slAnnual = 0;
-        if(plan !== 'none'){
-          const thr = SL_THRESHOLDS[plan];
-          slAnnual += Math.max(0, SLbase - thr) * SL_RATE;
-        }
-        if(pgl){
-          slAnnual += Math.max(0, SLbase - PGL_THRESHOLD) * PGL_RATE;
-        }
-
-        const netAnnual = G - pension - taxAnnual - niAnnual - slAnnual;
-
-        // Period conversion
-        const toF = v => toPeriod(v);
-        out.gross.textContent   = fmt.format(toF(G));
-        out.pension.textContent = fmt.format(toF(pension));
-        // Taxable income is TI (annual)
-        out.taxable.textContent = fmt.format(toF(TI));
-        out.tax.textContent     = fmt.format(toF(taxAnnual));
-        out.ni.textContent      = fmt.format(toF(niAnnual));
-        out.loan.textContent    = fmt.format(toF(slAnnual));
-        out.net.textContent     = fmt.format(toF(netAnnual));
-        const totalDed = taxAnnual + (includeNI ? niAnnual : 0) + slAnnual + pension;
-        const effRate = G > 0 ? (totalDed / G) * 100 : 0;
-        out.rate.textContent = effRate.toFixed(1) + '%';
-
-        // Render band breakdown (period-adjusted for consistency in UI)
-        const { factor } = getPeriod();
-        bandBody.innerHTML = '';
-        rows.forEach(r=>{
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${r.band}</td>
-            <td>${fmt.format(r.amount * factor)}</td>
-            <td>${r.rate}</td>
-            <td>${fmt.format(r.tax * factor)}</td>
-          `;
-          bandBody.appendChild(tr);
-        });
-      }
-
-      // Events
-      [grossEl, pensionPercentEl, pensionModeEl, loanPlanEl, pgLoanEl, includeNIEl, ...periodRadios]
-        .forEach(el => el.addEventListener('input', compute));
-      [grossEl, pensionPercentEl].forEach(el => el.addEventListener('change', compute));
-
-      resetBtn.addEventListener('click', ()=>{
-        grossEl.value = '';
-        pensionPercentEl.value = '0';
-        pensionModeEl.value = 'none';
-        loanPlanEl.value = 'none';
-        pgLoanEl.value = 'none';
-        includeNIEl.value = 'yes';
-        document.getElementById('per-annual').checked = true;
-        grossError.textContent = '';
-        pensionError.textContent = '';
-        compute();
-        grossEl.focus();
-      });
-
-      // Initialize with example-friendly defaults
-      grossEl.value = '60000';
-      pensionPercentEl.value = '5';
-      pensionModeEl.value = 'salsac';
-      compute();
-    })();
-  </script>
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1535,12 +1076,7 @@
   border-color:#fed7aa;
   color:#9a3412;
 }
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main">Skip to main content</a>
-
-<main id="main" tabindex="-1">
+</style><a class="skip-link" href="#main">Skip to main content</a><main id="main" tabindex="-1">
 <h1>UK Income Tax Calculator (England &amp; NI)</h1>
 <p class="lead">Use this professional UK tax calculator to estimate your Income Tax, National Insurance, and Student Loan repayments for England and Northern Ireland. Get instant annual, monthly, or weekly take-home pay with transparent band-by-band breakdowns.</p>
 <div class="layout">
@@ -1639,7 +1175,7 @@
 <input aria-readonly="true" class="form-control" readonly="" value="2024/25 (6 Apr 2024 – 5 Apr 2025)">
 </div>
 <div aria-live="polite" class="form-group">
-<button class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button class="btn secondary" id="resetBtn__dup3" type="button">Reset</button>
 </div>
 </section>
 <!-- Results -->
@@ -1882,9 +1418,48 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
     (function(){
       'use strict';
 
@@ -2113,6 +1688,462 @@
       pensionModeEl.value = 'salsac';
       compute();
     })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
 
-</body></html>
+      // Currency formatter
+      const fmt = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 2 });
+
+      // Elements
+      const grossEl = document.getElementById('grossIncome');
+      const pensionPercentEl = document.getElementById('pensionPercent');
+      const pensionModeEl = document.getElementById('pensionMode');
+      const loanPlanEl = document.getElementById('loanPlan');
+      const pgLoanEl = document.getElementById('pgLoan');
+      const includeNIEl = document.getElementById('includeNI');
+      const periodRadios = Array.from(document.querySelectorAll('input[name="period"]'));
+      const resetBtn = document.getElementById('resetBtn');
+
+      // Errors
+      const grossError = document.getElementById('grossError');
+      const pensionError = document.getElementById('pensionError');
+
+      // Outputs
+      const out = {
+        gross: document.getElementById('out-gross'),
+        pension: document.getElementById('out-pension'),
+        taxable: document.getElementById('out-taxable'),
+        tax: document.getElementById('out-tax'),
+        ni: document.getElementById('out-ni'),
+        loan: document.getElementById('out-loan'),
+        net: document.getElementById('out-net'),
+        rate: document.getElementById('out-rate')
+      };
+      const bandBody = document.getElementById('bandBody');
+
+      // Tooltips
+      function toggleTooltip(btn, id){
+        const tip = document.getElementById(id);
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        tip.setAttribute('aria-hidden', String(expanded));
+      }
+      document.querySelectorAll('.help-btn').forEach(btn=>{
+        btn.addEventListener('click', e=>{
+          const id = btn.getAttribute('aria-controls');
+          toggleTooltip(btn, id);
+        });
+        btn.addEventListener('keydown', e=>{
+          if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); btn.click(); }
+        });
+      });
+
+      // Validation
+      function validateNumberInput(el, errEl, opts={min:0, max:Infinity}){
+        const v = el.value.trim();
+        let msg = '';
+        if(v === ''){
+          msg = 'Please enter a value.';
+        } else {
+          const num = Number(v);
+          if(Number.isNaN(num)){
+            msg = 'Please enter a valid number.';
+          } else if(num < (opts.min ?? 0)){
+            msg = `Value must be at least ${opts.min}.`;
+          } else if(num > (opts.max ?? Infinity)){
+            msg = `Value must be no more than ${opts.max}.`;
+          }
+        }
+        errEl.textContent = msg;
+        el.setAttribute('aria-invalid', msg ? 'true' : 'false');
+        return !msg;
+      }
+      grossEl.addEventListener('blur', ()=>validateNumberInput(grossEl, grossError, {min:0, max:10_000_000}));
+      pensionPercentEl.addEventListener('blur', ()=>validateNumberInput(pensionPercentEl, pensionError, {min:0, max:100}));
+
+      // Constants for 2024/25
+      const PA_BASE = 12570;
+      const PA_TAPER_START = 100000;
+      const ADDITIONAL_RATE_START = 125140; // total income threshold at which PA is nil
+      const BASIC_BAND = 37700; // taxable income at 20%
+      const NI_PT = 12570;
+      const NI_UEL = 50270;
+      const NI_MAIN = 0.08;
+      const NI_ADD = 0.02;
+      const SL_THRESHOLDS = {
+        plan1: 22015,
+        plan2: 27295,
+        plan4: 31395,
+        plan5: 25000
+      };
+      const SL_RATE = 0.09;
+      const PGL_THRESHOLD = 21000;
+      const PGL_RATE = 0.06;
+
+      function clamp(n, a, b){ return Math.min(Math.max(n, a), b); }
+
+      function getPeriod(){
+        const sel = periodRadios.find(r=>r.checked)?.value || 'annual';
+        const factor = sel === 'annual' ? 1 : sel === 'monthly' ? 1/12 : 1/52;
+        return { key: sel, factor };
+      }
+
+      function toPeriod(v){
+        const { factor } = getPeriod();
+        return v * factor;
+      }
+
+      function bandRows(taxable, PA){
+        // Compute banded taxes on ANNUAL taxable income
+        const basicTaxable = Math.min(taxable, BASIC_BAND);
+        const higherCap = Math.max(0, ADDITIONAL_RATE_START - PA - BASIC_BAND);
+        const higherTaxable = Math.min(Math.max(0, taxable - BASIC_BAND), higherCap);
+        const addTaxable = Math.max(0, taxable - BASIC_BAND - higherCap);
+
+        const b20 = 0.20 * basicTaxable;
+        const b40 = 0.40 * higherTaxable;
+        const b45 = 0.45 * addTaxable;
+
+        return [
+          { band: 'Basic rate', amount: basicTaxable, rate: '20%', tax: b20 },
+          { band: 'Higher rate', amount: higherTaxable, rate: '40%', tax: b40 },
+          { band: 'Additional rate', amount: addTaxable, rate: '45%', tax: b45 }
+        ];
+      }
+
+      function compute(){
+        // Validate
+        const okGross = validateNumberInput(grossEl, grossError, {min:0, max:10_000_000});
+        const okPension = validateNumberInput(pensionPercentEl, pensionError, {min:0, max:100});
+        if(!okGross || !okPension) return;
+
+        const G = Number(grossEl.value || 0);
+        const p = Number(pensionPercentEl.value || 0) / 100;
+        const mode = pensionModeEl.value; // 'none' | 'salsac' | 'netpay'
+        const includeNI = includeNIEl.value === 'yes';
+        const plan = loanPlanEl.value; // 'none' | 'plan1'|...
+        const pgl = pgLoanEl.value === 'pgl';
+
+        const pension = (p > 0 && (mode === 'salsac' || mode === 'netpay')) ? (p * G) : 0;
+
+        // Adjusted income (for PA taper)
+        const AI = (mode === 'salsac') ? (G - pension) : G;
+
+        // Personal allowance taper
+        const taper = Math.max(0, AI - PA_TAPER_START) / 2;
+        const PA = Math.max(0, PA_BASE - taper);
+
+        // Taxable income
+        const TI = (mode === 'netpay') ? Math.max(0, AI - PA - pension) : Math.max(0, AI - PA);
+
+        // Income tax bands
+        const rows = bandRows(TI, PA);
+        const taxAnnual = rows.reduce((s,r)=>s+r.tax,0);
+
+        // NI earnings
+        const NIearn = (mode === 'salsac') ? (G - pension) : G;
+        let niAnnual = 0;
+        if(includeNI){
+          const mainBand = Math.min(Math.max(0, NIearn - NI_PT), NI_UEL - NI_PT);
+          const addBand = Math.max(0, NIearn - NI_UEL);
+          niAnnual = mainBand * NI_MAIN + addBand * NI_ADD;
+        }
+
+        // Student loan base (salary sacrifice reduces it)
+        const SLbase = (mode === 'salsac') ? (G - pension) : G;
+        let slAnnual = 0;
+        if(plan !== 'none'){
+          const thr = SL_THRESHOLDS[plan];
+          slAnnual += Math.max(0, SLbase - thr) * SL_RATE;
+        }
+        if(pgl){
+          slAnnual += Math.max(0, SLbase - PGL_THRESHOLD) * PGL_RATE;
+        }
+
+        const netAnnual = G - pension - taxAnnual - niAnnual - slAnnual;
+
+        // Period conversion
+        const toF = v => toPeriod(v);
+        out.gross.textContent   = fmt.format(toF(G));
+        out.pension.textContent = fmt.format(toF(pension));
+        // Taxable income is TI (annual)
+        out.taxable.textContent = fmt.format(toF(TI));
+        out.tax.textContent     = fmt.format(toF(taxAnnual));
+        out.ni.textContent      = fmt.format(toF(niAnnual));
+        out.loan.textContent    = fmt.format(toF(slAnnual));
+        out.net.textContent     = fmt.format(toF(netAnnual));
+        const totalDed = taxAnnual + (includeNI ? niAnnual : 0) + slAnnual + pension;
+        const effRate = G > 0 ? (totalDed / G) * 100 : 0;
+        out.rate.textContent = effRate.toFixed(1) + '%';
+
+        // Render band breakdown (period-adjusted for consistency in UI)
+        const { factor } = getPeriod();
+        bandBody.innerHTML = '';
+        rows.forEach(r=>{
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${r.band}</td>
+            <td>${fmt.format(r.amount * factor)}</td>
+            <td>${r.rate}</td>
+            <td>${fmt.format(r.tax * factor)}</td>
+          `;
+          bandBody.appendChild(tr);
+        });
+      }
+
+      // Events
+      [grossEl, pensionPercentEl, pensionModeEl, loanPlanEl, pgLoanEl, includeNIEl, ...periodRadios]
+        .forEach(el => el.addEventListener('input', compute));
+      [grossEl, pensionPercentEl].forEach(el => el.addEventListener('change', compute));
+
+      resetBtn.addEventListener('click', ()=>{
+        grossEl.value = '';
+        pensionPercentEl.value = '0';
+        pensionModeEl.value = 'none';
+        loanPlanEl.value = 'none';
+        pgLoanEl.value = 'none';
+        includeNIEl.value = 'yes';
+        document.getElementById('per-annual').checked = true;
+        grossError.textContent = '';
+        pensionError.textContent = '';
+        compute();
+        grossEl.focus();
+      });
+
+      // Initialize with example-friendly defaults
+      grossEl.value = '60000';
+      pensionPercentEl.value = '5';
+      pensionModeEl.value = 'salsac';
+      compute();
+    })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
+
+      // Currency formatter
+      const fmt = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 2 });
+
+      // Elements
+      const grossEl = document.getElementById('grossIncome');
+      const pensionPercentEl = document.getElementById('pensionPercent');
+      const pensionModeEl = document.getElementById('pensionMode');
+      const loanPlanEl = document.getElementById('loanPlan');
+      const pgLoanEl = document.getElementById('pgLoan');
+      const includeNIEl = document.getElementById('includeNI');
+      const periodRadios = Array.from(document.querySelectorAll('input[name="period"]'));
+      const resetBtn = document.getElementById('resetBtn');
+
+      // Errors
+      const grossError = document.getElementById('grossError');
+      const pensionError = document.getElementById('pensionError');
+
+      // Outputs
+      const out = {
+        gross: document.getElementById('out-gross'),
+        pension: document.getElementById('out-pension'),
+        taxable: document.getElementById('out-taxable'),
+        tax: document.getElementById('out-tax'),
+        ni: document.getElementById('out-ni'),
+        loan: document.getElementById('out-loan'),
+        net: document.getElementById('out-net'),
+        rate: document.getElementById('out-rate')
+      };
+      const bandBody = document.getElementById('bandBody');
+
+      // Tooltips
+      function toggleTooltip(btn, id){
+        const tip = document.getElementById(id);
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        tip.setAttribute('aria-hidden', String(expanded));
+      }
+      document.querySelectorAll('.help-btn').forEach(btn=>{
+        btn.addEventListener('click', e=>{
+          const id = btn.getAttribute('aria-controls');
+          toggleTooltip(btn, id);
+        });
+        btn.addEventListener('keydown', e=>{
+          if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); btn.click(); }
+        });
+      });
+
+      // Validation
+      function validateNumberInput(el, errEl, opts={min:0, max:Infinity}){
+        const v = el.value.trim();
+        let msg = '';
+        if(v === ''){
+          msg = 'Please enter a value.';
+        } else {
+          const num = Number(v);
+          if(Number.isNaN(num)){
+            msg = 'Please enter a valid number.';
+          } else if(num < (opts.min ?? 0)){
+            msg = `Value must be at least ${opts.min}.`;
+          } else if(num > (opts.max ?? Infinity)){
+            msg = `Value must be no more than ${opts.max}.`;
+          }
+        }
+        errEl.textContent = msg;
+        el.setAttribute('aria-invalid', msg ? 'true' : 'false');
+        return !msg;
+      }
+      grossEl.addEventListener('blur', ()=>validateNumberInput(grossEl, grossError, {min:0, max:10_000_000}));
+      pensionPercentEl.addEventListener('blur', ()=>validateNumberInput(pensionPercentEl, pensionError, {min:0, max:100}));
+
+      // Constants for 2024/25
+      const PA_BASE = 12570;
+      const PA_TAPER_START = 100000;
+      const ADDITIONAL_RATE_START = 125140; // total income threshold at which PA is nil
+      const BASIC_BAND = 37700; // taxable income at 20%
+      const NI_PT = 12570;
+      const NI_UEL = 50270;
+      const NI_MAIN = 0.08;
+      const NI_ADD = 0.02;
+      const SL_THRESHOLDS = {
+        plan1: 22015,
+        plan2: 27295,
+        plan4: 31395,
+        plan5: 25000
+      };
+      const SL_RATE = 0.09;
+      const PGL_THRESHOLD = 21000;
+      const PGL_RATE = 0.06;
+
+      function clamp(n, a, b){ return Math.min(Math.max(n, a), b); }
+
+      function getPeriod(){
+        const sel = periodRadios.find(r=>r.checked)?.value || 'annual';
+        const factor = sel === 'annual' ? 1 : sel === 'monthly' ? 1/12 : 1/52;
+        return { key: sel, factor };
+      }
+
+      function toPeriod(v){
+        const { factor } = getPeriod();
+        return v * factor;
+      }
+
+      function bandRows(taxable, PA){
+        // Compute banded taxes on ANNUAL taxable income
+        const basicTaxable = Math.min(taxable, BASIC_BAND);
+        const higherCap = Math.max(0, ADDITIONAL_RATE_START - PA - BASIC_BAND);
+        const higherTaxable = Math.min(Math.max(0, taxable - BASIC_BAND), higherCap);
+        const addTaxable = Math.max(0, taxable - BASIC_BAND - higherCap);
+
+        const b20 = 0.20 * basicTaxable;
+        const b40 = 0.40 * higherTaxable;
+        const b45 = 0.45 * addTaxable;
+
+        return [
+          { band: 'Basic rate', amount: basicTaxable, rate: '20%', tax: b20 },
+          { band: 'Higher rate', amount: higherTaxable, rate: '40%', tax: b40 },
+          { band: 'Additional rate', amount: addTaxable, rate: '45%', tax: b45 }
+        ];
+      }
+
+      function compute(){
+        // Validate
+        const okGross = validateNumberInput(grossEl, grossError, {min:0, max:10_000_000});
+        const okPension = validateNumberInput(pensionPercentEl, pensionError, {min:0, max:100});
+        if(!okGross || !okPension) return;
+
+        const G = Number(grossEl.value || 0);
+        const p = Number(pensionPercentEl.value || 0) / 100;
+        const mode = pensionModeEl.value; // 'none' | 'salsac' | 'netpay'
+        const includeNI = includeNIEl.value === 'yes';
+        const plan = loanPlanEl.value; // 'none' | 'plan1'|...
+        const pgl = pgLoanEl.value === 'pgl';
+
+        const pension = (p > 0 && (mode === 'salsac' || mode === 'netpay')) ? (p * G) : 0;
+
+        // Adjusted income (for PA taper)
+        const AI = (mode === 'salsac') ? (G - pension) : G;
+
+        // Personal allowance taper
+        const taper = Math.max(0, AI - PA_TAPER_START) / 2;
+        const PA = Math.max(0, PA_BASE - taper);
+
+        // Taxable income
+        const TI = (mode === 'netpay') ? Math.max(0, AI - PA - pension) : Math.max(0, AI - PA);
+
+        // Income tax bands
+        const rows = bandRows(TI, PA);
+        const taxAnnual = rows.reduce((s,r)=>s+r.tax,0);
+
+        // NI earnings
+        const NIearn = (mode === 'salsac') ? (G - pension) : G;
+        let niAnnual = 0;
+        if(includeNI){
+          const mainBand = Math.min(Math.max(0, NIearn - NI_PT), NI_UEL - NI_PT);
+          const addBand = Math.max(0, NIearn - NI_UEL);
+          niAnnual = mainBand * NI_MAIN + addBand * NI_ADD;
+        }
+
+        // Student loan base (salary sacrifice reduces it)
+        const SLbase = (mode === 'salsac') ? (G - pension) : G;
+        let slAnnual = 0;
+        if(plan !== 'none'){
+          const thr = SL_THRESHOLDS[plan];
+          slAnnual += Math.max(0, SLbase - thr) * SL_RATE;
+        }
+        if(pgl){
+          slAnnual += Math.max(0, SLbase - PGL_THRESHOLD) * PGL_RATE;
+        }
+
+        const netAnnual = G - pension - taxAnnual - niAnnual - slAnnual;
+
+        // Period conversion
+        const toF = v => toPeriod(v);
+        out.gross.textContent   = fmt.format(toF(G));
+        out.pension.textContent = fmt.format(toF(pension));
+        // Taxable income is TI (annual)
+        out.taxable.textContent = fmt.format(toF(TI));
+        out.tax.textContent     = fmt.format(toF(taxAnnual));
+        out.ni.textContent      = fmt.format(toF(niAnnual));
+        out.loan.textContent    = fmt.format(toF(slAnnual));
+        out.net.textContent     = fmt.format(toF(netAnnual));
+        const totalDed = taxAnnual + (includeNI ? niAnnual : 0) + slAnnual + pension;
+        const effRate = G > 0 ? (totalDed / G) * 100 : 0;
+        out.rate.textContent = effRate.toFixed(1) + '%';
+
+        // Render band breakdown (period-adjusted for consistency in UI)
+        const { factor } = getPeriod();
+        bandBody.innerHTML = '';
+        rows.forEach(r=>{
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${r.band}</td>
+            <td>${fmt.format(r.amount * factor)}</td>
+            <td>${r.rate}</td>
+            <td>${fmt.format(r.tax * factor)}</td>
+          `;
+          bandBody.appendChild(tr);
+        });
+      }
+
+      // Events
+      [grossEl, pensionPercentEl, pensionModeEl, loanPlanEl, pgLoanEl, includeNIEl, ...periodRadios]
+        .forEach(el => el.addEventListener('input', compute));
+      [grossEl, pensionPercentEl].forEach(el => el.addEventListener('change', compute));
+
+      resetBtn.addEventListener('click', ()=>{
+        grossEl.value = '';
+        pensionPercentEl.value = '0';
+        pensionModeEl.value = 'none';
+        loanPlanEl.value = 'none';
+        pgLoanEl.value = 'none';
+        includeNIEl.value = 'yes';
+        document.getElementById('per-annual').checked = true;
+        grossError.textContent = '';
+        pensionError.textContent = '';
+        compute();
+        grossEl.focus();
+      });
+
+      // Initialize with example-friendly defaults
+      grossEl.value = '60000';
+      pensionPercentEl.value = '5';
+      pensionModeEl.value = 'salsac';
+      compute();
+    })();
+  </script></body></html>

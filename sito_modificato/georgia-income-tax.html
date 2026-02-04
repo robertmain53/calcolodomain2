@@ -269,10 +269,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="/assets/js/page-enhancements.js" as="script">
@@ -339,12 +345,24 @@
 }
 </script>
 </head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">Georgia State Income Tax Calculator</h1>
+    <p class="sub" id="pageSub">Estimate your 2024 Georgia state income tax with a professional, WCAG-compliant calculator. Uses Georgia’s flat 5.49% rate with adjustable deductions, exemptions, and per-paycheck breakdowns.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<main class="main-content w-full lg:w-2/3" id="main-content">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main class="main-content w-full lg:w-2/3" id="main-content">
 <div class="container">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Georgia State Income Tax Calculator</h1>
 <p>
         This professional-grade calculator estimates your Georgia state income tax for tax year 2024 using the state’s flat 5.49% rate.
@@ -679,260 +697,21 @@
 </article>
 </div>
 </div>
+
+
 </main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
 
-      // Constants (2024 Georgia)
-      const GA_RATE = 0.0549;
+<button id="resetBtn" type="button" class="btn btnSecondary">Reset</button>
+</div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-      // Default tables (commonly referenced; editable by user)
-      const STD_DED = {
-        single: 5400,
-        mfj: 7400,
-        mfs: 3700,
-        hoh: 5400
-      };
-      const PERSONAL_EXEMPTION_SELF = { // by status
-        single: 2700,
-        mfj: 7400,
-        mfs: 3700,
-        hoh: 2700
-      };
-      const DEPENDENT_EXEMPTION_PER = 3000;
-
-      // Elements
-      const filingStatus = document.getElementById('filingStatus');
-      const grossIncome = document.getElementById('grossIncome');
-      const pretaxAdj = document.getElementById('pretaxAdj');
-      const dependents = document.getElementById('dependents');
-      const dedStd = document.getElementById('dedStd');
-      const dedItem = document.getElementById('dedItem');
-      const stdDedGroup = document.getElementById('stdDedGroup');
-      const itmDedGroup = document.getElementById('itmDedGroup');
-      const stdDeduction = document.getElementById('stdDeduction');
-      const itemizedDeduction = document.getElementById('itemizedDeduction');
-      const personalExemptions = document.getElementById('personalExemptions');
-      const payFrequency = document.getElementById('payFrequency');
-
-      const taxableIncomeOut = document.getElementById('taxableIncomeOut');
-      const stateTaxOut = document.getElementById('stateTaxOut');
-      const effectiveRateOut = document.getElementById('effectiveRateOut');
-      const afterTaxOut = document.getElementById('afterTaxOut');
-      const perPeriodOut = document.getElementById('perPeriodOut');
-
-      const pretaxHelpBtn = document.getElementById('pretaxHelpBtn');
-      const pretaxHelpText = document.getElementById('pretaxHelpText');
-
-      // Errors
-      const err = id => document.getElementById(id);
-      const errors = {
-        filingStatus: err('filingStatusError'),
-        grossIncome: err('grossIncomeError'),
-        pretaxAdj: err('pretaxAdjError'),
-        dependents: err('dependentsError'),
-        stdDeduction: err('stdDeductionError'),
-        itemizedDeduction: err('itemizedDeductionError'),
-        personalExemptions: err('personalExemptionsError')
-      };
-
-      // Accessibility: help toggle
-      pretaxHelpBtn.addEventListener('click', function(){
-        const expanded = this.getAttribute('aria-expanded') === 'true';
-        this.setAttribute('aria-expanded', String(!expanded));
-        pretaxHelpText.setAttribute('aria-hidden', String(expanded));
-      });
-
-      // Helpers
-      function toNum(el){
-        const v = parseFloat((el.value || '').toString().replace(/,/g,''));
-        return Number.isFinite(v) ? v : 0;
-      }
-      function formatMoney(n){
-        return n.toLocaleString(undefined, {style:'currency', currency:'USD'});
-      }
-      function setInvalid(el, msg){
-        el.setAttribute('aria-invalid','true');
-        return msg;
-      }
-      function clearInvalid(el){
-        el.setAttribute('aria-invalid','false');
-      }
-      function payPeriods(freq){
-        switch(freq){
-          case 'monthly': return 12;
-          case 'semimonthly': return 24;
-          case 'biweekly': return 26;
-          case 'weekly': return 52;
-          default: return 1;
-        }
-      }
-
-      // Auto defaults based on status and dependents
-      function applyDefaults(){
-        const status = filingStatus.value;
-        const depCount = Math.max(0, parseInt(dependents.value || '0', 10));
-
-        // Standard deduction default
-        stdDeduction.value = STD_DED[status] ?? 0;
-
-        // Personal + dependent exemptions default
-        const base = PERSONAL_EXEMPTION_SELF[status] ?? 0;
-        const depEx = depCount * DEPENDENT_EXEMPTION_PER;
-        personalExemptions.value = (base + depEx).toFixed(0);
-      }
-
-      // Toggle deduction views
-      function updateDeductionMode(){
-        if (dedStd.checked){
-          stdDedGroup.style.display = '';
-          itmDedGroup.style.display = 'none';
-          itemizedDeduction.value = '';
-        } else {
-          stdDedGroup.style.display = 'none';
-          itmDedGroup.style.display = '';
-        }
-      }
-
-      // Validation (on blur)
-      function validate(){
-        let ok = true;
-        // Filing status
-        errors.filingStatus.textContent = '';
-        clearInvalid(filingStatus);
-        if(!filingStatus.value){
-          errors.filingStatus.textContent = setInvalid(filingStatus,'Please select a filing status.');
-          ok = false;
-        }
-        // Gross income
-        errors.grossIncome.textContent = '';
-        clearInvalid(grossIncome);
-        const gi = toNum(grossIncome);
-        if(!gi && gi !== 0){
-          errors.grossIncome.textContent = setInvalid(grossIncome,'Enter your gross annual income.');
-          ok = false;
-        } else if(gi < 0){
-          errors.grossIncome.textContent = setInvalid(grossIncome,'Gross income cannot be negative.');
-          ok = false;
-        }
-
-        // Pretax (optional)
-        errors.pretaxAdj.textContent = '';
-        clearInvalid(pretaxAdj);
-        const pa = toNum(pretaxAdj);
-        if(pa < 0){
-          errors.pretaxAdj.textContent = setInvalid(pretaxAdj,'Enter zero or a positive amount.');
-          ok = false;
-        }
-
-        // Dependents
-        errors.dependents.textContent = '';
-        clearInvalid(dependents);
-        const d = parseInt(dependents.value || '0', 10);
-        if(isNaN(d) || d < 0){
-          errors.dependents.textContent = setInvalid(dependents,'Enter a whole number of dependents (0 or more).');
-          ok = false;
-        }
-
-        // Deductions
-        if (dedStd.checked){
-          errors.stdDeduction.textContent = '';
-          clearInvalid(stdDeduction);
-          const sd = toNum(stdDeduction);
-          if(sd < 0){
-            errors.stdDeduction.textContent = setInvalid(stdDeduction,'Standard deduction cannot be negative.');
-            ok = false;
-          }
-        } else {
-          errors.itemizedDeduction.textContent = '';
-          clearInvalid(itemizedDeduction);
-          const id = toNum(itemizedDeduction);
-          if(!Number.isFinite(id) || id < 0){
-            errors.itemizedDeduction.textContent = setInvalid(itemizedDeduction,'Enter your total itemized deductions (0 or more).');
-            ok = false;
-          }
-        }
-
-        // Exemptions
-        errors.personalExemptions.textContent = '';
-        clearInvalid(personalExemptions);
-        const pe = toNum(personalExemptions);
-        if(pe < 0){
-          errors.personalExemptions.textContent = setInvalid(personalExemptions,'Exemptions cannot be negative.');
-          ok = false;
-        }
-
-        return ok;
-      }
-
-      // Compute
-      function compute(){
-        if(!validate()){
-          // Clear outputs only if invalid fundamental fields
-          const gi = toNum(grossIncome);
-          if(!(gi >= 0)){
-            taxableIncomeOut.textContent = '$0.00';
-            stateTaxOut.textContent = '$0.00';
-            effectiveRateOut.textContent = '0.00%';
-            afterTaxOut.textContent = '$0.00';
-            perPeriodOut.textContent = '$0.00';
-            return;
-          }
-        }
-
-        const gi = Math.max(0, toNum(grossIncome));
-        const pa = Math.max(0, toNum(pretaxAdj));
-        const deduction = dedStd.checked ? Math.max(0, toNum(stdDeduction)) : Math.max(0, toNum(itemizedDeduction));
-        const pe = Math.max(0, toNum(personalExemptions));
-
-        const taxable = Math.max(0, gi - pa - deduction - pe);
-        const tax = taxable * GA_RATE;
-        const effRate = gi > 0 ? (tax / gi) * 100 : 0;
-        const takeHome = gi - tax;
-
-        const N = payPeriods(payFrequency.value);
-        const taxPer = tax / N;
-
-        taxableIncomeOut.textContent = formatMoney(taxable);
-        stateTaxOut.textContent = formatMoney(tax);
-        effectiveRateOut.textContent = effRate.toFixed(2) + '%';
-        afterTaxOut.textContent = formatMoney(takeHome);
-        perPeriodOut.textContent = formatMoney(taxPer);
-      }
-
-      // Event wiring
-      [filingStatus, grossIncome, pretaxAdj, dependents, stdDeduction, itemizedDeduction, personalExemptions, payFrequency].forEach(el=>{
-        el.addEventListener('input', compute, {passive:true});
-        el.addEventListener('blur', validate, {passive:true});
-      });
-      [dedStd, dedItem].forEach(r=>{
-        r.addEventListener('change', ()=>{ updateDeductionMode(); compute(); }, {passive:true});
-      });
-      filingStatus.addEventListener('change', ()=>{ applyDefaults(); compute(); });
-      dependents.addEventListener('input', ()=>{ applyDefaults(); compute(); });
-
-      // Init
-      applyDefaults();
-      updateDeductionMode();
-      compute();
-
-      // Prevent form submit on Enter in search (UX nicety)
-      document.querySelector('.site-search')?.addEventListener('submit', e=>e.preventDefault());
-    })();
-  </script>
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main-content">Skip to main content</a><link rel="preload" href="/assets/js/mobile-menu.js" as="script"><link rel="preload" href="/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -964,41 +743,9 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "General",
-      "item": "https://calcdomain.com/categories/general"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Miscellaneous",
-      "item": "https://calcdomain.com/subcategories/miscellaneous"
-    }
-  ]
-}
-</script>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="main-content" id="main-content">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="main-content" id="main-content">
 <div class="container">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Georgia State Income Tax Calculator</h1>
 <p>
         This professional-grade calculator estimates your Georgia state income tax for tax year 2024 using the state’s flat 5.49% rate.
@@ -1333,260 +1080,7 @@
 </article>
 </div>
 </div>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
-
-      // Constants (2024 Georgia)
-      const GA_RATE = 0.0549;
-
-      // Default tables (commonly referenced; editable by user)
-      const STD_DED = {
-        single: 5400,
-        mfj: 7400,
-        mfs: 3700,
-        hoh: 5400
-      };
-      const PERSONAL_EXEMPTION_SELF = { // by status
-        single: 2700,
-        mfj: 7400,
-        mfs: 3700,
-        hoh: 2700
-      };
-      const DEPENDENT_EXEMPTION_PER = 3000;
-
-      // Elements
-      const filingStatus = document.getElementById('filingStatus');
-      const grossIncome = document.getElementById('grossIncome');
-      const pretaxAdj = document.getElementById('pretaxAdj');
-      const dependents = document.getElementById('dependents');
-      const dedStd = document.getElementById('dedStd');
-      const dedItem = document.getElementById('dedItem');
-      const stdDedGroup = document.getElementById('stdDedGroup');
-      const itmDedGroup = document.getElementById('itmDedGroup');
-      const stdDeduction = document.getElementById('stdDeduction');
-      const itemizedDeduction = document.getElementById('itemizedDeduction');
-      const personalExemptions = document.getElementById('personalExemptions');
-      const payFrequency = document.getElementById('payFrequency');
-
-      const taxableIncomeOut = document.getElementById('taxableIncomeOut');
-      const stateTaxOut = document.getElementById('stateTaxOut');
-      const effectiveRateOut = document.getElementById('effectiveRateOut');
-      const afterTaxOut = document.getElementById('afterTaxOut');
-      const perPeriodOut = document.getElementById('perPeriodOut');
-
-      const pretaxHelpBtn = document.getElementById('pretaxHelpBtn');
-      const pretaxHelpText = document.getElementById('pretaxHelpText');
-
-      // Errors
-      const err = id => document.getElementById(id);
-      const errors = {
-        filingStatus: err('filingStatusError'),
-        grossIncome: err('grossIncomeError'),
-        pretaxAdj: err('pretaxAdjError'),
-        dependents: err('dependentsError'),
-        stdDeduction: err('stdDeductionError'),
-        itemizedDeduction: err('itemizedDeductionError'),
-        personalExemptions: err('personalExemptionsError')
-      };
-
-      // Accessibility: help toggle
-      pretaxHelpBtn.addEventListener('click', function(){
-        const expanded = this.getAttribute('aria-expanded') === 'true';
-        this.setAttribute('aria-expanded', String(!expanded));
-        pretaxHelpText.setAttribute('aria-hidden', String(expanded));
-      });
-
-      // Helpers
-      function toNum(el){
-        const v = parseFloat((el.value || '').toString().replace(/,/g,''));
-        return Number.isFinite(v) ? v : 0;
-      }
-      function formatMoney(n){
-        return n.toLocaleString(undefined, {style:'currency', currency:'USD'});
-      }
-      function setInvalid(el, msg){
-        el.setAttribute('aria-invalid','true');
-        return msg;
-      }
-      function clearInvalid(el){
-        el.setAttribute('aria-invalid','false');
-      }
-      function payPeriods(freq){
-        switch(freq){
-          case 'monthly': return 12;
-          case 'semimonthly': return 24;
-          case 'biweekly': return 26;
-          case 'weekly': return 52;
-          default: return 1;
-        }
-      }
-
-      // Auto defaults based on status and dependents
-      function applyDefaults(){
-        const status = filingStatus.value;
-        const depCount = Math.max(0, parseInt(dependents.value || '0', 10));
-
-        // Standard deduction default
-        stdDeduction.value = STD_DED[status] ?? 0;
-
-        // Personal + dependent exemptions default
-        const base = PERSONAL_EXEMPTION_SELF[status] ?? 0;
-        const depEx = depCount * DEPENDENT_EXEMPTION_PER;
-        personalExemptions.value = (base + depEx).toFixed(0);
-      }
-
-      // Toggle deduction views
-      function updateDeductionMode(){
-        if (dedStd.checked){
-          stdDedGroup.style.display = '';
-          itmDedGroup.style.display = 'none';
-          itemizedDeduction.value = '';
-        } else {
-          stdDedGroup.style.display = 'none';
-          itmDedGroup.style.display = '';
-        }
-      }
-
-      // Validation (on blur)
-      function validate(){
-        let ok = true;
-        // Filing status
-        errors.filingStatus.textContent = '';
-        clearInvalid(filingStatus);
-        if(!filingStatus.value){
-          errors.filingStatus.textContent = setInvalid(filingStatus,'Please select a filing status.');
-          ok = false;
-        }
-        // Gross income
-        errors.grossIncome.textContent = '';
-        clearInvalid(grossIncome);
-        const gi = toNum(grossIncome);
-        if(!gi && gi !== 0){
-          errors.grossIncome.textContent = setInvalid(grossIncome,'Enter your gross annual income.');
-          ok = false;
-        } else if(gi < 0){
-          errors.grossIncome.textContent = setInvalid(grossIncome,'Gross income cannot be negative.');
-          ok = false;
-        }
-
-        // Pretax (optional)
-        errors.pretaxAdj.textContent = '';
-        clearInvalid(pretaxAdj);
-        const pa = toNum(pretaxAdj);
-        if(pa < 0){
-          errors.pretaxAdj.textContent = setInvalid(pretaxAdj,'Enter zero or a positive amount.');
-          ok = false;
-        }
-
-        // Dependents
-        errors.dependents.textContent = '';
-        clearInvalid(dependents);
-        const d = parseInt(dependents.value || '0', 10);
-        if(isNaN(d) || d < 0){
-          errors.dependents.textContent = setInvalid(dependents,'Enter a whole number of dependents (0 or more).');
-          ok = false;
-        }
-
-        // Deductions
-        if (dedStd.checked){
-          errors.stdDeduction.textContent = '';
-          clearInvalid(stdDeduction);
-          const sd = toNum(stdDeduction);
-          if(sd < 0){
-            errors.stdDeduction.textContent = setInvalid(stdDeduction,'Standard deduction cannot be negative.');
-            ok = false;
-          }
-        } else {
-          errors.itemizedDeduction.textContent = '';
-          clearInvalid(itemizedDeduction);
-          const id = toNum(itemizedDeduction);
-          if(!Number.isFinite(id) || id < 0){
-            errors.itemizedDeduction.textContent = setInvalid(itemizedDeduction,'Enter your total itemized deductions (0 or more).');
-            ok = false;
-          }
-        }
-
-        // Exemptions
-        errors.personalExemptions.textContent = '';
-        clearInvalid(personalExemptions);
-        const pe = toNum(personalExemptions);
-        if(pe < 0){
-          errors.personalExemptions.textContent = setInvalid(personalExemptions,'Exemptions cannot be negative.');
-          ok = false;
-        }
-
-        return ok;
-      }
-
-      // Compute
-      function compute(){
-        if(!validate()){
-          // Clear outputs only if invalid fundamental fields
-          const gi = toNum(grossIncome);
-          if(!(gi >= 0)){
-            taxableIncomeOut.textContent = '$0.00';
-            stateTaxOut.textContent = '$0.00';
-            effectiveRateOut.textContent = '0.00%';
-            afterTaxOut.textContent = '$0.00';
-            perPeriodOut.textContent = '$0.00';
-            return;
-          }
-        }
-
-        const gi = Math.max(0, toNum(grossIncome));
-        const pa = Math.max(0, toNum(pretaxAdj));
-        const deduction = dedStd.checked ? Math.max(0, toNum(stdDeduction)) : Math.max(0, toNum(itemizedDeduction));
-        const pe = Math.max(0, toNum(personalExemptions));
-
-        const taxable = Math.max(0, gi - pa - deduction - pe);
-        const tax = taxable * GA_RATE;
-        const effRate = gi > 0 ? (tax / gi) * 100 : 0;
-        const takeHome = gi - tax;
-
-        const N = payPeriods(payFrequency.value);
-        const taxPer = tax / N;
-
-        taxableIncomeOut.textContent = formatMoney(taxable);
-        stateTaxOut.textContent = formatMoney(tax);
-        effectiveRateOut.textContent = effRate.toFixed(2) + '%';
-        afterTaxOut.textContent = formatMoney(takeHome);
-        perPeriodOut.textContent = formatMoney(taxPer);
-      }
-
-      // Event wiring
-      [filingStatus, grossIncome, pretaxAdj, dependents, stdDeduction, itemizedDeduction, personalExemptions, payFrequency].forEach(el=>{
-        el.addEventListener('input', compute, {passive:true});
-        el.addEventListener('blur', validate, {passive:true});
-      });
-      [dedStd, dedItem].forEach(r=>{
-        r.addEventListener('change', ()=>{ updateDeductionMode(); compute(); }, {passive:true});
-      });
-      filingStatus.addEventListener('change', ()=>{ applyDefaults(); compute(); });
-      dependents.addEventListener('input', ()=>{ applyDefaults(); compute(); });
-
-      // Init
-      applyDefaults();
-      updateDeductionMode();
-      compute();
-
-      // Prevent form submit on Enter in search (UX nicety)
-      document.querySelector('.site-search')?.addEventListener('submit', e=>e.preventDefault());
-    })();
-  </script>
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="/assets/js/mobile-menu.js" as="script"><link rel="preload" href="/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1618,41 +1112,9 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "General",
-      "item": "https://calcdomain.com/categories/general"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Miscellaneous",
-      "item": "https://calcdomain.com/subcategories/miscellaneous"
-    }
-  ]
-}
-</script>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="main-content" id="main-content">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="main-content" id="main-content">
 <div class="container">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Georgia State Income Tax Calculator</h1>
 <p>
         This professional-grade calculator estimates your Georgia state income tax for tax year 2024 using the state’s flat 5.49% rate.
@@ -1987,9 +1449,48 @@
 </article>
 </div>
 </div>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
     (function(){
       'use strict';
 
@@ -2229,6 +1730,534 @@
       // Prevent form submit on Enter in search (UX nicety)
       document.querySelector('.site-search')?.addEventListener('submit', e=>e.preventDefault());
     })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "General",
+      "item": "https://calcdomain.com/categories/general"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Miscellaneous",
+      "item": "https://calcdomain.com/subcategories/miscellaneous"
+    }
+  ]
+}
+</script><script defer="">
+    (function(){
+      'use strict';
 
-</body></html>
+      // Constants (2024 Georgia)
+      const GA_RATE = 0.0549;
+
+      // Default tables (commonly referenced; editable by user)
+      const STD_DED = {
+        single: 5400,
+        mfj: 7400,
+        mfs: 3700,
+        hoh: 5400
+      };
+      const PERSONAL_EXEMPTION_SELF = { // by status
+        single: 2700,
+        mfj: 7400,
+        mfs: 3700,
+        hoh: 2700
+      };
+      const DEPENDENT_EXEMPTION_PER = 3000;
+
+      // Elements
+      const filingStatus = document.getElementById('filingStatus');
+      const grossIncome = document.getElementById('grossIncome');
+      const pretaxAdj = document.getElementById('pretaxAdj');
+      const dependents = document.getElementById('dependents');
+      const dedStd = document.getElementById('dedStd');
+      const dedItem = document.getElementById('dedItem');
+      const stdDedGroup = document.getElementById('stdDedGroup');
+      const itmDedGroup = document.getElementById('itmDedGroup');
+      const stdDeduction = document.getElementById('stdDeduction');
+      const itemizedDeduction = document.getElementById('itemizedDeduction');
+      const personalExemptions = document.getElementById('personalExemptions');
+      const payFrequency = document.getElementById('payFrequency');
+
+      const taxableIncomeOut = document.getElementById('taxableIncomeOut');
+      const stateTaxOut = document.getElementById('stateTaxOut');
+      const effectiveRateOut = document.getElementById('effectiveRateOut');
+      const afterTaxOut = document.getElementById('afterTaxOut');
+      const perPeriodOut = document.getElementById('perPeriodOut');
+
+      const pretaxHelpBtn = document.getElementById('pretaxHelpBtn');
+      const pretaxHelpText = document.getElementById('pretaxHelpText');
+
+      // Errors
+      const err = id => document.getElementById(id);
+      const errors = {
+        filingStatus: err('filingStatusError'),
+        grossIncome: err('grossIncomeError'),
+        pretaxAdj: err('pretaxAdjError'),
+        dependents: err('dependentsError'),
+        stdDeduction: err('stdDeductionError'),
+        itemizedDeduction: err('itemizedDeductionError'),
+        personalExemptions: err('personalExemptionsError')
+      };
+
+      // Accessibility: help toggle
+      pretaxHelpBtn.addEventListener('click', function(){
+        const expanded = this.getAttribute('aria-expanded') === 'true';
+        this.setAttribute('aria-expanded', String(!expanded));
+        pretaxHelpText.setAttribute('aria-hidden', String(expanded));
+      });
+
+      // Helpers
+      function toNum(el){
+        const v = parseFloat((el.value || '').toString().replace(/,/g,''));
+        return Number.isFinite(v) ? v : 0;
+      }
+      function formatMoney(n){
+        return n.toLocaleString(undefined, {style:'currency', currency:'USD'});
+      }
+      function setInvalid(el, msg){
+        el.setAttribute('aria-invalid','true');
+        return msg;
+      }
+      function clearInvalid(el){
+        el.setAttribute('aria-invalid','false');
+      }
+      function payPeriods(freq){
+        switch(freq){
+          case 'monthly': return 12;
+          case 'semimonthly': return 24;
+          case 'biweekly': return 26;
+          case 'weekly': return 52;
+          default: return 1;
+        }
+      }
+
+      // Auto defaults based on status and dependents
+      function applyDefaults(){
+        const status = filingStatus.value;
+        const depCount = Math.max(0, parseInt(dependents.value || '0', 10));
+
+        // Standard deduction default
+        stdDeduction.value = STD_DED[status] ?? 0;
+
+        // Personal + dependent exemptions default
+        const base = PERSONAL_EXEMPTION_SELF[status] ?? 0;
+        const depEx = depCount * DEPENDENT_EXEMPTION_PER;
+        personalExemptions.value = (base + depEx).toFixed(0);
+      }
+
+      // Toggle deduction views
+      function updateDeductionMode(){
+        if (dedStd.checked){
+          stdDedGroup.style.display = '';
+          itmDedGroup.style.display = 'none';
+          itemizedDeduction.value = '';
+        } else {
+          stdDedGroup.style.display = 'none';
+          itmDedGroup.style.display = '';
+        }
+      }
+
+      // Validation (on blur)
+      function validate(){
+        let ok = true;
+        // Filing status
+        errors.filingStatus.textContent = '';
+        clearInvalid(filingStatus);
+        if(!filingStatus.value){
+          errors.filingStatus.textContent = setInvalid(filingStatus,'Please select a filing status.');
+          ok = false;
+        }
+        // Gross income
+        errors.grossIncome.textContent = '';
+        clearInvalid(grossIncome);
+        const gi = toNum(grossIncome);
+        if(!gi && gi !== 0){
+          errors.grossIncome.textContent = setInvalid(grossIncome,'Enter your gross annual income.');
+          ok = false;
+        } else if(gi < 0){
+          errors.grossIncome.textContent = setInvalid(grossIncome,'Gross income cannot be negative.');
+          ok = false;
+        }
+
+        // Pretax (optional)
+        errors.pretaxAdj.textContent = '';
+        clearInvalid(pretaxAdj);
+        const pa = toNum(pretaxAdj);
+        if(pa < 0){
+          errors.pretaxAdj.textContent = setInvalid(pretaxAdj,'Enter zero or a positive amount.');
+          ok = false;
+        }
+
+        // Dependents
+        errors.dependents.textContent = '';
+        clearInvalid(dependents);
+        const d = parseInt(dependents.value || '0', 10);
+        if(isNaN(d) || d < 0){
+          errors.dependents.textContent = setInvalid(dependents,'Enter a whole number of dependents (0 or more).');
+          ok = false;
+        }
+
+        // Deductions
+        if (dedStd.checked){
+          errors.stdDeduction.textContent = '';
+          clearInvalid(stdDeduction);
+          const sd = toNum(stdDeduction);
+          if(sd < 0){
+            errors.stdDeduction.textContent = setInvalid(stdDeduction,'Standard deduction cannot be negative.');
+            ok = false;
+          }
+        } else {
+          errors.itemizedDeduction.textContent = '';
+          clearInvalid(itemizedDeduction);
+          const id = toNum(itemizedDeduction);
+          if(!Number.isFinite(id) || id < 0){
+            errors.itemizedDeduction.textContent = setInvalid(itemizedDeduction,'Enter your total itemized deductions (0 or more).');
+            ok = false;
+          }
+        }
+
+        // Exemptions
+        errors.personalExemptions.textContent = '';
+        clearInvalid(personalExemptions);
+        const pe = toNum(personalExemptions);
+        if(pe < 0){
+          errors.personalExemptions.textContent = setInvalid(personalExemptions,'Exemptions cannot be negative.');
+          ok = false;
+        }
+
+        return ok;
+      }
+
+      // Compute
+      function compute(){
+        if(!validate()){
+          // Clear outputs only if invalid fundamental fields
+          const gi = toNum(grossIncome);
+          if(!(gi >= 0)){
+            taxableIncomeOut.textContent = '$0.00';
+            stateTaxOut.textContent = '$0.00';
+            effectiveRateOut.textContent = '0.00%';
+            afterTaxOut.textContent = '$0.00';
+            perPeriodOut.textContent = '$0.00';
+            return;
+          }
+        }
+
+        const gi = Math.max(0, toNum(grossIncome));
+        const pa = Math.max(0, toNum(pretaxAdj));
+        const deduction = dedStd.checked ? Math.max(0, toNum(stdDeduction)) : Math.max(0, toNum(itemizedDeduction));
+        const pe = Math.max(0, toNum(personalExemptions));
+
+        const taxable = Math.max(0, gi - pa - deduction - pe);
+        const tax = taxable * GA_RATE;
+        const effRate = gi > 0 ? (tax / gi) * 100 : 0;
+        const takeHome = gi - tax;
+
+        const N = payPeriods(payFrequency.value);
+        const taxPer = tax / N;
+
+        taxableIncomeOut.textContent = formatMoney(taxable);
+        stateTaxOut.textContent = formatMoney(tax);
+        effectiveRateOut.textContent = effRate.toFixed(2) + '%';
+        afterTaxOut.textContent = formatMoney(takeHome);
+        perPeriodOut.textContent = formatMoney(taxPer);
+      }
+
+      // Event wiring
+      [filingStatus, grossIncome, pretaxAdj, dependents, stdDeduction, itemizedDeduction, personalExemptions, payFrequency].forEach(el=>{
+        el.addEventListener('input', compute, {passive:true});
+        el.addEventListener('blur', validate, {passive:true});
+      });
+      [dedStd, dedItem].forEach(r=>{
+        r.addEventListener('change', ()=>{ updateDeductionMode(); compute(); }, {passive:true});
+      });
+      filingStatus.addEventListener('change', ()=>{ applyDefaults(); compute(); });
+      dependents.addEventListener('input', ()=>{ applyDefaults(); compute(); });
+
+      // Init
+      applyDefaults();
+      updateDeductionMode();
+      compute();
+
+      // Prevent form submit on Enter in search (UX nicety)
+      document.querySelector('.site-search')?.addEventListener('submit', e=>e.preventDefault());
+    })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "General",
+      "item": "https://calcdomain.com/categories/general"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Miscellaneous",
+      "item": "https://calcdomain.com/subcategories/miscellaneous"
+    }
+  ]
+}
+</script><script defer="">
+    (function(){
+      'use strict';
+
+      // Constants (2024 Georgia)
+      const GA_RATE = 0.0549;
+
+      // Default tables (commonly referenced; editable by user)
+      const STD_DED = {
+        single: 5400,
+        mfj: 7400,
+        mfs: 3700,
+        hoh: 5400
+      };
+      const PERSONAL_EXEMPTION_SELF = { // by status
+        single: 2700,
+        mfj: 7400,
+        mfs: 3700,
+        hoh: 2700
+      };
+      const DEPENDENT_EXEMPTION_PER = 3000;
+
+      // Elements
+      const filingStatus = document.getElementById('filingStatus');
+      const grossIncome = document.getElementById('grossIncome');
+      const pretaxAdj = document.getElementById('pretaxAdj');
+      const dependents = document.getElementById('dependents');
+      const dedStd = document.getElementById('dedStd');
+      const dedItem = document.getElementById('dedItem');
+      const stdDedGroup = document.getElementById('stdDedGroup');
+      const itmDedGroup = document.getElementById('itmDedGroup');
+      const stdDeduction = document.getElementById('stdDeduction');
+      const itemizedDeduction = document.getElementById('itemizedDeduction');
+      const personalExemptions = document.getElementById('personalExemptions');
+      const payFrequency = document.getElementById('payFrequency');
+
+      const taxableIncomeOut = document.getElementById('taxableIncomeOut');
+      const stateTaxOut = document.getElementById('stateTaxOut');
+      const effectiveRateOut = document.getElementById('effectiveRateOut');
+      const afterTaxOut = document.getElementById('afterTaxOut');
+      const perPeriodOut = document.getElementById('perPeriodOut');
+
+      const pretaxHelpBtn = document.getElementById('pretaxHelpBtn');
+      const pretaxHelpText = document.getElementById('pretaxHelpText');
+
+      // Errors
+      const err = id => document.getElementById(id);
+      const errors = {
+        filingStatus: err('filingStatusError'),
+        grossIncome: err('grossIncomeError'),
+        pretaxAdj: err('pretaxAdjError'),
+        dependents: err('dependentsError'),
+        stdDeduction: err('stdDeductionError'),
+        itemizedDeduction: err('itemizedDeductionError'),
+        personalExemptions: err('personalExemptionsError')
+      };
+
+      // Accessibility: help toggle
+      pretaxHelpBtn.addEventListener('click', function(){
+        const expanded = this.getAttribute('aria-expanded') === 'true';
+        this.setAttribute('aria-expanded', String(!expanded));
+        pretaxHelpText.setAttribute('aria-hidden', String(expanded));
+      });
+
+      // Helpers
+      function toNum(el){
+        const v = parseFloat((el.value || '').toString().replace(/,/g,''));
+        return Number.isFinite(v) ? v : 0;
+      }
+      function formatMoney(n){
+        return n.toLocaleString(undefined, {style:'currency', currency:'USD'});
+      }
+      function setInvalid(el, msg){
+        el.setAttribute('aria-invalid','true');
+        return msg;
+      }
+      function clearInvalid(el){
+        el.setAttribute('aria-invalid','false');
+      }
+      function payPeriods(freq){
+        switch(freq){
+          case 'monthly': return 12;
+          case 'semimonthly': return 24;
+          case 'biweekly': return 26;
+          case 'weekly': return 52;
+          default: return 1;
+        }
+      }
+
+      // Auto defaults based on status and dependents
+      function applyDefaults(){
+        const status = filingStatus.value;
+        const depCount = Math.max(0, parseInt(dependents.value || '0', 10));
+
+        // Standard deduction default
+        stdDeduction.value = STD_DED[status] ?? 0;
+
+        // Personal + dependent exemptions default
+        const base = PERSONAL_EXEMPTION_SELF[status] ?? 0;
+        const depEx = depCount * DEPENDENT_EXEMPTION_PER;
+        personalExemptions.value = (base + depEx).toFixed(0);
+      }
+
+      // Toggle deduction views
+      function updateDeductionMode(){
+        if (dedStd.checked){
+          stdDedGroup.style.display = '';
+          itmDedGroup.style.display = 'none';
+          itemizedDeduction.value = '';
+        } else {
+          stdDedGroup.style.display = 'none';
+          itmDedGroup.style.display = '';
+        }
+      }
+
+      // Validation (on blur)
+      function validate(){
+        let ok = true;
+        // Filing status
+        errors.filingStatus.textContent = '';
+        clearInvalid(filingStatus);
+        if(!filingStatus.value){
+          errors.filingStatus.textContent = setInvalid(filingStatus,'Please select a filing status.');
+          ok = false;
+        }
+        // Gross income
+        errors.grossIncome.textContent = '';
+        clearInvalid(grossIncome);
+        const gi = toNum(grossIncome);
+        if(!gi && gi !== 0){
+          errors.grossIncome.textContent = setInvalid(grossIncome,'Enter your gross annual income.');
+          ok = false;
+        } else if(gi < 0){
+          errors.grossIncome.textContent = setInvalid(grossIncome,'Gross income cannot be negative.');
+          ok = false;
+        }
+
+        // Pretax (optional)
+        errors.pretaxAdj.textContent = '';
+        clearInvalid(pretaxAdj);
+        const pa = toNum(pretaxAdj);
+        if(pa < 0){
+          errors.pretaxAdj.textContent = setInvalid(pretaxAdj,'Enter zero or a positive amount.');
+          ok = false;
+        }
+
+        // Dependents
+        errors.dependents.textContent = '';
+        clearInvalid(dependents);
+        const d = parseInt(dependents.value || '0', 10);
+        if(isNaN(d) || d < 0){
+          errors.dependents.textContent = setInvalid(dependents,'Enter a whole number of dependents (0 or more).');
+          ok = false;
+        }
+
+        // Deductions
+        if (dedStd.checked){
+          errors.stdDeduction.textContent = '';
+          clearInvalid(stdDeduction);
+          const sd = toNum(stdDeduction);
+          if(sd < 0){
+            errors.stdDeduction.textContent = setInvalid(stdDeduction,'Standard deduction cannot be negative.');
+            ok = false;
+          }
+        } else {
+          errors.itemizedDeduction.textContent = '';
+          clearInvalid(itemizedDeduction);
+          const id = toNum(itemizedDeduction);
+          if(!Number.isFinite(id) || id < 0){
+            errors.itemizedDeduction.textContent = setInvalid(itemizedDeduction,'Enter your total itemized deductions (0 or more).');
+            ok = false;
+          }
+        }
+
+        // Exemptions
+        errors.personalExemptions.textContent = '';
+        clearInvalid(personalExemptions);
+        const pe = toNum(personalExemptions);
+        if(pe < 0){
+          errors.personalExemptions.textContent = setInvalid(personalExemptions,'Exemptions cannot be negative.');
+          ok = false;
+        }
+
+        return ok;
+      }
+
+      // Compute
+      function compute(){
+        if(!validate()){
+          // Clear outputs only if invalid fundamental fields
+          const gi = toNum(grossIncome);
+          if(!(gi >= 0)){
+            taxableIncomeOut.textContent = '$0.00';
+            stateTaxOut.textContent = '$0.00';
+            effectiveRateOut.textContent = '0.00%';
+            afterTaxOut.textContent = '$0.00';
+            perPeriodOut.textContent = '$0.00';
+            return;
+          }
+        }
+
+        const gi = Math.max(0, toNum(grossIncome));
+        const pa = Math.max(0, toNum(pretaxAdj));
+        const deduction = dedStd.checked ? Math.max(0, toNum(stdDeduction)) : Math.max(0, toNum(itemizedDeduction));
+        const pe = Math.max(0, toNum(personalExemptions));
+
+        const taxable = Math.max(0, gi - pa - deduction - pe);
+        const tax = taxable * GA_RATE;
+        const effRate = gi > 0 ? (tax / gi) * 100 : 0;
+        const takeHome = gi - tax;
+
+        const N = payPeriods(payFrequency.value);
+        const taxPer = tax / N;
+
+        taxableIncomeOut.textContent = formatMoney(taxable);
+        stateTaxOut.textContent = formatMoney(tax);
+        effectiveRateOut.textContent = effRate.toFixed(2) + '%';
+        afterTaxOut.textContent = formatMoney(takeHome);
+        perPeriodOut.textContent = formatMoney(taxPer);
+      }
+
+      // Event wiring
+      [filingStatus, grossIncome, pretaxAdj, dependents, stdDeduction, itemizedDeduction, personalExemptions, payFrequency].forEach(el=>{
+        el.addEventListener('input', compute, {passive:true});
+        el.addEventListener('blur', validate, {passive:true});
+      });
+      [dedStd, dedItem].forEach(r=>{
+        r.addEventListener('change', ()=>{ updateDeductionMode(); compute(); }, {passive:true});
+      });
+      filingStatus.addEventListener('change', ()=>{ applyDefaults(); compute(); });
+      dependents.addEventListener('input', ()=>{ applyDefaults(); compute(); });
+
+      // Init
+      applyDefaults();
+      updateDeductionMode();
+      compute();
+
+      // Prevent form submit on Enter in search (UX nicety)
+      document.querySelector('.site-search')?.addEventListener('submit', e=>e.preventDefault());
+    })();
+  </script></body></html>

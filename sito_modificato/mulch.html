@@ -289,10 +289,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
@@ -347,10 +353,22 @@
 }
 </style>
 </head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">Mulch Calculator</h1>
+    <p class="sub" id="pageSub">Mulch calculator to estimate mulch volume, number of bags, and cost for any garden bed. Supports imperial and metric units, multiple area shapes, and WCAG 2.1 AA accessible design.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<main class="main-content w-full lg:w-2/3" id="main-content">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main class="main-content w-full lg:w-2/3" id="main-content">
 <div class="container">
 <nav aria-label="breadcrumb" class="breadcrumb">Home / Construction / Materials / Mulch Calculator</nav>
 <h1>Mulch Calculator</h1>
@@ -454,7 +472,7 @@
 </div>
 <div class="inline-actions">
 <button class="btn" disabled="" id="addAreaBtn" type="button">Add area to list</button>
-<button class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button class="btn secondary btnSecondary" id="resetBtn" type="button">Reset</button>
 </div>
 <div aria-live="polite" aria-relevant="additions removals" class="area-list" id="areaList">
 <!-- Added areas rendered here -->
@@ -669,552 +687,19 @@
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
+
+
 </main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
+</div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-      // Utilities
-      const $ = (sel, ctx=document) => ctx.querySelector(sel);
-      const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
-      const clamp = (n) => isFinite(n) ? n : 0;
-      const round = (n, d=2) => Number.isFinite(n) ? Number(n.toFixed(d)) : 0;
-      const nf = (n, d=2) => round(n, d).toLocaleString(undefined, {minimumFractionDigits:d, maximumFractionDigits:d});
-      const nfi0 = (n) => Math.max(0, Math.ceil(n));
-
-      // Elements
-      const unitsRadios = $$('input[name="units"]');
-      const depthInput = $('#depthInput');
-      const depthErr = $('#depthErr');
-      const depthUnitSuffix = $('#depthUnitSuffix');
-
-      const bagSize = $('#bagSize');
-      const bagUnitSuffix = $('#bagUnitSuffix');
-      const costPerBag = $('#costPerBag');
-      const costPerYard = $('#costPerYard');
-
-      const multiMode = $('#multiMode');
-      const shapeFieldsContainer = $('#shapeFields');
-      const shapeRadios = $$('input[name="shape"]');
-      const addAreaBtn = $('#addAreaBtn');
-      const resetBtn = $('#resetBtn');
-      const areaList = $('#areaList');
-
-      const totalAreaSqFt = $('#totalAreaSqFt');
-      const totalAreaSqM = $('#totalAreaSqM');
-      const depthIn = $('#depthIn');
-      const depthCm = $('#depthCm');
-      const volCft = $('#volCft');
-      const volCyd = $('#volCyd');
-      const volM3 = $('#volM3');
-      const volL = $('#volL');
-      const bagsCount = $('#bagsCount');
-      const coverageBagSqFt = $('#coverageBagSqFt');
-      const coverageBagSqM = $('#coverageBagSqM');
-      const costBags = $('#costBags');
-      const costBulk = $('#costBulk');
-
-      const tipDepthBtn = $('#tipDepthBtn');
-      const tipDepth = $('#tipDepth');
-      const tipBagBtn = $('#tipBagBtn');
-      const tipBag = $('#tipBag');
-
-      // State
-      let state = {
-        units: 'imperial', // or 'metric'
-        multi: false,
-        shape: 'rectangle',
-        areas: [] // { id, shape, params, areaSqFt }
-      };
-      let areaIdSeq = 1;
-
-      // Constants
-      const FT_PER_M = 3.280839895013123;
-      const M_PER_FT = 1/FT_PER_M;
-      const IN_PER_FT = 12;
-      const CM_PER_M = 100;
-      const L_PER_M3 = 1000;
-      const M3_PER_CUFT = 0.028316846592;
-      const L_PER_CUFT = M3_PER_CUFT * L_PER_M3;
-      const CUFT_PER_CUYD = 27;
-
-      // Accessible tooltip toggles
-      function setupTooltip(btn, panel){
-        btn.addEventListener('click', () => {
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          panel.setAttribute('aria-hidden', String(expanded));
-        });
-        btn.addEventListener('keydown', (e) => {
-          if(e.key === 'Escape'){
-            btn.setAttribute('aria-expanded','false');
-            panel.setAttribute('aria-hidden','true');
-            btn.focus();
-          }
-        });
-      }
-      setupTooltip(tipDepthBtn, tipDepth);
-      setupTooltip(tipBagBtn, tipBag);
-
-      // Unit handling
-      function syncUnits(){
-        state.units = $('input[name="units"]:checked').value;
-        const isImp = state.units === 'imperial';
-
-        // Depth suffix
-        depthUnitSuffix.textContent = isImp ? 'in' : 'cm';
-        depthInput.placeholder = isImp ? 'e.g., 3' : 'e.g., 7.5';
-        depthInput.setAttribute('aria-describedby', `tipDepth depthErr depthUnitSuffix`);
-
-        // Bag size suffix
-        bagUnitSuffix.textContent = isImp ? 'cu ft' : 'L';
-        bagSize.placeholder = isImp ? 'e.g., 2' : 'e.g., 50';
-
-        // Re-render shape fields for unit labels
-        renderShapeFields();
-        validateDepth();
-        computeAndRender();
-      }
-
-      unitsRadios.forEach(r => r.addEventListener('change', syncUnits));
-
-      // Shape fields rendering
-      function fieldTemplate({id,label,placeholder,suffix,required=true}){
-        const req = required ? 'aria-required="true"' : '';
-        const minAttr = 'min="0"';
-        const stepAttr = 'step="any"';
-        return `
-          <div class="input-group">
-            <label for="${id}">${label} ${required ? '*' : ''}</label>
-            <div class="input-group">
-              <input id="${id}" type="number" inputmode="decimal" ${stepAttr} ${minAttr} class="form-control" placeholder="${placeholder}" ${req} />
-              <span class="input-suffix" aria-hidden="true">${suffix}</span>
-            </div>
-            <div id="${id}Err" class="error" role="alert" aria-live="polite"></div>
-          </div>
-        `;
-      }
-
-      function renderShapeFields(){
-        const isImp = state.units === 'imperial';
-        const lenUnit = isImp ? 'ft' : 'm';
-        const areaUnit = isImp ? 'sq ft' : 'm²';
-        let html = '';
-
-        switch(state.shape){
-          case 'rectangle':
-            html = `
-              ${fieldTemplate({id:'len',label:'Length *',placeholder:`e.g., ${isImp ? '20' : '6'}`,suffix:lenUnit})}
-              ${fieldTemplate({id:'wid',label:'Width *',placeholder:`e.g., ${isImp ? '10' : '3'}`,suffix:lenUnit})}
-            `;
-            break;
-          case 'circle':
-            html = `
-              ${fieldTemplate({id:'diam',label:'Diameter *',placeholder:`e.g., ${isImp ? '12' : '3.5'}`,suffix:lenUnit})}
-            `;
-            break;
-          case 'triangle':
-            html = `
-              ${fieldTemplate({id:'base',label:'Base *',placeholder:`e.g., ${isImp ? '12' : '3.5'}`,suffix:lenUnit})}
-              ${fieldTemplate({id:'height',label:'Height *',placeholder:`e.g., ${isImp ? '8' : '2.5'}`,suffix:lenUnit})}
-            `;
-            break;
-          case 'annulus':
-            html = `
-              ${fieldTemplate({id:'outer',label:'Outer diameter *',placeholder:`e.g., ${isImp ? '12' : '4'}`,suffix:lenUnit})}
-              ${fieldTemplate({id:'inner',label:'Inner diameter *',placeholder:`e.g., ${isImp ? '8' : '2.5'}`,suffix:lenUnit})}
-            `;
-            break;
-          case 'area':
-            html = `
-              ${fieldTemplate({id:'knownArea',label:'Area *',placeholder:`e.g., ${isImp ? '200' : '18.5'}`,suffix:areaUnit})}
-            `;
-            break;
-        }
-        shapeFieldsContainer.innerHTML = html;
-
-        // Attach validators on blur
-        $$('#shapeFields input').forEach(inp => {
-          inp.addEventListener('blur', () => {
-            validateShapeField(inp.id);
-            computeAndRender();
-            syncAddBtn();
-          });
-          inp.addEventListener('input', () => {
-            computeAndRender();
-            syncAddBtn();
-          });
-        });
-
-        syncAddBtn();
-      }
-
-      function syncAddBtn(){
-        addAreaBtn.disabled = !state.multi || !shapeInputsValid();
-      }
-
-      shapeRadios.forEach(r => {
-        r.addEventListener('change', () => {
-          state.shape = r.value;
-          renderShapeFields();
-          computeAndRender();
-        });
-      });
-
-      // Multi mode
-      multiMode.addEventListener('change', () => {
-        state.multi = multiMode.checked;
-        addAreaBtn.disabled = !state.multi || !shapeInputsValid();
-        computeAndRender();
-      });
-
-      // Bag quick set buttons
-      $$('.inline-actions .btn.secondary').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const isImp = state.units === 'imperial';
-          if(btn.dataset.bag){
-            if(!isImp) unitsRadios.find(r => r.value==='imperial').checked = true;
-            syncUnits();
-            bagSize.value = btn.dataset.bag;
-          } else if(btn.dataset.bagLiters){
-            if(isImp) unitsRadios.find(r => r.value==='metric').checked = true;
-            syncUnits();
-            bagSize.value = btn.dataset.bagLiters;
-          }
-          computeAndRender();
-          bagSize.focus();
-        });
-      });
-
-      // Validation
-      function setError(id, msg){
-        const inp = $('#'+id);
-        const err = $('#'+id+'Err');
-        if(!inp || !err) return;
-        if(msg){
-          inp.setAttribute('aria-invalid','true');
-          err.textContent = msg;
-        }else{
-          inp.removeAttribute('aria-invalid');
-          err.textContent = '';
-        }
-      }
-
-      function validatePositiveNumber(val){
-        return !(val === '' || val === null || isNaN(val) || Number(val) <= 0);
-      }
-
-      function validateDepth(){
-        const isImp = state.units === 'imperial';
-        const val = depthInput.value.trim();
-        if(!validatePositiveNumber(val)){
-          setError('depthInput', 'Please enter a depth greater than 0.');
-          return false;
-        }
-        const n = Number(val);
-        if(isImp && n > 12){
-          setError('depthInput', 'Depth greater than 12 inches is unusual. Please confirm.');
-          return true; // soft warning
-        }
-        if(!isImp && n > 30){
-          setError('depthInput', 'Depth greater than 30 cm is unusual. Please confirm.');
-          return true;
-        }
-        setError('depthInput', '');
-        return true;
-      }
-
-      function validateShapeField(id){
-        const inp = $('#'+id);
-        if(!inp) return true;
-        const val = inp.value.trim();
-        if(!validatePositiveNumber(val)){
-          setError(id, 'Please enter a value greater than 0.');
-          return false;
-        }
-        // Specific rules
-        if(state.shape === 'annulus'){
-          const outer = Number($('#outer')?.value || 0);
-          const inner = Number($('#inner')?.value || 0);
-          if(inner >= outer){
-            setError('inner', 'Inner diameter must be smaller than outer diameter.');
-            return false;
-          } else {
-            setError('inner', '');
-          }
-        }
-        setError(id, '');
-        return true;
-      }
-
-      function shapeInputsValid(){
-        switch(state.shape){
-          case 'rectangle': return ['len','wid'].every(id => validateShapeField(id));
-          case 'circle': return ['diam'].every(id => validateShapeField(id));
-          case 'triangle': return ['base','height'].every(id => validateShapeField(id));
-          case 'annulus': return ['outer','inner'].every(id => validateShapeField(id));
-          case 'area': return ['knownArea'].every(id => validateShapeField(id));
-          default: return false;
-        }
-      }
-
-      depthInput.addEventListener('blur', () => { validateDepth(); computeAndRender(); });
-      [bagSize, costPerBag, costPerYard].forEach(inp => {
-        inp.addEventListener('input', computeAndRender);
-      });
-
-      // Area add/remove
-      addAreaBtn.addEventListener('click', () => {
-        if(!state.multi || !shapeInputsValid()) return;
-
-        const areaSqFt = computeCurrentAreaSqFt();
-        const label = describeCurrentShape();
-        const id = areaIdSeq++;
-
-        state.areas.push({ id, shape: state.shape, params: captureShapeParams(), areaSqFt });
-        renderAreaList();
-        computeAndRender();
-      });
-
-      function captureShapeParams(){
-        const val = (id) => Number($('#'+id)?.value || 0);
-        switch(state.shape){
-          case 'rectangle': return { length: val('len'), width: val('wid') };
-          case 'circle': return { diameter: val('diam') };
-          case 'triangle': return { base: val('base'), height: val('height') };
-          case 'annulus': return { outer: val('outer'), inner: val('inner') };
-          case 'area': return { area: val('knownArea') };
-        }
-      }
-
-      function describeCurrentShape(){
-        const p = captureShapeParams();
-        const u = state.units === 'imperial' ? 'ft' : 'm';
-        switch(state.shape){
-          case 'rectangle': return `Rectangle ${p.length}×${p.width} ${u}`;
-          case 'circle': return `Circle d=${p.diameter} ${u}`;
-          case 'triangle': return `Triangle b=${p.base} ${u}, h=${p.height} ${u}`;
-          case 'annulus': return `Ring outer=${p.outer} ${u}, inner=${p.inner} ${u}`;
-          case 'area': return `Known area ${p.area} ${state.units==='imperial'?'sq ft':'m²'}`;
-        }
-      }
-
-      function renderAreaList(){
-        areaList.innerHTML = '';
-        state.areas.forEach(item => {
-          const div = document.createElement('div');
-          div.className = 'area-item';
-          const areaSqM = item.areaSqFt * 0.09290304;
-          div.innerHTML = `
-            <div class="area-meta">
-              <strong>${item.shape.charAt(0).toUpperCase()+item.shape.slice(1)}</strong>
-              <span>${describeParams(item)}</span>
-              <span class="note">Area: ${nf(item.areaSqFt)} sq ft • ${nf(areaSqM)} m²</span>
-            </div>
-            <div class="area-actions">
-              <button type="button" class="rem-btn" data-id="${item.id}" aria-label="Remove area">Remove</button>
-            </div>
-          `;
-          areaList.appendChild(div);
-        });
-        $$('.rem-btn', areaList).forEach(btn => {
-          btn.addEventListener('click', () => {
-            const id = Number(btn.dataset.id);
-            state.areas = state.areas.filter(a => a.id !== id);
-            renderAreaList();
-            computeAndRender();
-          });
-        });
-      }
-
-      function describeParams(item){
-        const p = item.params;
-        const u = state.units === 'imperial' ? 'ft' : 'm';
-        switch(item.shape){
-          case 'rectangle': return `L=${p.length} ${u}, W=${p.width} ${u}`;
-          case 'circle': return `D=${p.diameter} ${u}`;
-          case 'triangle': return `B=${p.base} ${u}, H=${p.height} ${u}`;
-          case 'annulus': return `Outer=${p.outer} ${u}, Inner=${p.inner} ${u}`;
-          case 'area': return `A=${p.area} ${state.units==='imperial'?'sq ft':'m²'}`;
-        }
-      }
-
-      // Calculate area for current inputs (single or for adding)
-      function computeCurrentAreaSqFt(){
-        const isImp = state.units === 'imperial';
-        const get = (id) => Number($('#'+id)?.value || 0);
-
-        function toFeet(val){ // for lengths
-          return isImp ? val : val * FT_PER_M;
-        }
-        function areaToSqFt(val){ // known area
-          return isImp ? val : val * 10.76391041670972;
-        }
-
-        switch(state.shape){
-          case 'rectangle': {
-            const L = toFeet(get('len'));
-            const W = toFeet(get('wid'));
-            return clamp(L * W);
-          }
-          case 'circle': {
-            const D = toFeet(get('diam'));
-            const r = D / 2;
-            return clamp(Math.PI * r * r);
-          }
-          case 'triangle': {
-            const B = toFeet(get('base'));
-            const H = toFeet(get('height'));
-            return clamp(0.5 * B * H);
-          }
-          case 'annulus': {
-            const Do = toFeet(get('outer'));
-            const Di = toFeet(get('inner'));
-            const Ro = Do/2, Ri = Di/2;
-            return clamp(Math.PI * (Ro*Ro - Ri*Ri));
-          }
-          case 'area': {
-            const A = get('knownArea');
-            return clamp(areaToSqFt(A));
-          }
-        }
-      }
-
-      function getTotalAreaSqFt(){
-        if(state.multi && state.areas.length){
-          return clamp(state.areas.reduce((s,a)=>s + a.areaSqFt, 0));
-        }
-        // Single-area mode: compute from current inputs
-        if(!shapeInputsValid()) return 0;
-        return computeCurrentAreaSqFt();
-      }
-
-      function normalizeDepth(){
-        const val = Number(depthInput.value || 0);
-        const isImp = state.units === 'imperial';
-        if(val <= 0) return { in:0, cm:0, ft:0, m:0 };
-        const dIn = isImp ? val : val / 2.54;
-        const dFt = dIn / IN_PER_FT;
-        const dCm = isImp ? val * 2.54 : val;
-        const dM = dCm / CM_PER_M;
-        return { in: dIn, cm: dCm, ft: dFt, m: dM };
-      }
-
-      function bagSizeCuFt(){
-        const val = Number(bagSize.value || 0);
-        if(val <= 0) return 0;
-        return state.units === 'imperial' ? val : val / L_PER_CUFT;
-      }
-
-      function computeAndRender(){
-        // Validate
-        validateDepth();
-
-        const A_ft2 = getTotalAreaSqFt();
-        const depth = normalizeDepth();
-
-        // Volumes
-        const V_cuft = clamp(A_ft2 * depth.ft);
-        const V_cuyd = clamp(V_cuft / CUFT_PER_CUYD);
-        const V_m3 = clamp(V_cuft * M3_PER_CUFT);
-        const V_L = clamp(V_m3 * L_PER_M3);
-
-        // Bags and coverage
-        const bag_cuft = bagSizeCuFt();
-        const bags = bag_cuft > 0 ? Math.ceil(V_cuft / bag_cuft) : 0;
-        const coverage_sqft = (bag_cuft > 0 && depth.ft > 0) ? bag_cuft / depth.ft : 0;
-        const coverage_sqm = coverage_sqft * 0.09290304;
-
-        // Costs
-        const totalCostBags = (bags > 0 && Number(costPerBag.value) > 0) ? bags * Number(costPerBag.value) : 0;
-        const totalCostBulk = (V_cuyd > 0 && Number(costPerYard.value) > 0) ? V_cuyd * Number(costPerYard.value) : 0;
-
-        // Render
-        totalAreaSqFt.textContent = nf(A_ft2, 2);
-        totalAreaSqM.textContent = nf(A_ft2 * 0.09290304, 2);
-        depthIn.textContent = nf(depth.in, 2);
-        depthCm.textContent = nf(depth.cm, 2);
-        volCft.textContent = nf(V_cuft, 2);
-        volCyd.textContent = nf(V_cuyd, 3);
-        volM3.textContent = nf(V_m3, 3);
-        volL.textContent = nf(V_L, 0);
-        bagsCount.textContent = bags.toLocaleString();
-        coverageBagSqFt.textContent = nf(coverage_sqft, 1);
-        coverageBagSqM.textContent = nf(coverage_sqm, 2);
-        costBags.textContent = nf(totalCostBags, 2);
-        costBulk.textContent = nf(totalCostBulk, 2);
-      }
-
-      // Wire shape fields initially
-      renderShapeFields();
-      syncUnits();
-      computeAndRender();
-
-      // Depth real-time updates for better INP without lag
-      depthInput.addEventListener('input', computeAndRender);
-
-      // Add on-the-fly area update in multi list on unit switch? Keep existing areas as sq ft baseline
-      // Areas stored in sq ft are unit-agnostic; descriptions will use current unit labels.
-
-      // Reset
-      resetBtn.addEventListener('click', () => {
-        // Clear inputs
-        depthInput.value = '';
-        bagSize.value = '';
-        costPerBag.value = '';
-        costPerYard.value = '';
-        state.areas = [];
-        renderAreaList();
-
-        // Reset radios
-        unitsRadios.find(r => r.value==='imperial').checked = true;
-        shapeRadios.find(r => r.value==='rectangle').checked = true;
-        state.shape = 'rectangle';
-        state.units = 'imperial';
-        multiMode.checked = false;
-        state.multi = false;
-
-        renderShapeFields();
-        syncUnits();
-        computeAndRender();
-
-        // Focus first field for accessibility
-        depthInput.focus();
-      });
-
-      // Live compute when shape changes
-      shapeFieldsContainer.addEventListener('input', computeAndRender);
-
-      // Permit Enter key to add area in multi mode
-      shapeFieldsContainer.addEventListener('keydown', (e) => {
-        if(e.key === 'Enter' && state.multi && shapeInputsValid()){
-          e.preventDefault();
-          addAreaBtn.click();
-        }
-      });
-
-      // Accessibility: ensure add button state updates on any field change
-      shapeFieldsContainer.addEventListener('input', syncAddBtn);
-
-      // Initialize tooltips as hidden
-      tipDepth.setAttribute('aria-hidden','true');
-      tipBag.setAttribute('aria-hidden','true');
-      tipDepthBtn.setAttribute('aria-expanded','false');
-      tipBagBtn.setAttribute('aria-expanded','false');
-    })();
-  </script>
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main-content">Skip to main content</a><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1261,12 +746,7 @@
   border-color:#fed7aa;
   color:#9a3412;
 }
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="main-content" id="main-content">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="main-content" id="main-content">
 <div class="container">
 <nav aria-label="breadcrumb" class="breadcrumb">Home / Construction / Materials / Mulch Calculator</nav>
 <h1>Mulch Calculator</h1>
@@ -1370,7 +850,7 @@
 </div>
 <div class="inline-actions">
 <button class="btn" disabled="" id="addAreaBtn" type="button">Add area to list</button>
-<button class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button class="btn secondary" id="resetBtn__dup2" type="button">Reset</button>
 </div>
 <div aria-live="polite" aria-relevant="additions removals" class="area-list" id="areaList">
 <!-- Added areas rendered here -->
@@ -1585,552 +1065,7 @@
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
-
-      // Utilities
-      const $ = (sel, ctx=document) => ctx.querySelector(sel);
-      const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
-      const clamp = (n) => isFinite(n) ? n : 0;
-      const round = (n, d=2) => Number.isFinite(n) ? Number(n.toFixed(d)) : 0;
-      const nf = (n, d=2) => round(n, d).toLocaleString(undefined, {minimumFractionDigits:d, maximumFractionDigits:d});
-      const nfi0 = (n) => Math.max(0, Math.ceil(n));
-
-      // Elements
-      const unitsRadios = $$('input[name="units"]');
-      const depthInput = $('#depthInput');
-      const depthErr = $('#depthErr');
-      const depthUnitSuffix = $('#depthUnitSuffix');
-
-      const bagSize = $('#bagSize');
-      const bagUnitSuffix = $('#bagUnitSuffix');
-      const costPerBag = $('#costPerBag');
-      const costPerYard = $('#costPerYard');
-
-      const multiMode = $('#multiMode');
-      const shapeFieldsContainer = $('#shapeFields');
-      const shapeRadios = $$('input[name="shape"]');
-      const addAreaBtn = $('#addAreaBtn');
-      const resetBtn = $('#resetBtn');
-      const areaList = $('#areaList');
-
-      const totalAreaSqFt = $('#totalAreaSqFt');
-      const totalAreaSqM = $('#totalAreaSqM');
-      const depthIn = $('#depthIn');
-      const depthCm = $('#depthCm');
-      const volCft = $('#volCft');
-      const volCyd = $('#volCyd');
-      const volM3 = $('#volM3');
-      const volL = $('#volL');
-      const bagsCount = $('#bagsCount');
-      const coverageBagSqFt = $('#coverageBagSqFt');
-      const coverageBagSqM = $('#coverageBagSqM');
-      const costBags = $('#costBags');
-      const costBulk = $('#costBulk');
-
-      const tipDepthBtn = $('#tipDepthBtn');
-      const tipDepth = $('#tipDepth');
-      const tipBagBtn = $('#tipBagBtn');
-      const tipBag = $('#tipBag');
-
-      // State
-      let state = {
-        units: 'imperial', // or 'metric'
-        multi: false,
-        shape: 'rectangle',
-        areas: [] // { id, shape, params, areaSqFt }
-      };
-      let areaIdSeq = 1;
-
-      // Constants
-      const FT_PER_M = 3.280839895013123;
-      const M_PER_FT = 1/FT_PER_M;
-      const IN_PER_FT = 12;
-      const CM_PER_M = 100;
-      const L_PER_M3 = 1000;
-      const M3_PER_CUFT = 0.028316846592;
-      const L_PER_CUFT = M3_PER_CUFT * L_PER_M3;
-      const CUFT_PER_CUYD = 27;
-
-      // Accessible tooltip toggles
-      function setupTooltip(btn, panel){
-        btn.addEventListener('click', () => {
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          panel.setAttribute('aria-hidden', String(expanded));
-        });
-        btn.addEventListener('keydown', (e) => {
-          if(e.key === 'Escape'){
-            btn.setAttribute('aria-expanded','false');
-            panel.setAttribute('aria-hidden','true');
-            btn.focus();
-          }
-        });
-      }
-      setupTooltip(tipDepthBtn, tipDepth);
-      setupTooltip(tipBagBtn, tipBag);
-
-      // Unit handling
-      function syncUnits(){
-        state.units = $('input[name="units"]:checked').value;
-        const isImp = state.units === 'imperial';
-
-        // Depth suffix
-        depthUnitSuffix.textContent = isImp ? 'in' : 'cm';
-        depthInput.placeholder = isImp ? 'e.g., 3' : 'e.g., 7.5';
-        depthInput.setAttribute('aria-describedby', `tipDepth depthErr depthUnitSuffix`);
-
-        // Bag size suffix
-        bagUnitSuffix.textContent = isImp ? 'cu ft' : 'L';
-        bagSize.placeholder = isImp ? 'e.g., 2' : 'e.g., 50';
-
-        // Re-render shape fields for unit labels
-        renderShapeFields();
-        validateDepth();
-        computeAndRender();
-      }
-
-      unitsRadios.forEach(r => r.addEventListener('change', syncUnits));
-
-      // Shape fields rendering
-      function fieldTemplate({id,label,placeholder,suffix,required=true}){
-        const req = required ? 'aria-required="true"' : '';
-        const minAttr = 'min="0"';
-        const stepAttr = 'step="any"';
-        return `
-          <div class="input-group">
-            <label for="${id}">${label} ${required ? '*' : ''}</label>
-            <div class="input-group">
-              <input id="${id}" type="number" inputmode="decimal" ${stepAttr} ${minAttr} class="form-control" placeholder="${placeholder}" ${req} />
-              <span class="input-suffix" aria-hidden="true">${suffix}</span>
-            </div>
-            <div id="${id}Err" class="error" role="alert" aria-live="polite"></div>
-          </div>
-        `;
-      }
-
-      function renderShapeFields(){
-        const isImp = state.units === 'imperial';
-        const lenUnit = isImp ? 'ft' : 'm';
-        const areaUnit = isImp ? 'sq ft' : 'm²';
-        let html = '';
-
-        switch(state.shape){
-          case 'rectangle':
-            html = `
-              ${fieldTemplate({id:'len',label:'Length *',placeholder:`e.g., ${isImp ? '20' : '6'}`,suffix:lenUnit})}
-              ${fieldTemplate({id:'wid',label:'Width *',placeholder:`e.g., ${isImp ? '10' : '3'}`,suffix:lenUnit})}
-            `;
-            break;
-          case 'circle':
-            html = `
-              ${fieldTemplate({id:'diam',label:'Diameter *',placeholder:`e.g., ${isImp ? '12' : '3.5'}`,suffix:lenUnit})}
-            `;
-            break;
-          case 'triangle':
-            html = `
-              ${fieldTemplate({id:'base',label:'Base *',placeholder:`e.g., ${isImp ? '12' : '3.5'}`,suffix:lenUnit})}
-              ${fieldTemplate({id:'height',label:'Height *',placeholder:`e.g., ${isImp ? '8' : '2.5'}`,suffix:lenUnit})}
-            `;
-            break;
-          case 'annulus':
-            html = `
-              ${fieldTemplate({id:'outer',label:'Outer diameter *',placeholder:`e.g., ${isImp ? '12' : '4'}`,suffix:lenUnit})}
-              ${fieldTemplate({id:'inner',label:'Inner diameter *',placeholder:`e.g., ${isImp ? '8' : '2.5'}`,suffix:lenUnit})}
-            `;
-            break;
-          case 'area':
-            html = `
-              ${fieldTemplate({id:'knownArea',label:'Area *',placeholder:`e.g., ${isImp ? '200' : '18.5'}`,suffix:areaUnit})}
-            `;
-            break;
-        }
-        shapeFieldsContainer.innerHTML = html;
-
-        // Attach validators on blur
-        $$('#shapeFields input').forEach(inp => {
-          inp.addEventListener('blur', () => {
-            validateShapeField(inp.id);
-            computeAndRender();
-            syncAddBtn();
-          });
-          inp.addEventListener('input', () => {
-            computeAndRender();
-            syncAddBtn();
-          });
-        });
-
-        syncAddBtn();
-      }
-
-      function syncAddBtn(){
-        addAreaBtn.disabled = !state.multi || !shapeInputsValid();
-      }
-
-      shapeRadios.forEach(r => {
-        r.addEventListener('change', () => {
-          state.shape = r.value;
-          renderShapeFields();
-          computeAndRender();
-        });
-      });
-
-      // Multi mode
-      multiMode.addEventListener('change', () => {
-        state.multi = multiMode.checked;
-        addAreaBtn.disabled = !state.multi || !shapeInputsValid();
-        computeAndRender();
-      });
-
-      // Bag quick set buttons
-      $$('.inline-actions .btn.secondary').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const isImp = state.units === 'imperial';
-          if(btn.dataset.bag){
-            if(!isImp) unitsRadios.find(r => r.value==='imperial').checked = true;
-            syncUnits();
-            bagSize.value = btn.dataset.bag;
-          } else if(btn.dataset.bagLiters){
-            if(isImp) unitsRadios.find(r => r.value==='metric').checked = true;
-            syncUnits();
-            bagSize.value = btn.dataset.bagLiters;
-          }
-          computeAndRender();
-          bagSize.focus();
-        });
-      });
-
-      // Validation
-      function setError(id, msg){
-        const inp = $('#'+id);
-        const err = $('#'+id+'Err');
-        if(!inp || !err) return;
-        if(msg){
-          inp.setAttribute('aria-invalid','true');
-          err.textContent = msg;
-        }else{
-          inp.removeAttribute('aria-invalid');
-          err.textContent = '';
-        }
-      }
-
-      function validatePositiveNumber(val){
-        return !(val === '' || val === null || isNaN(val) || Number(val) <= 0);
-      }
-
-      function validateDepth(){
-        const isImp = state.units === 'imperial';
-        const val = depthInput.value.trim();
-        if(!validatePositiveNumber(val)){
-          setError('depthInput', 'Please enter a depth greater than 0.');
-          return false;
-        }
-        const n = Number(val);
-        if(isImp && n > 12){
-          setError('depthInput', 'Depth greater than 12 inches is unusual. Please confirm.');
-          return true; // soft warning
-        }
-        if(!isImp && n > 30){
-          setError('depthInput', 'Depth greater than 30 cm is unusual. Please confirm.');
-          return true;
-        }
-        setError('depthInput', '');
-        return true;
-      }
-
-      function validateShapeField(id){
-        const inp = $('#'+id);
-        if(!inp) return true;
-        const val = inp.value.trim();
-        if(!validatePositiveNumber(val)){
-          setError(id, 'Please enter a value greater than 0.');
-          return false;
-        }
-        // Specific rules
-        if(state.shape === 'annulus'){
-          const outer = Number($('#outer')?.value || 0);
-          const inner = Number($('#inner')?.value || 0);
-          if(inner >= outer){
-            setError('inner', 'Inner diameter must be smaller than outer diameter.');
-            return false;
-          } else {
-            setError('inner', '');
-          }
-        }
-        setError(id, '');
-        return true;
-      }
-
-      function shapeInputsValid(){
-        switch(state.shape){
-          case 'rectangle': return ['len','wid'].every(id => validateShapeField(id));
-          case 'circle': return ['diam'].every(id => validateShapeField(id));
-          case 'triangle': return ['base','height'].every(id => validateShapeField(id));
-          case 'annulus': return ['outer','inner'].every(id => validateShapeField(id));
-          case 'area': return ['knownArea'].every(id => validateShapeField(id));
-          default: return false;
-        }
-      }
-
-      depthInput.addEventListener('blur', () => { validateDepth(); computeAndRender(); });
-      [bagSize, costPerBag, costPerYard].forEach(inp => {
-        inp.addEventListener('input', computeAndRender);
-      });
-
-      // Area add/remove
-      addAreaBtn.addEventListener('click', () => {
-        if(!state.multi || !shapeInputsValid()) return;
-
-        const areaSqFt = computeCurrentAreaSqFt();
-        const label = describeCurrentShape();
-        const id = areaIdSeq++;
-
-        state.areas.push({ id, shape: state.shape, params: captureShapeParams(), areaSqFt });
-        renderAreaList();
-        computeAndRender();
-      });
-
-      function captureShapeParams(){
-        const val = (id) => Number($('#'+id)?.value || 0);
-        switch(state.shape){
-          case 'rectangle': return { length: val('len'), width: val('wid') };
-          case 'circle': return { diameter: val('diam') };
-          case 'triangle': return { base: val('base'), height: val('height') };
-          case 'annulus': return { outer: val('outer'), inner: val('inner') };
-          case 'area': return { area: val('knownArea') };
-        }
-      }
-
-      function describeCurrentShape(){
-        const p = captureShapeParams();
-        const u = state.units === 'imperial' ? 'ft' : 'm';
-        switch(state.shape){
-          case 'rectangle': return `Rectangle ${p.length}×${p.width} ${u}`;
-          case 'circle': return `Circle d=${p.diameter} ${u}`;
-          case 'triangle': return `Triangle b=${p.base} ${u}, h=${p.height} ${u}`;
-          case 'annulus': return `Ring outer=${p.outer} ${u}, inner=${p.inner} ${u}`;
-          case 'area': return `Known area ${p.area} ${state.units==='imperial'?'sq ft':'m²'}`;
-        }
-      }
-
-      function renderAreaList(){
-        areaList.innerHTML = '';
-        state.areas.forEach(item => {
-          const div = document.createElement('div');
-          div.className = 'area-item';
-          const areaSqM = item.areaSqFt * 0.09290304;
-          div.innerHTML = `
-            <div class="area-meta">
-              <strong>${item.shape.charAt(0).toUpperCase()+item.shape.slice(1)}</strong>
-              <span>${describeParams(item)}</span>
-              <span class="note">Area: ${nf(item.areaSqFt)} sq ft • ${nf(areaSqM)} m²</span>
-            </div>
-            <div class="area-actions">
-              <button type="button" class="rem-btn" data-id="${item.id}" aria-label="Remove area">Remove</button>
-            </div>
-          `;
-          areaList.appendChild(div);
-        });
-        $$('.rem-btn', areaList).forEach(btn => {
-          btn.addEventListener('click', () => {
-            const id = Number(btn.dataset.id);
-            state.areas = state.areas.filter(a => a.id !== id);
-            renderAreaList();
-            computeAndRender();
-          });
-        });
-      }
-
-      function describeParams(item){
-        const p = item.params;
-        const u = state.units === 'imperial' ? 'ft' : 'm';
-        switch(item.shape){
-          case 'rectangle': return `L=${p.length} ${u}, W=${p.width} ${u}`;
-          case 'circle': return `D=${p.diameter} ${u}`;
-          case 'triangle': return `B=${p.base} ${u}, H=${p.height} ${u}`;
-          case 'annulus': return `Outer=${p.outer} ${u}, Inner=${p.inner} ${u}`;
-          case 'area': return `A=${p.area} ${state.units==='imperial'?'sq ft':'m²'}`;
-        }
-      }
-
-      // Calculate area for current inputs (single or for adding)
-      function computeCurrentAreaSqFt(){
-        const isImp = state.units === 'imperial';
-        const get = (id) => Number($('#'+id)?.value || 0);
-
-        function toFeet(val){ // for lengths
-          return isImp ? val : val * FT_PER_M;
-        }
-        function areaToSqFt(val){ // known area
-          return isImp ? val : val * 10.76391041670972;
-        }
-
-        switch(state.shape){
-          case 'rectangle': {
-            const L = toFeet(get('len'));
-            const W = toFeet(get('wid'));
-            return clamp(L * W);
-          }
-          case 'circle': {
-            const D = toFeet(get('diam'));
-            const r = D / 2;
-            return clamp(Math.PI * r * r);
-          }
-          case 'triangle': {
-            const B = toFeet(get('base'));
-            const H = toFeet(get('height'));
-            return clamp(0.5 * B * H);
-          }
-          case 'annulus': {
-            const Do = toFeet(get('outer'));
-            const Di = toFeet(get('inner'));
-            const Ro = Do/2, Ri = Di/2;
-            return clamp(Math.PI * (Ro*Ro - Ri*Ri));
-          }
-          case 'area': {
-            const A = get('knownArea');
-            return clamp(areaToSqFt(A));
-          }
-        }
-      }
-
-      function getTotalAreaSqFt(){
-        if(state.multi && state.areas.length){
-          return clamp(state.areas.reduce((s,a)=>s + a.areaSqFt, 0));
-        }
-        // Single-area mode: compute from current inputs
-        if(!shapeInputsValid()) return 0;
-        return computeCurrentAreaSqFt();
-      }
-
-      function normalizeDepth(){
-        const val = Number(depthInput.value || 0);
-        const isImp = state.units === 'imperial';
-        if(val <= 0) return { in:0, cm:0, ft:0, m:0 };
-        const dIn = isImp ? val : val / 2.54;
-        const dFt = dIn / IN_PER_FT;
-        const dCm = isImp ? val * 2.54 : val;
-        const dM = dCm / CM_PER_M;
-        return { in: dIn, cm: dCm, ft: dFt, m: dM };
-      }
-
-      function bagSizeCuFt(){
-        const val = Number(bagSize.value || 0);
-        if(val <= 0) return 0;
-        return state.units === 'imperial' ? val : val / L_PER_CUFT;
-      }
-
-      function computeAndRender(){
-        // Validate
-        validateDepth();
-
-        const A_ft2 = getTotalAreaSqFt();
-        const depth = normalizeDepth();
-
-        // Volumes
-        const V_cuft = clamp(A_ft2 * depth.ft);
-        const V_cuyd = clamp(V_cuft / CUFT_PER_CUYD);
-        const V_m3 = clamp(V_cuft * M3_PER_CUFT);
-        const V_L = clamp(V_m3 * L_PER_M3);
-
-        // Bags and coverage
-        const bag_cuft = bagSizeCuFt();
-        const bags = bag_cuft > 0 ? Math.ceil(V_cuft / bag_cuft) : 0;
-        const coverage_sqft = (bag_cuft > 0 && depth.ft > 0) ? bag_cuft / depth.ft : 0;
-        const coverage_sqm = coverage_sqft * 0.09290304;
-
-        // Costs
-        const totalCostBags = (bags > 0 && Number(costPerBag.value) > 0) ? bags * Number(costPerBag.value) : 0;
-        const totalCostBulk = (V_cuyd > 0 && Number(costPerYard.value) > 0) ? V_cuyd * Number(costPerYard.value) : 0;
-
-        // Render
-        totalAreaSqFt.textContent = nf(A_ft2, 2);
-        totalAreaSqM.textContent = nf(A_ft2 * 0.09290304, 2);
-        depthIn.textContent = nf(depth.in, 2);
-        depthCm.textContent = nf(depth.cm, 2);
-        volCft.textContent = nf(V_cuft, 2);
-        volCyd.textContent = nf(V_cuyd, 3);
-        volM3.textContent = nf(V_m3, 3);
-        volL.textContent = nf(V_L, 0);
-        bagsCount.textContent = bags.toLocaleString();
-        coverageBagSqFt.textContent = nf(coverage_sqft, 1);
-        coverageBagSqM.textContent = nf(coverage_sqm, 2);
-        costBags.textContent = nf(totalCostBags, 2);
-        costBulk.textContent = nf(totalCostBulk, 2);
-      }
-
-      // Wire shape fields initially
-      renderShapeFields();
-      syncUnits();
-      computeAndRender();
-
-      // Depth real-time updates for better INP without lag
-      depthInput.addEventListener('input', computeAndRender);
-
-      // Add on-the-fly area update in multi list on unit switch? Keep existing areas as sq ft baseline
-      // Areas stored in sq ft are unit-agnostic; descriptions will use current unit labels.
-
-      // Reset
-      resetBtn.addEventListener('click', () => {
-        // Clear inputs
-        depthInput.value = '';
-        bagSize.value = '';
-        costPerBag.value = '';
-        costPerYard.value = '';
-        state.areas = [];
-        renderAreaList();
-
-        // Reset radios
-        unitsRadios.find(r => r.value==='imperial').checked = true;
-        shapeRadios.find(r => r.value==='rectangle').checked = true;
-        state.shape = 'rectangle';
-        state.units = 'imperial';
-        multiMode.checked = false;
-        state.multi = false;
-
-        renderShapeFields();
-        syncUnits();
-        computeAndRender();
-
-        // Focus first field for accessibility
-        depthInput.focus();
-      });
-
-      // Live compute when shape changes
-      shapeFieldsContainer.addEventListener('input', computeAndRender);
-
-      // Permit Enter key to add area in multi mode
-      shapeFieldsContainer.addEventListener('keydown', (e) => {
-        if(e.key === 'Enter' && state.multi && shapeInputsValid()){
-          e.preventDefault();
-          addAreaBtn.click();
-        }
-      });
-
-      // Accessibility: ensure add button state updates on any field change
-      shapeFieldsContainer.addEventListener('input', syncAddBtn);
-
-      // Initialize tooltips as hidden
-      tipDepth.setAttribute('aria-hidden','true');
-      tipBag.setAttribute('aria-hidden','true');
-      tipDepthBtn.setAttribute('aria-expanded','false');
-      tipBagBtn.setAttribute('aria-expanded','false');
-    })();
-  </script>
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -2177,12 +1112,7 @@
   border-color:#fed7aa;
   color:#9a3412;
 }
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="main-content" id="main-content">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="main-content" id="main-content">
 <div class="container">
 <nav aria-label="breadcrumb" class="breadcrumb">Home / Construction / Materials / Mulch Calculator</nav>
 <h1>Mulch Calculator</h1>
@@ -2286,7 +1216,7 @@
 </div>
 <div class="inline-actions">
 <button class="btn" disabled="" id="addAreaBtn" type="button">Add area to list</button>
-<button class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button class="btn secondary" id="resetBtn__dup3" type="button">Reset</button>
 </div>
 <div aria-live="polite" aria-relevant="additions removals" class="area-list" id="areaList">
 <!-- Added areas rendered here -->
@@ -2501,9 +1431,48 @@
 <!-- AUDIT_SPINE_END -->
 </article>
 </div>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
     (function(){
       'use strict';
 
@@ -3035,6 +2004,1068 @@
       tipDepthBtn.setAttribute('aria-expanded','false');
       tipBagBtn.setAttribute('aria-expanded','false');
     })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
 
-</body></html>
+      // Utilities
+      const $ = (sel, ctx=document) => ctx.querySelector(sel);
+      const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+      const clamp = (n) => isFinite(n) ? n : 0;
+      const round = (n, d=2) => Number.isFinite(n) ? Number(n.toFixed(d)) : 0;
+      const nf = (n, d=2) => round(n, d).toLocaleString(undefined, {minimumFractionDigits:d, maximumFractionDigits:d});
+      const nfi0 = (n) => Math.max(0, Math.ceil(n));
+
+      // Elements
+      const unitsRadios = $$('input[name="units"]');
+      const depthInput = $('#depthInput');
+      const depthErr = $('#depthErr');
+      const depthUnitSuffix = $('#depthUnitSuffix');
+
+      const bagSize = $('#bagSize');
+      const bagUnitSuffix = $('#bagUnitSuffix');
+      const costPerBag = $('#costPerBag');
+      const costPerYard = $('#costPerYard');
+
+      const multiMode = $('#multiMode');
+      const shapeFieldsContainer = $('#shapeFields');
+      const shapeRadios = $$('input[name="shape"]');
+      const addAreaBtn = $('#addAreaBtn');
+      const resetBtn = $('#resetBtn');
+      const areaList = $('#areaList');
+
+      const totalAreaSqFt = $('#totalAreaSqFt');
+      const totalAreaSqM = $('#totalAreaSqM');
+      const depthIn = $('#depthIn');
+      const depthCm = $('#depthCm');
+      const volCft = $('#volCft');
+      const volCyd = $('#volCyd');
+      const volM3 = $('#volM3');
+      const volL = $('#volL');
+      const bagsCount = $('#bagsCount');
+      const coverageBagSqFt = $('#coverageBagSqFt');
+      const coverageBagSqM = $('#coverageBagSqM');
+      const costBags = $('#costBags');
+      const costBulk = $('#costBulk');
+
+      const tipDepthBtn = $('#tipDepthBtn');
+      const tipDepth = $('#tipDepth');
+      const tipBagBtn = $('#tipBagBtn');
+      const tipBag = $('#tipBag');
+
+      // State
+      let state = {
+        units: 'imperial', // or 'metric'
+        multi: false,
+        shape: 'rectangle',
+        areas: [] // { id, shape, params, areaSqFt }
+      };
+      let areaIdSeq = 1;
+
+      // Constants
+      const FT_PER_M = 3.280839895013123;
+      const M_PER_FT = 1/FT_PER_M;
+      const IN_PER_FT = 12;
+      const CM_PER_M = 100;
+      const L_PER_M3 = 1000;
+      const M3_PER_CUFT = 0.028316846592;
+      const L_PER_CUFT = M3_PER_CUFT * L_PER_M3;
+      const CUFT_PER_CUYD = 27;
+
+      // Accessible tooltip toggles
+      function setupTooltip(btn, panel){
+        btn.addEventListener('click', () => {
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          panel.setAttribute('aria-hidden', String(expanded));
+        });
+        btn.addEventListener('keydown', (e) => {
+          if(e.key === 'Escape'){
+            btn.setAttribute('aria-expanded','false');
+            panel.setAttribute('aria-hidden','true');
+            btn.focus();
+          }
+        });
+      }
+      setupTooltip(tipDepthBtn, tipDepth);
+      setupTooltip(tipBagBtn, tipBag);
+
+      // Unit handling
+      function syncUnits(){
+        state.units = $('input[name="units"]:checked').value;
+        const isImp = state.units === 'imperial';
+
+        // Depth suffix
+        depthUnitSuffix.textContent = isImp ? 'in' : 'cm';
+        depthInput.placeholder = isImp ? 'e.g., 3' : 'e.g., 7.5';
+        depthInput.setAttribute('aria-describedby', `tipDepth depthErr depthUnitSuffix`);
+
+        // Bag size suffix
+        bagUnitSuffix.textContent = isImp ? 'cu ft' : 'L';
+        bagSize.placeholder = isImp ? 'e.g., 2' : 'e.g., 50';
+
+        // Re-render shape fields for unit labels
+        renderShapeFields();
+        validateDepth();
+        computeAndRender();
+      }
+
+      unitsRadios.forEach(r => r.addEventListener('change', syncUnits));
+
+      // Shape fields rendering
+      function fieldTemplate({id,label,placeholder,suffix,required=true}){
+        const req = required ? 'aria-required="true"' : '';
+        const minAttr = 'min="0"';
+        const stepAttr = 'step="any"';
+        return `
+          <div class="input-group">
+            <label for="${id}">${label} ${required ? '*' : ''}</label>
+            <div class="input-group">
+              <input id="${id}" type="number" inputmode="decimal" ${stepAttr} ${minAttr} class="form-control" placeholder="${placeholder}" ${req} />
+              <span class="input-suffix" aria-hidden="true">${suffix}</span>
+            </div>
+            <div id="${id}Err" class="error" role="alert" aria-live="polite"></div>
+          </div>
+        `;
+      }
+
+      function renderShapeFields(){
+        const isImp = state.units === 'imperial';
+        const lenUnit = isImp ? 'ft' : 'm';
+        const areaUnit = isImp ? 'sq ft' : 'm²';
+        let html = '';
+
+        switch(state.shape){
+          case 'rectangle':
+            html = `
+              ${fieldTemplate({id:'len',label:'Length *',placeholder:`e.g., ${isImp ? '20' : '6'}`,suffix:lenUnit})}
+              ${fieldTemplate({id:'wid',label:'Width *',placeholder:`e.g., ${isImp ? '10' : '3'}`,suffix:lenUnit})}
+            `;
+            break;
+          case 'circle':
+            html = `
+              ${fieldTemplate({id:'diam',label:'Diameter *',placeholder:`e.g., ${isImp ? '12' : '3.5'}`,suffix:lenUnit})}
+            `;
+            break;
+          case 'triangle':
+            html = `
+              ${fieldTemplate({id:'base',label:'Base *',placeholder:`e.g., ${isImp ? '12' : '3.5'}`,suffix:lenUnit})}
+              ${fieldTemplate({id:'height',label:'Height *',placeholder:`e.g., ${isImp ? '8' : '2.5'}`,suffix:lenUnit})}
+            `;
+            break;
+          case 'annulus':
+            html = `
+              ${fieldTemplate({id:'outer',label:'Outer diameter *',placeholder:`e.g., ${isImp ? '12' : '4'}`,suffix:lenUnit})}
+              ${fieldTemplate({id:'inner',label:'Inner diameter *',placeholder:`e.g., ${isImp ? '8' : '2.5'}`,suffix:lenUnit})}
+            `;
+            break;
+          case 'area':
+            html = `
+              ${fieldTemplate({id:'knownArea',label:'Area *',placeholder:`e.g., ${isImp ? '200' : '18.5'}`,suffix:areaUnit})}
+            `;
+            break;
+        }
+        shapeFieldsContainer.innerHTML = html;
+
+        // Attach validators on blur
+        $$('#shapeFields input').forEach(inp => {
+          inp.addEventListener('blur', () => {
+            validateShapeField(inp.id);
+            computeAndRender();
+            syncAddBtn();
+          });
+          inp.addEventListener('input', () => {
+            computeAndRender();
+            syncAddBtn();
+          });
+        });
+
+        syncAddBtn();
+      }
+
+      function syncAddBtn(){
+        addAreaBtn.disabled = !state.multi || !shapeInputsValid();
+      }
+
+      shapeRadios.forEach(r => {
+        r.addEventListener('change', () => {
+          state.shape = r.value;
+          renderShapeFields();
+          computeAndRender();
+        });
+      });
+
+      // Multi mode
+      multiMode.addEventListener('change', () => {
+        state.multi = multiMode.checked;
+        addAreaBtn.disabled = !state.multi || !shapeInputsValid();
+        computeAndRender();
+      });
+
+      // Bag quick set buttons
+      $$('.inline-actions .btn.secondary').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const isImp = state.units === 'imperial';
+          if(btn.dataset.bag){
+            if(!isImp) unitsRadios.find(r => r.value==='imperial').checked = true;
+            syncUnits();
+            bagSize.value = btn.dataset.bag;
+          } else if(btn.dataset.bagLiters){
+            if(isImp) unitsRadios.find(r => r.value==='metric').checked = true;
+            syncUnits();
+            bagSize.value = btn.dataset.bagLiters;
+          }
+          computeAndRender();
+          bagSize.focus();
+        });
+      });
+
+      // Validation
+      function setError(id, msg){
+        const inp = $('#'+id);
+        const err = $('#'+id+'Err');
+        if(!inp || !err) return;
+        if(msg){
+          inp.setAttribute('aria-invalid','true');
+          err.textContent = msg;
+        }else{
+          inp.removeAttribute('aria-invalid');
+          err.textContent = '';
+        }
+      }
+
+      function validatePositiveNumber(val){
+        return !(val === '' || val === null || isNaN(val) || Number(val) <= 0);
+      }
+
+      function validateDepth(){
+        const isImp = state.units === 'imperial';
+        const val = depthInput.value.trim();
+        if(!validatePositiveNumber(val)){
+          setError('depthInput', 'Please enter a depth greater than 0.');
+          return false;
+        }
+        const n = Number(val);
+        if(isImp && n > 12){
+          setError('depthInput', 'Depth greater than 12 inches is unusual. Please confirm.');
+          return true; // soft warning
+        }
+        if(!isImp && n > 30){
+          setError('depthInput', 'Depth greater than 30 cm is unusual. Please confirm.');
+          return true;
+        }
+        setError('depthInput', '');
+        return true;
+      }
+
+      function validateShapeField(id){
+        const inp = $('#'+id);
+        if(!inp) return true;
+        const val = inp.value.trim();
+        if(!validatePositiveNumber(val)){
+          setError(id, 'Please enter a value greater than 0.');
+          return false;
+        }
+        // Specific rules
+        if(state.shape === 'annulus'){
+          const outer = Number($('#outer')?.value || 0);
+          const inner = Number($('#inner')?.value || 0);
+          if(inner >= outer){
+            setError('inner', 'Inner diameter must be smaller than outer diameter.');
+            return false;
+          } else {
+            setError('inner', '');
+          }
+        }
+        setError(id, '');
+        return true;
+      }
+
+      function shapeInputsValid(){
+        switch(state.shape){
+          case 'rectangle': return ['len','wid'].every(id => validateShapeField(id));
+          case 'circle': return ['diam'].every(id => validateShapeField(id));
+          case 'triangle': return ['base','height'].every(id => validateShapeField(id));
+          case 'annulus': return ['outer','inner'].every(id => validateShapeField(id));
+          case 'area': return ['knownArea'].every(id => validateShapeField(id));
+          default: return false;
+        }
+      }
+
+      depthInput.addEventListener('blur', () => { validateDepth(); computeAndRender(); });
+      [bagSize, costPerBag, costPerYard].forEach(inp => {
+        inp.addEventListener('input', computeAndRender);
+      });
+
+      // Area add/remove
+      addAreaBtn.addEventListener('click', () => {
+        if(!state.multi || !shapeInputsValid()) return;
+
+        const areaSqFt = computeCurrentAreaSqFt();
+        const label = describeCurrentShape();
+        const id = areaIdSeq++;
+
+        state.areas.push({ id, shape: state.shape, params: captureShapeParams(), areaSqFt });
+        renderAreaList();
+        computeAndRender();
+      });
+
+      function captureShapeParams(){
+        const val = (id) => Number($('#'+id)?.value || 0);
+        switch(state.shape){
+          case 'rectangle': return { length: val('len'), width: val('wid') };
+          case 'circle': return { diameter: val('diam') };
+          case 'triangle': return { base: val('base'), height: val('height') };
+          case 'annulus': return { outer: val('outer'), inner: val('inner') };
+          case 'area': return { area: val('knownArea') };
+        }
+      }
+
+      function describeCurrentShape(){
+        const p = captureShapeParams();
+        const u = state.units === 'imperial' ? 'ft' : 'm';
+        switch(state.shape){
+          case 'rectangle': return `Rectangle ${p.length}×${p.width} ${u}`;
+          case 'circle': return `Circle d=${p.diameter} ${u}`;
+          case 'triangle': return `Triangle b=${p.base} ${u}, h=${p.height} ${u}`;
+          case 'annulus': return `Ring outer=${p.outer} ${u}, inner=${p.inner} ${u}`;
+          case 'area': return `Known area ${p.area} ${state.units==='imperial'?'sq ft':'m²'}`;
+        }
+      }
+
+      function renderAreaList(){
+        areaList.innerHTML = '';
+        state.areas.forEach(item => {
+          const div = document.createElement('div');
+          div.className = 'area-item';
+          const areaSqM = item.areaSqFt * 0.09290304;
+          div.innerHTML = `
+            <div class="area-meta">
+              <strong>${item.shape.charAt(0).toUpperCase()+item.shape.slice(1)}</strong>
+              <span>${describeParams(item)}</span>
+              <span class="note">Area: ${nf(item.areaSqFt)} sq ft • ${nf(areaSqM)} m²</span>
+            </div>
+            <div class="area-actions">
+              <button type="button" class="rem-btn" data-id="${item.id}" aria-label="Remove area">Remove</button>
+            </div>
+          `;
+          areaList.appendChild(div);
+        });
+        $$('.rem-btn', areaList).forEach(btn => {
+          btn.addEventListener('click', () => {
+            const id = Number(btn.dataset.id);
+            state.areas = state.areas.filter(a => a.id !== id);
+            renderAreaList();
+            computeAndRender();
+          });
+        });
+      }
+
+      function describeParams(item){
+        const p = item.params;
+        const u = state.units === 'imperial' ? 'ft' : 'm';
+        switch(item.shape){
+          case 'rectangle': return `L=${p.length} ${u}, W=${p.width} ${u}`;
+          case 'circle': return `D=${p.diameter} ${u}`;
+          case 'triangle': return `B=${p.base} ${u}, H=${p.height} ${u}`;
+          case 'annulus': return `Outer=${p.outer} ${u}, Inner=${p.inner} ${u}`;
+          case 'area': return `A=${p.area} ${state.units==='imperial'?'sq ft':'m²'}`;
+        }
+      }
+
+      // Calculate area for current inputs (single or for adding)
+      function computeCurrentAreaSqFt(){
+        const isImp = state.units === 'imperial';
+        const get = (id) => Number($('#'+id)?.value || 0);
+
+        function toFeet(val){ // for lengths
+          return isImp ? val : val * FT_PER_M;
+        }
+        function areaToSqFt(val){ // known area
+          return isImp ? val : val * 10.76391041670972;
+        }
+
+        switch(state.shape){
+          case 'rectangle': {
+            const L = toFeet(get('len'));
+            const W = toFeet(get('wid'));
+            return clamp(L * W);
+          }
+          case 'circle': {
+            const D = toFeet(get('diam'));
+            const r = D / 2;
+            return clamp(Math.PI * r * r);
+          }
+          case 'triangle': {
+            const B = toFeet(get('base'));
+            const H = toFeet(get('height'));
+            return clamp(0.5 * B * H);
+          }
+          case 'annulus': {
+            const Do = toFeet(get('outer'));
+            const Di = toFeet(get('inner'));
+            const Ro = Do/2, Ri = Di/2;
+            return clamp(Math.PI * (Ro*Ro - Ri*Ri));
+          }
+          case 'area': {
+            const A = get('knownArea');
+            return clamp(areaToSqFt(A));
+          }
+        }
+      }
+
+      function getTotalAreaSqFt(){
+        if(state.multi && state.areas.length){
+          return clamp(state.areas.reduce((s,a)=>s + a.areaSqFt, 0));
+        }
+        // Single-area mode: compute from current inputs
+        if(!shapeInputsValid()) return 0;
+        return computeCurrentAreaSqFt();
+      }
+
+      function normalizeDepth(){
+        const val = Number(depthInput.value || 0);
+        const isImp = state.units === 'imperial';
+        if(val <= 0) return { in:0, cm:0, ft:0, m:0 };
+        const dIn = isImp ? val : val / 2.54;
+        const dFt = dIn / IN_PER_FT;
+        const dCm = isImp ? val * 2.54 : val;
+        const dM = dCm / CM_PER_M;
+        return { in: dIn, cm: dCm, ft: dFt, m: dM };
+      }
+
+      function bagSizeCuFt(){
+        const val = Number(bagSize.value || 0);
+        if(val <= 0) return 0;
+        return state.units === 'imperial' ? val : val / L_PER_CUFT;
+      }
+
+      function computeAndRender(){
+        // Validate
+        validateDepth();
+
+        const A_ft2 = getTotalAreaSqFt();
+        const depth = normalizeDepth();
+
+        // Volumes
+        const V_cuft = clamp(A_ft2 * depth.ft);
+        const V_cuyd = clamp(V_cuft / CUFT_PER_CUYD);
+        const V_m3 = clamp(V_cuft * M3_PER_CUFT);
+        const V_L = clamp(V_m3 * L_PER_M3);
+
+        // Bags and coverage
+        const bag_cuft = bagSizeCuFt();
+        const bags = bag_cuft > 0 ? Math.ceil(V_cuft / bag_cuft) : 0;
+        const coverage_sqft = (bag_cuft > 0 && depth.ft > 0) ? bag_cuft / depth.ft : 0;
+        const coverage_sqm = coverage_sqft * 0.09290304;
+
+        // Costs
+        const totalCostBags = (bags > 0 && Number(costPerBag.value) > 0) ? bags * Number(costPerBag.value) : 0;
+        const totalCostBulk = (V_cuyd > 0 && Number(costPerYard.value) > 0) ? V_cuyd * Number(costPerYard.value) : 0;
+
+        // Render
+        totalAreaSqFt.textContent = nf(A_ft2, 2);
+        totalAreaSqM.textContent = nf(A_ft2 * 0.09290304, 2);
+        depthIn.textContent = nf(depth.in, 2);
+        depthCm.textContent = nf(depth.cm, 2);
+        volCft.textContent = nf(V_cuft, 2);
+        volCyd.textContent = nf(V_cuyd, 3);
+        volM3.textContent = nf(V_m3, 3);
+        volL.textContent = nf(V_L, 0);
+        bagsCount.textContent = bags.toLocaleString();
+        coverageBagSqFt.textContent = nf(coverage_sqft, 1);
+        coverageBagSqM.textContent = nf(coverage_sqm, 2);
+        costBags.textContent = nf(totalCostBags, 2);
+        costBulk.textContent = nf(totalCostBulk, 2);
+      }
+
+      // Wire shape fields initially
+      renderShapeFields();
+      syncUnits();
+      computeAndRender();
+
+      // Depth real-time updates for better INP without lag
+      depthInput.addEventListener('input', computeAndRender);
+
+      // Add on-the-fly area update in multi list on unit switch? Keep existing areas as sq ft baseline
+      // Areas stored in sq ft are unit-agnostic; descriptions will use current unit labels.
+
+      // Reset
+      resetBtn.addEventListener('click', () => {
+        // Clear inputs
+        depthInput.value = '';
+        bagSize.value = '';
+        costPerBag.value = '';
+        costPerYard.value = '';
+        state.areas = [];
+        renderAreaList();
+
+        // Reset radios
+        unitsRadios.find(r => r.value==='imperial').checked = true;
+        shapeRadios.find(r => r.value==='rectangle').checked = true;
+        state.shape = 'rectangle';
+        state.units = 'imperial';
+        multiMode.checked = false;
+        state.multi = false;
+
+        renderShapeFields();
+        syncUnits();
+        computeAndRender();
+
+        // Focus first field for accessibility
+        depthInput.focus();
+      });
+
+      // Live compute when shape changes
+      shapeFieldsContainer.addEventListener('input', computeAndRender);
+
+      // Permit Enter key to add area in multi mode
+      shapeFieldsContainer.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter' && state.multi && shapeInputsValid()){
+          e.preventDefault();
+          addAreaBtn.click();
+        }
+      });
+
+      // Accessibility: ensure add button state updates on any field change
+      shapeFieldsContainer.addEventListener('input', syncAddBtn);
+
+      // Initialize tooltips as hidden
+      tipDepth.setAttribute('aria-hidden','true');
+      tipBag.setAttribute('aria-hidden','true');
+      tipDepthBtn.setAttribute('aria-expanded','false');
+      tipBagBtn.setAttribute('aria-expanded','false');
+    })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
+
+      // Utilities
+      const $ = (sel, ctx=document) => ctx.querySelector(sel);
+      const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+      const clamp = (n) => isFinite(n) ? n : 0;
+      const round = (n, d=2) => Number.isFinite(n) ? Number(n.toFixed(d)) : 0;
+      const nf = (n, d=2) => round(n, d).toLocaleString(undefined, {minimumFractionDigits:d, maximumFractionDigits:d});
+      const nfi0 = (n) => Math.max(0, Math.ceil(n));
+
+      // Elements
+      const unitsRadios = $$('input[name="units"]');
+      const depthInput = $('#depthInput');
+      const depthErr = $('#depthErr');
+      const depthUnitSuffix = $('#depthUnitSuffix');
+
+      const bagSize = $('#bagSize');
+      const bagUnitSuffix = $('#bagUnitSuffix');
+      const costPerBag = $('#costPerBag');
+      const costPerYard = $('#costPerYard');
+
+      const multiMode = $('#multiMode');
+      const shapeFieldsContainer = $('#shapeFields');
+      const shapeRadios = $$('input[name="shape"]');
+      const addAreaBtn = $('#addAreaBtn');
+      const resetBtn = $('#resetBtn');
+      const areaList = $('#areaList');
+
+      const totalAreaSqFt = $('#totalAreaSqFt');
+      const totalAreaSqM = $('#totalAreaSqM');
+      const depthIn = $('#depthIn');
+      const depthCm = $('#depthCm');
+      const volCft = $('#volCft');
+      const volCyd = $('#volCyd');
+      const volM3 = $('#volM3');
+      const volL = $('#volL');
+      const bagsCount = $('#bagsCount');
+      const coverageBagSqFt = $('#coverageBagSqFt');
+      const coverageBagSqM = $('#coverageBagSqM');
+      const costBags = $('#costBags');
+      const costBulk = $('#costBulk');
+
+      const tipDepthBtn = $('#tipDepthBtn');
+      const tipDepth = $('#tipDepth');
+      const tipBagBtn = $('#tipBagBtn');
+      const tipBag = $('#tipBag');
+
+      // State
+      let state = {
+        units: 'imperial', // or 'metric'
+        multi: false,
+        shape: 'rectangle',
+        areas: [] // { id, shape, params, areaSqFt }
+      };
+      let areaIdSeq = 1;
+
+      // Constants
+      const FT_PER_M = 3.280839895013123;
+      const M_PER_FT = 1/FT_PER_M;
+      const IN_PER_FT = 12;
+      const CM_PER_M = 100;
+      const L_PER_M3 = 1000;
+      const M3_PER_CUFT = 0.028316846592;
+      const L_PER_CUFT = M3_PER_CUFT * L_PER_M3;
+      const CUFT_PER_CUYD = 27;
+
+      // Accessible tooltip toggles
+      function setupTooltip(btn, panel){
+        btn.addEventListener('click', () => {
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          panel.setAttribute('aria-hidden', String(expanded));
+        });
+        btn.addEventListener('keydown', (e) => {
+          if(e.key === 'Escape'){
+            btn.setAttribute('aria-expanded','false');
+            panel.setAttribute('aria-hidden','true');
+            btn.focus();
+          }
+        });
+      }
+      setupTooltip(tipDepthBtn, tipDepth);
+      setupTooltip(tipBagBtn, tipBag);
+
+      // Unit handling
+      function syncUnits(){
+        state.units = $('input[name="units"]:checked').value;
+        const isImp = state.units === 'imperial';
+
+        // Depth suffix
+        depthUnitSuffix.textContent = isImp ? 'in' : 'cm';
+        depthInput.placeholder = isImp ? 'e.g., 3' : 'e.g., 7.5';
+        depthInput.setAttribute('aria-describedby', `tipDepth depthErr depthUnitSuffix`);
+
+        // Bag size suffix
+        bagUnitSuffix.textContent = isImp ? 'cu ft' : 'L';
+        bagSize.placeholder = isImp ? 'e.g., 2' : 'e.g., 50';
+
+        // Re-render shape fields for unit labels
+        renderShapeFields();
+        validateDepth();
+        computeAndRender();
+      }
+
+      unitsRadios.forEach(r => r.addEventListener('change', syncUnits));
+
+      // Shape fields rendering
+      function fieldTemplate({id,label,placeholder,suffix,required=true}){
+        const req = required ? 'aria-required="true"' : '';
+        const minAttr = 'min="0"';
+        const stepAttr = 'step="any"';
+        return `
+          <div class="input-group">
+            <label for="${id}">${label} ${required ? '*' : ''}</label>
+            <div class="input-group">
+              <input id="${id}" type="number" inputmode="decimal" ${stepAttr} ${minAttr} class="form-control" placeholder="${placeholder}" ${req} />
+              <span class="input-suffix" aria-hidden="true">${suffix}</span>
+            </div>
+            <div id="${id}Err" class="error" role="alert" aria-live="polite"></div>
+          </div>
+        `;
+      }
+
+      function renderShapeFields(){
+        const isImp = state.units === 'imperial';
+        const lenUnit = isImp ? 'ft' : 'm';
+        const areaUnit = isImp ? 'sq ft' : 'm²';
+        let html = '';
+
+        switch(state.shape){
+          case 'rectangle':
+            html = `
+              ${fieldTemplate({id:'len',label:'Length *',placeholder:`e.g., ${isImp ? '20' : '6'}`,suffix:lenUnit})}
+              ${fieldTemplate({id:'wid',label:'Width *',placeholder:`e.g., ${isImp ? '10' : '3'}`,suffix:lenUnit})}
+            `;
+            break;
+          case 'circle':
+            html = `
+              ${fieldTemplate({id:'diam',label:'Diameter *',placeholder:`e.g., ${isImp ? '12' : '3.5'}`,suffix:lenUnit})}
+            `;
+            break;
+          case 'triangle':
+            html = `
+              ${fieldTemplate({id:'base',label:'Base *',placeholder:`e.g., ${isImp ? '12' : '3.5'}`,suffix:lenUnit})}
+              ${fieldTemplate({id:'height',label:'Height *',placeholder:`e.g., ${isImp ? '8' : '2.5'}`,suffix:lenUnit})}
+            `;
+            break;
+          case 'annulus':
+            html = `
+              ${fieldTemplate({id:'outer',label:'Outer diameter *',placeholder:`e.g., ${isImp ? '12' : '4'}`,suffix:lenUnit})}
+              ${fieldTemplate({id:'inner',label:'Inner diameter *',placeholder:`e.g., ${isImp ? '8' : '2.5'}`,suffix:lenUnit})}
+            `;
+            break;
+          case 'area':
+            html = `
+              ${fieldTemplate({id:'knownArea',label:'Area *',placeholder:`e.g., ${isImp ? '200' : '18.5'}`,suffix:areaUnit})}
+            `;
+            break;
+        }
+        shapeFieldsContainer.innerHTML = html;
+
+        // Attach validators on blur
+        $$('#shapeFields input').forEach(inp => {
+          inp.addEventListener('blur', () => {
+            validateShapeField(inp.id);
+            computeAndRender();
+            syncAddBtn();
+          });
+          inp.addEventListener('input', () => {
+            computeAndRender();
+            syncAddBtn();
+          });
+        });
+
+        syncAddBtn();
+      }
+
+      function syncAddBtn(){
+        addAreaBtn.disabled = !state.multi || !shapeInputsValid();
+      }
+
+      shapeRadios.forEach(r => {
+        r.addEventListener('change', () => {
+          state.shape = r.value;
+          renderShapeFields();
+          computeAndRender();
+        });
+      });
+
+      // Multi mode
+      multiMode.addEventListener('change', () => {
+        state.multi = multiMode.checked;
+        addAreaBtn.disabled = !state.multi || !shapeInputsValid();
+        computeAndRender();
+      });
+
+      // Bag quick set buttons
+      $$('.inline-actions .btn.secondary').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const isImp = state.units === 'imperial';
+          if(btn.dataset.bag){
+            if(!isImp) unitsRadios.find(r => r.value==='imperial').checked = true;
+            syncUnits();
+            bagSize.value = btn.dataset.bag;
+          } else if(btn.dataset.bagLiters){
+            if(isImp) unitsRadios.find(r => r.value==='metric').checked = true;
+            syncUnits();
+            bagSize.value = btn.dataset.bagLiters;
+          }
+          computeAndRender();
+          bagSize.focus();
+        });
+      });
+
+      // Validation
+      function setError(id, msg){
+        const inp = $('#'+id);
+        const err = $('#'+id+'Err');
+        if(!inp || !err) return;
+        if(msg){
+          inp.setAttribute('aria-invalid','true');
+          err.textContent = msg;
+        }else{
+          inp.removeAttribute('aria-invalid');
+          err.textContent = '';
+        }
+      }
+
+      function validatePositiveNumber(val){
+        return !(val === '' || val === null || isNaN(val) || Number(val) <= 0);
+      }
+
+      function validateDepth(){
+        const isImp = state.units === 'imperial';
+        const val = depthInput.value.trim();
+        if(!validatePositiveNumber(val)){
+          setError('depthInput', 'Please enter a depth greater than 0.');
+          return false;
+        }
+        const n = Number(val);
+        if(isImp && n > 12){
+          setError('depthInput', 'Depth greater than 12 inches is unusual. Please confirm.');
+          return true; // soft warning
+        }
+        if(!isImp && n > 30){
+          setError('depthInput', 'Depth greater than 30 cm is unusual. Please confirm.');
+          return true;
+        }
+        setError('depthInput', '');
+        return true;
+      }
+
+      function validateShapeField(id){
+        const inp = $('#'+id);
+        if(!inp) return true;
+        const val = inp.value.trim();
+        if(!validatePositiveNumber(val)){
+          setError(id, 'Please enter a value greater than 0.');
+          return false;
+        }
+        // Specific rules
+        if(state.shape === 'annulus'){
+          const outer = Number($('#outer')?.value || 0);
+          const inner = Number($('#inner')?.value || 0);
+          if(inner >= outer){
+            setError('inner', 'Inner diameter must be smaller than outer diameter.');
+            return false;
+          } else {
+            setError('inner', '');
+          }
+        }
+        setError(id, '');
+        return true;
+      }
+
+      function shapeInputsValid(){
+        switch(state.shape){
+          case 'rectangle': return ['len','wid'].every(id => validateShapeField(id));
+          case 'circle': return ['diam'].every(id => validateShapeField(id));
+          case 'triangle': return ['base','height'].every(id => validateShapeField(id));
+          case 'annulus': return ['outer','inner'].every(id => validateShapeField(id));
+          case 'area': return ['knownArea'].every(id => validateShapeField(id));
+          default: return false;
+        }
+      }
+
+      depthInput.addEventListener('blur', () => { validateDepth(); computeAndRender(); });
+      [bagSize, costPerBag, costPerYard].forEach(inp => {
+        inp.addEventListener('input', computeAndRender);
+      });
+
+      // Area add/remove
+      addAreaBtn.addEventListener('click', () => {
+        if(!state.multi || !shapeInputsValid()) return;
+
+        const areaSqFt = computeCurrentAreaSqFt();
+        const label = describeCurrentShape();
+        const id = areaIdSeq++;
+
+        state.areas.push({ id, shape: state.shape, params: captureShapeParams(), areaSqFt });
+        renderAreaList();
+        computeAndRender();
+      });
+
+      function captureShapeParams(){
+        const val = (id) => Number($('#'+id)?.value || 0);
+        switch(state.shape){
+          case 'rectangle': return { length: val('len'), width: val('wid') };
+          case 'circle': return { diameter: val('diam') };
+          case 'triangle': return { base: val('base'), height: val('height') };
+          case 'annulus': return { outer: val('outer'), inner: val('inner') };
+          case 'area': return { area: val('knownArea') };
+        }
+      }
+
+      function describeCurrentShape(){
+        const p = captureShapeParams();
+        const u = state.units === 'imperial' ? 'ft' : 'm';
+        switch(state.shape){
+          case 'rectangle': return `Rectangle ${p.length}×${p.width} ${u}`;
+          case 'circle': return `Circle d=${p.diameter} ${u}`;
+          case 'triangle': return `Triangle b=${p.base} ${u}, h=${p.height} ${u}`;
+          case 'annulus': return `Ring outer=${p.outer} ${u}, inner=${p.inner} ${u}`;
+          case 'area': return `Known area ${p.area} ${state.units==='imperial'?'sq ft':'m²'}`;
+        }
+      }
+
+      function renderAreaList(){
+        areaList.innerHTML = '';
+        state.areas.forEach(item => {
+          const div = document.createElement('div');
+          div.className = 'area-item';
+          const areaSqM = item.areaSqFt * 0.09290304;
+          div.innerHTML = `
+            <div class="area-meta">
+              <strong>${item.shape.charAt(0).toUpperCase()+item.shape.slice(1)}</strong>
+              <span>${describeParams(item)}</span>
+              <span class="note">Area: ${nf(item.areaSqFt)} sq ft • ${nf(areaSqM)} m²</span>
+            </div>
+            <div class="area-actions">
+              <button type="button" class="rem-btn" data-id="${item.id}" aria-label="Remove area">Remove</button>
+            </div>
+          `;
+          areaList.appendChild(div);
+        });
+        $$('.rem-btn', areaList).forEach(btn => {
+          btn.addEventListener('click', () => {
+            const id = Number(btn.dataset.id);
+            state.areas = state.areas.filter(a => a.id !== id);
+            renderAreaList();
+            computeAndRender();
+          });
+        });
+      }
+
+      function describeParams(item){
+        const p = item.params;
+        const u = state.units === 'imperial' ? 'ft' : 'm';
+        switch(item.shape){
+          case 'rectangle': return `L=${p.length} ${u}, W=${p.width} ${u}`;
+          case 'circle': return `D=${p.diameter} ${u}`;
+          case 'triangle': return `B=${p.base} ${u}, H=${p.height} ${u}`;
+          case 'annulus': return `Outer=${p.outer} ${u}, Inner=${p.inner} ${u}`;
+          case 'area': return `A=${p.area} ${state.units==='imperial'?'sq ft':'m²'}`;
+        }
+      }
+
+      // Calculate area for current inputs (single or for adding)
+      function computeCurrentAreaSqFt(){
+        const isImp = state.units === 'imperial';
+        const get = (id) => Number($('#'+id)?.value || 0);
+
+        function toFeet(val){ // for lengths
+          return isImp ? val : val * FT_PER_M;
+        }
+        function areaToSqFt(val){ // known area
+          return isImp ? val : val * 10.76391041670972;
+        }
+
+        switch(state.shape){
+          case 'rectangle': {
+            const L = toFeet(get('len'));
+            const W = toFeet(get('wid'));
+            return clamp(L * W);
+          }
+          case 'circle': {
+            const D = toFeet(get('diam'));
+            const r = D / 2;
+            return clamp(Math.PI * r * r);
+          }
+          case 'triangle': {
+            const B = toFeet(get('base'));
+            const H = toFeet(get('height'));
+            return clamp(0.5 * B * H);
+          }
+          case 'annulus': {
+            const Do = toFeet(get('outer'));
+            const Di = toFeet(get('inner'));
+            const Ro = Do/2, Ri = Di/2;
+            return clamp(Math.PI * (Ro*Ro - Ri*Ri));
+          }
+          case 'area': {
+            const A = get('knownArea');
+            return clamp(areaToSqFt(A));
+          }
+        }
+      }
+
+      function getTotalAreaSqFt(){
+        if(state.multi && state.areas.length){
+          return clamp(state.areas.reduce((s,a)=>s + a.areaSqFt, 0));
+        }
+        // Single-area mode: compute from current inputs
+        if(!shapeInputsValid()) return 0;
+        return computeCurrentAreaSqFt();
+      }
+
+      function normalizeDepth(){
+        const val = Number(depthInput.value || 0);
+        const isImp = state.units === 'imperial';
+        if(val <= 0) return { in:0, cm:0, ft:0, m:0 };
+        const dIn = isImp ? val : val / 2.54;
+        const dFt = dIn / IN_PER_FT;
+        const dCm = isImp ? val * 2.54 : val;
+        const dM = dCm / CM_PER_M;
+        return { in: dIn, cm: dCm, ft: dFt, m: dM };
+      }
+
+      function bagSizeCuFt(){
+        const val = Number(bagSize.value || 0);
+        if(val <= 0) return 0;
+        return state.units === 'imperial' ? val : val / L_PER_CUFT;
+      }
+
+      function computeAndRender(){
+        // Validate
+        validateDepth();
+
+        const A_ft2 = getTotalAreaSqFt();
+        const depth = normalizeDepth();
+
+        // Volumes
+        const V_cuft = clamp(A_ft2 * depth.ft);
+        const V_cuyd = clamp(V_cuft / CUFT_PER_CUYD);
+        const V_m3 = clamp(V_cuft * M3_PER_CUFT);
+        const V_L = clamp(V_m3 * L_PER_M3);
+
+        // Bags and coverage
+        const bag_cuft = bagSizeCuFt();
+        const bags = bag_cuft > 0 ? Math.ceil(V_cuft / bag_cuft) : 0;
+        const coverage_sqft = (bag_cuft > 0 && depth.ft > 0) ? bag_cuft / depth.ft : 0;
+        const coverage_sqm = coverage_sqft * 0.09290304;
+
+        // Costs
+        const totalCostBags = (bags > 0 && Number(costPerBag.value) > 0) ? bags * Number(costPerBag.value) : 0;
+        const totalCostBulk = (V_cuyd > 0 && Number(costPerYard.value) > 0) ? V_cuyd * Number(costPerYard.value) : 0;
+
+        // Render
+        totalAreaSqFt.textContent = nf(A_ft2, 2);
+        totalAreaSqM.textContent = nf(A_ft2 * 0.09290304, 2);
+        depthIn.textContent = nf(depth.in, 2);
+        depthCm.textContent = nf(depth.cm, 2);
+        volCft.textContent = nf(V_cuft, 2);
+        volCyd.textContent = nf(V_cuyd, 3);
+        volM3.textContent = nf(V_m3, 3);
+        volL.textContent = nf(V_L, 0);
+        bagsCount.textContent = bags.toLocaleString();
+        coverageBagSqFt.textContent = nf(coverage_sqft, 1);
+        coverageBagSqM.textContent = nf(coverage_sqm, 2);
+        costBags.textContent = nf(totalCostBags, 2);
+        costBulk.textContent = nf(totalCostBulk, 2);
+      }
+
+      // Wire shape fields initially
+      renderShapeFields();
+      syncUnits();
+      computeAndRender();
+
+      // Depth real-time updates for better INP without lag
+      depthInput.addEventListener('input', computeAndRender);
+
+      // Add on-the-fly area update in multi list on unit switch? Keep existing areas as sq ft baseline
+      // Areas stored in sq ft are unit-agnostic; descriptions will use current unit labels.
+
+      // Reset
+      resetBtn.addEventListener('click', () => {
+        // Clear inputs
+        depthInput.value = '';
+        bagSize.value = '';
+        costPerBag.value = '';
+        costPerYard.value = '';
+        state.areas = [];
+        renderAreaList();
+
+        // Reset radios
+        unitsRadios.find(r => r.value==='imperial').checked = true;
+        shapeRadios.find(r => r.value==='rectangle').checked = true;
+        state.shape = 'rectangle';
+        state.units = 'imperial';
+        multiMode.checked = false;
+        state.multi = false;
+
+        renderShapeFields();
+        syncUnits();
+        computeAndRender();
+
+        // Focus first field for accessibility
+        depthInput.focus();
+      });
+
+      // Live compute when shape changes
+      shapeFieldsContainer.addEventListener('input', computeAndRender);
+
+      // Permit Enter key to add area in multi mode
+      shapeFieldsContainer.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter' && state.multi && shapeInputsValid()){
+          e.preventDefault();
+          addAreaBtn.click();
+        }
+      });
+
+      // Accessibility: ensure add button state updates on any field change
+      shapeFieldsContainer.addEventListener('input', syncAddBtn);
+
+      // Initialize tooltips as hidden
+      tipDepth.setAttribute('aria-hidden','true');
+      tipBag.setAttribute('aria-hidden','true');
+      tipDepthBtn.setAttribute('aria-expanded','false');
+      tipBagBtn.setAttribute('aria-expanded','false');
+    })();
+  </script></body></html>

@@ -277,10 +277,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="/assets/js/page-enhancements.js" as="script">
@@ -335,20 +341,41 @@
 }
 </style>
 </head>
-<body>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">SEO ROI Calculator</h1>
+    <p class="sub" id="pageSub">SEO ROI Calculator: estimate incremental revenue, profit, payback period, and break-even uplift from your SEO investment. Professional-grade, accessible, and optimized for Core Web Vitals.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<a class="skip-link" href="#main-content">Skip to main content</a>
-<header role="banner">
-<div class="container header-wrap">
-CalcDomain
-<form action="/search" aria-label="Site search" class="site-search" role="search">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><form action="/search" aria-label="Site search" class="site-search" role="search">
 <label class="sr-only" for="q">Search calculators</label>
 <input aria-label="Search calculators" autocomplete="off" id="q" name="q" placeholder="Search calculators…" type="search">
 <button aria-label="Submit search" class="btn secondary" type="submit">Search</button>
 </form>
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
 </div>
-</header>
-<main id="main-content">
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
+
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main-content">Skip to main content</a><header role="banner">
+<div class="container header-wrap">
+CalcDomain
+
+</div>
+</header><main id="main-content">
 <div class="container">
 <nav aria-label="Breadcrumb" class="hint" style="margin:.25rem 0 1rem;">
 Home › <a href="https://calcdomain.com/finance">Finance</a> › Business › SEO ROI Calculator
@@ -452,7 +479,7 @@ Home › <a href="https://calcdomain.com/finance">Finance</a> › Business › S
 <div aria-live="polite" class="error" id="monthsError" role="alert"></div>
 </div>
 <div style="display:flex; gap:.5rem; flex-wrap:wrap">
-<button aria-label="Reset all inputs" class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button aria-label="Reset all inputs" class="btn secondary btnSecondary" id="resetBtn" type="button">Reset</button>
 </div>
 </form>
 </section>
@@ -671,226 +698,9 @@ Home › <a href="https://calcdomain.com/finance">Finance</a> › Business › S
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<!-- Calculator logic -->
-<script defer="">
-    (function(){
-      'use strict';
-
-      // Elements
-      const el = id => document.getElementById(id);
-
-      const currencyEl = el('currency');
-      const sessionsEl = el('sessions');
-      const upliftEl = el('uplift');
-      const crEl = el('cr');
-      const valueEl = el('value');
-      const marginEl = el('margin');
-      const seoCostEl = el('seoCost');
-      const monthsEl = el('months');
-      const resetBtn = el('resetBtn');
-
-      const err = {
-        sessions: el('sessionsError'),
-        uplift: el('upliftError'),
-        cr: el('crError'),
-        value: el('valueError'),
-        margin: el('marginError'),
-        seoCost: el('seoCostError'),
-        months: el('monthsError')
-      };
-
-      const res = {
-        sessions: el('resSessions'),
-        conversions: el('resConversions'),
-        revenue: el('resRevenue'),
-        grossProfit: el('resGrossProfit'),
-        totalGrossProfit: el('resTotalGrossProfit'),
-        totalCost: el('resTotalCost'),
-        netProfit: el('resNetProfit'),
-        roi: el('resROI'),
-        breakEven: el('resBreakEven'),
-        payback: el('resPayback')
-      };
-
-      // Accessible tooltips
-      const helpButtons = document.querySelectorAll('.help-btn');
-      helpButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-          const id = btn.getAttribute('aria-controls');
-          const panel = el(id);
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          panel.hidden = expanded;
-        });
-      });
-
-      // Formatting helpers
-      function fmtCurrency(v){
-        const sym = (currencyEl.value || '$').trim();
-        try{
-          // format with grouping using en-US then prefix with symbol
-          const n = new Intl.NumberFormat('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}).format(v || 0);
-          return sym + n;
-        }catch(e){
-          return '$' + (v || 0).toFixed(2);
-        }
-      }
-      function fmtInt(v){
-        try{ return new Intl.NumberFormat('en-US').format(Math.round(v || 0)); }
-        catch(e){ return String(Math.round(v || 0)); }
-      }
-      function fmtPct(v){
-        if (!isFinite(v)) return '—';
-        return (Math.round(v * 1000) / 10).toFixed(1) + '%';
-      }
-      function setError(inputEl, errEl, msg){
-        inputEl.setAttribute('aria-invalid', 'true');
-        errEl.textContent = msg;
-      }
-      function clearError(inputEl, errEl){
-        inputEl.removeAttribute('aria-invalid');
-        errEl.textContent = '';
-      }
-
-      // Validation rules
-      function validate(){
-        let ok = true;
-
-        const sessions = Number(sessionsEl.value);
-        if (!Number.isFinite(sessions) || sessions < 0){
-          setError(sessionsEl, err.sessions, 'Please enter a non-negative number of sessions.');
-          ok = false;
-        } else { clearError(sessionsEl, err.sessions); }
-
-        const uplift = Number(upliftEl.value);
-        if (!Number.isFinite(uplift) || uplift < 0){
-          setError(upliftEl, err.uplift, 'Enter a non-negative percentage (e.g., 15 for 15%).');
-          ok = false;
-        } else { clearError(upliftEl, err.uplift); }
-
-        const cr = Number(crEl.value);
-        if (!Number.isFinite(cr) || cr < 0 || cr > 100){
-          setError(crEl, err.cr, 'Conversion rate must be between 0 and 100.');
-          ok = false;
-        } else { clearError(crEl, err.cr); }
-
-        const value = Number(valueEl.value);
-        if (!Number.isFinite(value) || value < 0){
-          setError(valueEl, err.value, 'Enter a non-negative revenue per conversion.');
-          ok = false;
-        } else { clearError(valueEl, err.value); }
-
-        const margin = Number(marginEl.value);
-        if (!Number.isFinite(margin) || margin < 0 || margin > 100){
-          setError(marginEl, err.margin, 'Margin must be between 0 and 100.');
-          ok = false;
-        } else { clearError(marginEl, err.margin); }
-
-        const cost = Number(seoCostEl.value);
-        if (!Number.isFinite(cost) || cost < 0){
-          setError(seoCostEl, err.seoCost, 'Enter a non-negative SEO monthly cost.');
-          ok = false;
-        } else { clearError(seoCostEl, err.seoCost); }
-
-        const months = Number(monthsEl.value);
-        if (!Number.isFinite(months) || months < 1 || !Number.isInteger(months)){
-          setError(monthsEl, err.months, 'Months must be an integer of at least 1.');
-          ok = false;
-        } else { clearError(monthsEl, err.months); }
-
-        return ok;
-      }
-
-      // Calculation
-      function calculate(){
-        if (!validate()){
-          // Show neutral results when invalid
-          res.sessions.textContent = '0';
-          res.conversions.textContent = '0';
-          res.revenue.textContent = fmtCurrency(0);
-          res.grossProfit.textContent = fmtCurrency(0);
-          res.totalGrossProfit.textContent = fmtCurrency(0);
-          res.totalCost.textContent = fmtCurrency(0);
-          res.netProfit.textContent = fmtCurrency(0);
-          res.roi.textContent = '0%';
-          res.breakEven.textContent = '—';
-          res.payback.textContent = '—';
-          return;
-        }
-
-        const S = Number(sessionsEl.value);
-        const u = Number(upliftEl.value) / 100;
-        const cr = Number(crEl.value) / 100;
-        const v = Number(valueEl.value);
-        const g = Number(marginEl.value) / 100;
-        const c_m = Number(seoCostEl.value);
-        const n = Number(monthsEl.value);
-
-        const deltaS = S * u;
-        const deltaC = deltaS * cr;
-        const Rm = deltaS * cr * v;
-        const GPm = Rm * g;
-        const GPtot = n * GPm;
-        const Ctot = n * c_m;
-        const NP = GPtot - Ctot;
-
-        const roi = (Ctot > 0) ? (NP / Ctot) : NaN;
-        const breakEven = (S > 0 && cr > 0 && v > 0 && g > 0) ? (c_m / (S * cr * v * g)) : NaN; // decimal uplift
-        const payback = (GPm > 0) ? (c_m / GPm) : NaN; // months
-
-        // Populate UI
-        res.sessions.textContent = fmtInt(deltaS);
-        res.conversions.textContent = fmtInt(deltaC);
-        res.revenue.textContent = fmtCurrency(Rm);
-        res.grossProfit.textContent = fmtCurrency(GPm);
-        res.totalGrossProfit.textContent = fmtCurrency(GPtot);
-        res.totalCost.textContent = fmtCurrency(Ctot);
-        res.netProfit.textContent = fmtCurrency(NP);
-        res.roi.textContent = isFinite(roi) ? fmtPct(roi) : '—';
-        res.breakEven.textContent = isFinite(breakEven) ? fmtPct(breakEven) : '—';
-        res.payback.textContent = isFinite(payback) ? (Math.round(payback * 10) / 10).toFixed(1) + ' mo' : '—';
-      }
-
-      // Inline validation on blur
-      [sessionsEl, upliftEl, crEl, valueEl, marginEl, seoCostEl, monthsEl].forEach(input => {
-        input.addEventListener('blur', validate, {passive:true});
-        input.addEventListener('input', calculate, {passive:true});
-      });
-      currencyEl.addEventListener('input', calculate, {passive:true});
-
-      // Reset
-      resetBtn.addEventListener('click', () => {
-        currencyEl.value = '$';
-        sessionsEl.value = '';
-        upliftEl.value = '';
-        crEl.value = '';
-        valueEl.value = '';
-        marginEl.value = '';
-        seoCostEl.value = '';
-        monthsEl.value = '6';
-        Object.values(err).forEach(node => node.textContent = '');
-        [sessionsEl, upliftEl, crEl, valueEl, marginEl, seoCostEl, monthsEl].forEach(i => i.removeAttribute('aria-invalid'));
-        calculate();
-        sessionsEl.focus();
-      });
-
-      // Initial compute (clean slate)
-      calculate();
-    })();
-  </script>
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="/assets/js/page-enhancements.js" as="script">
 
 
-<style>
+</main><link rel="preload" href="/assets/js/mobile-menu.js" as="script"><link rel="preload" href="/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -937,12 +747,7 @@ Home › <a href="https://calcdomain.com/finance">Finance</a> › Business › S
   border-color:#fed7aa;
   color:#9a3412;
 }
-</style>
-</head>
-<body>
-
-<a class="skip-link" href="#main-content">Skip to main content</a>
-<header role="banner">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><header role="banner">
 <div class="container header-wrap">
 CalcDomain
 <form action="/search" aria-label="Site search" class="site-search" role="search">
@@ -951,8 +756,7 @@ CalcDomain
 <button aria-label="Submit search" class="btn secondary" type="submit">Search</button>
 </form>
 </div>
-</header>
-<main id="main-content">
+</header><main id="main-content">
 <div class="container">
 <nav aria-label="Breadcrumb" class="hint" style="margin:.25rem 0 1rem;">
 Home › <a href="https://calcdomain.com/finance">Finance</a> › Business › SEO ROI Calculator
@@ -1056,7 +860,7 @@ Home › <a href="https://calcdomain.com/finance">Finance</a> › Business › S
 <div aria-live="polite" class="error" id="monthsError" role="alert"></div>
 </div>
 <div style="display:flex; gap:.5rem; flex-wrap:wrap">
-<button aria-label="Reset all inputs" class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button aria-label="Reset all inputs" class="btn secondary" id="resetBtn__dup2" type="button">Reset</button>
 </div>
 </form>
 </section>
@@ -1275,226 +1079,7 @@ Home › <a href="https://calcdomain.com/finance">Finance</a> › Business › S
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<!-- Calculator logic -->
-<script defer="">
-    (function(){
-      'use strict';
-
-      // Elements
-      const el = id => document.getElementById(id);
-
-      const currencyEl = el('currency');
-      const sessionsEl = el('sessions');
-      const upliftEl = el('uplift');
-      const crEl = el('cr');
-      const valueEl = el('value');
-      const marginEl = el('margin');
-      const seoCostEl = el('seoCost');
-      const monthsEl = el('months');
-      const resetBtn = el('resetBtn');
-
-      const err = {
-        sessions: el('sessionsError'),
-        uplift: el('upliftError'),
-        cr: el('crError'),
-        value: el('valueError'),
-        margin: el('marginError'),
-        seoCost: el('seoCostError'),
-        months: el('monthsError')
-      };
-
-      const res = {
-        sessions: el('resSessions'),
-        conversions: el('resConversions'),
-        revenue: el('resRevenue'),
-        grossProfit: el('resGrossProfit'),
-        totalGrossProfit: el('resTotalGrossProfit'),
-        totalCost: el('resTotalCost'),
-        netProfit: el('resNetProfit'),
-        roi: el('resROI'),
-        breakEven: el('resBreakEven'),
-        payback: el('resPayback')
-      };
-
-      // Accessible tooltips
-      const helpButtons = document.querySelectorAll('.help-btn');
-      helpButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-          const id = btn.getAttribute('aria-controls');
-          const panel = el(id);
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          panel.hidden = expanded;
-        });
-      });
-
-      // Formatting helpers
-      function fmtCurrency(v){
-        const sym = (currencyEl.value || '$').trim();
-        try{
-          // format with grouping using en-US then prefix with symbol
-          const n = new Intl.NumberFormat('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}).format(v || 0);
-          return sym + n;
-        }catch(e){
-          return '$' + (v || 0).toFixed(2);
-        }
-      }
-      function fmtInt(v){
-        try{ return new Intl.NumberFormat('en-US').format(Math.round(v || 0)); }
-        catch(e){ return String(Math.round(v || 0)); }
-      }
-      function fmtPct(v){
-        if (!isFinite(v)) return '—';
-        return (Math.round(v * 1000) / 10).toFixed(1) + '%';
-      }
-      function setError(inputEl, errEl, msg){
-        inputEl.setAttribute('aria-invalid', 'true');
-        errEl.textContent = msg;
-      }
-      function clearError(inputEl, errEl){
-        inputEl.removeAttribute('aria-invalid');
-        errEl.textContent = '';
-      }
-
-      // Validation rules
-      function validate(){
-        let ok = true;
-
-        const sessions = Number(sessionsEl.value);
-        if (!Number.isFinite(sessions) || sessions < 0){
-          setError(sessionsEl, err.sessions, 'Please enter a non-negative number of sessions.');
-          ok = false;
-        } else { clearError(sessionsEl, err.sessions); }
-
-        const uplift = Number(upliftEl.value);
-        if (!Number.isFinite(uplift) || uplift < 0){
-          setError(upliftEl, err.uplift, 'Enter a non-negative percentage (e.g., 15 for 15%).');
-          ok = false;
-        } else { clearError(upliftEl, err.uplift); }
-
-        const cr = Number(crEl.value);
-        if (!Number.isFinite(cr) || cr < 0 || cr > 100){
-          setError(crEl, err.cr, 'Conversion rate must be between 0 and 100.');
-          ok = false;
-        } else { clearError(crEl, err.cr); }
-
-        const value = Number(valueEl.value);
-        if (!Number.isFinite(value) || value < 0){
-          setError(valueEl, err.value, 'Enter a non-negative revenue per conversion.');
-          ok = false;
-        } else { clearError(valueEl, err.value); }
-
-        const margin = Number(marginEl.value);
-        if (!Number.isFinite(margin) || margin < 0 || margin > 100){
-          setError(marginEl, err.margin, 'Margin must be between 0 and 100.');
-          ok = false;
-        } else { clearError(marginEl, err.margin); }
-
-        const cost = Number(seoCostEl.value);
-        if (!Number.isFinite(cost) || cost < 0){
-          setError(seoCostEl, err.seoCost, 'Enter a non-negative SEO monthly cost.');
-          ok = false;
-        } else { clearError(seoCostEl, err.seoCost); }
-
-        const months = Number(monthsEl.value);
-        if (!Number.isFinite(months) || months < 1 || !Number.isInteger(months)){
-          setError(monthsEl, err.months, 'Months must be an integer of at least 1.');
-          ok = false;
-        } else { clearError(monthsEl, err.months); }
-
-        return ok;
-      }
-
-      // Calculation
-      function calculate(){
-        if (!validate()){
-          // Show neutral results when invalid
-          res.sessions.textContent = '0';
-          res.conversions.textContent = '0';
-          res.revenue.textContent = fmtCurrency(0);
-          res.grossProfit.textContent = fmtCurrency(0);
-          res.totalGrossProfit.textContent = fmtCurrency(0);
-          res.totalCost.textContent = fmtCurrency(0);
-          res.netProfit.textContent = fmtCurrency(0);
-          res.roi.textContent = '0%';
-          res.breakEven.textContent = '—';
-          res.payback.textContent = '—';
-          return;
-        }
-
-        const S = Number(sessionsEl.value);
-        const u = Number(upliftEl.value) / 100;
-        const cr = Number(crEl.value) / 100;
-        const v = Number(valueEl.value);
-        const g = Number(marginEl.value) / 100;
-        const c_m = Number(seoCostEl.value);
-        const n = Number(monthsEl.value);
-
-        const deltaS = S * u;
-        const deltaC = deltaS * cr;
-        const Rm = deltaS * cr * v;
-        const GPm = Rm * g;
-        const GPtot = n * GPm;
-        const Ctot = n * c_m;
-        const NP = GPtot - Ctot;
-
-        const roi = (Ctot > 0) ? (NP / Ctot) : NaN;
-        const breakEven = (S > 0 && cr > 0 && v > 0 && g > 0) ? (c_m / (S * cr * v * g)) : NaN; // decimal uplift
-        const payback = (GPm > 0) ? (c_m / GPm) : NaN; // months
-
-        // Populate UI
-        res.sessions.textContent = fmtInt(deltaS);
-        res.conversions.textContent = fmtInt(deltaC);
-        res.revenue.textContent = fmtCurrency(Rm);
-        res.grossProfit.textContent = fmtCurrency(GPm);
-        res.totalGrossProfit.textContent = fmtCurrency(GPtot);
-        res.totalCost.textContent = fmtCurrency(Ctot);
-        res.netProfit.textContent = fmtCurrency(NP);
-        res.roi.textContent = isFinite(roi) ? fmtPct(roi) : '—';
-        res.breakEven.textContent = isFinite(breakEven) ? fmtPct(breakEven) : '—';
-        res.payback.textContent = isFinite(payback) ? (Math.round(payback * 10) / 10).toFixed(1) + ' mo' : '—';
-      }
-
-      // Inline validation on blur
-      [sessionsEl, upliftEl, crEl, valueEl, marginEl, seoCostEl, monthsEl].forEach(input => {
-        input.addEventListener('blur', validate, {passive:true});
-        input.addEventListener('input', calculate, {passive:true});
-      });
-      currencyEl.addEventListener('input', calculate, {passive:true});
-
-      // Reset
-      resetBtn.addEventListener('click', () => {
-        currencyEl.value = '$';
-        sessionsEl.value = '';
-        upliftEl.value = '';
-        crEl.value = '';
-        valueEl.value = '';
-        marginEl.value = '';
-        seoCostEl.value = '';
-        monthsEl.value = '6';
-        Object.values(err).forEach(node => node.textContent = '');
-        [sessionsEl, upliftEl, crEl, valueEl, marginEl, seoCostEl, monthsEl].forEach(i => i.removeAttribute('aria-invalid'));
-        calculate();
-        sessionsEl.focus();
-      });
-
-      // Initial compute (clean slate)
-      calculate();
-    })();
-  </script>
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="/assets/js/mobile-menu.js" as="script"><link rel="preload" href="/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1541,12 +1126,7 @@ Home › <a href="https://calcdomain.com/finance">Finance</a> › Business › S
   border-color:#fed7aa;
   color:#9a3412;
 }
-</style>
-</head>
-<body>
-
-<a class="skip-link" href="#main-content">Skip to main content</a>
-<header role="banner">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><header role="banner">
 <div class="container header-wrap">
 CalcDomain
 <form action="/search" aria-label="Site search" class="site-search" role="search">
@@ -1555,8 +1135,7 @@ CalcDomain
 <button aria-label="Submit search" class="btn secondary" type="submit">Search</button>
 </form>
 </div>
-</header>
-<main id="main-content">
+</header><main id="main-content">
 <div class="container">
 <nav aria-label="Breadcrumb" class="hint" style="margin:.25rem 0 1rem;">
 Home › <a href="https://calcdomain.com/finance">Finance</a> › Business › SEO ROI Calculator
@@ -1660,7 +1239,7 @@ Home › <a href="https://calcdomain.com/finance">Finance</a> › Business › S
 <div aria-live="polite" class="error" id="monthsError" role="alert"></div>
 </div>
 <div style="display:flex; gap:.5rem; flex-wrap:wrap">
-<button aria-label="Reset all inputs" class="btn secondary" id="resetBtn" type="button">Reset</button>
+<button aria-label="Reset all inputs" class="btn secondary" id="resetBtn__dup3" type="button">Reset</button>
 </div>
 </form>
 </section>
@@ -1879,10 +1458,48 @@ Home › <a href="https://calcdomain.com/finance">Finance</a> › Business › S
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<!-- Calculator logic -->
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
     (function(){
       'use strict';
 
@@ -2087,6 +1704,414 @@ Home › <a href="https://calcdomain.com/finance">Finance</a> › Business › S
       // Initial compute (clean slate)
       calculate();
     })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
 
-</body></html>
+      // Elements
+      const el = id => document.getElementById(id);
+
+      const currencyEl = el('currency');
+      const sessionsEl = el('sessions');
+      const upliftEl = el('uplift');
+      const crEl = el('cr');
+      const valueEl = el('value');
+      const marginEl = el('margin');
+      const seoCostEl = el('seoCost');
+      const monthsEl = el('months');
+      const resetBtn = el('resetBtn');
+
+      const err = {
+        sessions: el('sessionsError'),
+        uplift: el('upliftError'),
+        cr: el('crError'),
+        value: el('valueError'),
+        margin: el('marginError'),
+        seoCost: el('seoCostError'),
+        months: el('monthsError')
+      };
+
+      const res = {
+        sessions: el('resSessions'),
+        conversions: el('resConversions'),
+        revenue: el('resRevenue'),
+        grossProfit: el('resGrossProfit'),
+        totalGrossProfit: el('resTotalGrossProfit'),
+        totalCost: el('resTotalCost'),
+        netProfit: el('resNetProfit'),
+        roi: el('resROI'),
+        breakEven: el('resBreakEven'),
+        payback: el('resPayback')
+      };
+
+      // Accessible tooltips
+      const helpButtons = document.querySelectorAll('.help-btn');
+      helpButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('aria-controls');
+          const panel = el(id);
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          panel.hidden = expanded;
+        });
+      });
+
+      // Formatting helpers
+      function fmtCurrency(v){
+        const sym = (currencyEl.value || '$').trim();
+        try{
+          // format with grouping using en-US then prefix with symbol
+          const n = new Intl.NumberFormat('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}).format(v || 0);
+          return sym + n;
+        }catch(e){
+          return '$' + (v || 0).toFixed(2);
+        }
+      }
+      function fmtInt(v){
+        try{ return new Intl.NumberFormat('en-US').format(Math.round(v || 0)); }
+        catch(e){ return String(Math.round(v || 0)); }
+      }
+      function fmtPct(v){
+        if (!isFinite(v)) return '—';
+        return (Math.round(v * 1000) / 10).toFixed(1) + '%';
+      }
+      function setError(inputEl, errEl, msg){
+        inputEl.setAttribute('aria-invalid', 'true');
+        errEl.textContent = msg;
+      }
+      function clearError(inputEl, errEl){
+        inputEl.removeAttribute('aria-invalid');
+        errEl.textContent = '';
+      }
+
+      // Validation rules
+      function validate(){
+        let ok = true;
+
+        const sessions = Number(sessionsEl.value);
+        if (!Number.isFinite(sessions) || sessions < 0){
+          setError(sessionsEl, err.sessions, 'Please enter a non-negative number of sessions.');
+          ok = false;
+        } else { clearError(sessionsEl, err.sessions); }
+
+        const uplift = Number(upliftEl.value);
+        if (!Number.isFinite(uplift) || uplift < 0){
+          setError(upliftEl, err.uplift, 'Enter a non-negative percentage (e.g., 15 for 15%).');
+          ok = false;
+        } else { clearError(upliftEl, err.uplift); }
+
+        const cr = Number(crEl.value);
+        if (!Number.isFinite(cr) || cr < 0 || cr > 100){
+          setError(crEl, err.cr, 'Conversion rate must be between 0 and 100.');
+          ok = false;
+        } else { clearError(crEl, err.cr); }
+
+        const value = Number(valueEl.value);
+        if (!Number.isFinite(value) || value < 0){
+          setError(valueEl, err.value, 'Enter a non-negative revenue per conversion.');
+          ok = false;
+        } else { clearError(valueEl, err.value); }
+
+        const margin = Number(marginEl.value);
+        if (!Number.isFinite(margin) || margin < 0 || margin > 100){
+          setError(marginEl, err.margin, 'Margin must be between 0 and 100.');
+          ok = false;
+        } else { clearError(marginEl, err.margin); }
+
+        const cost = Number(seoCostEl.value);
+        if (!Number.isFinite(cost) || cost < 0){
+          setError(seoCostEl, err.seoCost, 'Enter a non-negative SEO monthly cost.');
+          ok = false;
+        } else { clearError(seoCostEl, err.seoCost); }
+
+        const months = Number(monthsEl.value);
+        if (!Number.isFinite(months) || months < 1 || !Number.isInteger(months)){
+          setError(monthsEl, err.months, 'Months must be an integer of at least 1.');
+          ok = false;
+        } else { clearError(monthsEl, err.months); }
+
+        return ok;
+      }
+
+      // Calculation
+      function calculate(){
+        if (!validate()){
+          // Show neutral results when invalid
+          res.sessions.textContent = '0';
+          res.conversions.textContent = '0';
+          res.revenue.textContent = fmtCurrency(0);
+          res.grossProfit.textContent = fmtCurrency(0);
+          res.totalGrossProfit.textContent = fmtCurrency(0);
+          res.totalCost.textContent = fmtCurrency(0);
+          res.netProfit.textContent = fmtCurrency(0);
+          res.roi.textContent = '0%';
+          res.breakEven.textContent = '—';
+          res.payback.textContent = '—';
+          return;
+        }
+
+        const S = Number(sessionsEl.value);
+        const u = Number(upliftEl.value) / 100;
+        const cr = Number(crEl.value) / 100;
+        const v = Number(valueEl.value);
+        const g = Number(marginEl.value) / 100;
+        const c_m = Number(seoCostEl.value);
+        const n = Number(monthsEl.value);
+
+        const deltaS = S * u;
+        const deltaC = deltaS * cr;
+        const Rm = deltaS * cr * v;
+        const GPm = Rm * g;
+        const GPtot = n * GPm;
+        const Ctot = n * c_m;
+        const NP = GPtot - Ctot;
+
+        const roi = (Ctot > 0) ? (NP / Ctot) : NaN;
+        const breakEven = (S > 0 && cr > 0 && v > 0 && g > 0) ? (c_m / (S * cr * v * g)) : NaN; // decimal uplift
+        const payback = (GPm > 0) ? (c_m / GPm) : NaN; // months
+
+        // Populate UI
+        res.sessions.textContent = fmtInt(deltaS);
+        res.conversions.textContent = fmtInt(deltaC);
+        res.revenue.textContent = fmtCurrency(Rm);
+        res.grossProfit.textContent = fmtCurrency(GPm);
+        res.totalGrossProfit.textContent = fmtCurrency(GPtot);
+        res.totalCost.textContent = fmtCurrency(Ctot);
+        res.netProfit.textContent = fmtCurrency(NP);
+        res.roi.textContent = isFinite(roi) ? fmtPct(roi) : '—';
+        res.breakEven.textContent = isFinite(breakEven) ? fmtPct(breakEven) : '—';
+        res.payback.textContent = isFinite(payback) ? (Math.round(payback * 10) / 10).toFixed(1) + ' mo' : '—';
+      }
+
+      // Inline validation on blur
+      [sessionsEl, upliftEl, crEl, valueEl, marginEl, seoCostEl, monthsEl].forEach(input => {
+        input.addEventListener('blur', validate, {passive:true});
+        input.addEventListener('input', calculate, {passive:true});
+      });
+      currencyEl.addEventListener('input', calculate, {passive:true});
+
+      // Reset
+      resetBtn.addEventListener('click', () => {
+        currencyEl.value = '$';
+        sessionsEl.value = '';
+        upliftEl.value = '';
+        crEl.value = '';
+        valueEl.value = '';
+        marginEl.value = '';
+        seoCostEl.value = '';
+        monthsEl.value = '6';
+        Object.values(err).forEach(node => node.textContent = '');
+        [sessionsEl, upliftEl, crEl, valueEl, marginEl, seoCostEl, monthsEl].forEach(i => i.removeAttribute('aria-invalid'));
+        calculate();
+        sessionsEl.focus();
+      });
+
+      // Initial compute (clean slate)
+      calculate();
+    })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script defer="">
+    (function(){
+      'use strict';
+
+      // Elements
+      const el = id => document.getElementById(id);
+
+      const currencyEl = el('currency');
+      const sessionsEl = el('sessions');
+      const upliftEl = el('uplift');
+      const crEl = el('cr');
+      const valueEl = el('value');
+      const marginEl = el('margin');
+      const seoCostEl = el('seoCost');
+      const monthsEl = el('months');
+      const resetBtn = el('resetBtn');
+
+      const err = {
+        sessions: el('sessionsError'),
+        uplift: el('upliftError'),
+        cr: el('crError'),
+        value: el('valueError'),
+        margin: el('marginError'),
+        seoCost: el('seoCostError'),
+        months: el('monthsError')
+      };
+
+      const res = {
+        sessions: el('resSessions'),
+        conversions: el('resConversions'),
+        revenue: el('resRevenue'),
+        grossProfit: el('resGrossProfit'),
+        totalGrossProfit: el('resTotalGrossProfit'),
+        totalCost: el('resTotalCost'),
+        netProfit: el('resNetProfit'),
+        roi: el('resROI'),
+        breakEven: el('resBreakEven'),
+        payback: el('resPayback')
+      };
+
+      // Accessible tooltips
+      const helpButtons = document.querySelectorAll('.help-btn');
+      helpButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('aria-controls');
+          const panel = el(id);
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          panel.hidden = expanded;
+        });
+      });
+
+      // Formatting helpers
+      function fmtCurrency(v){
+        const sym = (currencyEl.value || '$').trim();
+        try{
+          // format with grouping using en-US then prefix with symbol
+          const n = new Intl.NumberFormat('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}).format(v || 0);
+          return sym + n;
+        }catch(e){
+          return '$' + (v || 0).toFixed(2);
+        }
+      }
+      function fmtInt(v){
+        try{ return new Intl.NumberFormat('en-US').format(Math.round(v || 0)); }
+        catch(e){ return String(Math.round(v || 0)); }
+      }
+      function fmtPct(v){
+        if (!isFinite(v)) return '—';
+        return (Math.round(v * 1000) / 10).toFixed(1) + '%';
+      }
+      function setError(inputEl, errEl, msg){
+        inputEl.setAttribute('aria-invalid', 'true');
+        errEl.textContent = msg;
+      }
+      function clearError(inputEl, errEl){
+        inputEl.removeAttribute('aria-invalid');
+        errEl.textContent = '';
+      }
+
+      // Validation rules
+      function validate(){
+        let ok = true;
+
+        const sessions = Number(sessionsEl.value);
+        if (!Number.isFinite(sessions) || sessions < 0){
+          setError(sessionsEl, err.sessions, 'Please enter a non-negative number of sessions.');
+          ok = false;
+        } else { clearError(sessionsEl, err.sessions); }
+
+        const uplift = Number(upliftEl.value);
+        if (!Number.isFinite(uplift) || uplift < 0){
+          setError(upliftEl, err.uplift, 'Enter a non-negative percentage (e.g., 15 for 15%).');
+          ok = false;
+        } else { clearError(upliftEl, err.uplift); }
+
+        const cr = Number(crEl.value);
+        if (!Number.isFinite(cr) || cr < 0 || cr > 100){
+          setError(crEl, err.cr, 'Conversion rate must be between 0 and 100.');
+          ok = false;
+        } else { clearError(crEl, err.cr); }
+
+        const value = Number(valueEl.value);
+        if (!Number.isFinite(value) || value < 0){
+          setError(valueEl, err.value, 'Enter a non-negative revenue per conversion.');
+          ok = false;
+        } else { clearError(valueEl, err.value); }
+
+        const margin = Number(marginEl.value);
+        if (!Number.isFinite(margin) || margin < 0 || margin > 100){
+          setError(marginEl, err.margin, 'Margin must be between 0 and 100.');
+          ok = false;
+        } else { clearError(marginEl, err.margin); }
+
+        const cost = Number(seoCostEl.value);
+        if (!Number.isFinite(cost) || cost < 0){
+          setError(seoCostEl, err.seoCost, 'Enter a non-negative SEO monthly cost.');
+          ok = false;
+        } else { clearError(seoCostEl, err.seoCost); }
+
+        const months = Number(monthsEl.value);
+        if (!Number.isFinite(months) || months < 1 || !Number.isInteger(months)){
+          setError(monthsEl, err.months, 'Months must be an integer of at least 1.');
+          ok = false;
+        } else { clearError(monthsEl, err.months); }
+
+        return ok;
+      }
+
+      // Calculation
+      function calculate(){
+        if (!validate()){
+          // Show neutral results when invalid
+          res.sessions.textContent = '0';
+          res.conversions.textContent = '0';
+          res.revenue.textContent = fmtCurrency(0);
+          res.grossProfit.textContent = fmtCurrency(0);
+          res.totalGrossProfit.textContent = fmtCurrency(0);
+          res.totalCost.textContent = fmtCurrency(0);
+          res.netProfit.textContent = fmtCurrency(0);
+          res.roi.textContent = '0%';
+          res.breakEven.textContent = '—';
+          res.payback.textContent = '—';
+          return;
+        }
+
+        const S = Number(sessionsEl.value);
+        const u = Number(upliftEl.value) / 100;
+        const cr = Number(crEl.value) / 100;
+        const v = Number(valueEl.value);
+        const g = Number(marginEl.value) / 100;
+        const c_m = Number(seoCostEl.value);
+        const n = Number(monthsEl.value);
+
+        const deltaS = S * u;
+        const deltaC = deltaS * cr;
+        const Rm = deltaS * cr * v;
+        const GPm = Rm * g;
+        const GPtot = n * GPm;
+        const Ctot = n * c_m;
+        const NP = GPtot - Ctot;
+
+        const roi = (Ctot > 0) ? (NP / Ctot) : NaN;
+        const breakEven = (S > 0 && cr > 0 && v > 0 && g > 0) ? (c_m / (S * cr * v * g)) : NaN; // decimal uplift
+        const payback = (GPm > 0) ? (c_m / GPm) : NaN; // months
+
+        // Populate UI
+        res.sessions.textContent = fmtInt(deltaS);
+        res.conversions.textContent = fmtInt(deltaC);
+        res.revenue.textContent = fmtCurrency(Rm);
+        res.grossProfit.textContent = fmtCurrency(GPm);
+        res.totalGrossProfit.textContent = fmtCurrency(GPtot);
+        res.totalCost.textContent = fmtCurrency(Ctot);
+        res.netProfit.textContent = fmtCurrency(NP);
+        res.roi.textContent = isFinite(roi) ? fmtPct(roi) : '—';
+        res.breakEven.textContent = isFinite(breakEven) ? fmtPct(breakEven) : '—';
+        res.payback.textContent = isFinite(payback) ? (Math.round(payback * 10) / 10).toFixed(1) + ' mo' : '—';
+      }
+
+      // Inline validation on blur
+      [sessionsEl, upliftEl, crEl, valueEl, marginEl, seoCostEl, monthsEl].forEach(input => {
+        input.addEventListener('blur', validate, {passive:true});
+        input.addEventListener('input', calculate, {passive:true});
+      });
+      currencyEl.addEventListener('input', calculate, {passive:true});
+
+      // Reset
+      resetBtn.addEventListener('click', () => {
+        currencyEl.value = '$';
+        sessionsEl.value = '';
+        upliftEl.value = '';
+        crEl.value = '';
+        valueEl.value = '';
+        marginEl.value = '';
+        seoCostEl.value = '';
+        monthsEl.value = '6';
+        Object.values(err).forEach(node => node.textContent = '');
+        [sessionsEl, upliftEl, crEl, valueEl, marginEl, seoCostEl, monthsEl].forEach(i => i.removeAttribute('aria-invalid'));
+        calculate();
+        sessionsEl.focus();
+      });
+
+      // Initial compute (clean slate)
+      calculate();
+    })();
+  </script></body></html>

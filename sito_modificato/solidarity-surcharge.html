@@ -248,10 +248,16 @@ code, .latex{font-family:var(--font-mono);background:#f8f9fa;padding:.15em .35em
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
@@ -318,12 +324,24 @@ code, .latex{font-family:var(--font-mono);background:#f8f9fa;padding:.15em .35em
 }
 </script>
 </head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">German Solidarity Surcharge (Solidaritätszuschlag) Calculator</h1>
+    <p class="sub" id="pageSub">Professional German Solidarity Surcharge (Solidaritätszuschlag) calculator. Compute Soli on personal income tax, corporate tax, or capital income withholding with accurate thresholds and a11y-first UX.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<main id="main-content">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main id="main-content">
 <div class="container">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>German Solidarity Surcharge (Solidaritätszuschlag) Calculator</h1>
 <p>This professional-grade calculator computes Germany’s solidarity surcharge (Soli) across personal income tax, corporate income tax, and capital income withholding. It is designed for taxpayers, finance teams, and advisors who need clear, reliable results with authoritative methodology and full accessibility.</p>
 <div class="calculator-layout">
@@ -609,251 +627,21 @@ code, .latex{font-family:var(--font-mono);background:#f8f9fa;padding:.15em .35em
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
+
+
 </main>
-<!-- Standard Footer --> 
-<script defer="">
-  (function(){
-    'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
 
-    // Helpers
-    const $ = (sel, ctx=document) => ctx.querySelector(sel);
-    const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+<button id="resetBtn" type="button" class="btn btnSecondary">Reset</button>
+</div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-    const fmtCurr = new Intl.NumberFormat('en-IE', { style:'currency', currency:'EUR', maximumFractionDigits:2 });
-    const fmtPct  = new Intl.NumberFormat('en-IE', { style:'percent', maximumFractionDigits:2 });
-
-    // Elements
-    const taxTypeRadios = $$('input[name="taxType"]');
-    const filingStatusGroup = $('#filingStatusGroup');
-    const filingStatus = $('#filingStatus');
-    const entryModeRadios = $$('input[name="entryMode"]');
-    const entryModeGroup = $('#entryModeGroup');
-    const knownBaseGroup = $('#knownBaseGroup');
-    const computeBaseGroup = $('#computeBaseGroup');
-    const baseTaxInput = $('#baseTax');
-    const taxableAmountInput = $('#taxableAmount');
-    const flatRateInput = $('#flatRate');
-    const calcBtn = $('#calculateBtn');
-    const calcStatus = $('#calcStatus');
-    const modeHint = $('#modeHint');
-
-    // Tooltip
-    const baseTaxHelpBtn = $('#baseTaxHelpBtn');
-    const baseTaxHelp = $('#baseTaxHelp');
-
-    // Result fields
-    const rBaseTax = $('#rBaseTax');
-    const rSoli = $('#rSoli');
-    const rEffRate = $('#rEffRate');
-    const rTotal = $('#rTotal');
-
-    // Errors
-    const errors = {
-      baseTax: $('#baseTaxError'),
-      taxableAmount: $('#taxableAmountError'),
-      flatRate: $('#flatRateError'),
-      filingStatus: $('#filingStatusError')
-    };
-
-    // Thresholds for income tax (statutory, since 2021)
-    const thresholds = {
-      single: { lower: 16956, upper: 31527 },
-      married: { lower: 33912, upper: 63055 }
-    };
-
-    // UI state management
-    function getSelectedTaxType(){
-      const sel = taxTypeRadios.find(r => r.checked);
-      return sel ? sel.value : 'income';
-    }
-
-    function getEntryMode(){
-      const sel = entryModeRadios.find(r => r.checked);
-      return sel ? sel.value : 'known';
-    }
-
-    function toggleSections(){
-      const type = getSelectedTaxType();
-      // Filing status only for income
-      filingStatusGroup.style.display = (type === 'income') ? '' : 'none';
-
-      // Entry mode: compute only for corporate/capital
-      if(type === 'income'){
-        // Force known mode
-        $('#modeKnown').checked = true;
-        $('#modeCompute').setAttribute('disabled','');
-        computeBaseGroup.hidden = true;
-        knownBaseGroup.hidden = false;
-        modeHint.textContent = 'Computing from a flat rate is available for corporate and capital withholding. Personal income tax requires the assessed tax amount.';
-      } else {
-        $('#modeCompute').removeAttribute('disabled');
-        // Show based on selected mode
-        const mode = getEntryMode();
-        knownBaseGroup.hidden = (mode !== 'known');
-        computeBaseGroup.hidden = (mode !== 'compute');
-        modeHint.textContent = 'Provide the assessed base tax or compute it from a taxable amount and a flat rate.';
-        // Suggest default rates
-        if(type === 'corporate' && !flatRateInput.value){
-          flatRateInput.value = '15';
-        }
-        if(type === 'capital' && !flatRateInput.value){
-          flatRateInput.value = '25';
-        }
-      }
-    }
-
-    function toggleTooltip(btn, content){
-      const expanded = btn.getAttribute('aria-expanded') === 'true';
-      btn.setAttribute('aria-expanded', String(!expanded));
-      content.setAttribute('aria-hidden', String(expanded));
-    }
-
-    function clearError(inputEl, key){
-      if(!errors[key]) return;
-      errors[key].textContent = '';
-      inputEl.setAttribute('aria-invalid','false');
-    }
-
-    function setError(inputEl, key, msg){
-      if(!errors[key]) return;
-      errors[key].textContent = msg;
-      inputEl.setAttribute('aria-invalid','true');
-    }
-
-    function validateNumber(inputEl, key, {required=true, min=0} = {}){
-      const v = inputEl.value.trim();
-      if(required && v === ''){
-        setError(inputEl, key, 'Please enter a value.');
-        return null;
-      }
-      const num = Number(v);
-      if(Number.isNaN(num)){
-        setError(inputEl, key, 'Enter a valid number (use digits and an optional decimal point).');
-        return null;
-      }
-      if(num < min){
-        setError(inputEl, key, `Value must be at least ${min}.`);
-        return null;
-      }
-      clearError(inputEl, key);
-      return num;
-    }
-
-    function computeBaseTax(){
-      const type = getSelectedTaxType();
-      const mode = getEntryMode();
-
-      if(type === 'income' || mode === 'known'){
-        const base = validateNumber(baseTaxInput, 'baseTax', {required:true, min:0});
-        return base ?? null;
-      } else {
-        const amount = validateNumber(taxableAmountInput, 'taxableAmount', {required:true, min:0});
-        const rate = validateNumber(flatRateInput, 'flatRate', {required:true, min:0});
-        if(amount == null || rate == null) return null;
-        return amount * (rate/100);
-      }
-    }
-
-    function computeSoli(baseTax){
-      const type = getSelectedTaxType();
-
-      if(baseTax <= 0) return 0;
-
-      if(type === 'income'){
-        const status = filingStatus.value === 'married' ? 'married' : 'single';
-        const {lower, upper} = thresholds[status];
-        if(baseTax <= lower) return 0;
-        if(baseTax <= upper) return 0.119 * (baseTax - lower);
-        return 0.055 * baseTax;
-      } else {
-        return 0.055 * baseTax;
-      }
-    }
-
-    function renderResults(baseTax, soli){
-      const total = baseTax + soli;
-      const eff = baseTax > 0 ? (soli/baseTax) : 0;
-
-      rBaseTax.textContent = fmtCurr.format(baseTax);
-      rSoli.textContent = fmtCurr.format(soli);
-      rEffRate.textContent = new Intl.NumberFormat('en-IE',{style:'percent',minimumFractionDigits:2,maximumFractionDigits:2}).format(eff);
-      rTotal.textContent = fmtCurr.format(total);
-    }
-
-    function calculate(){
-      // validate filing status if visible (not really invalidatable, but keep structure)
-      if(filingStatusGroup.style.display !== 'none'){
-        clearError(filingStatus, 'filingStatus');
-      }
-
-      const base = computeBaseTax();
-      if(base == null) {
-        calcStatus.textContent = 'Please correct the highlighted fields and try again.';
-        return;
-      }
-      const soli = computeSoli(base);
-      renderResults(round2(base), round2(soli));
-      calcStatus.textContent = 'Calculation complete.';
-    }
-
-    function round2(n){ return Math.round((n + Number.EPSILON) * 100) / 100; }
-
-    // Event wiring
-    taxTypeRadios.forEach(r => r.addEventListener('change', () => { toggleSections(); }));
-    entryModeRadios.forEach(r => r.addEventListener('change', () => { toggleSections(); }));
-
-    // Inline validation on blur
-    baseTaxInput.addEventListener('blur', () => validateNumber(baseTaxInput, 'baseTax', {required:true, min:0}));
-    if(taxableAmountInput) taxableAmountInput.addEventListener('blur', () => validateNumber(taxableAmountInput, 'taxableAmount', {required:true, min:0}));
-    if(flatRateInput) flatRateInput.addEventListener('blur', () => validateNumber(flatRateInput, 'flatRate', {required:true, min:0}));
-
-    // Calculate button
-    calcBtn.addEventListener('click', calculate);
-    // Also auto-calc on input changes to reduce INP
-    [baseTaxInput, taxableAmountInput, flatRateInput, filingStatus].forEach(el=>{
-      if(!el) return;
-      el.addEventListener('input', () => {
-        // Only auto-calc when fields are valid
-        const type = getSelectedTaxType();
-        if(type === 'income'){
-          if(validateNumber(baseTaxInput,'baseTax',{required:true,min:0})!=null) calculate();
-        } else {
-          const mode = getEntryMode();
-          if(mode === 'known'){
-            if(validateNumber(baseTaxInput,'baseTax',{required:true,min:0})!=null) calculate();
-          } else {
-            const okA = validateNumber(taxableAmountInput,'taxableAmount',{required:true,min:0})!=null;
-            const okR = validateNumber(flatRateInput,'flatRate',{required:true,min:0})!=null;
-            if(okA && okR) calculate();
-          }
-        }
-      });
-    });
-
-    // Tooltip toggle
-    baseTaxHelpBtn.addEventListener('click', () => toggleTooltip(baseTaxHelpBtn, baseTaxHelp));
-    baseTaxHelpBtn.addEventListener('keydown', (e) => {
-      if(e.key === 'Enter' || e.key === ' '){
-        e.preventDefault();
-        toggleTooltip(baseTaxHelpBtn, baseTaxHelp);
-      }
-    });
-
-    // Initialize UI
-    toggleSections();
-  })();
-  </script>
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main-content">Skip to main content</a><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -885,41 +673,9 @@ code, .latex{font-family:var(--font-mono);background:#f8f9fa;padding:.15em .35em
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "General",
-      "item": "https://calcdomain.com/categories/general"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Miscellaneous",
-      "item": "https://calcdomain.com/subcategories/miscellaneous"
-    }
-  ]
-}
-</script>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main id="main-content">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main id="main-content">
 <div class="container">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>German Solidarity Surcharge (Solidaritätszuschlag) Calculator</h1>
 <p>This professional-grade calculator computes Germany’s solidarity surcharge (Soli) across personal income tax, corporate income tax, and capital income withholding. It is designed for taxpayers, finance teams, and advisors who need clear, reliable results with authoritative methodology and full accessibility.</p>
 <div class="calculator-layout">
@@ -1205,251 +961,7 @@ code, .latex{font-family:var(--font-mono);background:#f8f9fa;padding:.15em .35em
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-  (function(){
-    'use strict';
-
-    // Helpers
-    const $ = (sel, ctx=document) => ctx.querySelector(sel);
-    const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
-
-    const fmtCurr = new Intl.NumberFormat('en-IE', { style:'currency', currency:'EUR', maximumFractionDigits:2 });
-    const fmtPct  = new Intl.NumberFormat('en-IE', { style:'percent', maximumFractionDigits:2 });
-
-    // Elements
-    const taxTypeRadios = $$('input[name="taxType"]');
-    const filingStatusGroup = $('#filingStatusGroup');
-    const filingStatus = $('#filingStatus');
-    const entryModeRadios = $$('input[name="entryMode"]');
-    const entryModeGroup = $('#entryModeGroup');
-    const knownBaseGroup = $('#knownBaseGroup');
-    const computeBaseGroup = $('#computeBaseGroup');
-    const baseTaxInput = $('#baseTax');
-    const taxableAmountInput = $('#taxableAmount');
-    const flatRateInput = $('#flatRate');
-    const calcBtn = $('#calculateBtn');
-    const calcStatus = $('#calcStatus');
-    const modeHint = $('#modeHint');
-
-    // Tooltip
-    const baseTaxHelpBtn = $('#baseTaxHelpBtn');
-    const baseTaxHelp = $('#baseTaxHelp');
-
-    // Result fields
-    const rBaseTax = $('#rBaseTax');
-    const rSoli = $('#rSoli');
-    const rEffRate = $('#rEffRate');
-    const rTotal = $('#rTotal');
-
-    // Errors
-    const errors = {
-      baseTax: $('#baseTaxError'),
-      taxableAmount: $('#taxableAmountError'),
-      flatRate: $('#flatRateError'),
-      filingStatus: $('#filingStatusError')
-    };
-
-    // Thresholds for income tax (statutory, since 2021)
-    const thresholds = {
-      single: { lower: 16956, upper: 31527 },
-      married: { lower: 33912, upper: 63055 }
-    };
-
-    // UI state management
-    function getSelectedTaxType(){
-      const sel = taxTypeRadios.find(r => r.checked);
-      return sel ? sel.value : 'income';
-    }
-
-    function getEntryMode(){
-      const sel = entryModeRadios.find(r => r.checked);
-      return sel ? sel.value : 'known';
-    }
-
-    function toggleSections(){
-      const type = getSelectedTaxType();
-      // Filing status only for income
-      filingStatusGroup.style.display = (type === 'income') ? '' : 'none';
-
-      // Entry mode: compute only for corporate/capital
-      if(type === 'income'){
-        // Force known mode
-        $('#modeKnown').checked = true;
-        $('#modeCompute').setAttribute('disabled','');
-        computeBaseGroup.hidden = true;
-        knownBaseGroup.hidden = false;
-        modeHint.textContent = 'Computing from a flat rate is available for corporate and capital withholding. Personal income tax requires the assessed tax amount.';
-      } else {
-        $('#modeCompute').removeAttribute('disabled');
-        // Show based on selected mode
-        const mode = getEntryMode();
-        knownBaseGroup.hidden = (mode !== 'known');
-        computeBaseGroup.hidden = (mode !== 'compute');
-        modeHint.textContent = 'Provide the assessed base tax or compute it from a taxable amount and a flat rate.';
-        // Suggest default rates
-        if(type === 'corporate' && !flatRateInput.value){
-          flatRateInput.value = '15';
-        }
-        if(type === 'capital' && !flatRateInput.value){
-          flatRateInput.value = '25';
-        }
-      }
-    }
-
-    function toggleTooltip(btn, content){
-      const expanded = btn.getAttribute('aria-expanded') === 'true';
-      btn.setAttribute('aria-expanded', String(!expanded));
-      content.setAttribute('aria-hidden', String(expanded));
-    }
-
-    function clearError(inputEl, key){
-      if(!errors[key]) return;
-      errors[key].textContent = '';
-      inputEl.setAttribute('aria-invalid','false');
-    }
-
-    function setError(inputEl, key, msg){
-      if(!errors[key]) return;
-      errors[key].textContent = msg;
-      inputEl.setAttribute('aria-invalid','true');
-    }
-
-    function validateNumber(inputEl, key, {required=true, min=0} = {}){
-      const v = inputEl.value.trim();
-      if(required && v === ''){
-        setError(inputEl, key, 'Please enter a value.');
-        return null;
-      }
-      const num = Number(v);
-      if(Number.isNaN(num)){
-        setError(inputEl, key, 'Enter a valid number (use digits and an optional decimal point).');
-        return null;
-      }
-      if(num < min){
-        setError(inputEl, key, `Value must be at least ${min}.`);
-        return null;
-      }
-      clearError(inputEl, key);
-      return num;
-    }
-
-    function computeBaseTax(){
-      const type = getSelectedTaxType();
-      const mode = getEntryMode();
-
-      if(type === 'income' || mode === 'known'){
-        const base = validateNumber(baseTaxInput, 'baseTax', {required:true, min:0});
-        return base ?? null;
-      } else {
-        const amount = validateNumber(taxableAmountInput, 'taxableAmount', {required:true, min:0});
-        const rate = validateNumber(flatRateInput, 'flatRate', {required:true, min:0});
-        if(amount == null || rate == null) return null;
-        return amount * (rate/100);
-      }
-    }
-
-    function computeSoli(baseTax){
-      const type = getSelectedTaxType();
-
-      if(baseTax <= 0) return 0;
-
-      if(type === 'income'){
-        const status = filingStatus.value === 'married' ? 'married' : 'single';
-        const {lower, upper} = thresholds[status];
-        if(baseTax <= lower) return 0;
-        if(baseTax <= upper) return 0.119 * (baseTax - lower);
-        return 0.055 * baseTax;
-      } else {
-        return 0.055 * baseTax;
-      }
-    }
-
-    function renderResults(baseTax, soli){
-      const total = baseTax + soli;
-      const eff = baseTax > 0 ? (soli/baseTax) : 0;
-
-      rBaseTax.textContent = fmtCurr.format(baseTax);
-      rSoli.textContent = fmtCurr.format(soli);
-      rEffRate.textContent = new Intl.NumberFormat('en-IE',{style:'percent',minimumFractionDigits:2,maximumFractionDigits:2}).format(eff);
-      rTotal.textContent = fmtCurr.format(total);
-    }
-
-    function calculate(){
-      // validate filing status if visible (not really invalidatable, but keep structure)
-      if(filingStatusGroup.style.display !== 'none'){
-        clearError(filingStatus, 'filingStatus');
-      }
-
-      const base = computeBaseTax();
-      if(base == null) {
-        calcStatus.textContent = 'Please correct the highlighted fields and try again.';
-        return;
-      }
-      const soli = computeSoli(base);
-      renderResults(round2(base), round2(soli));
-      calcStatus.textContent = 'Calculation complete.';
-    }
-
-    function round2(n){ return Math.round((n + Number.EPSILON) * 100) / 100; }
-
-    // Event wiring
-    taxTypeRadios.forEach(r => r.addEventListener('change', () => { toggleSections(); }));
-    entryModeRadios.forEach(r => r.addEventListener('change', () => { toggleSections(); }));
-
-    // Inline validation on blur
-    baseTaxInput.addEventListener('blur', () => validateNumber(baseTaxInput, 'baseTax', {required:true, min:0}));
-    if(taxableAmountInput) taxableAmountInput.addEventListener('blur', () => validateNumber(taxableAmountInput, 'taxableAmount', {required:true, min:0}));
-    if(flatRateInput) flatRateInput.addEventListener('blur', () => validateNumber(flatRateInput, 'flatRate', {required:true, min:0}));
-
-    // Calculate button
-    calcBtn.addEventListener('click', calculate);
-    // Also auto-calc on input changes to reduce INP
-    [baseTaxInput, taxableAmountInput, flatRateInput, filingStatus].forEach(el=>{
-      if(!el) return;
-      el.addEventListener('input', () => {
-        // Only auto-calc when fields are valid
-        const type = getSelectedTaxType();
-        if(type === 'income'){
-          if(validateNumber(baseTaxInput,'baseTax',{required:true,min:0})!=null) calculate();
-        } else {
-          const mode = getEntryMode();
-          if(mode === 'known'){
-            if(validateNumber(baseTaxInput,'baseTax',{required:true,min:0})!=null) calculate();
-          } else {
-            const okA = validateNumber(taxableAmountInput,'taxableAmount',{required:true,min:0})!=null;
-            const okR = validateNumber(flatRateInput,'flatRate',{required:true,min:0})!=null;
-            if(okA && okR) calculate();
-          }
-        }
-      });
-    });
-
-    // Tooltip toggle
-    baseTaxHelpBtn.addEventListener('click', () => toggleTooltip(baseTaxHelpBtn, baseTaxHelp));
-    baseTaxHelpBtn.addEventListener('keydown', (e) => {
-      if(e.key === 'Enter' || e.key === ' '){
-        e.preventDefault();
-        toggleTooltip(baseTaxHelpBtn, baseTaxHelp);
-      }
-    });
-
-    // Initialize UI
-    toggleSections();
-  })();
-  </script>
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="https://calcdomain.com/assets/js/mobile-menu.js" as="script"><link rel="preload" href="https://calcdomain.com/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1481,41 +993,9 @@ code, .latex{font-family:var(--font-mono);background:#f8f9fa;padding:.15em .35em
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "General",
-      "item": "https://calcdomain.com/categories/general"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Miscellaneous",
-      "item": "https://calcdomain.com/subcategories/miscellaneous"
-    }
-  ]
-}
-</script>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main id="main-content">
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main id="main-content">
 <div class="container">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>German Solidarity Surcharge (Solidaritätszuschlag) Calculator</h1>
 <p>This professional-grade calculator computes Germany’s solidarity surcharge (Soli) across personal income tax, corporate income tax, and capital income withholding. It is designed for taxpayers, finance teams, and advisors who need clear, reliable results with authoritative methodology and full accessibility.</p>
 <div class="calculator-layout">
@@ -1801,9 +1281,48 @@ code, .latex{font-family:var(--font-mono);background:#f8f9fa;padding:.15em .35em
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
   (function(){
     'use strict';
 
@@ -2034,6 +1553,516 @@ code, .latex{font-family:var(--font-mono);background:#f8f9fa;padding:.15em .35em
     // Initialize UI
     toggleSections();
   })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "General",
+      "item": "https://calcdomain.com/categories/general"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Miscellaneous",
+      "item": "https://calcdomain.com/subcategories/miscellaneous"
+    }
+  ]
+}
+</script><script defer="">
+  (function(){
+    'use strict';
 
-</body></html>
+    // Helpers
+    const $ = (sel, ctx=document) => ctx.querySelector(sel);
+    const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+
+    const fmtCurr = new Intl.NumberFormat('en-IE', { style:'currency', currency:'EUR', maximumFractionDigits:2 });
+    const fmtPct  = new Intl.NumberFormat('en-IE', { style:'percent', maximumFractionDigits:2 });
+
+    // Elements
+    const taxTypeRadios = $$('input[name="taxType"]');
+    const filingStatusGroup = $('#filingStatusGroup');
+    const filingStatus = $('#filingStatus');
+    const entryModeRadios = $$('input[name="entryMode"]');
+    const entryModeGroup = $('#entryModeGroup');
+    const knownBaseGroup = $('#knownBaseGroup');
+    const computeBaseGroup = $('#computeBaseGroup');
+    const baseTaxInput = $('#baseTax');
+    const taxableAmountInput = $('#taxableAmount');
+    const flatRateInput = $('#flatRate');
+    const calcBtn = $('#calculateBtn');
+    const calcStatus = $('#calcStatus');
+    const modeHint = $('#modeHint');
+
+    // Tooltip
+    const baseTaxHelpBtn = $('#baseTaxHelpBtn');
+    const baseTaxHelp = $('#baseTaxHelp');
+
+    // Result fields
+    const rBaseTax = $('#rBaseTax');
+    const rSoli = $('#rSoli');
+    const rEffRate = $('#rEffRate');
+    const rTotal = $('#rTotal');
+
+    // Errors
+    const errors = {
+      baseTax: $('#baseTaxError'),
+      taxableAmount: $('#taxableAmountError'),
+      flatRate: $('#flatRateError'),
+      filingStatus: $('#filingStatusError')
+    };
+
+    // Thresholds for income tax (statutory, since 2021)
+    const thresholds = {
+      single: { lower: 16956, upper: 31527 },
+      married: { lower: 33912, upper: 63055 }
+    };
+
+    // UI state management
+    function getSelectedTaxType(){
+      const sel = taxTypeRadios.find(r => r.checked);
+      return sel ? sel.value : 'income';
+    }
+
+    function getEntryMode(){
+      const sel = entryModeRadios.find(r => r.checked);
+      return sel ? sel.value : 'known';
+    }
+
+    function toggleSections(){
+      const type = getSelectedTaxType();
+      // Filing status only for income
+      filingStatusGroup.style.display = (type === 'income') ? '' : 'none';
+
+      // Entry mode: compute only for corporate/capital
+      if(type === 'income'){
+        // Force known mode
+        $('#modeKnown').checked = true;
+        $('#modeCompute').setAttribute('disabled','');
+        computeBaseGroup.hidden = true;
+        knownBaseGroup.hidden = false;
+        modeHint.textContent = 'Computing from a flat rate is available for corporate and capital withholding. Personal income tax requires the assessed tax amount.';
+      } else {
+        $('#modeCompute').removeAttribute('disabled');
+        // Show based on selected mode
+        const mode = getEntryMode();
+        knownBaseGroup.hidden = (mode !== 'known');
+        computeBaseGroup.hidden = (mode !== 'compute');
+        modeHint.textContent = 'Provide the assessed base tax or compute it from a taxable amount and a flat rate.';
+        // Suggest default rates
+        if(type === 'corporate' && !flatRateInput.value){
+          flatRateInput.value = '15';
+        }
+        if(type === 'capital' && !flatRateInput.value){
+          flatRateInput.value = '25';
+        }
+      }
+    }
+
+    function toggleTooltip(btn, content){
+      const expanded = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', String(!expanded));
+      content.setAttribute('aria-hidden', String(expanded));
+    }
+
+    function clearError(inputEl, key){
+      if(!errors[key]) return;
+      errors[key].textContent = '';
+      inputEl.setAttribute('aria-invalid','false');
+    }
+
+    function setError(inputEl, key, msg){
+      if(!errors[key]) return;
+      errors[key].textContent = msg;
+      inputEl.setAttribute('aria-invalid','true');
+    }
+
+    function validateNumber(inputEl, key, {required=true, min=0} = {}){
+      const v = inputEl.value.trim();
+      if(required && v === ''){
+        setError(inputEl, key, 'Please enter a value.');
+        return null;
+      }
+      const num = Number(v);
+      if(Number.isNaN(num)){
+        setError(inputEl, key, 'Enter a valid number (use digits and an optional decimal point).');
+        return null;
+      }
+      if(num < min){
+        setError(inputEl, key, `Value must be at least ${min}.`);
+        return null;
+      }
+      clearError(inputEl, key);
+      return num;
+    }
+
+    function computeBaseTax(){
+      const type = getSelectedTaxType();
+      const mode = getEntryMode();
+
+      if(type === 'income' || mode === 'known'){
+        const base = validateNumber(baseTaxInput, 'baseTax', {required:true, min:0});
+        return base ?? null;
+      } else {
+        const amount = validateNumber(taxableAmountInput, 'taxableAmount', {required:true, min:0});
+        const rate = validateNumber(flatRateInput, 'flatRate', {required:true, min:0});
+        if(amount == null || rate == null) return null;
+        return amount * (rate/100);
+      }
+    }
+
+    function computeSoli(baseTax){
+      const type = getSelectedTaxType();
+
+      if(baseTax <= 0) return 0;
+
+      if(type === 'income'){
+        const status = filingStatus.value === 'married' ? 'married' : 'single';
+        const {lower, upper} = thresholds[status];
+        if(baseTax <= lower) return 0;
+        if(baseTax <= upper) return 0.119 * (baseTax - lower);
+        return 0.055 * baseTax;
+      } else {
+        return 0.055 * baseTax;
+      }
+    }
+
+    function renderResults(baseTax, soli){
+      const total = baseTax + soli;
+      const eff = baseTax > 0 ? (soli/baseTax) : 0;
+
+      rBaseTax.textContent = fmtCurr.format(baseTax);
+      rSoli.textContent = fmtCurr.format(soli);
+      rEffRate.textContent = new Intl.NumberFormat('en-IE',{style:'percent',minimumFractionDigits:2,maximumFractionDigits:2}).format(eff);
+      rTotal.textContent = fmtCurr.format(total);
+    }
+
+    function calculate(){
+      // validate filing status if visible (not really invalidatable, but keep structure)
+      if(filingStatusGroup.style.display !== 'none'){
+        clearError(filingStatus, 'filingStatus');
+      }
+
+      const base = computeBaseTax();
+      if(base == null) {
+        calcStatus.textContent = 'Please correct the highlighted fields and try again.';
+        return;
+      }
+      const soli = computeSoli(base);
+      renderResults(round2(base), round2(soli));
+      calcStatus.textContent = 'Calculation complete.';
+    }
+
+    function round2(n){ return Math.round((n + Number.EPSILON) * 100) / 100; }
+
+    // Event wiring
+    taxTypeRadios.forEach(r => r.addEventListener('change', () => { toggleSections(); }));
+    entryModeRadios.forEach(r => r.addEventListener('change', () => { toggleSections(); }));
+
+    // Inline validation on blur
+    baseTaxInput.addEventListener('blur', () => validateNumber(baseTaxInput, 'baseTax', {required:true, min:0}));
+    if(taxableAmountInput) taxableAmountInput.addEventListener('blur', () => validateNumber(taxableAmountInput, 'taxableAmount', {required:true, min:0}));
+    if(flatRateInput) flatRateInput.addEventListener('blur', () => validateNumber(flatRateInput, 'flatRate', {required:true, min:0}));
+
+    // Calculate button
+    calcBtn.addEventListener('click', calculate);
+    // Also auto-calc on input changes to reduce INP
+    [baseTaxInput, taxableAmountInput, flatRateInput, filingStatus].forEach(el=>{
+      if(!el) return;
+      el.addEventListener('input', () => {
+        // Only auto-calc when fields are valid
+        const type = getSelectedTaxType();
+        if(type === 'income'){
+          if(validateNumber(baseTaxInput,'baseTax',{required:true,min:0})!=null) calculate();
+        } else {
+          const mode = getEntryMode();
+          if(mode === 'known'){
+            if(validateNumber(baseTaxInput,'baseTax',{required:true,min:0})!=null) calculate();
+          } else {
+            const okA = validateNumber(taxableAmountInput,'taxableAmount',{required:true,min:0})!=null;
+            const okR = validateNumber(flatRateInput,'flatRate',{required:true,min:0})!=null;
+            if(okA && okR) calculate();
+          }
+        }
+      });
+    });
+
+    // Tooltip toggle
+    baseTaxHelpBtn.addEventListener('click', () => toggleTooltip(baseTaxHelpBtn, baseTaxHelp));
+    baseTaxHelpBtn.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter' || e.key === ' '){
+        e.preventDefault();
+        toggleTooltip(baseTaxHelpBtn, baseTaxHelp);
+      }
+    });
+
+    // Initialize UI
+    toggleSections();
+  })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "General",
+      "item": "https://calcdomain.com/categories/general"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Miscellaneous",
+      "item": "https://calcdomain.com/subcategories/miscellaneous"
+    }
+  ]
+}
+</script><script defer="">
+  (function(){
+    'use strict';
+
+    // Helpers
+    const $ = (sel, ctx=document) => ctx.querySelector(sel);
+    const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+
+    const fmtCurr = new Intl.NumberFormat('en-IE', { style:'currency', currency:'EUR', maximumFractionDigits:2 });
+    const fmtPct  = new Intl.NumberFormat('en-IE', { style:'percent', maximumFractionDigits:2 });
+
+    // Elements
+    const taxTypeRadios = $$('input[name="taxType"]');
+    const filingStatusGroup = $('#filingStatusGroup');
+    const filingStatus = $('#filingStatus');
+    const entryModeRadios = $$('input[name="entryMode"]');
+    const entryModeGroup = $('#entryModeGroup');
+    const knownBaseGroup = $('#knownBaseGroup');
+    const computeBaseGroup = $('#computeBaseGroup');
+    const baseTaxInput = $('#baseTax');
+    const taxableAmountInput = $('#taxableAmount');
+    const flatRateInput = $('#flatRate');
+    const calcBtn = $('#calculateBtn');
+    const calcStatus = $('#calcStatus');
+    const modeHint = $('#modeHint');
+
+    // Tooltip
+    const baseTaxHelpBtn = $('#baseTaxHelpBtn');
+    const baseTaxHelp = $('#baseTaxHelp');
+
+    // Result fields
+    const rBaseTax = $('#rBaseTax');
+    const rSoli = $('#rSoli');
+    const rEffRate = $('#rEffRate');
+    const rTotal = $('#rTotal');
+
+    // Errors
+    const errors = {
+      baseTax: $('#baseTaxError'),
+      taxableAmount: $('#taxableAmountError'),
+      flatRate: $('#flatRateError'),
+      filingStatus: $('#filingStatusError')
+    };
+
+    // Thresholds for income tax (statutory, since 2021)
+    const thresholds = {
+      single: { lower: 16956, upper: 31527 },
+      married: { lower: 33912, upper: 63055 }
+    };
+
+    // UI state management
+    function getSelectedTaxType(){
+      const sel = taxTypeRadios.find(r => r.checked);
+      return sel ? sel.value : 'income';
+    }
+
+    function getEntryMode(){
+      const sel = entryModeRadios.find(r => r.checked);
+      return sel ? sel.value : 'known';
+    }
+
+    function toggleSections(){
+      const type = getSelectedTaxType();
+      // Filing status only for income
+      filingStatusGroup.style.display = (type === 'income') ? '' : 'none';
+
+      // Entry mode: compute only for corporate/capital
+      if(type === 'income'){
+        // Force known mode
+        $('#modeKnown').checked = true;
+        $('#modeCompute').setAttribute('disabled','');
+        computeBaseGroup.hidden = true;
+        knownBaseGroup.hidden = false;
+        modeHint.textContent = 'Computing from a flat rate is available for corporate and capital withholding. Personal income tax requires the assessed tax amount.';
+      } else {
+        $('#modeCompute').removeAttribute('disabled');
+        // Show based on selected mode
+        const mode = getEntryMode();
+        knownBaseGroup.hidden = (mode !== 'known');
+        computeBaseGroup.hidden = (mode !== 'compute');
+        modeHint.textContent = 'Provide the assessed base tax or compute it from a taxable amount and a flat rate.';
+        // Suggest default rates
+        if(type === 'corporate' && !flatRateInput.value){
+          flatRateInput.value = '15';
+        }
+        if(type === 'capital' && !flatRateInput.value){
+          flatRateInput.value = '25';
+        }
+      }
+    }
+
+    function toggleTooltip(btn, content){
+      const expanded = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', String(!expanded));
+      content.setAttribute('aria-hidden', String(expanded));
+    }
+
+    function clearError(inputEl, key){
+      if(!errors[key]) return;
+      errors[key].textContent = '';
+      inputEl.setAttribute('aria-invalid','false');
+    }
+
+    function setError(inputEl, key, msg){
+      if(!errors[key]) return;
+      errors[key].textContent = msg;
+      inputEl.setAttribute('aria-invalid','true');
+    }
+
+    function validateNumber(inputEl, key, {required=true, min=0} = {}){
+      const v = inputEl.value.trim();
+      if(required && v === ''){
+        setError(inputEl, key, 'Please enter a value.');
+        return null;
+      }
+      const num = Number(v);
+      if(Number.isNaN(num)){
+        setError(inputEl, key, 'Enter a valid number (use digits and an optional decimal point).');
+        return null;
+      }
+      if(num < min){
+        setError(inputEl, key, `Value must be at least ${min}.`);
+        return null;
+      }
+      clearError(inputEl, key);
+      return num;
+    }
+
+    function computeBaseTax(){
+      const type = getSelectedTaxType();
+      const mode = getEntryMode();
+
+      if(type === 'income' || mode === 'known'){
+        const base = validateNumber(baseTaxInput, 'baseTax', {required:true, min:0});
+        return base ?? null;
+      } else {
+        const amount = validateNumber(taxableAmountInput, 'taxableAmount', {required:true, min:0});
+        const rate = validateNumber(flatRateInput, 'flatRate', {required:true, min:0});
+        if(amount == null || rate == null) return null;
+        return amount * (rate/100);
+      }
+    }
+
+    function computeSoli(baseTax){
+      const type = getSelectedTaxType();
+
+      if(baseTax <= 0) return 0;
+
+      if(type === 'income'){
+        const status = filingStatus.value === 'married' ? 'married' : 'single';
+        const {lower, upper} = thresholds[status];
+        if(baseTax <= lower) return 0;
+        if(baseTax <= upper) return 0.119 * (baseTax - lower);
+        return 0.055 * baseTax;
+      } else {
+        return 0.055 * baseTax;
+      }
+    }
+
+    function renderResults(baseTax, soli){
+      const total = baseTax + soli;
+      const eff = baseTax > 0 ? (soli/baseTax) : 0;
+
+      rBaseTax.textContent = fmtCurr.format(baseTax);
+      rSoli.textContent = fmtCurr.format(soli);
+      rEffRate.textContent = new Intl.NumberFormat('en-IE',{style:'percent',minimumFractionDigits:2,maximumFractionDigits:2}).format(eff);
+      rTotal.textContent = fmtCurr.format(total);
+    }
+
+    function calculate(){
+      // validate filing status if visible (not really invalidatable, but keep structure)
+      if(filingStatusGroup.style.display !== 'none'){
+        clearError(filingStatus, 'filingStatus');
+      }
+
+      const base = computeBaseTax();
+      if(base == null) {
+        calcStatus.textContent = 'Please correct the highlighted fields and try again.';
+        return;
+      }
+      const soli = computeSoli(base);
+      renderResults(round2(base), round2(soli));
+      calcStatus.textContent = 'Calculation complete.';
+    }
+
+    function round2(n){ return Math.round((n + Number.EPSILON) * 100) / 100; }
+
+    // Event wiring
+    taxTypeRadios.forEach(r => r.addEventListener('change', () => { toggleSections(); }));
+    entryModeRadios.forEach(r => r.addEventListener('change', () => { toggleSections(); }));
+
+    // Inline validation on blur
+    baseTaxInput.addEventListener('blur', () => validateNumber(baseTaxInput, 'baseTax', {required:true, min:0}));
+    if(taxableAmountInput) taxableAmountInput.addEventListener('blur', () => validateNumber(taxableAmountInput, 'taxableAmount', {required:true, min:0}));
+    if(flatRateInput) flatRateInput.addEventListener('blur', () => validateNumber(flatRateInput, 'flatRate', {required:true, min:0}));
+
+    // Calculate button
+    calcBtn.addEventListener('click', calculate);
+    // Also auto-calc on input changes to reduce INP
+    [baseTaxInput, taxableAmountInput, flatRateInput, filingStatus].forEach(el=>{
+      if(!el) return;
+      el.addEventListener('input', () => {
+        // Only auto-calc when fields are valid
+        const type = getSelectedTaxType();
+        if(type === 'income'){
+          if(validateNumber(baseTaxInput,'baseTax',{required:true,min:0})!=null) calculate();
+        } else {
+          const mode = getEntryMode();
+          if(mode === 'known'){
+            if(validateNumber(baseTaxInput,'baseTax',{required:true,min:0})!=null) calculate();
+          } else {
+            const okA = validateNumber(taxableAmountInput,'taxableAmount',{required:true,min:0})!=null;
+            const okR = validateNumber(flatRateInput,'flatRate',{required:true,min:0})!=null;
+            if(okA && okR) calculate();
+          }
+        }
+      });
+    });
+
+    // Tooltip toggle
+    baseTaxHelpBtn.addEventListener('click', () => toggleTooltip(baseTaxHelpBtn, baseTaxHelp));
+    baseTaxHelpBtn.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter' || e.key === ' '){
+        e.preventDefault();
+        toggleTooltip(baseTaxHelpBtn, baseTaxHelp);
+      }
+    });
+
+    // Initialize UI
+    toggleSections();
+  })();
+  </script></body></html>

@@ -251,10 +251,16 @@
 <script src="search.js" defer=""></script>
 <!-- MathJax for LaTeX formulas -->
 <script>
+  (function() {
+
+    'use strict';
+
   window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
     svg: { fontCache: 'global' }
   };
-</script>
+
+
+  })();</script>
 <script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <link rel="preload" href="/assets/js/mobile-menu.js" as="script">
 <link rel="preload" href="/assets/js/page-enhancements.js" as="script">
@@ -321,12 +327,24 @@
 }
 </script>
 </head>
-<body>
-<a class="skip-link" href="#maincontent">Skip to main content</a>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">NEC Service Load Calculator (Non-Dwelling)</h1>
+    <p class="sub" id="pageSub">NEC commercial load calculation made easy. Compute non-dwelling service loads per NEC Article 220 with an accessible, mobile-first calculator. Includes lighting, receptacles, motors (largest at 125%), and noncoincident HVAC.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<main class="main-content" id="maincontent" role="main">
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main class="main-content" id="maincontent" role="main">
 <div class="container">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>NEC Service Load Calculator (Non-Dwelling)</h1>
 <p>This professional calculator helps electrical engineers, designers, and inspectors perform NEC commercial load calculations for non-dwelling occupancies. It consolidates general lighting, receptacles (with demand factors), noncoincident HVAC, and motors (largest at 125%) to produce total kVA and service current for common voltage systems.</p>
 <div class="calculator-layout">
@@ -709,362 +727,21 @@
 </article>
 </div>
 </div>
+
+
 </main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
 
-      // Utilities
-      const $ = (id)=>document.getElementById(id);
-      const fmtKV = (va)=> (va/1000).toFixed(2) + ' kVA';
-      const fmtA = (a)=> a.toFixed(2) + ' A';
-      const clamp = (v,min,max)=> Math.max(min, Math.min(max, v));
+<button id="resetBtn" type="button" class="btn btnSecondary">Reset</button>
+</div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-      // Elements
-      const systemSelect = $('systemSelect');
-      const area = $('area');
-      const unitLoad = $('unitLoad');
-      const lightDemand = $('lightDemand');
-      const lightContinuous = $('lightContinuous');
-
-      const unitFt2 = $('unit-ft2');
-      const unitM2 = $('unit-m2');
-      const areaUnitSpan = $('areaUnit');
-
-      const recModeCount = $('recModeCount');
-      const recModeKnown = $('recModeKnown');
-      const recCountWrap = $('recCountWrap');
-      const recKnownWrap = $('recKnownWrap');
-      const recCount = $('recCount');
-      const recKnown = $('recKnown');
-      const use22044 = $('use22044');
-      const recDemand = $('recDemand');
-
-      const signVA = $('signVA');
-      const showWindowVA = $('showWindowVA');
-
-      const coolVA = $('coolVA');
-      const heatVA = $('heatVA');
-
-      const motorList = $('motorList');
-      const addMotor = $('addMotor');
-      const clearMotors = $('clearMotors');
-
-      const loadExample = $('loadExample');
-      const resetAll = $('resetAll');
-
-      const resLight = $('resLight');
-      const resRecept = $('resRecept');
-      const resSign = $('resSign');
-      const resHVAC = $('resHVAC');
-      const resMotors = $('resMotors');
-      const resTotal = $('resTotal');
-      const resAmps = $('resAmps');
-      const resNote = $('resNote');
-
-      // Tooltips toggling
-      function wireTooltip(idBtn, idTip){
-        const btn = $(idBtn), tip = $(idTip);
-        if (!btn || !tip) return;
-        btn.addEventListener('click', ()=>{
-          const open = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!open));
-          tip.hidden = open;
-        });
-      }
-      wireTooltip('',''); // placeholder in case none
-      // Map all tooltip buttons by data attributes or explicit:
-      [['tip-area','tip-area'],['tip-unitload','tip-unitload'],['tip-lightdf','tip-lightdf'],['tip-cont','tip-cont'],['tip-rec','tip-rec'],['tip-22044','tip-22044'],['tip-sign','tip-sign']]
-      .forEach(([btnId, tipId])=>{
-        // Buttons are adjacent labels - query dynamically
-        const tipEl = $(tipId);
-        if (!tipEl) return;
-        const btn = tipEl.previousElementSibling?.querySelector?.('.tooltip-btn') || document.querySelector('[aria-controls="'+tipId+'"]');
-        if (btn){
-          btn.addEventListener('click', ()=>{
-            const open = btn.getAttribute('aria-expanded') === 'true';
-            btn.setAttribute('aria-expanded', String(!open));
-            tipEl.hidden = open;
-          });
-        }
-      });
-
-      // Area unit toggle management
-      function currentAreaFt2(){
-        const val = parseFloat(area.value || '0');
-        if (isNaN(val) || val < 0) return 0;
-        if (unitM2.checked){
-          return val * 10.7639104167; // m2 to ft2
-        }
-        return val;
-      }
-      function updateAreaUnitLabel(){
-        areaUnitSpan.textContent = unitFt2.checked ? 'ft²' : 'm²';
-      }
-      unitFt2.addEventListener('change', updateAreaUnitLabel);
-      unitM2.addEventListener('change', updateAreaUnitLabel);
-
-      // Receptacle mode switching
-      function syncRecMode(){
-        const mode = recModeCount.checked ? 'count' : 'known';
-        recCountWrap.hidden = mode !== 'count';
-        recKnownWrap.hidden = mode !== 'known';
-      }
-      recModeCount.addEventListener('change', syncRecMode);
-      recModeKnown.addEventListener('change', syncRecMode);
-      syncRecMode();
-
-      // Motor rows
-      let motorIdSeq = 0;
-      function addMotorRow(kva=''){
-        const id = ++motorIdSeq;
-        const row = document.createElement('div');
-        row.className = 'grid-2';
-        row.style.alignItems = 'center';
-        row.style.gap = '.5rem';
-        row.style.marginBottom = '.5rem';
-        row.innerHTML = `
-          <div class="form-group" style="margin:0">
-            <label for="motor_${id}">Motor ${id} (kVA)</label>
-            <div class="input-group">
-              <input id="motor_${id}" class="form-control motor-input" type="number" min="0" step="0.01" value="${kva}" aria-label="Motor ${id} kVA">
-              <span class="suffix">kVA</span>
-            </div>
-          </div>
-          <div style="display:flex;gap:.5rem">
-            <button type="button" class="btn btn-secondary make-largest" aria-label="Set Motor ${id} as largest for reference">Mark</button>
-            <button type="button" class="btn" style="border:1px solid var(--border)" aria-label="Remove Motor ${id}">Remove</button>
-          </div>
-        `;
-        const [inputWrap, btnsWrap] = row.children;
-        const removeBtn = btnsWrap.querySelector('.btn:last-child');
-        removeBtn.addEventListener('click', ()=>{ row.remove(); compute(); });
-        const markBtn = btnsWrap.querySelector('.make-largest');
-        markBtn.addEventListener('click', ()=>{
-          // Focus this input to help the user; the calculator auto-detects largest by value
-          const inp = inputWrap.querySelector('input');
-          inp.focus();
-        });
-        inputWrap.querySelector('input').addEventListener('input', compute);
-        motorList.appendChild(row);
-      }
-      addMotor.addEventListener('click', ()=> addMotorRow(''));
-      clearMotors.addEventListener('click', ()=>{
-        motorList.innerHTML = '';
-        compute();
-      });
-      // Start with one row for UX
-      addMotorRow('');
-
-      // Validation helpers
-      function setError(inputEl, errorId, message){
-        const err = $(errorId);
-        if (!err) return;
-        if (message){
-          inputEl.setAttribute('aria-invalid','true');
-          err.textContent = message;
-        } else {
-          inputEl.removeAttribute('aria-invalid');
-          err.textContent = '';
-        }
-      }
-      function onBlurValidateNumber(inputEl, errorId, {min=0, required=false, label='This field'}={}){
-        inputEl.addEventListener('blur', ()=>{
-          const vStr = inputEl.value.trim();
-          const v = parseFloat(vStr);
-          if (required && (vStr==='')){
-            setError(inputEl, errorId, `${label} is required.`);
-            return;
-          }
-          if (vStr!=='' && (isNaN(v) || v < min)){
-            setError(inputEl, errorId, `${label} must be a number ≥ ${min}.`);
-            return;
-          }
-          setError(inputEl, errorId, '');
-        });
-      }
-
-      // Attach inline validations
-      onBlurValidateNumber(area, 'areaError', {min:0, required:true, label:'Floor area'});
-      onBlurValidateNumber(unitLoad, 'unitLoadError', {min:0, required:true, label:'Unit lighting load'});
-      onBlurValidateNumber(lightDemand, 'lightDemandError', {min:0, required:true, label:'Lighting demand factor'});
-      onBlurValidateNumber(recCount, 'recCountError', {min:0, required:false, label:'Receptacle count'});
-      onBlurValidateNumber(recKnown, 'recKnownError', {min:0, required:false, label:'Known receptacle load'});
-      onBlurValidateNumber(recDemand, 'recDemandError', {min:0, required:false, label:'Custom receptacle demand'});
-      onBlurValidateNumber(signVA, 'signVAError', {min:0, required:false, label:'Sign circuit load'});
-      onBlurValidateNumber(showWindowVA, 'showWindowVAError', {min:0, required:false, label:'Show window load'});
-      onBlurValidateNumber(coolVA, 'coolVAError', {min:0, required:false, label:'Cooling load'});
-      onBlurValidateNumber(heatVA, 'heatVAError', {min:0, required:false, label:'Heating load'});
-
-      // Calculation
-      function compute(){
-        // Lighting
-        const Aft2 = currentAreaFt2();
-        const U = parseFloat(unitLoad.value || '0') || 0;
-        let L_raw = Aft2 * U;
-        let D_L = clamp(parseFloat(lightDemand.value || '100') || 100, 0, 100)/100;
-        let C_L = lightContinuous.checked ? 1.25 : 1.0;
-        let L = L_raw * D_L * C_L;
-
-        // Receptacles
-        let R_raw = 0;
-        if (recModeCount.checked){
-          const n = Math.max(0, parseInt(recCount.value || '0', 10) || 0);
-          R_raw = n * 180;
-        } else {
-          R_raw = Math.max(0, parseFloat(recKnown.value || '0') || 0);
-        }
-        let R = 0;
-        if (use22044.checked){
-          R = Math.min(10000, R_raw) + 0.5 * Math.max(0, R_raw - 10000);
-        } else {
-          const D_R = clamp(parseFloat(recDemand.value || '100') || 100, 0, 100)/100;
-          R = R_raw * D_R;
-        }
-
-        // Signage + Window
-        const S = Math.max(0, parseFloat(signVA.value || '0') || 0);
-        const W = Math.max(0, parseFloat(showWindowVA.value || '0') || 0);
-
-        // HVAC noncoincident
-        const Hcool = Math.max(0, parseFloat(coolVA.value || '0') || 0);
-        const Hheat = Math.max(0, parseFloat(heatVA.value || '0') || 0);
-        const H = Math.max(Hcool, Hheat);
-
-        // Motors
-        const motorInputs = motorList.querySelectorAll('.motor-input');
-        let motorsSumVA = 0;
-        let largestMotorVA = 0;
-        motorInputs.forEach(inp=>{
-          const kva = Math.max(0, parseFloat(inp.value || '0') || 0);
-          const va = kva * 1000;
-          motorsSumVA += va;
-          if (va > largestMotorVA) largestMotorVA = va;
-        });
-        let M = motorsSumVA + 0.25 * largestMotorVA;
-
-        // Totals
-        const totalVA = L + R + S + W + H + M;
-        const totalKVA = totalVA / 1000;
-
-        // Current
-        const sys = systemSelect.value;
-        let VLL = 240; // default single-phase 120/240
-        let ph = 1;
-        if (sys === '3P-208'){ VLL = 208; ph = 3; }
-        if (sys === '3P-480'){ VLL = 480; ph = 3; }
-        if (sys === '1P-208'){ VLL = 208; ph = 1; }
-        const amps = ph === 3 ? (totalVA / (Math.sqrt(3) * VLL)) : (totalVA / VLL);
-
-        // Render
-        resLight.textContent = fmtKV(L);
-        resRecept.textContent = fmtKV(R);
-        resSign.textContent = fmtKV(S + W);
-        resHVAC.textContent = fmtKV(H);
-        resMotors.textContent = fmtKV(M);
-        resTotal.textContent = totalKVA.toFixed(2) + ' kVA';
-        resAmps.textContent = fmtA(isFinite(amps) ? amps : 0);
-
-        // Accessibility note
-        resNote.textContent = 'Calculation updated.';
-      }
-
-      // Bind input events (fast but lightweight)
-      [
-        systemSelect, area, unitLoad, lightDemand, lightContinuous,
-        recModeCount, recModeKnown, recCount, recKnown, use22044, recDemand,
-        signVA, showWindowVA, coolVA, heatVA, unitFt2, unitM2
-      ].forEach(el=> el.addEventListener('input', compute));
-
-      // Example values
-      loadExample.addEventListener('click', ()=>{
-        systemSelect.value = '3P-208';
-        unitFt2.checked = true; unitM2.checked = false; updateAreaUnitLabel();
-        area.value = '5000';
-        unitLoad.value = '1.3';
-        lightDemand.value = '100';
-        lightContinuous.checked = true;
-
-        recModeCount.checked = true; recModeKnown.checked = false; syncRecMode();
-        recCount.value = '60';
-        use22044.checked = true;
-        recDemand.value = '100';
-
-        signVA.value = '1200';
-        showWindowVA.value = '0';
-
-        coolVA.value = '18000';
-        heatVA.value = '25000';
-
-        motorList.innerHTML = '';
-        addMotorRow('5');
-        addMotorRow('3');
-        addMotorRow('2');
-
-        compute();
-        resNote.textContent = 'Loaded example values. Adjust as needed.';
-      });
-
-      // Reset
-      resetAll.addEventListener('click', ()=>{
-        document.querySelectorAll('input, select').forEach(el=>{
-          if (el.type === 'checkbox' || el.type === 'radio'){
-            // restore defaults
-            if (el.id === 'unit-ft2') el.checked = true;
-            if (el.id === 'unit-m2') el.checked = false;
-            if (el.id === 'recModeCount') el.checked = true;
-            if (el.id === 'recModeKnown') el.checked = false;
-            if (el.id === 'use22044') el.checked = true;
-            if (el.id === 'lightContinuous') el.checked = false;
-          } else if (el.tagName === 'SELECT'){
-            el.selectedIndex = 0;
-          } else {
-            // numeric defaults
-            if (el.id === 'lightDemand') el.value = '100';
-            else if (el.id === 'recDemand') el.value = '100';
-            else if (el.id === 'recCount') el.value = '0';
-            else if (el.id === 'recKnown') el.value = '0';
-            else if (el.id === 'signVA') el.value = '1200';
-            else if (el.id === 'showWindowVA') el.value = '0';
-            else if (el.id === 'coolVA') el.value = '0';
-            else if (el.id === 'heatVA') el.value = '0';
-            else el.value = '';
-          }
-        });
-        // clear errors
-        document.querySelectorAll('.error-message').forEach(e=> e.textContent = '');
-        updateAreaUnitLabel();
-        syncRecMode();
-        motorList.innerHTML = '';
-        addMotorRow('');
-        compute();
-        resNote.textContent = 'Reset complete.';
-      });
-
-      // Initial compute
-      updateAreaUnitLabel();
-      compute();
-
-      // Keyboard affordance hint (optional)
-      document.addEventListener('keydown', (e)=>{
-        if (e.key === 'Enter' && (e.target.matches('input') || e.target.matches('select'))){
-          compute();
-        }
-      });
-    })();
-  </script>
-
-</body></html>, ',
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#maincontent">Skip to main content</a><link rel="preload" href="/assets/js/mobile-menu.js" as="script"><link rel="preload" href="/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1096,41 +773,9 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "General",
-      "item": "https://calcdomain.com/categories/general"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Miscellaneous",
-      "item": "https://calcdomain.com/subcategories/miscellaneous"
-    }
-  ]
-}
-</script>
-</head>
-<body>
-<a class="skip-link" href="#maincontent">Skip to main content</a>
-
-<main class="main-content" id="maincontent" role="main">
+</style><a class="skip-link" href="#maincontent">Skip to main content</a><main class="main-content" id="maincontent" role="main">
 <div class="container">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>NEC Service Load Calculator (Non-Dwelling)</h1>
 <p>This professional calculator helps electrical engineers, designers, and inspectors perform NEC commercial load calculations for non-dwelling occupancies. It consolidates general lighting, receptacles (with demand factors), noncoincident HVAC, and motors (largest at 125%) to produce total kVA and service current for common voltage systems.</p>
 <div class="calculator-layout">
@@ -1513,362 +1158,7 @@
 </article>
 </div>
 </div>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
-
-      // Utilities
-      const $ = (id)=>document.getElementById(id);
-      const fmtKV = (va)=> (va/1000).toFixed(2) + ' kVA';
-      const fmtA = (a)=> a.toFixed(2) + ' A';
-      const clamp = (v,min,max)=> Math.max(min, Math.min(max, v));
-
-      // Elements
-      const systemSelect = $('systemSelect');
-      const area = $('area');
-      const unitLoad = $('unitLoad');
-      const lightDemand = $('lightDemand');
-      const lightContinuous = $('lightContinuous');
-
-      const unitFt2 = $('unit-ft2');
-      const unitM2 = $('unit-m2');
-      const areaUnitSpan = $('areaUnit');
-
-      const recModeCount = $('recModeCount');
-      const recModeKnown = $('recModeKnown');
-      const recCountWrap = $('recCountWrap');
-      const recKnownWrap = $('recKnownWrap');
-      const recCount = $('recCount');
-      const recKnown = $('recKnown');
-      const use22044 = $('use22044');
-      const recDemand = $('recDemand');
-
-      const signVA = $('signVA');
-      const showWindowVA = $('showWindowVA');
-
-      const coolVA = $('coolVA');
-      const heatVA = $('heatVA');
-
-      const motorList = $('motorList');
-      const addMotor = $('addMotor');
-      const clearMotors = $('clearMotors');
-
-      const loadExample = $('loadExample');
-      const resetAll = $('resetAll');
-
-      const resLight = $('resLight');
-      const resRecept = $('resRecept');
-      const resSign = $('resSign');
-      const resHVAC = $('resHVAC');
-      const resMotors = $('resMotors');
-      const resTotal = $('resTotal');
-      const resAmps = $('resAmps');
-      const resNote = $('resNote');
-
-      // Tooltips toggling
-      function wireTooltip(idBtn, idTip){
-        const btn = $(idBtn), tip = $(idTip);
-        if (!btn || !tip) return;
-        btn.addEventListener('click', ()=>{
-          const open = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!open));
-          tip.hidden = open;
-        });
-      }
-      wireTooltip('',''); // placeholder in case none
-      // Map all tooltip buttons by data attributes or explicit:
-      [['tip-area','tip-area'],['tip-unitload','tip-unitload'],['tip-lightdf','tip-lightdf'],['tip-cont','tip-cont'],['tip-rec','tip-rec'],['tip-22044','tip-22044'],['tip-sign','tip-sign']]
-      .forEach(([btnId, tipId])=>{
-        // Buttons are adjacent labels - query dynamically
-        const tipEl = $(tipId);
-        if (!tipEl) return;
-        const btn = tipEl.previousElementSibling?.querySelector?.('.tooltip-btn') || document.querySelector('[aria-controls="'+tipId+'"]');
-        if (btn){
-          btn.addEventListener('click', ()=>{
-            const open = btn.getAttribute('aria-expanded') === 'true';
-            btn.setAttribute('aria-expanded', String(!open));
-            tipEl.hidden = open;
-          });
-        }
-      });
-
-      // Area unit toggle management
-      function currentAreaFt2(){
-        const val = parseFloat(area.value || '0');
-        if (isNaN(val) || val < 0) return 0;
-        if (unitM2.checked){
-          return val * 10.7639104167; // m2 to ft2
-        }
-        return val;
-      }
-      function updateAreaUnitLabel(){
-        areaUnitSpan.textContent = unitFt2.checked ? 'ft²' : 'm²';
-      }
-      unitFt2.addEventListener('change', updateAreaUnitLabel);
-      unitM2.addEventListener('change', updateAreaUnitLabel);
-
-      // Receptacle mode switching
-      function syncRecMode(){
-        const mode = recModeCount.checked ? 'count' : 'known';
-        recCountWrap.hidden = mode !== 'count';
-        recKnownWrap.hidden = mode !== 'known';
-      }
-      recModeCount.addEventListener('change', syncRecMode);
-      recModeKnown.addEventListener('change', syncRecMode);
-      syncRecMode();
-
-      // Motor rows
-      let motorIdSeq = 0;
-      function addMotorRow(kva=''){
-        const id = ++motorIdSeq;
-        const row = document.createElement('div');
-        row.className = 'grid-2';
-        row.style.alignItems = 'center';
-        row.style.gap = '.5rem';
-        row.style.marginBottom = '.5rem';
-        row.innerHTML = `
-          <div class="form-group" style="margin:0">
-            <label for="motor_${id}">Motor ${id} (kVA)</label>
-            <div class="input-group">
-              <input id="motor_${id}" class="form-control motor-input" type="number" min="0" step="0.01" value="${kva}" aria-label="Motor ${id} kVA">
-              <span class="suffix">kVA</span>
-            </div>
-          </div>
-          <div style="display:flex;gap:.5rem">
-            <button type="button" class="btn btn-secondary make-largest" aria-label="Set Motor ${id} as largest for reference">Mark</button>
-            <button type="button" class="btn" style="border:1px solid var(--border)" aria-label="Remove Motor ${id}">Remove</button>
-          </div>
-        `;
-        const [inputWrap, btnsWrap] = row.children;
-        const removeBtn = btnsWrap.querySelector('.btn:last-child');
-        removeBtn.addEventListener('click', ()=>{ row.remove(); compute(); });
-        const markBtn = btnsWrap.querySelector('.make-largest');
-        markBtn.addEventListener('click', ()=>{
-          // Focus this input to help the user; the calculator auto-detects largest by value
-          const inp = inputWrap.querySelector('input');
-          inp.focus();
-        });
-        inputWrap.querySelector('input').addEventListener('input', compute);
-        motorList.appendChild(row);
-      }
-      addMotor.addEventListener('click', ()=> addMotorRow(''));
-      clearMotors.addEventListener('click', ()=>{
-        motorList.innerHTML = '';
-        compute();
-      });
-      // Start with one row for UX
-      addMotorRow('');
-
-      // Validation helpers
-      function setError(inputEl, errorId, message){
-        const err = $(errorId);
-        if (!err) return;
-        if (message){
-          inputEl.setAttribute('aria-invalid','true');
-          err.textContent = message;
-        } else {
-          inputEl.removeAttribute('aria-invalid');
-          err.textContent = '';
-        }
-      }
-      function onBlurValidateNumber(inputEl, errorId, {min=0, required=false, label='This field'}={}){
-        inputEl.addEventListener('blur', ()=>{
-          const vStr = inputEl.value.trim();
-          const v = parseFloat(vStr);
-          if (required && (vStr==='')){
-            setError(inputEl, errorId, `${label} is required.`);
-            return;
-          }
-          if (vStr!=='' && (isNaN(v) || v < min)){
-            setError(inputEl, errorId, `${label} must be a number ≥ ${min}.`);
-            return;
-          }
-          setError(inputEl, errorId, '');
-        });
-      }
-
-      // Attach inline validations
-      onBlurValidateNumber(area, 'areaError', {min:0, required:true, label:'Floor area'});
-      onBlurValidateNumber(unitLoad, 'unitLoadError', {min:0, required:true, label:'Unit lighting load'});
-      onBlurValidateNumber(lightDemand, 'lightDemandError', {min:0, required:true, label:'Lighting demand factor'});
-      onBlurValidateNumber(recCount, 'recCountError', {min:0, required:false, label:'Receptacle count'});
-      onBlurValidateNumber(recKnown, 'recKnownError', {min:0, required:false, label:'Known receptacle load'});
-      onBlurValidateNumber(recDemand, 'recDemandError', {min:0, required:false, label:'Custom receptacle demand'});
-      onBlurValidateNumber(signVA, 'signVAError', {min:0, required:false, label:'Sign circuit load'});
-      onBlurValidateNumber(showWindowVA, 'showWindowVAError', {min:0, required:false, label:'Show window load'});
-      onBlurValidateNumber(coolVA, 'coolVAError', {min:0, required:false, label:'Cooling load'});
-      onBlurValidateNumber(heatVA, 'heatVAError', {min:0, required:false, label:'Heating load'});
-
-      // Calculation
-      function compute(){
-        // Lighting
-        const Aft2 = currentAreaFt2();
-        const U = parseFloat(unitLoad.value || '0') || 0;
-        let L_raw = Aft2 * U;
-        let D_L = clamp(parseFloat(lightDemand.value || '100') || 100, 0, 100)/100;
-        let C_L = lightContinuous.checked ? 1.25 : 1.0;
-        let L = L_raw * D_L * C_L;
-
-        // Receptacles
-        let R_raw = 0;
-        if (recModeCount.checked){
-          const n = Math.max(0, parseInt(recCount.value || '0', 10) || 0);
-          R_raw = n * 180;
-        } else {
-          R_raw = Math.max(0, parseFloat(recKnown.value || '0') || 0);
-        }
-        let R = 0;
-        if (use22044.checked){
-          R = Math.min(10000, R_raw) + 0.5 * Math.max(0, R_raw - 10000);
-        } else {
-          const D_R = clamp(parseFloat(recDemand.value || '100') || 100, 0, 100)/100;
-          R = R_raw * D_R;
-        }
-
-        // Signage + Window
-        const S = Math.max(0, parseFloat(signVA.value || '0') || 0);
-        const W = Math.max(0, parseFloat(showWindowVA.value || '0') || 0);
-
-        // HVAC noncoincident
-        const Hcool = Math.max(0, parseFloat(coolVA.value || '0') || 0);
-        const Hheat = Math.max(0, parseFloat(heatVA.value || '0') || 0);
-        const H = Math.max(Hcool, Hheat);
-
-        // Motors
-        const motorInputs = motorList.querySelectorAll('.motor-input');
-        let motorsSumVA = 0;
-        let largestMotorVA = 0;
-        motorInputs.forEach(inp=>{
-          const kva = Math.max(0, parseFloat(inp.value || '0') || 0);
-          const va = kva * 1000;
-          motorsSumVA += va;
-          if (va > largestMotorVA) largestMotorVA = va;
-        });
-        let M = motorsSumVA + 0.25 * largestMotorVA;
-
-        // Totals
-        const totalVA = L + R + S + W + H + M;
-        const totalKVA = totalVA / 1000;
-
-        // Current
-        const sys = systemSelect.value;
-        let VLL = 240; // default single-phase 120/240
-        let ph = 1;
-        if (sys === '3P-208'){ VLL = 208; ph = 3; }
-        if (sys === '3P-480'){ VLL = 480; ph = 3; }
-        if (sys === '1P-208'){ VLL = 208; ph = 1; }
-        const amps = ph === 3 ? (totalVA / (Math.sqrt(3) * VLL)) : (totalVA / VLL);
-
-        // Render
-        resLight.textContent = fmtKV(L);
-        resRecept.textContent = fmtKV(R);
-        resSign.textContent = fmtKV(S + W);
-        resHVAC.textContent = fmtKV(H);
-        resMotors.textContent = fmtKV(M);
-        resTotal.textContent = totalKVA.toFixed(2) + ' kVA';
-        resAmps.textContent = fmtA(isFinite(amps) ? amps : 0);
-
-        // Accessibility note
-        resNote.textContent = 'Calculation updated.';
-      }
-
-      // Bind input events (fast but lightweight)
-      [
-        systemSelect, area, unitLoad, lightDemand, lightContinuous,
-        recModeCount, recModeKnown, recCount, recKnown, use22044, recDemand,
-        signVA, showWindowVA, coolVA, heatVA, unitFt2, unitM2
-      ].forEach(el=> el.addEventListener('input', compute));
-
-      // Example values
-      loadExample.addEventListener('click', ()=>{
-        systemSelect.value = '3P-208';
-        unitFt2.checked = true; unitM2.checked = false; updateAreaUnitLabel();
-        area.value = '5000';
-        unitLoad.value = '1.3';
-        lightDemand.value = '100';
-        lightContinuous.checked = true;
-
-        recModeCount.checked = true; recModeKnown.checked = false; syncRecMode();
-        recCount.value = '60';
-        use22044.checked = true;
-        recDemand.value = '100';
-
-        signVA.value = '1200';
-        showWindowVA.value = '0';
-
-        coolVA.value = '18000';
-        heatVA.value = '25000';
-
-        motorList.innerHTML = '';
-        addMotorRow('5');
-        addMotorRow('3');
-        addMotorRow('2');
-
-        compute();
-        resNote.textContent = 'Loaded example values. Adjust as needed.';
-      });
-
-      // Reset
-      resetAll.addEventListener('click', ()=>{
-        document.querySelectorAll('input, select').forEach(el=>{
-          if (el.type === 'checkbox' || el.type === 'radio'){
-            // restore defaults
-            if (el.id === 'unit-ft2') el.checked = true;
-            if (el.id === 'unit-m2') el.checked = false;
-            if (el.id === 'recModeCount') el.checked = true;
-            if (el.id === 'recModeKnown') el.checked = false;
-            if (el.id === 'use22044') el.checked = true;
-            if (el.id === 'lightContinuous') el.checked = false;
-          } else if (el.tagName === 'SELECT'){
-            el.selectedIndex = 0;
-          } else {
-            // numeric defaults
-            if (el.id === 'lightDemand') el.value = '100';
-            else if (el.id === 'recDemand') el.value = '100';
-            else if (el.id === 'recCount') el.value = '0';
-            else if (el.id === 'recKnown') el.value = '0';
-            else if (el.id === 'signVA') el.value = '1200';
-            else if (el.id === 'showWindowVA') el.value = '0';
-            else if (el.id === 'coolVA') el.value = '0';
-            else if (el.id === 'heatVA') el.value = '0';
-            else el.value = '';
-          }
-        });
-        // clear errors
-        document.querySelectorAll('.error-message').forEach(e=> e.textContent = '');
-        updateAreaUnitLabel();
-        syncRecMode();
-        motorList.innerHTML = '';
-        addMotorRow('');
-        compute();
-        resNote.textContent = 'Reset complete.';
-      });
-
-      // Initial compute
-      updateAreaUnitLabel();
-      compute();
-
-      // Keyboard affordance hint (optional)
-      document.addEventListener('keydown', (e)=>{
-        if (e.key === 'Enter' && (e.target.matches('input') || e.target.matches('select'))){
-          compute();
-        }
-      });
-    })();
-  </script>
-
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };,
-    svg: { fontCache: 'global' }
-  };
-</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="/assets/js/page-enhancements.js" as="script">
-
-
-<style>
+</main><link rel="preload" href="/assets/js/mobile-menu.js" as="script"><link rel="preload" href="/assets/js/page-enhancements.js" as="script"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1900,41 +1190,9 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "General",
-      "item": "https://calcdomain.com/categories/general"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Miscellaneous",
-      "item": "https://calcdomain.com/subcategories/miscellaneous"
-    }
-  ]
-}
-</script>
-</head>
-<body>
-<a class="skip-link" href="#maincontent">Skip to main content</a>
-
-<main class="main-content" id="maincontent" role="main">
+</style><a class="skip-link" href="#maincontent">Skip to main content</a><main class="main-content" id="maincontent" role="main">
 <div class="container">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>NEC Service Load Calculator (Non-Dwelling)</h1>
 <p>This professional calculator helps electrical engineers, designers, and inspectors perform NEC commercial load calculations for non-dwelling occupancies. It consolidates general lighting, receptacles (with demand factors), noncoincident HVAC, and motors (largest at 125%) to produce total kVA and service current for common voltage systems.</p>
 <div class="calculator-layout">
@@ -2317,9 +1575,48 @@
 </article>
 </div>
 </div>
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
     (function(){
       'use strict';
 
@@ -2661,6 +1958,738 @@
         }
       });
     })();
-  </script>
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "General",
+      "item": "https://calcdomain.com/categories/general"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Miscellaneous",
+      "item": "https://calcdomain.com/subcategories/miscellaneous"
+    }
+  ]
+}
+</script><script defer="">
+    (function(){
+      'use strict';
 
-</body></html>
+      // Utilities
+      const $ = (id)=>document.getElementById(id);
+      const fmtKV = (va)=> (va/1000).toFixed(2) + ' kVA';
+      const fmtA = (a)=> a.toFixed(2) + ' A';
+      const clamp = (v,min,max)=> Math.max(min, Math.min(max, v));
+
+      // Elements
+      const systemSelect = $('systemSelect');
+      const area = $('area');
+      const unitLoad = $('unitLoad');
+      const lightDemand = $('lightDemand');
+      const lightContinuous = $('lightContinuous');
+
+      const unitFt2 = $('unit-ft2');
+      const unitM2 = $('unit-m2');
+      const areaUnitSpan = $('areaUnit');
+
+      const recModeCount = $('recModeCount');
+      const recModeKnown = $('recModeKnown');
+      const recCountWrap = $('recCountWrap');
+      const recKnownWrap = $('recKnownWrap');
+      const recCount = $('recCount');
+      const recKnown = $('recKnown');
+      const use22044 = $('use22044');
+      const recDemand = $('recDemand');
+
+      const signVA = $('signVA');
+      const showWindowVA = $('showWindowVA');
+
+      const coolVA = $('coolVA');
+      const heatVA = $('heatVA');
+
+      const motorList = $('motorList');
+      const addMotor = $('addMotor');
+      const clearMotors = $('clearMotors');
+
+      const loadExample = $('loadExample');
+      const resetAll = $('resetAll');
+
+      const resLight = $('resLight');
+      const resRecept = $('resRecept');
+      const resSign = $('resSign');
+      const resHVAC = $('resHVAC');
+      const resMotors = $('resMotors');
+      const resTotal = $('resTotal');
+      const resAmps = $('resAmps');
+      const resNote = $('resNote');
+
+      // Tooltips toggling
+      function wireTooltip(idBtn, idTip){
+        const btn = $(idBtn), tip = $(idTip);
+        if (!btn || !tip) return;
+        btn.addEventListener('click', ()=>{
+          const open = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!open));
+          tip.hidden = open;
+        });
+      }
+      wireTooltip('',''); // placeholder in case none
+      // Map all tooltip buttons by data attributes or explicit:
+      [['tip-area','tip-area'],['tip-unitload','tip-unitload'],['tip-lightdf','tip-lightdf'],['tip-cont','tip-cont'],['tip-rec','tip-rec'],['tip-22044','tip-22044'],['tip-sign','tip-sign']]
+      .forEach(([btnId, tipId])=>{
+        // Buttons are adjacent labels - query dynamically
+        const tipEl = $(tipId);
+        if (!tipEl) return;
+        const btn = tipEl.previousElementSibling?.querySelector?.('.tooltip-btn') || document.querySelector('[aria-controls="'+tipId+'"]');
+        if (btn){
+          btn.addEventListener('click', ()=>{
+            const open = btn.getAttribute('aria-expanded') === 'true';
+            btn.setAttribute('aria-expanded', String(!open));
+            tipEl.hidden = open;
+          });
+        }
+      });
+
+      // Area unit toggle management
+      function currentAreaFt2(){
+        const val = parseFloat(area.value || '0');
+        if (isNaN(val) || val < 0) return 0;
+        if (unitM2.checked){
+          return val * 10.7639104167; // m2 to ft2
+        }
+        return val;
+      }
+      function updateAreaUnitLabel(){
+        areaUnitSpan.textContent = unitFt2.checked ? 'ft²' : 'm²';
+      }
+      unitFt2.addEventListener('change', updateAreaUnitLabel);
+      unitM2.addEventListener('change', updateAreaUnitLabel);
+
+      // Receptacle mode switching
+      function syncRecMode(){
+        const mode = recModeCount.checked ? 'count' : 'known';
+        recCountWrap.hidden = mode !== 'count';
+        recKnownWrap.hidden = mode !== 'known';
+      }
+      recModeCount.addEventListener('change', syncRecMode);
+      recModeKnown.addEventListener('change', syncRecMode);
+      syncRecMode();
+
+      // Motor rows
+      let motorIdSeq = 0;
+      function addMotorRow(kva=''){
+        const id = ++motorIdSeq;
+        const row = document.createElement('div');
+        row.className = 'grid-2';
+        row.style.alignItems = 'center';
+        row.style.gap = '.5rem';
+        row.style.marginBottom = '.5rem';
+        row.innerHTML = `
+          <div class="form-group" style="margin:0">
+            <label for="motor_${id}">Motor ${id} (kVA)</label>
+            <div class="input-group">
+              <input id="motor_${id}" class="form-control motor-input" type="number" min="0" step="0.01" value="${kva}" aria-label="Motor ${id} kVA">
+              <span class="suffix">kVA</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:.5rem">
+            <button type="button" class="btn btn-secondary make-largest" aria-label="Set Motor ${id} as largest for reference">Mark</button>
+            <button type="button" class="btn" style="border:1px solid var(--border)" aria-label="Remove Motor ${id}">Remove</button>
+          </div>
+        `;
+        const [inputWrap, btnsWrap] = row.children;
+        const removeBtn = btnsWrap.querySelector('.btn:last-child');
+        removeBtn.addEventListener('click', ()=>{ row.remove(); compute(); });
+        const markBtn = btnsWrap.querySelector('.make-largest');
+        markBtn.addEventListener('click', ()=>{
+          // Focus this input to help the user; the calculator auto-detects largest by value
+          const inp = inputWrap.querySelector('input');
+          inp.focus();
+        });
+        inputWrap.querySelector('input').addEventListener('input', compute);
+        motorList.appendChild(row);
+      }
+      addMotor.addEventListener('click', ()=> addMotorRow(''));
+      clearMotors.addEventListener('click', ()=>{
+        motorList.innerHTML = '';
+        compute();
+      });
+      // Start with one row for UX
+      addMotorRow('');
+
+      // Validation helpers
+      function setError(inputEl, errorId, message){
+        const err = $(errorId);
+        if (!err) return;
+        if (message){
+          inputEl.setAttribute('aria-invalid','true');
+          err.textContent = message;
+        } else {
+          inputEl.removeAttribute('aria-invalid');
+          err.textContent = '';
+        }
+      }
+      function onBlurValidateNumber(inputEl, errorId, {min=0, required=false, label='This field'}={}){
+        inputEl.addEventListener('blur', ()=>{
+          const vStr = inputEl.value.trim();
+          const v = parseFloat(vStr);
+          if (required && (vStr==='')){
+            setError(inputEl, errorId, `${label} is required.`);
+            return;
+          }
+          if (vStr!=='' && (isNaN(v) || v < min)){
+            setError(inputEl, errorId, `${label} must be a number ≥ ${min}.`);
+            return;
+          }
+          setError(inputEl, errorId, '');
+        });
+      }
+
+      // Attach inline validations
+      onBlurValidateNumber(area, 'areaError', {min:0, required:true, label:'Floor area'});
+      onBlurValidateNumber(unitLoad, 'unitLoadError', {min:0, required:true, label:'Unit lighting load'});
+      onBlurValidateNumber(lightDemand, 'lightDemandError', {min:0, required:true, label:'Lighting demand factor'});
+      onBlurValidateNumber(recCount, 'recCountError', {min:0, required:false, label:'Receptacle count'});
+      onBlurValidateNumber(recKnown, 'recKnownError', {min:0, required:false, label:'Known receptacle load'});
+      onBlurValidateNumber(recDemand, 'recDemandError', {min:0, required:false, label:'Custom receptacle demand'});
+      onBlurValidateNumber(signVA, 'signVAError', {min:0, required:false, label:'Sign circuit load'});
+      onBlurValidateNumber(showWindowVA, 'showWindowVAError', {min:0, required:false, label:'Show window load'});
+      onBlurValidateNumber(coolVA, 'coolVAError', {min:0, required:false, label:'Cooling load'});
+      onBlurValidateNumber(heatVA, 'heatVAError', {min:0, required:false, label:'Heating load'});
+
+      // Calculation
+      function compute(){
+        // Lighting
+        const Aft2 = currentAreaFt2();
+        const U = parseFloat(unitLoad.value || '0') || 0;
+        let L_raw = Aft2 * U;
+        let D_L = clamp(parseFloat(lightDemand.value || '100') || 100, 0, 100)/100;
+        let C_L = lightContinuous.checked ? 1.25 : 1.0;
+        let L = L_raw * D_L * C_L;
+
+        // Receptacles
+        let R_raw = 0;
+        if (recModeCount.checked){
+          const n = Math.max(0, parseInt(recCount.value || '0', 10) || 0);
+          R_raw = n * 180;
+        } else {
+          R_raw = Math.max(0, parseFloat(recKnown.value || '0') || 0);
+        }
+        let R = 0;
+        if (use22044.checked){
+          R = Math.min(10000, R_raw) + 0.5 * Math.max(0, R_raw - 10000);
+        } else {
+          const D_R = clamp(parseFloat(recDemand.value || '100') || 100, 0, 100)/100;
+          R = R_raw * D_R;
+        }
+
+        // Signage + Window
+        const S = Math.max(0, parseFloat(signVA.value || '0') || 0);
+        const W = Math.max(0, parseFloat(showWindowVA.value || '0') || 0);
+
+        // HVAC noncoincident
+        const Hcool = Math.max(0, parseFloat(coolVA.value || '0') || 0);
+        const Hheat = Math.max(0, parseFloat(heatVA.value || '0') || 0);
+        const H = Math.max(Hcool, Hheat);
+
+        // Motors
+        const motorInputs = motorList.querySelectorAll('.motor-input');
+        let motorsSumVA = 0;
+        let largestMotorVA = 0;
+        motorInputs.forEach(inp=>{
+          const kva = Math.max(0, parseFloat(inp.value || '0') || 0);
+          const va = kva * 1000;
+          motorsSumVA += va;
+          if (va > largestMotorVA) largestMotorVA = va;
+        });
+        let M = motorsSumVA + 0.25 * largestMotorVA;
+
+        // Totals
+        const totalVA = L + R + S + W + H + M;
+        const totalKVA = totalVA / 1000;
+
+        // Current
+        const sys = systemSelect.value;
+        let VLL = 240; // default single-phase 120/240
+        let ph = 1;
+        if (sys === '3P-208'){ VLL = 208; ph = 3; }
+        if (sys === '3P-480'){ VLL = 480; ph = 3; }
+        if (sys === '1P-208'){ VLL = 208; ph = 1; }
+        const amps = ph === 3 ? (totalVA / (Math.sqrt(3) * VLL)) : (totalVA / VLL);
+
+        // Render
+        resLight.textContent = fmtKV(L);
+        resRecept.textContent = fmtKV(R);
+        resSign.textContent = fmtKV(S + W);
+        resHVAC.textContent = fmtKV(H);
+        resMotors.textContent = fmtKV(M);
+        resTotal.textContent = totalKVA.toFixed(2) + ' kVA';
+        resAmps.textContent = fmtA(isFinite(amps) ? amps : 0);
+
+        // Accessibility note
+        resNote.textContent = 'Calculation updated.';
+      }
+
+      // Bind input events (fast but lightweight)
+      [
+        systemSelect, area, unitLoad, lightDemand, lightContinuous,
+        recModeCount, recModeKnown, recCount, recKnown, use22044, recDemand,
+        signVA, showWindowVA, coolVA, heatVA, unitFt2, unitM2
+      ].forEach(el=> el.addEventListener('input', compute));
+
+      // Example values
+      loadExample.addEventListener('click', ()=>{
+        systemSelect.value = '3P-208';
+        unitFt2.checked = true; unitM2.checked = false; updateAreaUnitLabel();
+        area.value = '5000';
+        unitLoad.value = '1.3';
+        lightDemand.value = '100';
+        lightContinuous.checked = true;
+
+        recModeCount.checked = true; recModeKnown.checked = false; syncRecMode();
+        recCount.value = '60';
+        use22044.checked = true;
+        recDemand.value = '100';
+
+        signVA.value = '1200';
+        showWindowVA.value = '0';
+
+        coolVA.value = '18000';
+        heatVA.value = '25000';
+
+        motorList.innerHTML = '';
+        addMotorRow('5');
+        addMotorRow('3');
+        addMotorRow('2');
+
+        compute();
+        resNote.textContent = 'Loaded example values. Adjust as needed.';
+      });
+
+      // Reset
+      resetAll.addEventListener('click', ()=>{
+        document.querySelectorAll('input, select').forEach(el=>{
+          if (el.type === 'checkbox' || el.type === 'radio'){
+            // restore defaults
+            if (el.id === 'unit-ft2') el.checked = true;
+            if (el.id === 'unit-m2') el.checked = false;
+            if (el.id === 'recModeCount') el.checked = true;
+            if (el.id === 'recModeKnown') el.checked = false;
+            if (el.id === 'use22044') el.checked = true;
+            if (el.id === 'lightContinuous') el.checked = false;
+          } else if (el.tagName === 'SELECT'){
+            el.selectedIndex = 0;
+          } else {
+            // numeric defaults
+            if (el.id === 'lightDemand') el.value = '100';
+            else if (el.id === 'recDemand') el.value = '100';
+            else if (el.id === 'recCount') el.value = '0';
+            else if (el.id === 'recKnown') el.value = '0';
+            else if (el.id === 'signVA') el.value = '1200';
+            else if (el.id === 'showWindowVA') el.value = '0';
+            else if (el.id === 'coolVA') el.value = '0';
+            else if (el.id === 'heatVA') el.value = '0';
+            else el.value = '';
+          }
+        });
+        // clear errors
+        document.querySelectorAll('.error-message').forEach(e=> e.textContent = '');
+        updateAreaUnitLabel();
+        syncRecMode();
+        motorList.innerHTML = '';
+        addMotorRow('');
+        compute();
+        resNote.textContent = 'Reset complete.';
+      });
+
+      // Initial compute
+      updateAreaUnitLabel();
+      compute();
+
+      // Keyboard affordance hint (optional)
+      document.addEventListener('keydown', (e)=>{
+        if (e.key === 'Enter' && (e.target.matches('input') || e.target.matches('select'))){
+          compute();
+        }
+      });
+    })();
+  </script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "General",
+      "item": "https://calcdomain.com/categories/general"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Miscellaneous",
+      "item": "https://calcdomain.com/subcategories/miscellaneous"
+    }
+  ]
+}
+</script><script defer="">
+    (function(){
+      'use strict';
+
+      // Utilities
+      const $ = (id)=>document.getElementById(id);
+      const fmtKV = (va)=> (va/1000).toFixed(2) + ' kVA';
+      const fmtA = (a)=> a.toFixed(2) + ' A';
+      const clamp = (v,min,max)=> Math.max(min, Math.min(max, v));
+
+      // Elements
+      const systemSelect = $('systemSelect');
+      const area = $('area');
+      const unitLoad = $('unitLoad');
+      const lightDemand = $('lightDemand');
+      const lightContinuous = $('lightContinuous');
+
+      const unitFt2 = $('unit-ft2');
+      const unitM2 = $('unit-m2');
+      const areaUnitSpan = $('areaUnit');
+
+      const recModeCount = $('recModeCount');
+      const recModeKnown = $('recModeKnown');
+      const recCountWrap = $('recCountWrap');
+      const recKnownWrap = $('recKnownWrap');
+      const recCount = $('recCount');
+      const recKnown = $('recKnown');
+      const use22044 = $('use22044');
+      const recDemand = $('recDemand');
+
+      const signVA = $('signVA');
+      const showWindowVA = $('showWindowVA');
+
+      const coolVA = $('coolVA');
+      const heatVA = $('heatVA');
+
+      const motorList = $('motorList');
+      const addMotor = $('addMotor');
+      const clearMotors = $('clearMotors');
+
+      const loadExample = $('loadExample');
+      const resetAll = $('resetAll');
+
+      const resLight = $('resLight');
+      const resRecept = $('resRecept');
+      const resSign = $('resSign');
+      const resHVAC = $('resHVAC');
+      const resMotors = $('resMotors');
+      const resTotal = $('resTotal');
+      const resAmps = $('resAmps');
+      const resNote = $('resNote');
+
+      // Tooltips toggling
+      function wireTooltip(idBtn, idTip){
+        const btn = $(idBtn), tip = $(idTip);
+        if (!btn || !tip) return;
+        btn.addEventListener('click', ()=>{
+          const open = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!open));
+          tip.hidden = open;
+        });
+      }
+      wireTooltip('',''); // placeholder in case none
+      // Map all tooltip buttons by data attributes or explicit:
+      [['tip-area','tip-area'],['tip-unitload','tip-unitload'],['tip-lightdf','tip-lightdf'],['tip-cont','tip-cont'],['tip-rec','tip-rec'],['tip-22044','tip-22044'],['tip-sign','tip-sign']]
+      .forEach(([btnId, tipId])=>{
+        // Buttons are adjacent labels - query dynamically
+        const tipEl = $(tipId);
+        if (!tipEl) return;
+        const btn = tipEl.previousElementSibling?.querySelector?.('.tooltip-btn') || document.querySelector('[aria-controls="'+tipId+'"]');
+        if (btn){
+          btn.addEventListener('click', ()=>{
+            const open = btn.getAttribute('aria-expanded') === 'true';
+            btn.setAttribute('aria-expanded', String(!open));
+            tipEl.hidden = open;
+          });
+        }
+      });
+
+      // Area unit toggle management
+      function currentAreaFt2(){
+        const val = parseFloat(area.value || '0');
+        if (isNaN(val) || val < 0) return 0;
+        if (unitM2.checked){
+          return val * 10.7639104167; // m2 to ft2
+        }
+        return val;
+      }
+      function updateAreaUnitLabel(){
+        areaUnitSpan.textContent = unitFt2.checked ? 'ft²' : 'm²';
+      }
+      unitFt2.addEventListener('change', updateAreaUnitLabel);
+      unitM2.addEventListener('change', updateAreaUnitLabel);
+
+      // Receptacle mode switching
+      function syncRecMode(){
+        const mode = recModeCount.checked ? 'count' : 'known';
+        recCountWrap.hidden = mode !== 'count';
+        recKnownWrap.hidden = mode !== 'known';
+      }
+      recModeCount.addEventListener('change', syncRecMode);
+      recModeKnown.addEventListener('change', syncRecMode);
+      syncRecMode();
+
+      // Motor rows
+      let motorIdSeq = 0;
+      function addMotorRow(kva=''){
+        const id = ++motorIdSeq;
+        const row = document.createElement('div');
+        row.className = 'grid-2';
+        row.style.alignItems = 'center';
+        row.style.gap = '.5rem';
+        row.style.marginBottom = '.5rem';
+        row.innerHTML = `
+          <div class="form-group" style="margin:0">
+            <label for="motor_${id}">Motor ${id} (kVA)</label>
+            <div class="input-group">
+              <input id="motor_${id}" class="form-control motor-input" type="number" min="0" step="0.01" value="${kva}" aria-label="Motor ${id} kVA">
+              <span class="suffix">kVA</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:.5rem">
+            <button type="button" class="btn btn-secondary make-largest" aria-label="Set Motor ${id} as largest for reference">Mark</button>
+            <button type="button" class="btn" style="border:1px solid var(--border)" aria-label="Remove Motor ${id}">Remove</button>
+          </div>
+        `;
+        const [inputWrap, btnsWrap] = row.children;
+        const removeBtn = btnsWrap.querySelector('.btn:last-child');
+        removeBtn.addEventListener('click', ()=>{ row.remove(); compute(); });
+        const markBtn = btnsWrap.querySelector('.make-largest');
+        markBtn.addEventListener('click', ()=>{
+          // Focus this input to help the user; the calculator auto-detects largest by value
+          const inp = inputWrap.querySelector('input');
+          inp.focus();
+        });
+        inputWrap.querySelector('input').addEventListener('input', compute);
+        motorList.appendChild(row);
+      }
+      addMotor.addEventListener('click', ()=> addMotorRow(''));
+      clearMotors.addEventListener('click', ()=>{
+        motorList.innerHTML = '';
+        compute();
+      });
+      // Start with one row for UX
+      addMotorRow('');
+
+      // Validation helpers
+      function setError(inputEl, errorId, message){
+        const err = $(errorId);
+        if (!err) return;
+        if (message){
+          inputEl.setAttribute('aria-invalid','true');
+          err.textContent = message;
+        } else {
+          inputEl.removeAttribute('aria-invalid');
+          err.textContent = '';
+        }
+      }
+      function onBlurValidateNumber(inputEl, errorId, {min=0, required=false, label='This field'}={}){
+        inputEl.addEventListener('blur', ()=>{
+          const vStr = inputEl.value.trim();
+          const v = parseFloat(vStr);
+          if (required && (vStr==='')){
+            setError(inputEl, errorId, `${label} is required.`);
+            return;
+          }
+          if (vStr!=='' && (isNaN(v) || v < min)){
+            setError(inputEl, errorId, `${label} must be a number ≥ ${min}.`);
+            return;
+          }
+          setError(inputEl, errorId, '');
+        });
+      }
+
+      // Attach inline validations
+      onBlurValidateNumber(area, 'areaError', {min:0, required:true, label:'Floor area'});
+      onBlurValidateNumber(unitLoad, 'unitLoadError', {min:0, required:true, label:'Unit lighting load'});
+      onBlurValidateNumber(lightDemand, 'lightDemandError', {min:0, required:true, label:'Lighting demand factor'});
+      onBlurValidateNumber(recCount, 'recCountError', {min:0, required:false, label:'Receptacle count'});
+      onBlurValidateNumber(recKnown, 'recKnownError', {min:0, required:false, label:'Known receptacle load'});
+      onBlurValidateNumber(recDemand, 'recDemandError', {min:0, required:false, label:'Custom receptacle demand'});
+      onBlurValidateNumber(signVA, 'signVAError', {min:0, required:false, label:'Sign circuit load'});
+      onBlurValidateNumber(showWindowVA, 'showWindowVAError', {min:0, required:false, label:'Show window load'});
+      onBlurValidateNumber(coolVA, 'coolVAError', {min:0, required:false, label:'Cooling load'});
+      onBlurValidateNumber(heatVA, 'heatVAError', {min:0, required:false, label:'Heating load'});
+
+      // Calculation
+      function compute(){
+        // Lighting
+        const Aft2 = currentAreaFt2();
+        const U = parseFloat(unitLoad.value || '0') || 0;
+        let L_raw = Aft2 * U;
+        let D_L = clamp(parseFloat(lightDemand.value || '100') || 100, 0, 100)/100;
+        let C_L = lightContinuous.checked ? 1.25 : 1.0;
+        let L = L_raw * D_L * C_L;
+
+        // Receptacles
+        let R_raw = 0;
+        if (recModeCount.checked){
+          const n = Math.max(0, parseInt(recCount.value || '0', 10) || 0);
+          R_raw = n * 180;
+        } else {
+          R_raw = Math.max(0, parseFloat(recKnown.value || '0') || 0);
+        }
+        let R = 0;
+        if (use22044.checked){
+          R = Math.min(10000, R_raw) + 0.5 * Math.max(0, R_raw - 10000);
+        } else {
+          const D_R = clamp(parseFloat(recDemand.value || '100') || 100, 0, 100)/100;
+          R = R_raw * D_R;
+        }
+
+        // Signage + Window
+        const S = Math.max(0, parseFloat(signVA.value || '0') || 0);
+        const W = Math.max(0, parseFloat(showWindowVA.value || '0') || 0);
+
+        // HVAC noncoincident
+        const Hcool = Math.max(0, parseFloat(coolVA.value || '0') || 0);
+        const Hheat = Math.max(0, parseFloat(heatVA.value || '0') || 0);
+        const H = Math.max(Hcool, Hheat);
+
+        // Motors
+        const motorInputs = motorList.querySelectorAll('.motor-input');
+        let motorsSumVA = 0;
+        let largestMotorVA = 0;
+        motorInputs.forEach(inp=>{
+          const kva = Math.max(0, parseFloat(inp.value || '0') || 0);
+          const va = kva * 1000;
+          motorsSumVA += va;
+          if (va > largestMotorVA) largestMotorVA = va;
+        });
+        let M = motorsSumVA + 0.25 * largestMotorVA;
+
+        // Totals
+        const totalVA = L + R + S + W + H + M;
+        const totalKVA = totalVA / 1000;
+
+        // Current
+        const sys = systemSelect.value;
+        let VLL = 240; // default single-phase 120/240
+        let ph = 1;
+        if (sys === '3P-208'){ VLL = 208; ph = 3; }
+        if (sys === '3P-480'){ VLL = 480; ph = 3; }
+        if (sys === '1P-208'){ VLL = 208; ph = 1; }
+        const amps = ph === 3 ? (totalVA / (Math.sqrt(3) * VLL)) : (totalVA / VLL);
+
+        // Render
+        resLight.textContent = fmtKV(L);
+        resRecept.textContent = fmtKV(R);
+        resSign.textContent = fmtKV(S + W);
+        resHVAC.textContent = fmtKV(H);
+        resMotors.textContent = fmtKV(M);
+        resTotal.textContent = totalKVA.toFixed(2) + ' kVA';
+        resAmps.textContent = fmtA(isFinite(amps) ? amps : 0);
+
+        // Accessibility note
+        resNote.textContent = 'Calculation updated.';
+      }
+
+      // Bind input events (fast but lightweight)
+      [
+        systemSelect, area, unitLoad, lightDemand, lightContinuous,
+        recModeCount, recModeKnown, recCount, recKnown, use22044, recDemand,
+        signVA, showWindowVA, coolVA, heatVA, unitFt2, unitM2
+      ].forEach(el=> el.addEventListener('input', compute));
+
+      // Example values
+      loadExample.addEventListener('click', ()=>{
+        systemSelect.value = '3P-208';
+        unitFt2.checked = true; unitM2.checked = false; updateAreaUnitLabel();
+        area.value = '5000';
+        unitLoad.value = '1.3';
+        lightDemand.value = '100';
+        lightContinuous.checked = true;
+
+        recModeCount.checked = true; recModeKnown.checked = false; syncRecMode();
+        recCount.value = '60';
+        use22044.checked = true;
+        recDemand.value = '100';
+
+        signVA.value = '1200';
+        showWindowVA.value = '0';
+
+        coolVA.value = '18000';
+        heatVA.value = '25000';
+
+        motorList.innerHTML = '';
+        addMotorRow('5');
+        addMotorRow('3');
+        addMotorRow('2');
+
+        compute();
+        resNote.textContent = 'Loaded example values. Adjust as needed.';
+      });
+
+      // Reset
+      resetAll.addEventListener('click', ()=>{
+        document.querySelectorAll('input, select').forEach(el=>{
+          if (el.type === 'checkbox' || el.type === 'radio'){
+            // restore defaults
+            if (el.id === 'unit-ft2') el.checked = true;
+            if (el.id === 'unit-m2') el.checked = false;
+            if (el.id === 'recModeCount') el.checked = true;
+            if (el.id === 'recModeKnown') el.checked = false;
+            if (el.id === 'use22044') el.checked = true;
+            if (el.id === 'lightContinuous') el.checked = false;
+          } else if (el.tagName === 'SELECT'){
+            el.selectedIndex = 0;
+          } else {
+            // numeric defaults
+            if (el.id === 'lightDemand') el.value = '100';
+            else if (el.id === 'recDemand') el.value = '100';
+            else if (el.id === 'recCount') el.value = '0';
+            else if (el.id === 'recKnown') el.value = '0';
+            else if (el.id === 'signVA') el.value = '1200';
+            else if (el.id === 'showWindowVA') el.value = '0';
+            else if (el.id === 'coolVA') el.value = '0';
+            else if (el.id === 'heatVA') el.value = '0';
+            else el.value = '';
+          }
+        });
+        // clear errors
+        document.querySelectorAll('.error-message').forEach(e=> e.textContent = '');
+        updateAreaUnitLabel();
+        syncRecMode();
+        motorList.innerHTML = '';
+        addMotorRow('');
+        compute();
+        resNote.textContent = 'Reset complete.';
+      });
+
+      // Initial compute
+      updateAreaUnitLabel();
+      compute();
+
+      // Keyboard affordance hint (optional)
+      document.addEventListener('keydown', (e)=>{
+        if (e.key === 'Enter' && (e.target.matches('input') || e.target.matches('select'))){
+          compute();
+        }
+      });
+    })();
+  </script></body></html>

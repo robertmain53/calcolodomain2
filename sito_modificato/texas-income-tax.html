@@ -157,7 +157,13 @@
   </style>
 <!-- MathJax for LaTeX rendering (deferred, non-blocking) -->
 <script>
-  window.MathJax = { tex: { inlineMath: [['\\(','\\)'], ['</script>
+  (function() {
+
+    'use strict';
+
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)'], ['
+
+  })();</script>
 <!-- Structured Data -->
 <script type="application/ld+json">{
   "@context": "https://schema.org",
@@ -320,11 +326,23 @@
 }
 </script>
 </head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
+<body><header id="siteHeader">
+  <div class="nav container">
+    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+    <div class="navRight">
+      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+      <span class="pill">Categories</span>
+    </div>
+  </div>
+</header><div class="container">
+  <main style="margin:24px 0 40px;" id="mainContent">
+    <h1 id="pageTitle">Texas State Income Tax Calculator</h1>
+    <p class="sub" id="pageSub">Texas has no state income tax. Use this professional, mobile-first calculator to confirm your Texas state income tax is $0 and see your after-state-tax income by pay period.</p>
+    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
 
-<main class="container" id="main-content" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+    <div class="calc-hero" id="calcHero">
+      <section class="card" id="inputsCard" aria-label="Calculator inputs"><main class="container" id="main-content" role="main">
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Texas State Income Tax Calculator</h1>
 <p>This professional-grade tool confirms your Texas state income tax liability is zero and shows your income after state tax by pay period. It is built for Texas workers, job seekers, employers, and financial planners who need a clear, accessible answer fast.</p>
 <div class="layout" id="calculator-layout">
@@ -533,254 +551,21 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
+
+
 </main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
+<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+<button id="calcBtn" type="button" class="btn">Calculate</button>
 
-      // Utilities
-      const $ = (sel, ctx=document) => ctx.querySelector(sel);
-      const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
-      const fmtUSD = new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits:2 });
-      const fmtPct = new Intl.NumberFormat('en-US', { style:'percent', minimumFractionDigits:0, maximumFractionDigits:1 });
+<button id="resetBtn" type="button" class="btn btnSecondary">Reset</button>
+</div>
+</section>
+      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
+    </div>
 
-      const form = $('#calcForm');
-      const incomeEl = $('#income');
-      const freqEl = $('#frequency');
-      const filingEl = $('#filingStatus');
-
-      const incomeErr = $('#incomeError');
-      const freqErr = $('#frequencyError');
-
-      const txRateEl = $('#txRate');
-      const annualStateTaxEl = $('#annualStateTax');
-      const annualAfterEl = $('#annualAfter');
-      const periodAfterEl = $('#periodAfter');
-      const effectiveRateEl = $('#effectiveRate');
-      const periodStateTaxEl = $('#periodStateTax');
-
-      const btnCalc = $('#calculateBtn');
-
-      // Help tooltips
-      const toggleHelp = (btnId, helpId) => {
-        const btn = document.getElementById(btnId);
-        const help = document.getElementById(helpId);
-        btn.addEventListener('click', () => {
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          help.setAttribute('aria-hidden', String(expanded));
-        });
-        // Close tooltip with Escape when focus inside help
-        help.addEventListener('keydown', (e)=>{
-          if(e.key === 'Escape'){
-            btn.setAttribute('aria-expanded','false');
-            help.setAttribute('aria-hidden','true');
-            btn.focus();
-          }
-        });
-      };
-      toggleHelp('incomeHelpBtn','incomeHelp');
-      toggleHelp('freqHelpBtn','freqHelp');
-      toggleHelp('statusHelpBtn','statusHelp');
-
-      // Validation
-      function validateIncome(){
-        const val = incomeEl.value.trim();
-        let msg = '';
-        if(val === ''){
-          msg = 'Please enter your annual gross income.';
-        } else {
-          const num = Number(val);
-          if(!(num >= 0)){
-            msg = 'Income must be a number greater than or equal to 0.';
-          } else if(num > 1000000000){
-            msg = 'For performance and realism, enter an amount less than $1,000,000,000.';
-          }
-        }
-        if(msg){
-          incomeEl.setAttribute('aria-invalid','true');
-          incomeErr.textContent = msg;
-          return false;
-        } else {
-          incomeEl.removeAttribute('aria-invalid');
-          incomeErr.textContent = '';
-          return true;
-        }
-      }
-
-      function validateFrequency(){
-        const ok = ['annual','monthly','biweekly','weekly'].includes(freqEl.value);
-        if(!ok){
-          freqEl.setAttribute('aria-invalid','true');
-          freqErr.textContent = 'Please select a valid pay frequency.';
-        } else {
-          freqEl.removeAttribute('aria-invalid');
-          freqErr.textContent = '';
-        }
-        return ok;
-      }
-
-      incomeEl.addEventListener('blur', validateIncome);
-      freqEl.addEventListener('blur', validateFrequency);
-
-      // Calculation
-      function periodsPer(freq){
-        switch(freq){
-          case 'monthly': return 12;
-          case 'biweekly': return 26;
-          case 'weekly': return 52;
-          default: return 1; // annual
-        }
-      }
-
-      function calculate(){
-        const valid = validateIncome() & validateFrequency(); // bitwise to ensure both run; returns 0/1
-        if(!valid){ return; }
-
-        const income = Number(incomeEl.value || 0);
-        const per = periodsPer(freqEl.value);
-
-        // Texas personal state income tax = 0
-        const txRate = 0;
-        const annualTx = 0;
-        const annualAfter = income - annualTx;
-        const perStateTax = annualTx / per;
-        const perAfter = annualAfter / per;
-
-        // Update UI
-        txRateEl.textContent = '0%';
-        annualStateTaxEl.textContent = fmtUSD.format(annualTx);
-        annualAfterEl.textContent = fmtUSD.format(annualAfter);
-        periodAfterEl.textContent = fmtUSD.format(isFinite(perAfter) ? perAfter : 0);
-        effectiveRateEl.textContent = income > 0 ? fmtPct.format(0) : '0%';
-        periodStateTaxEl.textContent = fmtUSD.format(isFinite(perStateTax) ? perStateTax : 0);
-      }
-
-      // Progressive enhancement: auto-calc on input changes
-      incomeEl.addEventListener('input', ()=>{ /* no heavy work while typing on mobile */ });
-      freqEl.addEventListener('change', calculate);
-      filingEl.addEventListener('change', calculate);
-      btnCalc.addEventListener('click', calculate);
-
-      // Initial render
-      calculate();
-
-      // Accessibility: Enter key on inputs triggers calc
-      form.addEventListener('keydown', (e)=>{
-        if(e.key === 'Enter'){
-          e.preventDefault();
-          calculate();
-        }
-      });
-    })();
-  </script>
-
-<script defer="" src="/assets/js/mobile-menu.js"></script>
-<script defer="" src="/assets/js/page-enhancements.js"></script>
-</body></html>, '</script>
-<!-- Structured Data -->
-<script type="application/ld+json">{
-  "@context": "https://schema.org",
-  "@type": "WebPage",
-  "name": "Texas State Income Tax Calculator",
-  "description": "Confirm that Texas personal state income tax is 0% and compute your after-state-tax income by pay period.",
-  "url": "https://calcdomain.com/texas-income-tax",
-  "inLanguage": "en",
-  "mainEntity": [
-    {
-      "@type": "HowTo",
-      "name": "Texas State Income Tax Calculator — Step-by-Step Example",
-      "description": "A practical example demonstrating that Texas state income tax is 0% for wage income.",
-      "totalTime": "PT1M",
-      "step": [
-        {
-          "@type": "HowToStep",
-          "name": "Input income",
-          "text": "Enter an annual gross income of $80,000."
-        },
-        {
-          "@type": "HowToStep",
-          "name": "Identify taxable base",
-          "text": "Texas has no personal state income tax. State taxable income is irrelevant for assessment because the rate is 0%."
-        },
-        {
-          "@type": "HowToStep",
-          "name": "Apply formula",
-          "text": "State tax = Taxable income × 0 = $0."
-        },
-        {
-          "@type": "HowToStep",
-          "name": "Review result",
-          "text": "Annual Texas state income tax = $0. Effective state rate = 0%. After-state-tax income = $80,000."
-        }
-      ]
-    },
-    {
-      "@type": "FAQPage",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "Does Texas have a state income tax?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "No. Texas does not levy a personal state income tax on wages or salaries."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Why is my Texas state income tax $0 in this calculator?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "The Texas state personal income tax rate is 0%, so the calculated state tax is $0 for all income levels."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Do any Texas cities charge local income tax?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "No. Texas does not allow local income taxes on wages."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Does filing status affect Texas state income tax?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Not for personal state income tax, because the rate is 0% regardless of filing status."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Are there other taxes that affect take-home pay in Texas?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Federal income tax and FICA (Social Security and Medicare) still apply. This tool focuses on Texas state income tax only."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is the Texas franchise (margin) tax an income tax?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "No. The margin tax is a business privilege tax. It does not apply to personal wages and is not calculated here."
-          }
-        }
-      ]
-    }
-  ],
-  "reviewedBy": {
-    "@type": "Person",
-    "name": "Ugo Candido"
-  },
-  "dateModified": "2026-01-19"
-}</script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="search.js" defer=""></script>
-
-<style>
+    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+      <h2>Full original guide (expanded)</h2>
+    <a class="skip-link" href="#main-content">Skip to main content</a><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -812,40 +597,8 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "General",
-      "item": "https://calcdomain.com/categories/general"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Miscellaneous",
-      "item": "https://calcdomain.com/subcategories/miscellaneous"
-    }
-  ]
-}
-</script>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="container" id="main-content" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="container" id="main-content" role="main">
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Texas State Income Tax Calculator</h1>
 <p>This professional-grade tool confirms your Texas state income tax liability is zero and shows your income after state tax by pay period. It is built for Texas workers, job seekers, employers, and financial planners who need a clear, accessible answer fast.</p>
 <div class="layout" id="calculator-layout">
@@ -1054,256 +807,7 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
-    (function(){
-      'use strict';
-
-      // Utilities
-      const $ = (sel, ctx=document) => ctx.querySelector(sel);
-      const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
-      const fmtUSD = new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits:2 });
-      const fmtPct = new Intl.NumberFormat('en-US', { style:'percent', minimumFractionDigits:0, maximumFractionDigits:1 });
-
-      const form = $('#calcForm');
-      const incomeEl = $('#income');
-      const freqEl = $('#frequency');
-      const filingEl = $('#filingStatus');
-
-      const incomeErr = $('#incomeError');
-      const freqErr = $('#frequencyError');
-
-      const txRateEl = $('#txRate');
-      const annualStateTaxEl = $('#annualStateTax');
-      const annualAfterEl = $('#annualAfter');
-      const periodAfterEl = $('#periodAfter');
-      const effectiveRateEl = $('#effectiveRate');
-      const periodStateTaxEl = $('#periodStateTax');
-
-      const btnCalc = $('#calculateBtn');
-
-      // Help tooltips
-      const toggleHelp = (btnId, helpId) => {
-        const btn = document.getElementById(btnId);
-        const help = document.getElementById(helpId);
-        btn.addEventListener('click', () => {
-          const expanded = btn.getAttribute('aria-expanded') === 'true';
-          btn.setAttribute('aria-expanded', String(!expanded));
-          help.setAttribute('aria-hidden', String(expanded));
-        });
-        // Close tooltip with Escape when focus inside help
-        help.addEventListener('keydown', (e)=>{
-          if(e.key === 'Escape'){
-            btn.setAttribute('aria-expanded','false');
-            help.setAttribute('aria-hidden','true');
-            btn.focus();
-          }
-        });
-      };
-      toggleHelp('incomeHelpBtn','incomeHelp');
-      toggleHelp('freqHelpBtn','freqHelp');
-      toggleHelp('statusHelpBtn','statusHelp');
-
-      // Validation
-      function validateIncome(){
-        const val = incomeEl.value.trim();
-        let msg = '';
-        if(val === ''){
-          msg = 'Please enter your annual gross income.';
-        } else {
-          const num = Number(val);
-          if(!(num >= 0)){
-            msg = 'Income must be a number greater than or equal to 0.';
-          } else if(num > 1000000000){
-            msg = 'For performance and realism, enter an amount less than $1,000,000,000.';
-          }
-        }
-        if(msg){
-          incomeEl.setAttribute('aria-invalid','true');
-          incomeErr.textContent = msg;
-          return false;
-        } else {
-          incomeEl.removeAttribute('aria-invalid');
-          incomeErr.textContent = '';
-          return true;
-        }
-      }
-
-      function validateFrequency(){
-        const ok = ['annual','monthly','biweekly','weekly'].includes(freqEl.value);
-        if(!ok){
-          freqEl.setAttribute('aria-invalid','true');
-          freqErr.textContent = 'Please select a valid pay frequency.';
-        } else {
-          freqEl.removeAttribute('aria-invalid');
-          freqErr.textContent = '';
-        }
-        return ok;
-      }
-
-      incomeEl.addEventListener('blur', validateIncome);
-      freqEl.addEventListener('blur', validateFrequency);
-
-      // Calculation
-      function periodsPer(freq){
-        switch(freq){
-          case 'monthly': return 12;
-          case 'biweekly': return 26;
-          case 'weekly': return 52;
-          default: return 1; // annual
-        }
-      }
-
-      function calculate(){
-        const valid = validateIncome() & validateFrequency(); // bitwise to ensure both run; returns 0/1
-        if(!valid){ return; }
-
-        const income = Number(incomeEl.value || 0);
-        const per = periodsPer(freqEl.value);
-
-        // Texas personal state income tax = 0
-        const txRate = 0;
-        const annualTx = 0;
-        const annualAfter = income - annualTx;
-        const perStateTax = annualTx / per;
-        const perAfter = annualAfter / per;
-
-        // Update UI
-        txRateEl.textContent = '0%';
-        annualStateTaxEl.textContent = fmtUSD.format(annualTx);
-        annualAfterEl.textContent = fmtUSD.format(annualAfter);
-        periodAfterEl.textContent = fmtUSD.format(isFinite(perAfter) ? perAfter : 0);
-        effectiveRateEl.textContent = income > 0 ? fmtPct.format(0) : '0%';
-        periodStateTaxEl.textContent = fmtUSD.format(isFinite(perStateTax) ? perStateTax : 0);
-      }
-
-      // Progressive enhancement: auto-calc on input changes
-      incomeEl.addEventListener('input', ()=>{ /* no heavy work while typing on mobile */ });
-      freqEl.addEventListener('change', calculate);
-      filingEl.addEventListener('change', calculate);
-      btnCalc.addEventListener('click', calculate);
-
-      // Initial render
-      calculate();
-
-      // Accessibility: Enter key on inputs triggers calc
-      form.addEventListener('keydown', (e)=>{
-        if(e.key === 'Enter'){
-          e.preventDefault();
-          calculate();
-        }
-      });
-    })();
-  </script>
-
-<script defer="" src="/assets/js/mobile-menu.js"></script>
-<script defer="" src="/assets/js/page-enhancements.js"></script>
-</body></html>]], displayMath: [['\\[','\\]']] }, svg: { fontCache: 'global' } };
-</script>
-<script defer="" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<!-- Structured Data -->
-<script type="application/ld+json">{
-  "@context": "https://schema.org",
-  "@type": "WebPage",
-  "name": "Texas State Income Tax Calculator",
-  "description": "Confirm that Texas personal state income tax is 0% and compute your after-state-tax income by pay period.",
-  "url": "https://calcdomain.com/texas-income-tax",
-  "inLanguage": "en",
-  "mainEntity": [
-    {
-      "@type": "HowTo",
-      "name": "Texas State Income Tax Calculator — Step-by-Step Example",
-      "description": "A practical example demonstrating that Texas state income tax is 0% for wage income.",
-      "totalTime": "PT1M",
-      "step": [
-        {
-          "@type": "HowToStep",
-          "name": "Input income",
-          "text": "Enter an annual gross income of $80,000."
-        },
-        {
-          "@type": "HowToStep",
-          "name": "Identify taxable base",
-          "text": "Texas has no personal state income tax. State taxable income is irrelevant for assessment because the rate is 0%."
-        },
-        {
-          "@type": "HowToStep",
-          "name": "Apply formula",
-          "text": "State tax = Taxable income × 0 = $0."
-        },
-        {
-          "@type": "HowToStep",
-          "name": "Review result",
-          "text": "Annual Texas state income tax = $0. Effective state rate = 0%. After-state-tax income = $80,000."
-        }
-      ]
-    },
-    {
-      "@type": "FAQPage",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "Does Texas have a state income tax?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "No. Texas does not levy a personal state income tax on wages or salaries."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Why is my Texas state income tax $0 in this calculator?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "The Texas state personal income tax rate is 0%, so the calculated state tax is $0 for all income levels."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Do any Texas cities charge local income tax?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "No. Texas does not allow local income taxes on wages."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Does filing status affect Texas state income tax?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Not for personal state income tax, because the rate is 0% regardless of filing status."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Are there other taxes that affect take-home pay in Texas?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Federal income tax and FICA (Social Security and Medicare) still apply. This tool focuses on Texas state income tax only."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is the Texas franchise (margin) tax an income tax?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "No. The margin tax is a business privilege tax. It does not apply to personal wages and is not calculated here."
-          }
-        }
-      ]
-    }
-  ],
-  "reviewedBy": {
-    "@type": "Person",
-    "name": "Ugo Candido"
-  },
-  "dateModified": "2026-01-19"
-}</script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="search.js" defer=""></script>
-
-<style>
+</main><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><style>
 /* AUDIT_SPINE_CSS */
 .auditspine-note{
   border:1px solid #e5e7eb;
@@ -1335,40 +839,8 @@
 }
 .auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
 .auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-</style>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "General",
-      "item": "https://calcdomain.com/categories/general"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Miscellaneous",
-      "item": "https://calcdomain.com/subcategories/miscellaneous"
-    }
-  ]
-}
-</script>
-</head>
-<body>
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
-<main class="container" id="main-content" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> &raquo; <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> &raquo; <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+</style><a class="skip-link" href="#main-content">Skip to main content</a><main class="container" id="main-content" role="main">
+<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
 <h1>Texas State Income Tax Calculator</h1>
 <p>This professional-grade tool confirms your Texas state income tax liability is zero and shows your income after state tax by pay period. It is built for Texas workers, job seekers, employers, and financial planners who need a clear, accessible answer fast.</p>
 <div class="layout" id="calculator-layout">
@@ -1577,9 +1049,48 @@
   </div>
 </section>
 <!-- AUDIT_SPINE_END -->
-</main>
-<!-- Standard Footer --> 
-<script defer="">
+</main></section>
+
+    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+  <details id="formulaDetails">
+    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
+    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
+    </div>
+  </details>
+
+  
+
+  
+
+  <div class="badge-row" id="badgeRow">
+    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
+  </div>
+
+<details id="citationDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
+  </div>
+</details>
+
+<details id="changelogDetails" style="margin-top:10px;">
+  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
+  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
+    <ul style="padding-left:18px; margin:0;">
+      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
+    </ul>
+  </div>
+</details>
+</section>
+  </main>
+</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
+  <div class="container mx-auto px-4">
+    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
+      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+    </div>
+  </div>
+</footer><script defer="">
     (function(){
       'use strict';
 
@@ -1718,8 +1229,522 @@
         }
       });
     })();
-  </script>
+  </script><script defer="" src="/assets/js/mobile-menu.js"></script><script defer="" src="/assets/js/page-enhancements.js"></script><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Texas State Income Tax Calculator",
+  "description": "Confirm that Texas personal state income tax is 0% and compute your after-state-tax income by pay period.",
+  "url": "https://calcdomain.com/texas-income-tax",
+  "inLanguage": "en",
+  "mainEntity": [
+    {
+      "@type": "HowTo",
+      "name": "Texas State Income Tax Calculator — Step-by-Step Example",
+      "description": "A practical example demonstrating that Texas state income tax is 0% for wage income.",
+      "totalTime": "PT1M",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "name": "Input income",
+          "text": "Enter an annual gross income of $80,000."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Identify taxable base",
+          "text": "Texas has no personal state income tax. State taxable income is irrelevant for assessment because the rate is 0%."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Apply formula",
+          "text": "State tax = Taxable income × 0 = $0."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Review result",
+          "text": "Annual Texas state income tax = $0. Effective state rate = 0%. After-state-tax income = $80,000."
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Does Texas have a state income tax?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Texas does not levy a personal state income tax on wages or salaries."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why is my Texas state income tax $0 in this calculator?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The Texas state personal income tax rate is 0%, so the calculated state tax is $0 for all income levels."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do any Texas cities charge local income tax?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Texas does not allow local income taxes on wages."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does filing status affect Texas state income tax?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Not for personal state income tax, because the rate is 0% regardless of filing status."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Are there other taxes that affect take-home pay in Texas?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Federal income tax and FICA (Social Security and Medicare) still apply. This tool focuses on Texas state income tax only."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is the Texas franchise (margin) tax an income tax?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. The margin tax is a business privilege tax. It does not apply to personal wages and is not calculated here."
+          }
+        }
+      ]
+    }
+  ],
+  "reviewedBy": {
+    "@type": "Person",
+    "name": "Ugo Candido"
+  },
+  "dateModified": "2026-01-19"
+}</script><script src="https://cdn.tailwindcss.com"></script><script src="search.js" defer=""></script><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "General",
+      "item": "https://calcdomain.com/categories/general"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Miscellaneous",
+      "item": "https://calcdomain.com/subcategories/miscellaneous"
+    }
+  ]
+}
+</script><script defer="">
+    (function(){
+      'use strict';
 
-<script defer="" src="/assets/js/mobile-menu.js"></script>
-<script defer="" src="/assets/js/page-enhancements.js"></script>
-</body></html>
+      // Utilities
+      const $ = (sel, ctx=document) => ctx.querySelector(sel);
+      const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+      const fmtUSD = new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits:2 });
+      const fmtPct = new Intl.NumberFormat('en-US', { style:'percent', minimumFractionDigits:0, maximumFractionDigits:1 });
+
+      const form = $('#calcForm');
+      const incomeEl = $('#income');
+      const freqEl = $('#frequency');
+      const filingEl = $('#filingStatus');
+
+      const incomeErr = $('#incomeError');
+      const freqErr = $('#frequencyError');
+
+      const txRateEl = $('#txRate');
+      const annualStateTaxEl = $('#annualStateTax');
+      const annualAfterEl = $('#annualAfter');
+      const periodAfterEl = $('#periodAfter');
+      const effectiveRateEl = $('#effectiveRate');
+      const periodStateTaxEl = $('#periodStateTax');
+
+      const btnCalc = $('#calculateBtn');
+
+      // Help tooltips
+      const toggleHelp = (btnId, helpId) => {
+        const btn = document.getElementById(btnId);
+        const help = document.getElementById(helpId);
+        btn.addEventListener('click', () => {
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          help.setAttribute('aria-hidden', String(expanded));
+        });
+        // Close tooltip with Escape when focus inside help
+        help.addEventListener('keydown', (e)=>{
+          if(e.key === 'Escape'){
+            btn.setAttribute('aria-expanded','false');
+            help.setAttribute('aria-hidden','true');
+            btn.focus();
+          }
+        });
+      };
+      toggleHelp('incomeHelpBtn','incomeHelp');
+      toggleHelp('freqHelpBtn','freqHelp');
+      toggleHelp('statusHelpBtn','statusHelp');
+
+      // Validation
+      function validateIncome(){
+        const val = incomeEl.value.trim();
+        let msg = '';
+        if(val === ''){
+          msg = 'Please enter your annual gross income.';
+        } else {
+          const num = Number(val);
+          if(!(num >= 0)){
+            msg = 'Income must be a number greater than or equal to 0.';
+          } else if(num > 1000000000){
+            msg = 'For performance and realism, enter an amount less than $1,000,000,000.';
+          }
+        }
+        if(msg){
+          incomeEl.setAttribute('aria-invalid','true');
+          incomeErr.textContent = msg;
+          return false;
+        } else {
+          incomeEl.removeAttribute('aria-invalid');
+          incomeErr.textContent = '';
+          return true;
+        }
+      }
+
+      function validateFrequency(){
+        const ok = ['annual','monthly','biweekly','weekly'].includes(freqEl.value);
+        if(!ok){
+          freqEl.setAttribute('aria-invalid','true');
+          freqErr.textContent = 'Please select a valid pay frequency.';
+        } else {
+          freqEl.removeAttribute('aria-invalid');
+          freqErr.textContent = '';
+        }
+        return ok;
+      }
+
+      incomeEl.addEventListener('blur', validateIncome);
+      freqEl.addEventListener('blur', validateFrequency);
+
+      // Calculation
+      function periodsPer(freq){
+        switch(freq){
+          case 'monthly': return 12;
+          case 'biweekly': return 26;
+          case 'weekly': return 52;
+          default: return 1; // annual
+        }
+      }
+
+      function calculate(){
+        const valid = validateIncome() & validateFrequency(); // bitwise to ensure both run; returns 0/1
+        if(!valid){ return; }
+
+        const income = Number(incomeEl.value || 0);
+        const per = periodsPer(freqEl.value);
+
+        // Texas personal state income tax = 0
+        const txRate = 0;
+        const annualTx = 0;
+        const annualAfter = income - annualTx;
+        const perStateTax = annualTx / per;
+        const perAfter = annualAfter / per;
+
+        // Update UI
+        txRateEl.textContent = '0%';
+        annualStateTaxEl.textContent = fmtUSD.format(annualTx);
+        annualAfterEl.textContent = fmtUSD.format(annualAfter);
+        periodAfterEl.textContent = fmtUSD.format(isFinite(perAfter) ? perAfter : 0);
+        effectiveRateEl.textContent = income > 0 ? fmtPct.format(0) : '0%';
+        periodStateTaxEl.textContent = fmtUSD.format(isFinite(perStateTax) ? perStateTax : 0);
+      }
+
+      // Progressive enhancement: auto-calc on input changes
+      incomeEl.addEventListener('input', ()=>{ /* no heavy work while typing on mobile */ });
+      freqEl.addEventListener('change', calculate);
+      filingEl.addEventListener('change', calculate);
+      btnCalc.addEventListener('click', calculate);
+
+      // Initial render
+      calculate();
+
+      // Accessibility: Enter key on inputs triggers calc
+      form.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter'){
+          e.preventDefault();
+          calculate();
+        }
+      });
+    })();
+  </script><script defer="" src="/assets/js/mobile-menu.js"></script><script defer="" src="/assets/js/page-enhancements.js"></script><script defer="" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Texas State Income Tax Calculator",
+  "description": "Confirm that Texas personal state income tax is 0% and compute your after-state-tax income by pay period.",
+  "url": "https://calcdomain.com/texas-income-tax",
+  "inLanguage": "en",
+  "mainEntity": [
+    {
+      "@type": "HowTo",
+      "name": "Texas State Income Tax Calculator — Step-by-Step Example",
+      "description": "A practical example demonstrating that Texas state income tax is 0% for wage income.",
+      "totalTime": "PT1M",
+      "step": [
+        {
+          "@type": "HowToStep",
+          "name": "Input income",
+          "text": "Enter an annual gross income of $80,000."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Identify taxable base",
+          "text": "Texas has no personal state income tax. State taxable income is irrelevant for assessment because the rate is 0%."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Apply formula",
+          "text": "State tax = Taxable income × 0 = $0."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Review result",
+          "text": "Annual Texas state income tax = $0. Effective state rate = 0%. After-state-tax income = $80,000."
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Does Texas have a state income tax?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Texas does not levy a personal state income tax on wages or salaries."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why is my Texas state income tax $0 in this calculator?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The Texas state personal income tax rate is 0%, so the calculated state tax is $0 for all income levels."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do any Texas cities charge local income tax?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Texas does not allow local income taxes on wages."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does filing status affect Texas state income tax?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Not for personal state income tax, because the rate is 0% regardless of filing status."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Are there other taxes that affect take-home pay in Texas?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Federal income tax and FICA (Social Security and Medicare) still apply. This tool focuses on Texas state income tax only."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is the Texas franchise (margin) tax an income tax?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. The margin tax is a business privilege tax. It does not apply to personal wages and is not calculated here."
+          }
+        }
+      ]
+    }
+  ],
+  "reviewedBy": {
+    "@type": "Person",
+    "name": "Ugo Candido"
+  },
+  "dateModified": "2026-01-19"
+}</script><script src="https://cdn.tailwindcss.com"></script><script src="search.js" defer=""></script><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://calcdomain.com"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "General",
+      "item": "https://calcdomain.com/categories/general"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Miscellaneous",
+      "item": "https://calcdomain.com/subcategories/miscellaneous"
+    }
+  ]
+}
+</script><script defer="">
+    (function(){
+      'use strict';
+
+      // Utilities
+      const $ = (sel, ctx=document) => ctx.querySelector(sel);
+      const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+      const fmtUSD = new Intl.NumberFormat('en-US', { style:'currency', currency:'USD', maximumFractionDigits:2 });
+      const fmtPct = new Intl.NumberFormat('en-US', { style:'percent', minimumFractionDigits:0, maximumFractionDigits:1 });
+
+      const form = $('#calcForm');
+      const incomeEl = $('#income');
+      const freqEl = $('#frequency');
+      const filingEl = $('#filingStatus');
+
+      const incomeErr = $('#incomeError');
+      const freqErr = $('#frequencyError');
+
+      const txRateEl = $('#txRate');
+      const annualStateTaxEl = $('#annualStateTax');
+      const annualAfterEl = $('#annualAfter');
+      const periodAfterEl = $('#periodAfter');
+      const effectiveRateEl = $('#effectiveRate');
+      const periodStateTaxEl = $('#periodStateTax');
+
+      const btnCalc = $('#calculateBtn');
+
+      // Help tooltips
+      const toggleHelp = (btnId, helpId) => {
+        const btn = document.getElementById(btnId);
+        const help = document.getElementById(helpId);
+        btn.addEventListener('click', () => {
+          const expanded = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!expanded));
+          help.setAttribute('aria-hidden', String(expanded));
+        });
+        // Close tooltip with Escape when focus inside help
+        help.addEventListener('keydown', (e)=>{
+          if(e.key === 'Escape'){
+            btn.setAttribute('aria-expanded','false');
+            help.setAttribute('aria-hidden','true');
+            btn.focus();
+          }
+        });
+      };
+      toggleHelp('incomeHelpBtn','incomeHelp');
+      toggleHelp('freqHelpBtn','freqHelp');
+      toggleHelp('statusHelpBtn','statusHelp');
+
+      // Validation
+      function validateIncome(){
+        const val = incomeEl.value.trim();
+        let msg = '';
+        if(val === ''){
+          msg = 'Please enter your annual gross income.';
+        } else {
+          const num = Number(val);
+          if(!(num >= 0)){
+            msg = 'Income must be a number greater than or equal to 0.';
+          } else if(num > 1000000000){
+            msg = 'For performance and realism, enter an amount less than $1,000,000,000.';
+          }
+        }
+        if(msg){
+          incomeEl.setAttribute('aria-invalid','true');
+          incomeErr.textContent = msg;
+          return false;
+        } else {
+          incomeEl.removeAttribute('aria-invalid');
+          incomeErr.textContent = '';
+          return true;
+        }
+      }
+
+      function validateFrequency(){
+        const ok = ['annual','monthly','biweekly','weekly'].includes(freqEl.value);
+        if(!ok){
+          freqEl.setAttribute('aria-invalid','true');
+          freqErr.textContent = 'Please select a valid pay frequency.';
+        } else {
+          freqEl.removeAttribute('aria-invalid');
+          freqErr.textContent = '';
+        }
+        return ok;
+      }
+
+      incomeEl.addEventListener('blur', validateIncome);
+      freqEl.addEventListener('blur', validateFrequency);
+
+      // Calculation
+      function periodsPer(freq){
+        switch(freq){
+          case 'monthly': return 12;
+          case 'biweekly': return 26;
+          case 'weekly': return 52;
+          default: return 1; // annual
+        }
+      }
+
+      function calculate(){
+        const valid = validateIncome() & validateFrequency(); // bitwise to ensure both run; returns 0/1
+        if(!valid){ return; }
+
+        const income = Number(incomeEl.value || 0);
+        const per = periodsPer(freqEl.value);
+
+        // Texas personal state income tax = 0
+        const txRate = 0;
+        const annualTx = 0;
+        const annualAfter = income - annualTx;
+        const perStateTax = annualTx / per;
+        const perAfter = annualAfter / per;
+
+        // Update UI
+        txRateEl.textContent = '0%';
+        annualStateTaxEl.textContent = fmtUSD.format(annualTx);
+        annualAfterEl.textContent = fmtUSD.format(annualAfter);
+        periodAfterEl.textContent = fmtUSD.format(isFinite(perAfter) ? perAfter : 0);
+        effectiveRateEl.textContent = income > 0 ? fmtPct.format(0) : '0%';
+        periodStateTaxEl.textContent = fmtUSD.format(isFinite(perStateTax) ? perStateTax : 0);
+      }
+
+      // Progressive enhancement: auto-calc on input changes
+      incomeEl.addEventListener('input', ()=>{ /* no heavy work while typing on mobile */ });
+      freqEl.addEventListener('change', calculate);
+      filingEl.addEventListener('change', calculate);
+      btnCalc.addEventListener('click', calculate);
+
+      // Initial render
+      calculate();
+
+      // Accessibility: Enter key on inputs triggers calc
+      form.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter'){
+          e.preventDefault();
+          calculate();
+        }
+      });
+    })();
+  </script><script defer="" src="/assets/js/mobile-menu.js"></script><script defer="" src="/assets/js/page-enhancements.js"></script></body></html>
