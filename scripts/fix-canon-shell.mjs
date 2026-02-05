@@ -189,6 +189,65 @@ function ensureCalcButtons($) {
   return changed;
 }
 
+function ensureScheduleWrap($) {
+  let changed = false;
+
+  const $tbody = $("tbody#scheduleBody").first();
+  if (!$tbody.length) return changed;
+
+  let $wrap = $("#scheduleWrap").first();
+  if ($wrap.length > 1) {
+    $wrap.slice(1).remove();
+    changed = true;
+    $wrap = $("#scheduleWrap").first();
+  }
+
+  if ($wrap.length) {
+    if (!$wrap.hasClass("tableWrap")) {
+      $wrap.addClass("tableWrap");
+      changed = true;
+    }
+    return changed;
+  }
+
+  const $table = $tbody.closest("table");
+  if ($table.length) {
+    $table.wrap('<div id="scheduleWrap" class="tableWrap"></div>');
+    changed = true;
+  } else {
+    $tbody.wrap('<div id="scheduleWrap" class="tableWrap"></div>');
+    changed = true;
+  }
+
+  return changed;
+}
+
+function ensureStrictIife($) {
+  let changed = false;
+  const html = $.html();
+  const hasIifeStrict =
+    /\(\s*\(\s*\)\s*=>\s*\{[\s\S]{0,4000}['"]use strict['"]\s*;/.test(html) ||
+    /function\s*\(\s*\)\s*\{[\s\S]{0,4000}['"]use strict['"]\s*;/.test(html);
+  if (hasIifeStrict) return changed;
+
+  const snippet = `
+<script>
+  (function() {
+    'use strict';
+  })();
+</script>
+`.trim();
+
+  const $body = $("body");
+  if ($body.length) {
+    $body.append("\n" + snippet + "\n");
+  } else {
+    $.root().append("\n" + snippet + "\n");
+  }
+  changed = true;
+  return changed;
+}
+
 let changedFiles = 0;
 
 for (const abs of files) {
@@ -200,6 +259,9 @@ for (const abs of files) {
   // 0) Ensure buttons exist + have canonical classes
   changed = ensureCalcButtons($) || changed;
 
+  // 0.5) Ensure schedule wrap exists when scheduleBody is present
+  changed = ensureScheduleWrap($) || changed;
+
   // 1) Ensure pageMeta exists
   const metaRes = ensurePageMeta($);
   changed = metaRes.changed || changed;
@@ -209,6 +271,9 @@ for (const abs of files) {
 
   // 3) Normalize required details inside #pageMeta
   changed = normalizeMetaDetails($, metaRes.$meta) || changed;
+
+  // 4) Ensure strict IIFE exists
+  changed = ensureStrictIife($) || changed;
 
   if (changed) {
     const after = $.html();
