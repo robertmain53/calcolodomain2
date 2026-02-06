@@ -2,7 +2,16 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const TARGETS = [
+function parseOnlyFilesEnv() {
+  const onlyFilesEnv = process.env.QA_ONLY_FILES;
+  if (!onlyFilesEnv || !onlyFilesEnv.trim()) return null;
+  return onlyFilesEnv
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+const TARGETS = parseOnlyFilesEnv() || [
   "sito_modificato/aci-concrete-mix-design.html",
   "sito_modificato/added-sugar.html",
   "sito_modificato/adhesive-calculator.html",
