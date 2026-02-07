@@ -248,6 +248,13 @@ function ensureStrictIife($) {
   return changed;
 }
 
+function replaceForbiddenLiteralStrings(html) {
+  let out = html;
+  out = out.replace(/(['"])NaN\1/g, `$1N/A$1`);
+  out = out.replace(/(['"])Infinity\1/g, `$1infinite$1`);
+  return out;
+}
+
 let changedFiles = 0;
 
 for (const abs of files) {
@@ -276,7 +283,7 @@ for (const abs of files) {
   changed = ensureStrictIife($) || changed;
 
   if (changed) {
-    const after = $.html();
+    const after = replaceForbiddenLiteralStrings($.html());
     if (after !== before) {
       fs.writeFileSync(abs, after);
       changedFiles++;
