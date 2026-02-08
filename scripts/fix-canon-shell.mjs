@@ -222,6 +222,19 @@ function ensureScheduleWrap($) {
   return changed;
 }
 
+function dedupeScheduleBodyIds($) {
+  let changed = false;
+  const $bodies = $("tbody#scheduleBody");
+  if ($bodies.length <= 1) return changed;
+  $bodies.each((idx, el) => {
+    if (idx === 0) return;
+    const newId = `scheduleBodyAlt${idx}`;
+    $(el).attr("id", newId);
+    changed = true;
+  });
+  return changed;
+}
+
 function ensureStrictIife($) {
   let changed = false;
   const html = $.html();
@@ -268,6 +281,9 @@ for (const abs of files) {
 
   // 0.5) Ensure schedule wrap exists when scheduleBody is present
   changed = ensureScheduleWrap($) || changed;
+
+  // 0.6) De-duplicate scheduleBody IDs
+  changed = dedupeScheduleBodyIds($) || changed;
 
   // 1) Ensure pageMeta exists
   const metaRes = ensurePageMeta($);
