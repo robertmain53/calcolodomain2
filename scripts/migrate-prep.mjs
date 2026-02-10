@@ -11,8 +11,16 @@ const BATCH_SIZE = Number(process.env.BATCH_SIZE || 10);
 
 function listHtml() {
   const files = fs.readdirSync(ROOT)
-    .filter((f) => f.endsWith(".html"))
     .map((f) => path.join(ROOT, f))
+    .filter((p) => path.extname(p) === ".html")
+    .filter((p) => {
+      try {
+        return fs.statSync(p).isFile();
+      } catch (err) {
+        return false;
+      }
+    })
+    .filter((p) => path.basename(p).toLowerCase() !== "index.html")
     .filter((p) => p !== CANON)
     .sort((a, b) => a.localeCompare(b));
   return files;
