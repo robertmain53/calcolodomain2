@@ -7,7 +7,11 @@ const OUT_DIR = "qa";
 const BATCH_DIR = path.join(OUT_DIR, "batches");
 const CANON = path.join(ROOT, "mortgage-payment.html");
 
-const BATCH_SIZE = Number(process.env.BATCH_SIZE || 10);
+const BATCH_SIZE = Number(
+  process.env.SCRIPTS_BATCH_SIZE ||
+  process.env.BATCH_SIZE ||
+  1
+);
 
 function listHtml() {
   const files = fs.readdirSync(ROOT)
