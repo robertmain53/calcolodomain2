@@ -1,824 +1,820 @@
 <!DOCTYPE html><html lang="en"><head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="canonical" href="https://calcdomain.com/bayesian-network">
+    <title>Bayesian Network Builder &amp; Inference Tool | CalcDomain</title>
+    <meta name="description" content="Build a simple Bayesian network in the browser: create nodes, set parent relationships, define conditional probability tables (CPTs), and run exact inference with evidence.">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
 
-  <title>Bayesian Network Builder &amp; Inference Tool</title>
-  <meta name="description" content="Build a simple Bayesian network in the browser: create nodes, set parent relationships, define conditional probability tables (CPTs), and run exact inference with evidence. Includes explanation of Bayesian networks and formulas.">
-  <link rel="canonical" href="https://calcdomain.com/bayesian-network">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Bayesian Network Builder &amp; Inference Tool | CalcDomain">
+    <meta property="og:description" content="Build a simple Bayesian network in the browser: create nodes, set parent relationships, define conditional probability tables (CPTs), and run exact inference with evidence.">
+    <meta property="og:url" content="https://calcdomain.com/bayesian-network">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Bayesian Network Builder &amp; Inference Tool | CalcDomain">
+    <meta name="twitter:description" content="Build a simple Bayesian network in the browser: create nodes, set parent relationships, define conditional probability tables (CPTs), and run exact inference with evidence.">
 
-  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96">
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="shortcut icon" href="/favicon.ico">
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-  <link rel="manifest" href="/site.webmanifest">
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="manifest" href="/site.webmanifest">
 
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+        .card { background: white; border: 1px solid #e5e7eb; border-radius: 0.75rem; padding: 1.5rem; }
+        .card + .card { margin-top: 1rem; }
+        .card-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .card-hover:hover { transform: translateY(-3px); box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12); }
+        .calc-input { width: 100%; padding: 0.65rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.95rem; }
+        .calc-input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+        .calc-label { display: block; font-size: 0.8rem; font-weight: 600; color: #475569; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .result-box { background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); border-radius: 0.75rem; padding: 1.2rem 1rem; text-align: center; }
+        .result-value { font-size: 1.9rem; font-weight: 700; color: #1e3a8a; }
+        .kpi-row { display: flex; justify-content: space-between; padding: 0.65rem 0; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; }
+        .kpi-row:last-child { border-bottom: none; }
+        .kpi-label { color: #6b7280; }
+        .kpi-value { font-weight: 700; color: #111827; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.75rem 1.25rem; border-radius: 0.65rem; font-weight: 600; cursor: pointer; border: none; }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-secondary { border: 1px solid #d1d5db; background: white; color: #374151; }
+        .btn-secondary:hover { background: #f9fafb; }
+        .btnSecondary { display: block; width: 100%; }
+        .alert { display: none; padding: 0.75rem 1rem; border-radius: 0.5rem; font-size: 0.9rem; margin-top: 0.5rem; }
+        .alert-error { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+        .sticky-box { position: sticky; top: 1.5rem; }
+        .nodes-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+        .nodes-list button { border-radius: 999px; border: 1px solid #d1d5db; padding: 0.35rem 0.9rem; font-size: 0.85rem; background: white; }
+        .nodes-list button.active { background: #bfdbfe; border-color: #93c5fd; color: #1e3a8a; }
+        .cpt-table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; }
+        .cpt-table th, .cpt-table td { border-bottom: 1px solid #e5e7eb; padding: 0.45rem 0.5rem; text-align: center; font-size: 0.85rem; }
+        .cpt-table th { font-weight: 600; font-size: 0.8rem; color: #475569; }
+        .scroll-x { overflow-x: auto; }
+        .help-text { font-size: 0.75rem; color: #6b7280; }
+        .sub { font-size: 1.1rem; color: #475569; }
+        .meta-section { background: white; border: 1px solid #e5e7eb; border-radius: 0.75rem; padding: 1.5rem; }
+        .container form { max-width: none; }
+        .badge-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+        .badge-info { display: inline-flex; align-items: center; gap: 0.35rem; border: 1px solid #d1d5db; border-radius: 999px; padding: 0.35rem 0.9rem; background: #f8fafc; font-size: 0.85rem; }
+        .result-detail { font-size: 0.95rem; color: #475569; margin-top: 0.75rem; min-height: 1.5rem; }
+        .grid-cols-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+        @media (max-width: 768px) { .grid-cols-2 { grid-template-columns: 1fr; } }
+    </style>
 
-  <style>
-    body { font-family: 'Inter', sans-serif; }
-    .card-hover { transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; }
-    .card-hover:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
-    .prose { max-width: 65ch; margin-left: auto; margin-right: auto; }
-    .prose h2 { font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; }
-    .prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; }
-    .prose p { margin-bottom: 1rem; line-height: 1.6; }
-    .prose ul, .prose ol { margin-left: 1.5rem; margin-bottom: 1rem; }
-    .prose li { margin-bottom: 0.5rem; }
-    .formula-box { background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; padding: 1rem; overflow-x: auto; margin: 1rem 0; }
-    .help-text { font-size:.7rem; color:#6b7280; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    table.cpt-table input[type="number"] { width: 5rem; }
-    table.cpt-table th, table.cpt-table td { padding: .35rem .5rem; }
-    .scroll-x { overflow-x:auto; }
-  </style>
+    <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
 
-  <!-- Google tag (gtag.js) -->
-  <script async="" src="https://www.googletagmanager.com/gtag/js?id=G-7MB5V1LZRN"></script>
-  <script>
-    (function() {
+    <script>
+        (function() {
+            'use strict';
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-7MB5V1LZRN');
+        })();
+    </script>
 
-      'use strict';
+    <script>
+        (function() {
+            'use strict';
+            window.ezstandalone = window.ezstandalone || {}; ezstandalone.cmd = ezstandalone.cmd || [];
+        })();
+    </script>
 
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-7MB5V1LZRN');
-  
-
-    })();</script>
-
-  <meta name="google-site-verification" content="_tiTZ9ivAdtXcAS9CMnTNJ549Sg39WVqP_ZFbWgglNA">
-
-  <script>
-      (function() {
-
-        'use strict';
-
-      window.ezstandalone = window.ezstandalone || {};
-      ezstandalone.cmd = ezstandalone.cmd || [];
-  
-
-      })();</script>
-
-  <script type="application/ld+json">
-{
+    <script type="application/ld+json">{
   "@context": "https://schema.org",
   "@graph": [
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "Home",
-          "item": "https://calcdomain.com"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "General",
-          "item": "https://calcdomain.com/categories/general"
-        },
-        {
-          "@type": "ListItem",
-          "position": 3,
-          "name": "Miscellaneous",
-          "item": "https://calcdomain.com/subcategories/miscellaneous"
-        }
+        {"@type": "ListItem","position": 1,"name": "Home","item": "https://calcdomain.com"},
+        {"@type": "ListItem","position": 2,"name": "General","item": "https://calcdomain.com/categories/general"},
+        {"@type": "ListItem","position": 3,"name": "Miscellaneous","item": "https://calcdomain.com/subcategories/miscellaneous"}
       ]
     },
     {
       "@type": "FAQPage",
       "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "What is a Bayesian network?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "A Bayesian network is a probabilistic graphical model that represents variables and their conditional dependencies using a directed acyclic graph (DAG). Each node has a conditional probability table (CPT) that quantifies the effect of its parents."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can I run inference with evidence?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. After defining your nodes and CPTs, select a query variable and set evidence for other variables. The tool will perform exact enumeration to compute P(Query | Evidence)."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is this for production?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "No. This is an educational, in-browser tool for small Bayesian networks. For large models and performance, use a dedicated library or engine."
-          }
-        }
+        {"@type": "Question","name": "What is a Bayesian network?","acceptedAnswer": {"@type": "Answer","text": "A Bayesian network is a probabilistic graphical model that represents variables and their conditional dependencies using a directed acyclic graph (DAG). Each node has a conditional probability table (CPT) that quantifies the effect of its parents."}},
+        {"@type": "Question","name": "Can I run inference with evidence?","acceptedAnswer": {"@type": "Answer","text": "Yes. After defining your nodes and CPTs, select a query variable and set evidence for other variables. The tool will perform exact enumeration to compute P(Query | Evidence)."}},
+        {"@type": "Question","name": "Is this for production?","acceptedAnswer": {"@type": "Answer","text": "No. This is an educational, in-browser tool for small Bayesian networks. For large models and performance, use a dedicated library or engine."}}
       ]
     },
     {
       "@type": "HowTo",
       "name": "How to build a Bayesian network here",
       "step": [
-        {
-          "@type": "HowToStep",
-          "text": "Click “Add node” to create binary variables (True/False)."
-        },
-        {
-          "@type": "HowToStep",
-          "text": "Select a node and choose its parents from existing nodes."
-        },
-        {
-          "@type": "HowToStep",
-          "text": "Fill the conditional probability table for that node."
-        },
-        {
-          "@type": "HowToStep",
-          "text": "Pick a query variable, add evidence, and run inference."
-        }
+        {"@type": "HowToStep","text": "Click “Add node” to create binary variables (True/False)."},
+        {"@type": "HowToStep","text": "Select a node and choose its parents from existing nodes."},
+        {"@type": "HowToStep","text": "Fill the conditional probability table for that node."},
+        {"@type": "HowToStep","text": "Pick a query variable, add evidence, and run inference."}
       ]
     }
   ]
-}
-</script>
+}</script>
 
-<style>
-/* AUDIT_SPINE_CSS */
-.auditspine-note{
-  border:1px solid #e5e7eb;
-  background:#fff;
-  border-radius:12px;
-  padding:12px;
-  color:#475569;
-  font-size:13px;
-  line-height:1.5;
-}
-.auditspine-mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
-.auditspine-changelog{
-  border:1px solid #e5e7eb;
-  background:#fff;
-  border-left:5px solid #334155;
-  border-radius:12px;
-  padding:12px;
-  font-size:13px;
-  color:#475569;
-}
-.auditspine-formula{
-  margin:10px 0;
-  background:#0b1220;
-  color:#e5e7eb;
-  border-radius:12px;
-  padding:12px;
-  border:1px solid rgba(255,255,255,.12);
-  overflow-x:auto;
-}
-.auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
-.auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-.auditspine-badge{
-  display:inline-block;
-  padding:4px 10px;
-  border-radius:999px;
-  font-size:12px;
-  font-weight:600;
-  border:1px solid #e5e7eb;
-  background:#f8fafc;
-  color:#0f172a;
-}
-.auditspine-badge-warn{
-  background:#fff7ed;
-  border-color:#fed7aa;
-  color:#9a3412;
-}
-</style>
-</head>
-<body class="bg-gray-50 text-gray-800"><header id="siteHeader">
-  <div class="nav container">
-    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
-    <div class="navRight">
-      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
-      <span class="pill">Categories</span>
-    </div>
-  </div>
-</header><div class="container">
-  <main style="margin:24px 0 40px;" id="mainContent">
-    <h1 id="pageTitle">Bayesian Network (Interactive)</h1>
-    <p class="sub" id="pageSub">Build a simple Bayesian network in the browser: create nodes, set parent relationships, define conditional probability tables (CPTs), and run exact inference with evidence. Includes explanation of Bayesian networks and formulas.</p>
-    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
+</head><body class="bg-gray-50 text-gray-800">
 
-    <div class="calc-hero" id="calcHero">
-      <section class="card" id="inputsCard" aria-label="Calculator inputs"><input type="search" id="search-input" placeholder="Search for a calculator..." class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
-<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
-<button id="calcBtn" type="button" class="btn">Calculate</button>
-
-<button id="resetBtn" type="button" class="btn btnSecondary">Reset</button>
-</div>
-</section>
-      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
-    </div>
-
-    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
-      <h2>Full original guide (expanded)</h2>
-    <header class="bg-white shadow-sm sticky top-0 z-50">
-    <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
-      <div class="flex justify-between items-center">
-        <a href="https://calcdomain.com" class="text-2xl font-bold text-blue-600">CalcDomain</a>
-        <div class="w-full max-w-md hidden md:block mx-8">
-          <div class="relative">
-            
-            <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            <div id="search-results" class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200"></div>
+    <header id="siteHeader" class="bg-white shadow-sm sticky top-0 z-50">
+      <nav class="nav container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
+        <div class="flex justify-between items-center">
+          <a class="brand text-2xl font-bold text-blue-600" href="https://calcdomain.com">CalcDomain</a>
+          <div class="w-full max-w-md hidden md:block mx-8">
+            <div class="relative">
+              <input type="search" id="search-input" placeholder="Search for a calculator..." class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+              <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+              <div id="search-results" class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200"></div>
+            </div>
           </div>
-        </div>
-        <div class="hidden md:flex items-center space-x-6">
-          <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600 transition-colors">Advanced Search</a>
-          <a href="https://calcdomain.com/#categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
-        </div>
-        <button id="mobile-menu-toggle" class="md:hidden p-2" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" type="button">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-        </button>
-      </div>
-      <nav id="mobile-menu" class="md:hidden mt-4 hidden" aria-label="Mobile menu" role="navigation">
-        <div class="mb-4">
-          <div class="relative">
-            <input type="search" id="mobile-search-input" placeholder="Search calculators..." class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          <div class="navRight hidden md:flex items-center space-x-6">
+            <a class="pill text-gray-700 hover:text-blue-600 transition-colors" href="https://calcdomain.com/search">Advanced Search</a>
+            <span class="pill text-gray-700 hover:text-blue-600 transition-colors">Categories</span>
           </div>
+          <button id="mobile-menu-toggle" class="md:hidden p-2" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" type="button">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+          </button>
         </div>
-        <div class="space-y-2">
-          <a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
-          <a href="https://calcdomain.com/#categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
-        </div>
+        <nav id="mobile-menu" class="md:hidden mt-4 hidden" aria-label="Mobile menu" role="navigation">
+          <div class="mb-4">
+            <div class="relative">
+              <input type="search" id="mobile-search-input" placeholder="Search calculators..." class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
+            <a href="https://calcdomain.com/#categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
+          </div>
+        </nav>
       </nav>
-    </nav>
-  </header><div class="container mx-auto px-4 py-8">
+    </header>
 
-    <nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="hover:text-blue-600">Home</a> » <a href="https://calcdomain.com/categories/general" class="hover:text-blue-600">General</a> » <a href="https://calcdomain.com/subcategories/miscellaneous" class="hover:text-blue-600">Miscellaneous</a></nav>
+    <main id="mainContent" class="container mx-auto px-4 py-8">
+      <nav id="breadcrumb-container" class="text-sm mb-4 text-gray-600">
+        <ol class="flex flex-wrap items-center gap-1">
+          <li><a href="https://calcdomain.com" class="text-blue-600 hover:underline">Home</a></li>
+          <li class="text-gray-400">/</li>
+          <li><a href="https://calcdomain.com/categories/general" class="text-blue-600 hover:underline">General</a></li>
+          <li class="text-gray-400">/</li>
+          <li><span class="text-gray-800">Miscellaneous</span></li>
+        </ol>
+      </nav>
 
-    <div class="flex flex-col lg:flex-row gap-8">
-      <main class="w-full lg:w-2/3">
-        <div class="bg-white p-6 rounded-lg shadow-md">
-          <header class="mb-6">
-            <h1 class="text-2xl font-bold mb-2">Bayesian Network (Interactive)</h1>
-            <p class="text-gray-600">Create a small directed acyclic graph (DAG) of binary variables, specify conditional probability tables, and run exact inference with evidence — right in the browser.</p>
-            <p class="text-xs text-gray-500 mt-2">Note: this tool is for <strong>learning</strong>. For large models use a specialized engine.</p>
-          </header>
+      <div class="space-y-3">
+        <h1 id="pageTitle" class="text-3xl font-bold text-gray-900">Bayesian Network (Interactive)</h1>
+        <p id="pageSub" class="sub text-lg">
+          Build a simple Bayesian network in the browser: create nodes, set parent relationships, define conditional probability tables (CPTs), and run exact inference with evidence.
+        </p>
+        <div id="errorBox" class="alert alert-error" role="alert" aria-live="polite"></div>
+      </div>
 
-          <section class="mb-6">
-            <h2 class="text-lg font-semibold mb-3">1. Nodes</h2>
-            <div class="flex items-center gap-3 mb-3">
-              <button id="add-node-btn" class="bg-blue-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-blue-700">Add node</button>
-              <p class="help-text">All nodes are boolean: True / False.</p>
-            </div>
-            <div id="nodes-list" class="flex flex-wrap gap-2 mb-3"></div>
-            <p id="node-error" class="text-xs text-red-500"></p>
-          </section>
-
-          <section class="mb-6" id="node-editor" style="display:none;">
-            <h2 class="text-lg font-semibold mb-3">2. Node editor</h2>
-            <p class="help-text mb-2">Selected node: <span id="selected-node-name" class="font-semibold text-gray-800"></span></p>
-            <div class="mb-4">
-              <label class="text-sm font-medium text-gray-700">Parents</label>
-              <p class="help-text mb-1">Select other nodes that this node depends on. The CPT will update.</p>
-              <div id="parent-checkboxes" class="flex flex-wrap gap-3"></div>
-            </div>
+      <div class="calc-hero mt-8" id="calcHero" aria-label="Calculator hero">
+        <section class="card" id="inputsCard" aria-label="Calculator inputs">
+          <div class="space-y-6">
             <div>
-              <label class="text-sm font-medium text-gray-700 mb-1 block">Conditional Probability Table (P(Node = True | Parents))</label>
-              <div class="scroll-x">
-                <table class="cpt-table text-sm border border-gray-200 rounded-md" id="cpt-table">
-                  <!-- dynamic -->
-                </table>
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-lg font-semibold text-gray-700">Nodes &amp; structure</h3>
+                <button id="addNodeBtn" type="button" class="btn btn-secondary">Add node</button>
               </div>
-              <p class="help-text mt-2">Enter probabilities between 0 and 1. False probability is computed as 1 - p.</p>
+              <div id="nodes-list" class="nodes-list"></div>
+              <p id="node-error" class="text-xs text-red-500 mt-1"></p>
             </div>
-          </section>
-
-          <section class="mb-6">
-            <h2 class="text-lg font-semibold mb-3">3. Inference</h2>
-            <p class="help-text mb-3">Choose a query variable and (optional) evidence. We'll compute P(Query = True | Evidence).</p>
-            <div class="grid md:grid-cols-3 gap-4 mb-4">
-              <div>
-                <label class="text-sm font-medium text-gray-700" for="query-select">Query variable</label>
-                <select id="query-select" class="mt-1 w-full border rounded-md px-3 py-2"></select>
+            <div id="node-editor" style="display:none;">
+              <h4 class="text-sm font-semibold text-gray-600 mb-2">Node editor</h4>
+              <p class="help-text mb-3">Selected node: <span id="selected-node-name" class="font-semibold text-gray-800"></span></p>
+              <div class="mb-3">
+                <label class="calc-label">Parents</label>
+                <p class="help-text mb-1">Select other nodes that this node depends on. The CPT will refresh.</p>
+                <div id="parent-checkboxes" class="flex flex-wrap gap-3"></div>
               </div>
               <div>
-                <label class="text-sm font-medium text-gray-700" for="query-value">Query value</label>
-                <select id="query-value" class="mt-1 w-full border rounded-md px-3 py-2">
-                  <option value="true">True</option>
-                  <option value="false">False</option>
-                </select>
-              </div>
-              <div class="flex items-end">
-                <button id="run-inference-btn" class="bg-indigo-600 text-white py-2 px-4 rounded-md font-semibold hover:bg-indigo-700 w-full">Run inference</button>
+                <label class="calc-label">Conditional probability table</label>
+                <div class="scroll-x">
+                  <table class="cpt-table" id="cpt-table"></table>
+                </div>
+                <p class="help-text">Enter probabilities between 0 and 1. False probability is computed as 1 - p.</p>
               </div>
             </div>
             <div>
-              <label class="text-sm font-medium text-gray-700 mb-1 block">Evidence</label>
-              <div id="evidence-list" class="flex flex-wrap gap-3"></div>
+              <h4 class="text-sm font-semibold text-gray-600 mb-2">Inference</h4>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label for="query-select" class="calc-label">Query variable</label>
+                  <select id="query-select" class="calc-input"></select>
+                </div>
+                <div>
+                  <label for="query-value" class="calc-label">Query value</label>
+                  <select id="query-value" class="calc-input">
+                    <option value="true">True</option>
+                    <option value="false">False</option>
+                  </select>
+                </div>
+              </div>
+              <div class="mt-4">
+                <label class="calc-label">Evidence</label>
+                <div id="evidence-list" class="flex flex-wrap gap-3"></div>
+              </div>
+              <p id="infer-error" class="text-xs text-red-500 mt-2"></p>
             </div>
-            <p id="infer-error" class="text-xs text-red-500 mt-2"></p>
-            <div class="mt-4 bg-indigo-50 border border-indigo-100 rounded-md p-4">
-              <p class="text-sm text-gray-700">Result:</p>
-              <p class="text-lg font-bold text-indigo-800" id="inference-result">—</p>
-              <p class="text-xs text-gray-500 mt-1" id="inference-detail"></p>
+            <div class="flex gap-3">
+              <button class="btn btn-primary flex-1" id="calcBtn" type="button">Calculate</button>
+              <button class="btn btn-secondary btnSecondary" id="resetBtn" type="button">Reset</button>
             </div>
-          </section>
+            <div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;"></div>
+          </div>
+        </section>
 
-          <section class="prose" aria-label="theory">
-            <h2>Bayesian network recap</h2>
-            <p>A Bayesian network is a compact way to encode a joint probability distribution using conditional independencies. Formally, for nodes \( X_1, \dots, X_n \) in a DAG, the joint factorises as:</p>
-            <div class="formula-box">
-              <code>P(X_1, \dots, X_n) = \prod_{i=1}^n P(X_i \mid \text{Parents}(X_i))</code>
+        <section class="card sticky-box" id="resultsCard" aria-label="Calculator results">
+          <div class="result-box mb-4">
+            <div class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Inference summary</div>
+            <div class="result-value" id="resultPrimary">—</div>
+          </div>
+          <div class="bg-white border border-gray-200 rounded-lg p-4">
+            <div class="kpi-row">
+              <span class="kpi-label">Query</span>
+              <span class="kpi-value" id="kpiQuery">—</span>
             </div>
-            <p>Inference answers questions like \( P(\text{Disease} \mid \text{Test} = +) \). Our tool uses <strong>enumeration</strong>: it sums over all hidden variables to compute the normalizing constant.</p>
-            <h3>Tips for using this page</h3>
-            <ul>
-              <li>Keep to 5–6 variables to avoid exponential blowup.</li>
-              <li>Set every CPT row, or inference will assume 0.5.</li>
-              <li>Use the evidence toggles to test diagnostic vs causal queries.</li>
-            </ul>
-          </section>
-        </div>
-      
-<!-- AUDIT_SPINE_START -->
-<hr class="auditspine-hr">
-<section aria-label="Formulas, sources, changelog, verification">
-  <span class="auditspine-badge">Audit: Complete</span>
+            <div class="kpi-row">
+              <span class="kpi-label">Evidence variables</span>
+              <span class="kpi-value" id="kpiEvidence">0</span>
+            </div>
+            <div class="kpi-row">
+              <span class="kpi-label">Nodes in DAG</span>
+              <span class="kpi-value" id="kpiNodes">0</span>
+            </div>
+            <div class="kpi-row">
+              <span class="kpi-label">Denominator</span>
+              <span class="kpi-value" id="kpiDenom">—</span>
+            </div>
+          </div>
+          <div class="result-detail" id="resultDetail">Define your network and click Calculate to run exact inference.</div>
+        </section>
+      </div>
 
-  <details style="margin-top:10px">
-    <summary><strong>Formula (LaTeX) + variables + units</strong></summary>
-    <div class="auditspine-note" style="margin-top:10px">
-      This section shows the formulas used by the calculator engine, plus variable definitions and units.
-      
-    </div>
-    <div class="auditspine-formula">
-      <div style="margin:10px 0">
-  <div><strong>Formula (extracted LaTeX)</strong></div>
-  <div style="margin-top:6px">\[','\\]</div>
-  <pre class="auditspine-mono">','\</pre>
-</div>
-<div style="margin:10px 0">
-  <div><strong>Formula (extracted text)</strong></div>
-  
-  <pre class="auditspine-mono">P(X_1, \dots, X_n) = \prod_{i=1}^n P(X_i \mid \text{Parents}(X_i))</pre>
-</div>
-      <div style="margin-top:12px"><strong>Variables and units</strong></div>
-      <ul style="margin:8px 0 0 18px">
-        <li><em>No variables provided in audit spec.</em></li>
-      </ul>
-    </div>
-  </details>
-
-  <div class="auditspine-note" style="margin-top:12px">
-    <strong>Sources (authoritative):</strong>
-    <ul style="margin:8px 0 0 18px">
-      <li><strong>NIST — Weights and measures</strong> — nist.gov · Accessed 2026-01-19<br><a href="https://www.nist.gov/pml/weights-and-measures" target="_blank" rel="nofollow noopener">https://www.nist.gov/pml/weights-and-measures</a></li>
-<li><strong>FTC — Consumer advice</strong> — consumer.ftc.gov · Accessed 2026-01-19<br><a href="https://consumer.ftc.gov/" target="_blank" rel="nofollow noopener">https://consumer.ftc.gov/</a></li>
-    </ul>
-  </div>
-
-  <div class="auditspine-changelog" style="margin-top:12px">
-    <strong>Changelog</strong><br>
-    <div style="margin-top:6px">
-      <strong>Version:</strong> 0.1.0-draft<br>
-      <strong>Last code update:</strong> 2026-01-19
-    </div>
-    <div style="margin-top:10px">
-  <strong>0.1.0-draft</strong> · 2026-01-19
-  <ul style="margin:6px 0 0 18px">
-    <li>Initial audit spec draft generated from HTML extraction (review required).</li>
-<li>Verify formulas match the calculator engine and convert any text-only formulas to LaTeX.</li>
-<li>Confirm sources are authoritative and relevant to the calculator methodology.</li>
-  </ul>
-</div>
-  </div>
-
-  <div class="auditspine-note" style="margin-top:12px">
-    <strong>Verified by Ugo Candido on 2026-01-19</strong><br>
-    <a href="https://calcdomain.com/ugocandido" target="_blank" rel="noopener">Profile</a> ·
-    <a href="https://www.linkedin.com/in/ugocandido92821/" target="_blank" rel="noopener">LinkedIn</a>
-  </div>
-</section>
-<!-- AUDIT_SPINE_END -->
-
-
-</main>
-
-      <aside class="w-full lg:w-1/3">
-        <div class="bg-white p-5 rounded-lg shadow-md mb-6">
-          <h2 class="text-lg font-semibold mb-3">Related Modeling Tools</h2>
-          <ul class="space-y-2">
+      <section class="card content-card space-y-6" id="howToUse" aria-label="How to use and methodology">
+        <h2 class="text-2xl font-semibold">How to Use This Tool</h2>
+        <p>Create nodes, wire parents, define CPTs, and add evidence to observe how probability flows through the graph. Hit Calculate to see the exact probability of your query conditioned on the evidence you set.</p>
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-700">
+          This demo is educational: keep networks small (5–6 variables) and treat the answers as illustrations of enumeration. For production-grade modeling, export the structure to a dedicated engine.</div>
+        <h2 class="text-2xl font-semibold">Methodology</h2>
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-700">
+          The engine enumerates every assignment of the DAG, multiplying the CPT rows for each node and summing across hidden variables. We normalize by dividing the joint probability that matches the query and evidence by the total probability of the evidence alone.</div>
+        <ul class="list-disc pl-5 space-y-2 text-gray-700">
+          <li>Each CPT entry stores P(Node = True | parents). False probability is inferred as 1 minus that value.</li>
+          <li>Evidence selects restrict variables to True/False. Leave them blank to marginalize over that variable.</li>
+          <li>Results are deterministic for the current nodes and CPTs; edit any number or probability and recalculate.</li>
+        </ul>
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-700">
+          Probability statements are shown with four decimal places and a percent summary so you can compare intuition with exact math.</div>
+        <section>
+          <h3 class="text-xl font-semibold">Related Modeling Tools</h3>
+          <ul class="list-disc pl-5 space-y-1 text-gray-700">
             <li><a href="https://calcdomain.com/graphing-and-visualization" class="text-blue-600 hover:underline">Graphing &amp; Visualization</a></li>
             <li><a href="https://calcdomain.com/adjacency-list" class="text-blue-600 hover:underline">Graph Adjacency List</a></li>
             <li><a href="https://calcdomain.com/logistic-regression" class="text-blue-600 hover:underline">Logistic Regression</a></li>
             <li><a href="https://calcdomain.com/core-math-algebra" class="text-blue-600 hover:underline">Core Math &amp; Algebra</a></li>
           </ul>
+        </section>
+        <section>
+          <h3 class="text-xl font-semibold">Why Bayesian networks?</h3>
+          <p class="text-gray-700 text-sm">They let you mix expert knowledge (structure) with data (parameters) and still answer probabilistic queries. Use this page to experiment with small DAGs and understand conditional independence.</p>
+        </section>
+      </section>
+
+      <section class="card meta-section space-y-4" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+        <details id="formulaDetails">
+          <summary class="cursor-pointer font-bold text-gray-800">Formulas</summary>
+          <div class="mt-3 p-3 bg-white border border-gray-200 rounded-lg text-sm text-gray-700">
+            <p><strong>Joint distribution breakdown:</strong></p>
+            <p class="font-mono mt-2">P(X<sub>1</sub>, …, X<sub>n</sub>) = ∏<sub>i=1</sub><sup>n</sup> P(X<sub>i</sub> | Parents(X<sub>i</sub>))</p>
+            <p class="mt-2">The denominator normalizes P(Query, Evidence) by summing over Query = True/False given the same evidence.</p>
+          </div>
+        </details>
+
+        <details class="mt-3" id="citationDetails">
+          <summary class="cursor-pointer font-bold text-gray-800">Citations</summary>
+          <div class="mt-3 p-3 bg-white border border-gray-200 rounded-lg text-sm text-gray-700">
+            <ul class="list-disc pl-5 space-y-2">
+              <li><strong>NIST — Weights and measures</strong> — nist.gov · Accessed 2026-01-19<br><a href="https://www.nist.gov/pml/weights-and-measures" target="_blank" rel="noopener" class="text-blue-600 hover:underline">https://www.nist.gov/pml/weights-and-measures</a></li>
+              <li><strong>FTC — Consumer advice</strong> — consumer.ftc.gov · Accessed 2026-01-19<br><a href="https://consumer.ftc.gov/" target="_blank" rel="noopener" class="text-blue-600 hover:underline">https://consumer.ftc.gov/</a></li>
+            </ul>
+          </div>
+        </details>
+
+        <details class="mt-3" id="changelogDetails">
+          <summary class="cursor-pointer font-bold text-gray-800">Changelog</summary>
+          <div class="mt-3 p-3 bg-white border border-gray-200 rounded-lg text-sm text-gray-700">
+            <ul class="list-disc pl-5">
+              <li>0.1.0-draft — 2026-01-19: Initial audit spec draft generated from HTML extraction (review required).</li>
+              <li>Verify formulas match the calculator engine and convert any text-only formulas to LaTeX.</li>
+              <li>Confirm sources are authoritative and relevant to the calculator methodology.</li>
+            </ul>
+          </div>
+        </details>
+
+        <div class="badge-row mt-3">
+          <span class="badge-info"><span class="text-green-600 font-bold">✓</span> Verified by Ugo Candido</span>
+          <span class="badge-info">Last Updated: 2026-01-19</span>
+          <span class="badge-info">Version 0.1.0-draft</span>
         </div>
-        <div class="bg-white p-5 rounded-lg shadow-md">
-          <h2 class="text-lg font-semibold mb-3">Why Bayesian networks?</h2>
-          <p class="text-sm text-gray-600">They let you mix expert knowledge (structure) with data (parameters) and still answer probabilistic queries.</p>
+      
+          <div class="badge" id="versionBadge">Version 1.5.0</div></section>
+    </main>
+
+    <footer id="siteFooter" class="bg-gray-900 text-white py-12">
+      <div class="container mx-auto px-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div>
+            <h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+            <p class="text-gray-400 mb-4">Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.</p>
+          </div>
+          <div>
+            <h4 class="text-lg font-semibold mb-4">Categories</h4>
+            <ul class="space-y-2">
+              <li><a href="https://calcdomain.com/categories/finance" class="text-gray-400 hover:text-white">Finance</a></li>
+              <li><a href="https://calcdomain.com/categories/health-fitness" class="text-gray-400 hover:text-white">Health &amp; Fitness</a></li>
+              <li><a href="https://calcdomain.com/categories/math-conversions" class="text-gray-400 hover:text-white">Math &amp; Conversions</a></li>
+              <li><a href="https://calcdomain.com/categories/lifestyle-everyday" class="text-gray-400 hover:text-white">Lifestyle &amp; Everyday</a></li>
+              <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction &amp; DIY</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+            <ul class="space-y-2">
+              <li><a href="https://calcdomain.com/mortgage-payment" class="text-gray-400 hover:text-white">Mortgage Calculator</a></li>
+              <li><a href="https://calcdomain.com/percentage-calculator" class="text-gray-400 hover:text-white">Percentage Calculator</a></li>
+              <li><a href="https://calcdomain.com/bmi-calculator" class="text-gray-400 hover:text-white">BMI Calculator</a></li>
+              <li><a href="https://calcdomain.com/auto-loan-calculator" class="text-gray-400 hover:text-white">Auto Loan Calculator</a></li>
+              <li><a href="https://calcdomain.com/house-affordability" class="text-gray-400 hover:text-white">House Affordability</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="text-lg font-semibold mb-4">Support</h4>
+            <ul class="space-y-2">
+              <li><a href="https://calcdomain.com/about" class="text-gray-400 hover:text-white">About Us</a></li>
+              <li><a href="https://calcdomain.com/contact" class="text-gray-400 hover:text-white">Contact</a></li>
+              <li><a href="https://calcdomain.com/privacy" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
+              <li><a href="https://calcdomain.com/terms" class="text-gray-400 hover:text-white">Terms of Service</a></li>
+              <li><a href="https://calcdomain.com/sitemap.xml" class="text-gray-400 hover:text-white">Site Map</a></li>
+            </ul>
+          </div>
         </div>
-      </aside>
-    </div>
-  </div><footer class="bg-gray-900 text-white py-12">
-  <div class="container mx-auto px-4">
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-      <div>
-        <h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
-        <p class="text-gray-400 mb-4">
-          Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.
-        </p>
+        <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+          <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
         </div>
-
-      <div>
-        <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                                                                        <ul class="space-y-2">
-          <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
-          <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction &amp; DIY</a></li>
-          <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
-          <li><a href="https://calcdomain.com/categories/finance" class="text-gray-400 hover:text-white">Finance</a></li>
-          <li><a href="https://calcdomain.com/categories/general" class="text-gray-400 hover:text-white">General</a></li>
-          <li><a href="https://calcdomain.com/categories/health-fitness" class="text-gray-400 hover:text-white">Health &amp; Fitness</a></li>
-          <li><a href="https://calcdomain.com/categories/lifestyle-everyday" class="text-gray-400 hover:text-white">Lifestyle &amp; Everyday</a></li>
-          <li><a href="https://calcdomain.com/categories/math" class="text-gray-400 hover:text-white">Math</a></li>
-          <li><a href="https://calcdomain.com/categories/math-conversions" class="text-gray-400 hover:text-white">Math &amp; Conversions</a></li>
-          <li><a href="https://calcdomain.com/categories/science" class="text-gray-400 hover:text-white">Science</a></li>
-        </ul>
       </div>
+    </footer>
 
-      <div>
-        <h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
-        <ul class="space-y-2">
-          <li><a href="https://calcdomain.com/mortgage-payment" class="text-gray-400 hover:text-white">Mortgage Calculator</a></li>
-          <li><a href="https://calcdomain.com/percentage-calculator" class="text-gray-400 hover:text-white">Percentage Calculator</a></li>
-          <li><a href="https://calcdomain.com/bmi-calculator" class="text-gray-400 hover:text-white">BMI Calculator</a></li>
-          <li><a href="https://calcdomain.com/auto-loan-calculator" class="text-gray-400 hover:text-white">Auto Loan Calculator</a></li>
-          <li><a href="https://calcdomain.com/house-affordability" class="text-gray-400 hover:text-white">House Affordability</a></li>
-        </ul>
-      </div>
+    <script src="/assets/js/mobile-menu.js"></script>
+    <script src="search.js"></script>
 
-      <div>
-        <h4 class="text-lg font-semibold mb-4">Support</h4>
-        <ul class="space-y-2">
-          <li><a href="https://calcdomain.com/about" class="text-gray-400 hover:text-white">About Us</a></li>
-          <li><a href="https://calcdomain.com/contact" class="text-gray-400 hover:text-white">Contact</a></li>
-          <li><a href="https://calcdomain.com/privacy" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
-          <li><a href="https://calcdomain.com/terms" class="text-gray-400 hover:text-white">Terms of Service</a></li>
-          <li><a href="https://calcdomain.com/sitemap.xml" class="text-gray-400 hover:text-white">Site Map</a></li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
-    </div>
-  </div>
-</footer></section>
-
-    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
-  <details id="formulaDetails">
-    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
-    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
-      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
-    </div>
-  </details>
-
-  
-
-  
-
-  <div class="badge-row" id="badgeRow">
-    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
-  </div>
-
-<details id="citationDetails" style="margin-top:10px;">
-  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
-  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
-    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
-  </div>
-</details>
-
-<details id="changelogDetails" style="margin-top:10px;">
-  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
-  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
-    <ul style="padding-left:18px; margin:0;">
-      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
-    </ul>
-  </div>
-</details>
-</section>
-  </main>
-</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
-  <div class="container mx-auto px-4">
-    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
-      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
-    </div>
-  </div>
-</footer><script src="/assets/js/script_menu.js" defer=""></script><script src="/assets/js/script_faq.js" defer=""></script><script src="search.js" defer=""></script><script>
-    (function() {
-
-      'use strict';
-
-    // mobile menu toggle
-    const mobileToggle = document.getElementById('mobile-menu-toggle');
-    const mobileMenu = document.getElementById('mobile-menu');
-    if (mobileToggle && mobileMenu) {
-      mobileToggle.addEventListener('click', () => {
-        const isHidden = mobileMenu.classList.contains('hidden');
-        mobileMenu.classList.toggle('hidden', !isHidden);
-        mobileToggle.setAttribute('aria-expanded', String(isHidden));
-      });
-    }
-
-    // state
-    const nodes = {}; // name -> {name, parents:[], cpt:{key:prob}}
-    let selectedNode = null;
-
-    const addNodeBtn = document.getElementById('add-node-btn');
-    const nodesList = document.getElementById('nodes-list');
-    const nodeError = document.getElementById('node-error');
-    const nodeEditor = document.getElementById('node-editor');
-    const selectedNodeNameSpan = document.getElementById('selected-node-name');
-    const parentCheckboxes = document.getElementById('parent-checkboxes');
-    const cptTable = document.getElementById('cpt-table');
-    const querySelect = document.getElementById('query-select');
-    const evidenceList = document.getElementById('evidence-list');
-    const inferError = document.getElementById('infer-error');
-    const inferenceResult = document.getElementById('inference-result');
-    const inferenceDetail = document.getElementById('inference-detail');
-
-    function uniqueNodeName(base) {
-      let name = base;
-      let idx = 1;
-      while (nodes[name]) {
-        name = base + "_" + idx;
-        idx++;
-      }
-      return name;
-    }
-
-    function renderNodesList() {
-      nodesList.innerHTML = "";
-      Object.values(nodes).forEach(n => {
-        const btn = document.createElement('button');
-        btn.textContent = n.name;
-        btn.className = "px-3 py-1 rounded-md border text-sm " + (selectedNode && selectedNode.name === n.name ? "bg-blue-100 border-blue-200" : "bg-white border-gray-200");
-        btn.addEventListener('click', () => selectNode(n.name));
-        nodesList.appendChild(btn);
-      });
-      renderQueryAndEvidenceSelectors();
-    }
-
-    function renderQueryAndEvidenceSelectors() {
-      querySelect.innerHTML = "";
-      evidenceList.innerHTML = "";
-      Object.values(nodes).forEach(n => {
-        const opt = document.createElement('option');
-        opt.value = n.name;
-        opt.textContent = n.name;
-        querySelect.appendChild(opt);
-
-        const wrapper = document.createElement('div');
-        wrapper.className = "flex items-center gap-2 border rounded-md px-3 py-2 bg-gray-50";
-        const label = document.createElement('label');
-        label.textContent = n.name;
-        label.className = "text-sm font-medium";
-        const sel = document.createElement('select');
-        sel.className = "border rounded-md px-2 py-1 text-sm";
-        sel.dataset.var = n.name;
-        sel.innerHTML = '<option value="">—</option><option value="true">True</option><option value="false">False</option>';
-        wrapper.appendChild(label);
-        wrapper.appendChild(sel);
-        evidenceList.appendChild(wrapper);
-      });
-    }
-
-    function generateParentCheckboxes(node) {
-      parentCheckboxes.innerHTML = "";
-      const nodeNames = Object.keys(nodes);
-      nodeNames.forEach(name => {
-        if (name === node.name) return;
-        const div = document.createElement('div');
-        div.className = "flex items-center gap-1";
-        const cb = document.createElement('input');
-        cb.type = "checkbox";
-        cb.value = name;
-        cb.checked = node.parents.includes(name);
-        cb.addEventListener('change', () => {
-          const checked = Array.from(parentCheckboxes.querySelectorAll('input:checked')).map(i=>i.value);
-          node.parents = checked;
-          node.cpt = buildDefaultCPT(node.parents, node.cpt);
-          renderCPTTable(node);
-        });
-        const lbl = document.createElement('label');
-        lbl.textContent = name;
-        lbl.className = "text-sm";
-        div.appendChild(cb);
-        div.appendChild(lbl);
-        parentCheckboxes.appendChild(div);
-      });
-    }
-
-    function parentAssignments(parents) {
-      if (parents.length === 0) return [[]];
-      const rest = parentAssignments(parents.slice(1));
-      const res = [];
-      rest.forEach(r => {
-        res.push([[parents[0], true], ...r]);
-        res.push([[parents[0], false], ...r]);
-      });
-      return res;
-    }
-
-    function assignmentKey(assign) {
-      // assign: [[A,true],[B,false]]. sort by name
-      const sorted = assign.slice().sort((a,b)=>a[0].localeCompare(b[0]));
-      return sorted.map(([n,v])=>n+"="+(v?"1":"0")).join(",");
-    }
-
-    function buildDefaultCPT(parents, oldCpt) {
-      const cpt = {};
-      const ass = parentAssignments(parents);
-      ass.forEach(a => {
-        const key = assignmentKey(a);
-        cpt[key] = (oldCpt && oldCpt[key] !== undefined) ? oldCpt[key] : 0.5;
-      });
-      return cpt;
-    }
-
-    function renderCPTTable(node) {
-      cptTable.innerHTML = "";
-      const header = document.createElement('tr');
-      node.parents.forEach(p => {
-        const th = document.createElement('th');
-        th.textContent = p;
-        th.className = "border-b border-gray-200";
-        cptTable.appendChild(header);
-        header.appendChild(th);
-      });
-      const thP = document.createElement('th');
-      thP.textContent = "P(" + node.name + " = True | parents)";
-      thP.className = "border-b border-gray-200";
-      header.appendChild(thP);
-
-      const ass = parentAssignments(node.parents);
-      ass.forEach(a => {
-        const tr = document.createElement('tr');
-        a.forEach(([n,v]) => {
-          const td = document.createElement('td');
-          td.textContent = v ? "True" : "False";
-          td.className = "text-center border-b border-gray-100";
-          tr.appendChild(td);
-        });
-        const key = assignmentKey(a);
-        const tdP = document.createElement('td');
-        const inp = document.createElement('input');
-        inp.type = "number";
-        inp.min = "0";
-        inp.max = "1";
-        inp.step = "0.01";
-        inp.value = node.cpt[key] !== undefined ? node.cpt[key] : 0.5;
-        inp.addEventListener('input', () => {
-          let val = parseFloat(inp.value);
-          if (isNaN(val) || val < 0) val = 0;
-          if (val > 1) val = 1;
-          node.cpt[key] = val;
-          inp.value = val;
-        });
-        tdP.appendChild(inp);
-        tr.appendChild(tdP);
-        cptTable.appendChild(tr);
-      });
-    }
-
-    function selectNode(name) {
-      selectedNode = nodes[name];
-      selectedNodeNameSpan.textContent = selectedNode.name;
-      nodeEditor.style.display = "block";
-      generateParentCheckboxes(selectedNode);
-      renderCPTTable(selectedNode);
-      renderNodesList();
-    }
-
-    addNodeBtn.addEventListener('click', () => {
-      nodeError.textContent = "";
-      if (Object.keys(nodes).length >= 8) {
-        nodeError.textContent = "Keep the demo small (max 8 nodes).";
-        return;
-      }
-      const name = uniqueNodeName("X" + (Object.keys(nodes).length + 1));
-      nodes[name] = {
-        name,
-        parents: [],
-        cpt: buildDefaultCPT([], null)
+    <script>
+      window.MathJax = {
+        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$','$'], ['\\[','\\]']] },
+        svg: { fontCache: 'global' }
       };
-      renderNodesList();
-      selectNode(name);
-    });
+    </script>
+    <script>
+      (function () {
+        var loadMathJax = function () {
+          if (window.__mathjaxLoading) return;
+          window.__mathjaxLoading = true;
+          var script = document.createElement("script");
+          script.id = "MathJax-script";
+          script.async = true;
+          script.src = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js";
+          document.head.appendChild(script);
+        };
 
-    // inference
-    function getEvidence() {
-      const ev = {};
-      evidenceList.querySelectorAll('select').forEach(sel => {
-        const v = sel.value;
-        if (v === "") return;
-        ev[sel.dataset.var] = (v === "true");
-      });
-      return ev;
-    }
+        var target = document.querySelector(
+          ".formula-box, .mathjax, .math, .formula, [data-mathjax]"
+        );
 
-    function allVars() {
-      return Object.keys(nodes);
-    }
+        if (!target) return;
 
-    function probNodeTrue(name, assignment) {
-      const node = nodes[name];
-      const parentAss = node.parents.map(p => [p, assignment[p]]);
-      const key = assignmentKey(parentAss);
-      let p = node.cpt[key];
-      if (p === undefined) p = 0.5;
-      return p;
-    }
+        if ("IntersectionObserver" in window) {
+          var observer = new IntersectionObserver(
+            function (entries) {
+              if (entries.some(function (entry) { return entry.isIntersecting; })) {
+                observer.disconnect();
+                loadMathJax();
+              }
+            },
+            { rootMargin: "200px" }
+          );
+          observer.observe(target);
+        } else {
+          window.addEventListener(
+            "load",
+            function () {
+              setTimeout(loadMathJax, 1000);
+            },
+            { once: true }
+          );
+        }
+      })();
+    </script>
 
-    function jointProb(assignment) {
-      let p = 1.0;
-      for (const name of allVars()) {
-        const node = nodes[name];
-        const isTrue = assignment[name];
-        const pt = probNodeTrue(name, assignment);
-        p *= isTrue ? pt : (1 - pt);
-      }
-      return p;
-    }
+    <script>
+(function() {
+  'use strict';
 
-    function enumerate(allVarsArr, evidenceFixed) {
-      // returns total probability of evidence
-      if (allVarsArr.length === 0) return 1.0;
-      const [Y, ...rest] = allVarsArr;
-      if (evidenceFixed.hasOwnProperty(Y)) {
-        const pY = probNodeTrue(Y, evidenceFixed);
-        const factor = evidenceFixed[Y] ? pY : (1 - pY);
-        return factor * enumerate(rest, evidenceFixed);
-      } else {
-        // sum over true/false
-        evidenceFixed[Y] = true;
-        const p1 = probNodeTrue(Y, evidenceFixed) * enumerate(rest, evidenceFixed);
-        evidenceFixed[Y] = false;
-        const p0 = (1 - probNodeTrue(Y, evidenceFixed)) * enumerate(rest, evidenceFixed);
-        delete evidenceFixed[Y];
-        return p1 + p0;
-      }
-    }
-
-    const runInferenceBtn = document.getElementById('run-inference-btn');
-    const queryValueSel = document.getElementById('query-value');
-
-    runInferenceBtn.addEventListener('click', () => {
-      inferError.textContent = "";
-      if (Object.keys(nodes).length === 0) {
-        inferError.textContent = "Create at least one node first.";
-        return;
-      }
-      const Q = querySelect.value;
-      const qVal = queryValueSel.value === "true";
-      const evidence = getEvidence();
-      // P(Q=q | e) = alpha * P(Q=q,e)
-      // numerator: fix Q=q and evidence, enumerate others
-      const vars = allVars();
-
-      const numerEvidence = Object.assign({}, evidence);
-      numerEvidence[Q] = qVal;
-      const numerator = enumerate(vars, numerEvidence);
-
-      // denominator: sum over Q
-      const denEvidence = Object.assign({}, evidence);
-      const denTrue = Object.assign({}, denEvidence, {[Q]: true});
-      const denFalse = Object.assign({}, denEvidence, {[Q]: false});
-      const denom = enumerate(vars, denTrue) + enumerate(vars, denFalse);
-
-      if (denom === 0) {
-        inferError.textContent = "Denominator is zero — check CPTs.";
-        return;
-      }
-      const result = numerator / denom;
-      inferenceResult.textContent = "P(" + Q + " = " + qVal + " | evidence) = " + result.toFixed(4);
-      inferenceDetail.textContent = "Numerator: " + numerator.toFixed(6) + ", Denominator: " + denom.toFixed(6);
-    });
-
-    // initial state: add one node
-    nodes["X1"] = { name: "X1", parents: [], cpt: {"":0.5} };
-    renderNodesList();
-    selectNode("X1");
-  
-
-    })();</script><script>
-    (function() {
-
-      'use strict';
-
-    window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
-      svg: { fontCache: 'global' }
+  const debounce = (fn, delay = 100) => {
+    let timer;
+    return (...args) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn(...args), delay);
     };
-  
+  };
 
-    })();</script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script></body></html>
+  function parentAssignments(parents) {
+    if (parents.length === 0) return [[]];
+    const [first, ...rest] = parents;
+    const tail = parentAssignments(rest);
+    const result = [];
+    tail.forEach((assignment) => {
+      result.push([[first, true], ...assignment]);
+      result.push([[first, false], ...assignment]);
+    });
+    return result;
+  }
+
+  function assignmentKey(assignments) {
+    const sorted = assignments.slice().sort((a, b) => a[0].localeCompare(b[0]));
+    return sorted.map(([name, value]) => `${name}=${value ? '1' : '0'}`).join(',');
+  }
+
+  const els = {
+    nodesList: document.getElementById('nodes-list'),
+    addNodeBtn: document.getElementById('addNodeBtn'),
+    nodeError: document.getElementById('node-error'),
+    nodeEditor: document.getElementById('node-editor'),
+    selectedNodeName: document.getElementById('selected-node-name'),
+    parentCheckboxes: document.getElementById('parent-checkboxes'),
+    cptTable: document.getElementById('cpt-table'),
+    querySelect: document.getElementById('query-select'),
+    queryValue: document.getElementById('query-value'),
+    evidenceList: document.getElementById('evidence-list'),
+    inferError: document.getElementById('infer-error'),
+    calcBtn: document.getElementById('calcBtn'),
+    resetBtn: document.getElementById('resetBtn'),
+    resultPrimary: document.getElementById('resultPrimary'),
+    resultDetail: document.getElementById('resultDetail'),
+    kpiQuery: document.getElementById('kpiQuery'),
+    kpiEvidence: document.getElementById('kpiEvidence'),
+    kpiNodes: document.getElementById('kpiNodes'),
+    kpiDenom: document.getElementById('kpiDenom'),
+    errorBox: document.getElementById('errorBox')
+  };
+
+  const state = {
+    nodes: {},
+    selectedNode: null
+  };
+
+  function buildDefaultCPT(parents, oldCpt) {
+    const cpt = {};
+    const assignments = parentAssignments(parents);
+    assignments.forEach((assignment) => {
+      const key = assignmentKey(assignment);
+      cpt[key] = oldCpt && oldCpt[key] !== undefined ? oldCpt[key] : 0.5;
+    });
+    return cpt;
+  }
+
+  function resetState() {
+    state.nodes = {
+      X1: { name: 'X1', parents: [], cpt: { '': 0.5 } }
+    };
+    state.selectedNode = 'X1';
+    renderNodesList();
+    selectNode('X1');
+  }
+
+  function uniqueNodeName(base) {
+    let name = base;
+    let idx = 1;
+    while (state.nodes[name]) {
+      name = `${base}_${idx}`;
+      idx += 1;
+    }
+    return name;
+  }
+
+  function renderNodesList() {
+    els.nodesList.innerHTML = '';
+    Object.values(state.nodes).forEach((node) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = node.name;
+      button.className = node.name === state.selectedNode ? 'active' : '';
+      button.addEventListener('click', () => selectNode(node.name));
+      els.nodesList.appendChild(button);
+    });
+    renderQueryAndEvidenceSelectors(state.selectedNode);
+  }
+
+  function generateParentCheckboxes(node) {
+    els.parentCheckboxes.innerHTML = '';
+    Object.values(state.nodes).forEach((candidate) => {
+      if (candidate.name === node.name) return;
+      const wrapper = document.createElement('label');
+      wrapper.className = 'flex items-center gap-2 text-sm border border-gray-200 rounded-md px-3 py-1 bg-white';
+      const chk = document.createElement('input');
+      chk.type = 'checkbox';
+      chk.value = candidate.name;
+      chk.checked = node.parents.includes(candidate.name);
+      chk.addEventListener('change', () => {
+        const selected = Array.from(els.parentCheckboxes.querySelectorAll('input:checked')).map((el) => el.value);
+        node.parents = selected;
+        node.cpt = buildDefaultCPT(node.parents, node.cpt);
+        renderCPTTable(node);
+        scheduleUpdate();
+      });
+      const lbl = document.createElement('span');
+      lbl.textContent = candidate.name;
+      wrapper.appendChild(chk);
+      wrapper.appendChild(lbl);
+      els.parentCheckboxes.appendChild(wrapper);
+    });
+  }
+
+  function renderCPTTable(node) {
+    els.cptTable.innerHTML = '';
+    const header = document.createElement('tr');
+    node.parents.forEach((parent) => {
+      const th = document.createElement('th');
+      th.textContent = parent;
+      header.appendChild(th);
+    });
+    const thTarget = document.createElement('th');
+    thTarget.textContent = `P(${node.name} = True | parents)`;
+    header.appendChild(thTarget);
+    els.cptTable.appendChild(header);
+
+    const assignments = parentAssignments(node.parents);
+    assignments.forEach((assignment) => {
+      const tr = document.createElement('tr');
+      assignment.forEach(([name, value]) => {
+        const td = document.createElement('td');
+        td.textContent = value ? 'True' : 'False';
+        tr.appendChild(td);
+      });
+      const key = assignmentKey(assignment);
+      const tdInput = document.createElement('td');
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.min = '0';
+      input.max = '1';
+      input.step = '0.01';
+      input.value = node.cpt[key] !== undefined ? node.cpt[key] : 0.5;
+      input.className = 'calc-input';
+      input.addEventListener('input', () => {
+        let val = parseFloat(input.value);
+        if (Number.isNaN(val)) val = 0;
+        val = Math.min(1, Math.max(0, val));
+        node.cpt[key] = val;
+        input.value = val;
+        scheduleUpdate();
+      });
+      tdInput.appendChild(input);
+      tr.appendChild(tdInput);
+      els.cptTable.appendChild(tr);
+    });
+  }
+
+  function selectNode(name) {
+    state.selectedNode = name;
+    const node = state.nodes[name];
+    if (!node) return;
+    els.nodeEditor.style.display = 'block';
+    els.selectedNodeName.textContent = node.name;
+    generateParentCheckboxes(node);
+    renderCPTTable(node);
+    renderNodesList();
+  }
+
+  function renderQueryAndEvidenceSelectors(seedName) {
+    const prevQuery = els.querySelect.value;
+    els.querySelect.innerHTML = '';
+    els.evidenceList.innerHTML = '';
+    Object.values(state.nodes).forEach((node) => {
+      const option = document.createElement('option');
+      option.value = node.name;
+      option.textContent = node.name;
+      els.querySelect.appendChild(option);
+      const wrapper = document.createElement('div');
+      wrapper.className = 'flex items-center gap-2 border rounded-md px-3 py-2 bg-gray-50 text-sm';
+      const label = document.createElement('span');
+      label.textContent = node.name;
+      const select = document.createElement('select');
+      select.className = 'border rounded-md px-2 py-1 text-sm ml-auto';
+      select.dataset.var = node.name;
+      select.innerHTML = '<option value=\"\">—</option><option value=\"true\">True</option><option value=\"false\">False</option>';
+      select.addEventListener('change', scheduleUpdate);
+      wrapper.appendChild(label);
+      wrapper.appendChild(select);
+      els.evidenceList.appendChild(wrapper);
+    });
+    if (prevQuery && state.nodes[prevQuery]) {
+      els.querySelect.value = prevQuery;
+    } else if (seedName && state.nodes[seedName]) {
+      els.querySelect.value = seedName;
+    }
+  }
+
+  function getEvidence() {
+    const evidence = {};
+    els.evidenceList.querySelectorAll('select').forEach((sel) => {
+      if (!sel.dataset.var) return;
+      const value = sel.value;
+      if (value === '') return;
+      evidence[sel.dataset.var] = value === 'true';
+    });
+    return evidence;
+  }
+
+  function parseInputs() {
+    const nodes = {};
+    Object.values(state.nodes).forEach((node) => {
+      nodes[node.name] = {
+        name: node.name,
+        parents: [...node.parents],
+        cpt: { ...node.cpt }
+      };
+    });
+    return {
+      nodes,
+      query: els.querySelect.value,
+      queryValue: els.queryValue.value === 'true',
+      evidence: getEvidence()
+    };
+  }
+
+  function validate(inputs) {
+    const errors = [];
+    if (!inputs.nodes || Object.keys(inputs.nodes).length === 0) {
+      errors.push('Create at least one node.');
+    }
+    if (!inputs.query || !inputs.nodes[inputs.query]) {
+      errors.push('Select a valid query variable.');
+    }
+    if (typeof inputs.queryValue !== 'boolean') {
+      errors.push('Select a query value.');
+    }
+    return { ok: errors.length === 0, errors };
+  }
+
+  function probNodeTrue(nodes, name, assignment) {
+    const node = nodes[name];
+    const parentAss = node.parents.map((parent) => [parent, assignment[parent]]);
+    const key = assignmentKey(parentAss);
+    const raw = node.cpt[key];
+    if (raw === undefined) return 0.5;
+    return Math.min(1, Math.max(0, raw));
+  }
+
+  function enumerate(vars, nodes, evidenceMap) {
+    if (vars.length === 0) return 1;
+    const [head, ...rest] = vars;
+    if (Object.prototype.hasOwnProperty.call(evidenceMap, head)) {
+      const value = evidenceMap[head];
+      const pTrue = probNodeTrue(nodes, head, evidenceMap);
+      const factor = value ? pTrue : 1 - pTrue;
+      return factor * enumerate(rest, nodes, evidenceMap);
+    }
+    let sum = 0;
+    [true, false].forEach((val) => {
+      evidenceMap[head] = val;
+      const p = probNodeTrue(nodes, head, evidenceMap) ;
+      const factor = val ? p : 1 - p;
+      sum += factor * enumerate(rest, nodes, evidenceMap);
+    });
+    delete evidenceMap[head];
+    return sum;
+  }
+
+  function compute(inputs) {
+    const vars = Object.keys(inputs.nodes);
+    if (vars.length === 0) return null;
+    const numeratorEvidence = { ...inputs.evidence, [inputs.query]: inputs.queryValue };
+    const denominatorTrue = { ...inputs.evidence, [inputs.query]: true };
+    const denominatorFalse = { ...inputs.evidence, [inputs.query]: false };
+    const numerator = enumerate(vars, inputs.nodes, numeratorEvidence);
+    const denomTrue = enumerate(vars, inputs.nodes, denominatorTrue);
+    const denomFalse = enumerate(vars, inputs.nodes, denominatorFalse);
+    const denominator = denomTrue + denomFalse;
+    if (!Number.isFinite(denominator) || denominator === 0) {
+      return { error: 'Denominator is zero or invalid — check CPTs.' };
+    }
+    const probability = numerator / denominator;
+    return {
+      probability: Number.isFinite(probability) ? probability : 0,
+      numerator,
+      denominator,
+      nodeCount: vars.length,
+      evidenceCount: Object.keys(inputs.evidence).length
+    };
+  }
+
+  function format(outputs, inputs) {
+    if (!outputs || outputs.error) return null;
+    const percent = (outputs.probability * 100).toFixed(2);
+    const resultText = `P(${inputs.query} = ${inputs.queryValue} | evidence) ≈ ${percent}%`;
+    const detail = `Numerator: ${outputs.numerator.toFixed(6)}, Denominator: ${outputs.denominator.toFixed(6)}`;
+    return {
+      resultText,
+      detail,
+      nodes: outputs.nodeCount,
+      evidence: outputs.evidenceCount,
+      denominator: outputs.denominator,
+      queryLabel: `${inputs.query} = ${inputs.queryValue ? 'True' : 'False'}`
+    };
+  }
+
+  function render(formatted, errors) {
+    if (errors && errors.length) {
+      els.errorBox.style.display = 'block';
+      els.errorBox.textContent = errors.join(' ');
+    } else {
+      els.errorBox.style.display = 'none';
+      els.errorBox.textContent = '';
+    }
+    if (formatted) {
+      els.resultPrimary.textContent = formatted.resultText;
+      els.kpiQuery.textContent = formatted.queryLabel;
+      els.kpiEvidence.textContent = String(formatted.evidence);
+      els.kpiNodes.textContent = String(formatted.nodes);
+      els.kpiDenom.textContent = formatted.denominator.toFixed(6);
+      els.resultDetail.textContent = formatted.detail;
+    } else {
+      els.resultPrimary.textContent = '—';
+      els.kpiQuery.textContent = '—';
+      els.kpiEvidence.textContent = '0';
+      els.kpiNodes.textContent = '0';
+      els.kpiDenom.textContent = '—';
+      els.resultDetail.textContent = 'Define your network and click Calculate to run exact inference.';
+    }
+  }
+
+  function update() {
+    els.inferError.textContent = '';
+    const parsed = parseInputs();
+    const validation = validate(parsed);
+    if (!validation.ok) {
+      render(null, validation.errors);
+      return;
+    }
+    const computed = compute(parsed);
+    if (!computed || computed.error) {
+      const errorMessage = computed && computed.error ? computed.error : 'Calculation failed.';
+      els.inferError.textContent = errorMessage;
+      render(null, [errorMessage]);
+      return;
+    }
+    const formatted = format(computed, parsed);
+    render(formatted, []);
+  }
+
+  const debouncedUpdate = debounce(update, 100);
+
+  function scheduleUpdate() {
+    debouncedUpdate();
+  }
+
+  els.calcBtn.addEventListener('click', update);
+  els.resetBtn.addEventListener('click', () => {
+    state.nodes = {};
+    state.selectedNode = null;
+    resetState();
+    update();
+  });
+
+  els.addNodeBtn.addEventListener('click', () => {
+    els.nodeError.textContent = '';
+    const count = Object.keys(state.nodes).length;
+    if (count >= 8) {
+      els.nodeError.textContent = 'Keep the demo small (max 8 nodes).';
+      return;
+    }
+    const name = uniqueNodeName('X' + (count + 1));
+    state.nodes[name] = { name, parents: [], cpt: { '': 0.5 } };
+    selectNode(name);
+    scheduleUpdate();
+  });
+
+  document.querySelectorAll('#inputsCard input, #inputsCard select, #inputsCard textarea').forEach((el) => {
+    el.addEventListener('input', debouncedUpdate);
+    el.addEventListener('change', debouncedUpdate);
+  });
+
+  resetState();
+  update();
+})();
+</script>
+
+</body></html>
