@@ -1,1737 +1,756 @@
 <!DOCTYPE html><html lang="en"><head>
-<link rel="canonical" href="https://calcdomain.com/bsa">
-
-
-
-
-
- 
-<link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96">
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="shortcut icon" href="/favicon.ico">
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<link rel="manifest" href="/site.webmanifest">
-<meta charset="utf-8">
-<title>Body Surface Area (BSA) Calculator</title>
-<meta content="width=device-width, initial-scale=1" name="viewport">
-<meta content="Professional, mobile-first BSA calculator with metric and imperial units. Supports Mosteller, Du Bois &amp; Du Bois, Haycock, Gehan &amp; George, and Boyd formulas. WCAG 2.1 AA accessible." name="description">
-<meta content="bsa calculator, body surface area calculator, mosteller bsa, du bois bsa, haycock bsa, gehan george bsa, boyd bsa" name="keywords">
-<meta content="Ugo Candido" name="author">
-
-<meta content="#ffffff" name="theme-color">
-<meta content="index,follow,max-image-preview:large" name="robots">
-<style>
-    /* ====================================================================== */
-    /* Design tokens and base (mobile-first, no external fonts for perf)      */
-    /* ====================================================================== */
-    :root{
-      --primary-color:#005A9C; --secondary-color:#003F6E; --accent-color:#00A4E4;
-      --background-color:#F8F9FA; --surface-color:#FFFFFF;
-      --text-color:#212529; --muted-text-color:#6C757D; --border-color:#DEE2E6;
-      --success-color:#198754; --error-color:#DC3545; --warning-color:#B35C00;
-      --focus-ring: 3px solid #005A9C;
-
-      --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,sans-serif;
-      --font-mono: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-
-      --container-max:1200px;
-      --radius-6:6px; --radius-8:8px; --radius-12:12px;
-      --target-min:48px;
-      --gap-4:.25rem; --gap-8:.5rem; --gap-12:.75rem; --gap-16:1rem; --gap-24:1.5rem; --gap-32:2rem;
-    }
-    *{box-sizing:border-box}
-    html{font-size:16px;scroll-behavior:smooth}
-    body{
-      margin:0; font-family:var(--font-sans); line-height:1.6;
-      color:var(--text-color); background:var(--background-color);
-      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
-    }
-    a{color:var(--primary-color); text-decoration:none}
-    a:hover{text-decoration:underline}
-    a:focus{outline:var(--focus-ring); outline-offset:2px}
-    h1,h2,h3{color:var(--secondary-color); line-height:1.25; margin:.75rem 0}
-    h1{font-size:clamp(1.6rem, 4.5vw, 2.2rem)}
-    h2{font-size:clamp(1.3rem, 3.5vw, 1.8rem)}
-    h3{font-size:clamp(1.1rem, 3vw, 1.4rem)}
-    p{margin:0 0 1rem}
-    code,.latex{font-family:var(--font-mono); background:#eef2f6; padding:.2em .35em; border-radius:4px}
-    .container{max-width:var(--container-max); margin:0 auto; padding:0 clamp(1rem,4vw,2rem)}
-    .skip-link{
-      position:absolute; left:8px; top:-40px; background:#000; color:#fff;
-      padding:.5rem .75rem; border-radius:0 0 6px 6px; z-index:1000
-    }
-    .skip-link:focus{top:8px}
-
-    /* ====================================================================== */
-    /* Header (not sticky as requested) + simple nav                          */
-    /* ====================================================================== */
-    .site-header{background:var(--surface-color); border-bottom:1px solid var(--border-color)}
-    .header-inner{display:flex; align-items:center; gap:1rem; padding:.75rem 0; flex-wrap:wrap}
-    .brand{font-weight:700; color:var(--primary-color); font-size:1.1rem}
-    .breadcrumb{font-size:.9rem; color:var(--muted-text-color); margin:.5rem 0}
-    .breadcrumb a{color:inherit}
-
-    /* ====================================================================== */
-    /* Layout                                                                  */
-    /* ====================================================================== */
-    .main{padding:clamp(1rem,2vw,1.5rem) 0}
-    .calculator-layout{
-      display:grid; grid-template-columns:1fr; gap:var(--gap-32); margin-top:var(--gap-16)
-    }
-    @media (min-width: 992px){
-      .calculator-layout{grid-template-columns: 420px 1fr}
-    }
-
-    /* ====================================================================== */
-    /* Calculator UI                                                          */
-    /* ====================================================================== */
-    .card{
-      background:var(--surface-color); border:1px solid var(--border-color);
-      border-radius:var(--radius-12); padding:clamp(1rem,2.5vw,1.5rem);
-      box-shadow:0 2px 4px rgba(0,0,0,.04)
-    }
-    .form-group{margin-bottom:var(--gap-16)}
-    .form-group label{
-      display:flex; align-items:center; gap:.5rem; font-weight:600; margin-bottom:.5rem
-    }
-    .req{color:#b00020}
-    .input-row{position:relative}
-    .form-control{
-      width:100%; min-height:var(--target-min); font-size:1rem; padding:.7rem .9rem;
-      border:1px solid var(--border-color); border-radius:var(--radius-8);
-      background:#fff; color:var(--text-color);
-    }
-    .form-control:focus{outline:var(--focus-ring); border-color:#77b5e8}
-    .form-control[aria-invalid="true"]{border-color:var(--error-color)}
-    .input-suffix{
-      position:absolute; right:.75rem; top:50%; transform:translateY(-50%);
-      color:var(--muted-text-color); pointer-events:none
-    }
-    .help-row{display:flex; align-items:center; gap:.5rem}
-    .help-btn{
-      appearance:none; border:1px solid var(--border-color); background:#fff; color:#333;
-      border-radius:50%; width:28px; height:28px; min-width:28px; min-height:28px;
-      display:inline-flex; align-items:center; justify-content:center; font-weight:700; cursor:pointer
-    }
-    .help-btn:focus{outline:var(--focus-ring)}
-    .tooltip{
-      display:none; margin-top:.4rem; background:#f3f6fa; border:1px solid #dbe4ef;
-      border-radius:8px; padding:.6rem .75rem; color:#0b2542
-    }
-    .tooltip[aria-hidden="false"]{display:block}
-    .error-message{color:var(--error-color); font-size:.9rem; margin-top:.35rem}
-    fieldset{border:none; padding:0; margin:0}
-    legend{font-weight:700; margin-bottom:.5rem}
-
-    .radio-group{
-      display:flex; gap:.5rem; flex-wrap:wrap; border:1px solid var(--border-color);
-      padding:.25rem; border-radius:var(--radius-8)
-    }
-    .radio-group input[type="radio"]{position:absolute; opacity:0; width:0; height:0}
-    .radio-pill{
-      flex:1; display:flex; align-items:center; justify-content:center; padding:.6rem .75rem;
-      min-height:var(--target-min); border-radius:6px; cursor:pointer; user-select:none
-    }
-    .radio-group input[type="radio"]:focus + .radio-pill{outline:var(--focus-ring)}
-    .radio-group input[type="radio"]:checked + .radio-pill{background:var(--primary-color); color:#fff}
-
-    .btn{
-      display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
-      padding:.7rem 1rem; border-radius:8px; border:1px solid transparent; cursor:pointer;
-      min-height:var(--target-min); font-weight:600; text-decoration:none
-    }
-    .btn-primary{background:var(--primary-color); color:#fff; border-color:var(--primary-color)}
-    .btn-primary:hover{background:var(--secondary-color); border-color:var(--secondary-color)}
-    .btn-secondary{background:#fff; color:var(--primary-color); border:1px solid var(--primary-color)}
-    .btn-ghost{background:#fff; color:#333; border:1px solid var(--border-color)}
-    .actions{display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.5rem}
-
-    /* ====================================================================== */
-    /* Results                                                                */
-    /* ====================================================================== */
-    .results{margin-top:var(--gap-16)}
-    .results .result-box{
-      background:var(--background-color); border:1px solid var(--border-color); border-radius:10px;
-      padding:1rem; min-height:220px
-    }
-    .result-row{display:flex; align-items:center; justify-content:space-between; padding:.65rem 0; border-bottom:1px solid var(--border-color)}
-    .result-row:last-child{border-bottom:none}
-    .result-label{color:var(--muted-text-color)}
-    .result-value{font-weight:800; font-size:1.35rem; color:var(--success-color)}
-    .subtle{color:var(--muted-text-color); font-size:.95rem}
-    .compare{margin-top:1rem; border-top:1px dashed var(--border-color); padding-top:1rem}
-    .compare-list{display:grid; grid-template-columns:1fr 1fr; gap:.5rem}
-    @media (min-width:720px){ .compare-list{grid-template-columns:repeat(3,1fr)} }
-    .compare-item{display:flex; justify-content:space-between; padding:.4rem .5rem; background:#fff; border:1px solid var(--border-color); border-radius:8px}
-
-    /* ====================================================================== */
-    /* Content sections                                                       */
-    /* ====================================================================== */
-    .content .formula-box{
-      background:#e9f2fb; border:1px solid #cfe3f8; border-radius:10px; padding:1rem; overflow:auto
-    }
-    .content h2{margin-top:1.5rem; padding-top:.25rem}
-    .list{padding-left:1.1rem}
-    .list li{margin:.4rem 0}
-    .note{font-size:.9rem; color:#334; background:#fffaf2; border:1px solid #fee3b1; padding:.6rem .75rem; border-radius:8px}
-
-    /* ====================================================================== */
-    /* Footer                                                                 */
-    /* ====================================================================== */
-    .site-footer{margin-top:3rem; background:#0f1e2e; color:#fff; padding:1.5rem 0}
-    .site-footer a{color:#fff}
-
-    /* Screen reader utility */
-    .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0}
-  </style>
-<script type="application/ld+json">{
-  "@context": "https://schema.org",
-  "@type": "WebPage",
-  "name": "Body Surface Area (BSA) Calculator",
-  "description": "Professional, accessible BSA calculator supporting Mosteller, Du Bois & Du Bois, Haycock, Gehan & George and Boyd formulas with metric and imperial units.",
-  "url": "https://calcdomain.com/bsa",
-  "inLanguage": "en",
-  "dateModified": "2026-01-19",
-  "mainEntity": [
-    {
-      "@type": "HowTo",
-      "name": "How it Works: A Step-by-Step Example",
-      "description": "Compute Body Surface Area (BSA) using standard clinical formulas.",
-      "tool": {
-        "@type": "SoftwareApplication",
-        "name": "Body Surface Area (BSA) Calculator",
-        "applicationCategory": "HealthApplication",
-        "operatingSystem": "Any"
-      },
-      "step": [
-        {
-          "@type": "HowToStep",
-          "name": "Choose unit system",
-          "text": "Select Metric (cm, kg) or Imperial (in, lb)."
-        },
-        {
-          "@type": "HowToStep",
-          "name": "Enter height and weight",
-          "text": "Provide height and weight with decimals if needed."
-        },
-        {
-          "@type": "HowToStep",
-          "name": "Select a formula",
-          "text": "Mosteller is commonly used; other peer-reviewed formulas are available."
-        },
-        {
-          "@type": "HowToStep",
-          "name": "Review the result",
-          "text": "Your BSA in square meters (m²) appears instantly with optional comparison across formulas."
-        }
+    <link rel="canonical" href="https://calcdomain.com/bsa">
+    <meta charset="utf-8">
+    <title>Body Surface Area (BSA) Calculator | CalcDomain</title>
+    <meta name="description" content="Professional, accessible BSA calculator with metric and imperial units. Supports Mosteller, Du Bois &amp; Du Bois, Haycock, Gehan &amp; George, and Boyd formulas.">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Body Surface Area (BSA) Calculator | CalcDomain">
+    <meta property="og:description" content="Professional, accessible BSA calculator with metric and imperial units. Supports Mosteller, Du Bois &amp; Du Bois, Haycock, Gehan &amp; George, and Boyd formulas.">
+    <meta property="og:url" content="https://calcdomain.com/bsa">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Body Surface Area (BSA) Calculator | CalcDomain">
+    <meta name="twitter:description" content="Professional, accessible BSA calculator with metric and imperial units. Supports Mosteller, Du Bois &amp; Du Bois, Haycock, Gehan &amp; George, and Boyd formulas.">
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --primary-color: #005a9c;
+        --surface-color: #ffffff;
+        --border-color: #e5e7eb;
+        --text-color: #1f2937;
+        --muted-color: #6b7280;
+        --radius-lg: 12px;
+        --radius-md: 8px;
+        --focus-ring: 3px solid rgba(59, 130, 246, 0.5);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        line-height: 1.6;
+        background: #f8fafc;
+        color: var(--text-color);
+        -webkit-font-smoothing: antialiased;
+      }
+      a { color: var(--primary-color); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .nav { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+      .container { max-width: 1200px; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2rem); }
+      .brand { font-weight: 700; color: var(--primary-color); font-size: 1.25rem; }
+      .navRight { align-items: center; }
+      .pill { font-size: 0.875rem; padding: 0.35rem 0.9rem; border-radius: 999px; border: 1px solid var(--border-color); background: #fff; }
+      .pill:hover { border-color: var(--primary-color); color: var(--primary-color); }
+      .btn { border: 0; cursor: pointer; font-weight: 600; border-radius: 8px; padding: 0.75rem 1rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; }
+      .btn-primary { background: var(--primary-color); color: #fff; }
+      .btn-primary:hover { background: #00457a; }
+      .btn-secondary { background: #fff; color: var(--primary-color); border: 1px solid var(--primary-color); }
+      .btn-secondary:hover { background: #f1f5f9; }
+      .btn-ghost { background: #fff; border: 1px solid var(--border-color); color: #1f2937; }
+      .btn-ghost:hover { background: #f8fafc; }
+      .btnSecondary { border-color: var(--border-color); }
+      .card { background: var(--surface-color); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: clamp(1rem, 2vw, 1.5rem); box-shadow: 0 5px 15px rgba(15, 23, 42, 0.06); }
+      .calc-hero { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+      @media (min-width: 960px) { .calc-hero { grid-template-columns: 420px 1fr; } }
+      .sticky-box { position: sticky; top: 1rem; }
+      .calc-input, .form-control { width: 100%; padding: 0.7rem 0.9rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem; background: #fff; }
+      .calc-input:focus, .form-control:focus { outline: var(--focus-ring); border-color: #77b5e8; }
+      .calc-label { display: block; font-size: 0.875rem; font-weight: 600; color: var(--muted-color); margin-bottom: 0.35rem; }
+      .alert { display: none; padding: 0.75rem 1rem; border-radius: 8px; background: #fef3f2; border-left: 4px solid #dc2626; color: #7f1d1d; margin-top: 0.75rem; }
+      .result-box { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-radius: 16px; padding: 1.5rem; text-align: center; border: 1px solid #bfdbfe; }
+      .result-value { font-size: 2.5rem; font-weight: 800; color: #1e40af; }
+      .result-label { font-size: 0.9rem; color: #4b5563; text-transform: uppercase; letter-spacing: 0.15em; }
+      .kpi-row { display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb; font-size: 0.95rem; }
+      .kpi-row:last-child { border-bottom: none; }
+      .kpi-label { color: var(--muted-color); }
+      .kpi-value { font-weight: 700; }
+      .compare { margin-top: 1.25rem; border-top: 1px solid var(--border-color); padding-top: 1rem; }
+      .compare-list { display: grid; grid-template-columns: 1fr; gap: 0.5rem; }
+      @media (min-width: 640px) { .compare-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      .compare-item { display: flex; justify-content: space-between; padding: 0.65rem 0.8rem; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; font-size: 0.95rem; }
+      .compare-label { font-weight: 600; }
+      .compare-value { color: #111827; font-weight: 700; }
+      .help-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+      .radio-group { display: flex; flex-wrap: wrap; gap: 0.5rem; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.35rem; }
+      .radio-group input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; }
+      .radio-pill { flex: 1; min-width: 110px; text-align: center; padding: 0.55rem 0.75rem; border-radius: 8px; border: 1px solid transparent; cursor: pointer; }
+      .radio-pill:hover { border-color: #c7d2fe; }
+      .radio-group input[type="radio"]:checked + .radio-pill { background: #e0e7ff; color: #312e81; border-color: #a5b4fc; }
+      .list { padding-left: 1.25rem; margin: 0; }
+      .list li { margin-bottom: 0.35rem; }
+      .content-card { margin-top: 2rem; }
+      .sub { font-size: 1rem; color: var(--muted-color); }
+      .note { background: #fff8f0; border: 1px solid #fde2c7; border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.9rem; color: #78350f; }
+      .meta-section { margin-top: 2rem; }
+      .formula-box { background: #0f172a; color: #e0e7ff; border-radius: 10px; padding: 1rem; overflow-x: auto; font-family: 'IBM Plex Mono', 'Fira Code', monospace; }
+      .formula-box p { margin: 0.35rem 0; }
+      .formula-box strong { display: block; margin-top: 0.75rem; }
+      .tooltip { display: none; position: absolute; background: #fff; border: 1px solid #d1d5db; border-radius: 8px; padding: 0.75rem; font-size: 0.85rem; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15); }
+      .tooltip[aria-hidden="false"] { display: block; }
+      .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
+    </style>
+    <script type="application/ld+json">{
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": "Body Surface Area (BSA) Calculator",
+      "description": "Professional, accessible BSA calculator supporting Mosteller, Du Bois &amp; Du Bois, Haycock, Gehan &amp; George, and Boyd formulas.",
+      "url": "https://calcdomain.com/bsa",
+      "inLanguage": "en",
+      "dateModified": "2026-01-19",
+      "mainEntity": [{
+        "@type": "HowTo",
+        "name": "How it Works: A Step-by-Step Example",
+        "description": "Compute clinical-grade BSA estimates with multiple peer-reviewed formulas.",
+        "step": [
+          {"@type": "HowToStep", "name": "Choose a unit system", "text": "Metric or imperial inputs are accepted; values are normalized internally."},
+          {"@type": "HowToStep", "name": "Enter height and weight", "text": "Decimals are supported so you can enter precise measurements."},
+          {"@type": "HowToStep", "name": "Select a formula", "text": "Mosteller is recommended, but Du Bois &amp; Du Bois, Haycock, Gehan &amp; George, and Boyd are available for comparison."},
+          {"@type": "HowToStep", "name": "Review the result", "text": "Results appear immediately; optionally copy or share them for documentation."}
+        ]
+      }]
+    }</script>
+    <script type="application/ld+json">{
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://calcdomain.com"},
+        {"@type": "ListItem", "position": 2, "name": "Health & Fitness", "item": "https://calcdomain.com/categories/health-fitness"},
+        {"@type": "ListItem", "position": 3, "name": "Health Metrics", "item": "https://calcdomain.com/subcategories/health-metrics"}
       ]
-    },
-    {
-      "@type": "FAQPage",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "Which BSA formula should I use?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Mosteller is widely adopted for its simplicity and close agreement with more complex formulas. Du Bois & Du Bois, Haycock, Gehan & George, and Boyd are also accepted in the literature. Choose based on local protocols."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Does unit choice affect the result?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "No. Inputs are converted internally to centimeters and kilograms before calculation. Metric and imperial inputs yield identical BSA values."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "What is the typical BSA range for adults?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Adult BSA usually ranges between about 1.5 and 2.2 m², but values outside this range can occur depending on body size."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is this calculator suitable for children?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. Haycock and Mosteller are frequently used in pediatrics. Always follow pediatric guidelines and clinical judgment."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is BSA a substitute for medical advice?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "No. This tool is for educational and informational purposes only and does not replace professional medical advice, diagnosis, or treatment."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "How are rounding and precision handled?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "You can choose 2–3 decimal places. Calculations are performed in double precision and rounded only for display."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can I share or save my inputs?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. The page updates the URL with your inputs so you can bookmark or share a link that recreates the result."
-          }
+    }</script>
+  </head><body>
+    <header id="siteHeader" class="bg-white shadow-sm sticky top-0 z-50">
+      <nav class="nav container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
+        <div class="flex w-full items-center justify-between">
+          <a class="brand" href="https://calcdomain.com">CalcDomain</a>
+          <div class="hidden md:block w-full max-w-md mx-4">
+            <div class="relative">
+              <input type="search" id="search-input" placeholder="Search for a calculator..." class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
+              <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              <div id="search-results" class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-80 overflow-y-auto z-50 hidden border border-gray-200"></div>
+            </div>
+          </div>
+          <div class="navRight hidden md:flex items-center space-x-4">
+            <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
+            <span class="pill">Categories</span>
+          </div>
+          <button id="mobile-menu-toggle" class="md:hidden p-2" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" type="button">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+          </button>
+        </div>
+        <nav id="mobile-menu" class="md:hidden mt-4 hidden" aria-label="Mobile menu">
+          <div class="mb-4">
+            <div class="relative">
+              <input type="search" id="mobile-search-input" placeholder="Search calculators..." class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
+            <a href="https://calcdomain.com/#categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
+          </div>
+        </nav>
+      </nav>
+    </header>
+
+    <main id="mainContent" class="container mx-auto px-4 py-8">
+      <nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs">
+        <ol class="flex flex-wrap items-center gap-1">
+          <li><a href="https://calcdomain.com" class="text-blue-600 hover:underline">Home</a></li>
+          <li class="text-gray-400">/</li>
+          <li><a href="https://calcdomain.com/categories/health-fitness" class="text-blue-600 hover:underline">Health &amp; Fitness</a></li>
+          <li class="text-gray-400">/</li>
+          <li><span class="text-gray-800">Body Surface Area (BSA) Calculator</span></li>
+        </ol>
+      </nav>
+
+      <div class="space-y-3">
+        <h1 id="pageTitle" class="text-3xl font-bold text-gray-900">Body Surface Area (BSA) Calculator</h1>
+        <p id="pageSub" class="sub">Professional, accessible BSA calculator with metric and imperial units. Supports Mosteller, Du Bois &amp; Du Bois, Haycock, Gehan &amp; George, and Boyd formulas.</p>
+        <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
+      </div>
+
+      <div class="calc-hero mt-8" id="calcHero" aria-label="Calculator hero">
+        <section class="card" id="inputsCard" aria-label="Calculator inputs">
+          <div class="space-y-6">
+            <div>
+              <span class="calc-label">Unit system</span>
+              <div class="radio-group" role="radiogroup" aria-label="Unit system">
+                <label>
+                  <input type="radio" name="unitSystem" value="metric" checked>
+                  <span class="radio-pill">Metric (cm, kg)</span>
+                </label>
+                <label>
+                  <input type="radio" name="unitSystem" value="imperial">
+                  <span class="radio-pill">Imperial (in, lb)</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="calc-label" for="heightInput">Height <span aria-hidden="true" class="text-red-600">*</span></label>
+                <div style="position:relative;">
+                  <input id="heightInput" class="calc-input" type="number" placeholder="e.g., 170" step="any" min="0" autocomplete="off" inputmode="decimal">
+                  <span id="heightUnitLabel" class="text-sm text-gray-500" style="position:absolute; right:0.9rem; top:50%; transform:translateY(-50%);">cm</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Enter standing height. Typical range 30–272 cm (12–107 in).</p>
+              </div>
+              <div>
+                <label class="calc-label" for="weightInput">Weight <span aria-hidden="true" class="text-red-600">*</span></label>
+                <div style="position:relative;">
+                  <input id="weightInput" class="calc-input" type="number" placeholder="e.g., 70" step="any" min="0" autocomplete="off" inputmode="decimal">
+                  <span id="weightUnitLabel" class="text-sm text-gray-500" style="position:absolute; right:0.9rem; top:50%; transform:translateY(-50%);">kg</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Bring forward decimal precision from scales for best accuracy.</p>
+              </div>
+            </div>
+
+            <div>
+              <span class="calc-label">Formula</span>
+              <div class="radio-group" role="radiogroup" aria-label="BSA formula">
+                <label>
+                  <input type="radio" name="formula" value="mosteller" checked>
+                  <span class="radio-pill">Mosteller</span>
+                </label>
+                <label>
+                  <input type="radio" name="formula" value="dubois">
+                  <span class="radio-pill">Du Bois &amp; Du Bois</span>
+                </label>
+                <label>
+                  <input type="radio" name="formula" value="haycock">
+                  <span class="radio-pill">Haycock</span>
+                </label>
+                <label>
+                  <input type="radio" name="formula" value="gehan">
+                  <span class="radio-pill">Gehan &amp; George</span>
+                </label>
+                <label>
+                  <input type="radio" name="formula" value="boyd">
+                  <span class="radio-pill">Boyd</span>
+                </label>
+              </div>
+            </div>
+
+            <div>
+              <label class="calc-label" for="precisionSelect">Rounding</label>
+              <select id="precisionSelect" class="form-control" aria-label="Decimal places for BSA result">
+                <option value="2" selected>2 decimals (recommended)</option>
+                <option value="3">3 decimals</option>
+              </select>
+            </div>
+
+            <div class="flex gap-3 flex-wrap">
+              <button class="btn btn-primary flex-1" id="calcBtn" type="button">Calculate</button>
+              <button class="btn btn-secondary flex-1 btnSecondary" id="resetBtn" type="button">Reset</button>
+            </div>
+            <div data-canon-btnrow="1" style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button class="btn btn-ghost" id="copyBtn" type="button">Copy result</button>
+              <button class="btn btn-ghost" id="shareBtn" type="button">Share</button>
+              <button class="btn btn-ghost" id="printBtn" type="button">Print</button>
+            </div>
+            <div id="copyStatus" class="sr-only" role="status" aria-live="polite"></div>
+          </div>
+        </section>
+
+        <section class="card sticky-box" id="resultsCard" aria-label="Calculator results">
+          <div class="result-box">
+            <div class="result-label">Body Surface Area (BSA)</div>
+            <div class="result-value" id="bsaValue">—</div>
+            <div class="text-sm text-gray-600 mt-2" id="selectedFormulaLabel">Selected formula: Mosteller</div>
+          </div>
+          <div class="bg-white border border-gray-200 rounded-lg p-4 mt-5">
+            <div class="kpi-row">
+              <span class="kpi-label">Normalized height</span>
+              <span class="kpi-value" id="normalizedHeight">— cm</span>
+            </div>
+            <div class="kpi-row">
+              <span class="kpi-label">Normalized weight</span>
+              <span class="kpi-value" id="normalizedWeight">— kg</span>
+            </div>
+          </div>
+          <div class="compare" id="compareBlock">
+            <div class="help-row">
+              <strong>Other formulas</strong>
+              <button id="toggleCompare" class="btn btn-ghost" type="button">Hide</button>
+            </div>
+            <div class="compare-list" id="compareList"></div>
+          </div>
+          <div class="note mt-5">Educational use only. Not a substitute for professional medical advice, diagnosis, or treatment.</div>
+        </section>
+      </div>
+
+      <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
+        <h2 class="text-2xl font-semibold">How to Use this Calculator</h2>
+        <p>Enter your height and weight, choose a unit system, and select the clinical formula you prefer. The calculator normalizes inputs internally to metric units and updates instantly whenever you hit Calculate or change an input.</p>
+        <p>The formula comparison ensures you can review the Mosteller result alongside Du Bois &amp; Du Bois, Haycock, Gehan &amp; George, and Boyd values so you can pick the approach used in your setting.</p>
+        <h2 class="text-2xl font-semibold mt-6">Methodology</h2>
+        <p>The calculator converts imperial inputs to centimeters and kilograms, then applies the chosen α–β exponent formula. Rounding is applied only for display; internal calculations keep full double-precision accuracy.</p>
+        <ul class="list mt-4">
+          <li>Mosteller is fast and widely used for chemotherapy dosing and clinical trials.</li>
+          <li>Du Bois &amp; Du Bois and Haycock offer slightly different exponent weights for height and weight.</li>
+          <li>Gehan &amp; George as well as Boyd provide alternative exponent combinations derived from large datasets.</li>
+        </ul>
+        <p class="text-sm text-gray-600 mt-3">The shared inputs update the URL automatically, letting you bookmark or share the exact scenario if needed.</p>
+
+        <h2 class="text-2xl font-semibold mt-10">Authoritative sources</h2>
+        <p>These formulas come from peer-reviewed, clinical references:</p>
+        <ul class="list">
+          <li>Mosteller RD. Simplified calculation of body surface area. N Engl J Med. 1987;317(17):1098. DOI: 10.1056/NEJM198710223171717.</li>
+          <li>Du Bois D, Du Bois EF. A formula to estimate the approximate surface area if height and weight be known. Arch Intern Med. 1916;17(6):863–871.</li>
+          <li>Haycock GB, Schwartz GJ, Wisotsky DH. Geometric method for measuring body surface area: A height-weight formula validated in infants, children, and adults. J Pediatr. 1978;93(1):62–66.</li>
+          <li>Gehan EA, George SL. Estimation of human body surface area from height and weight. Cancer Chemother Rep. 1970;54(4):225–235.</li>
+          <li>Boyd E. The growth of the surface area of the human body. University of Minnesota Press; 1935.</li>
+        </ul>
+        <p><em>Tutti i calcoli si basano rigorosamente sulle formule e sui dati originali forniti da queste fonti.</em></p>
+
+        <h2 class="text-2xl font-semibold mt-10">Step-by-step example</h2>
+        <p><strong>Inputs:</strong> Height = 170 cm, Weight = 70 kg, Formula = Mosteller.</p>
+        <p>Mosteller formula:</p>
+        <p class="latex">$$\mathrm{BSA} = \sqrt{\frac{170 \times 70}{3600}} \approx 1.818\,\mathrm{m}^2$$</p>
+        <p>Rounded to two decimals: <strong>1.82 m²</strong>.</p>
+
+        <h2 class="text-2xl font-semibold mt-10">Frequently asked questions</h2>
+        <section aria-label="FAQ">
+          <h3 class="text-lg font-semibold mt-4">What is Body Surface Area (BSA)?</h3>
+          <p>BSA is the total external surface area of the human body. Clinical dosing, normalization of clearance, and fluid resuscitation often rely on this metric.</p>
+          <h3 class="text-lg font-semibold mt-2">Which formula is best?</h3>
+          <p>No single formula fits everyone. Mosteller is easy and precise, but some institutions prefer Du Bois &amp; Du Bois, Haycock, Gehan &amp; George, or Boyd based on protocol.</p>
+          <h3 class="text-lg font-semibold mt-2">Do I need to switch to metric?</h3>
+          <p>No. Use inches and pounds if that matches your measurement system; the calculator converts to centimeters and kilograms.</p>
+          <h3 class="text-lg font-semibold mt-2">Is this tool suitable for pediatrics?</h3>
+          <p>Yes. Haycock and Mosteller are widely used for infants and children, but always follow pediatric dosing guidelines.</p>
+          <h3 class="text-lg font-semibold mt-2">Can I rely on it for chemotherapy dosing?</h3>
+          <p>This calculator is educational. Use it to cross-check dosing but always confirm with official protocols.</p>
+          <h3 class="text-lg font-semibold mt-2">How accurate is BSA?</h3>
+          <p>Each equation is an estimate from reference populations. Human variation means these are tools, not definitive measurements.</p>
+          <h3 class="text-lg font-semibold mt-2">Why do formulas differ?</h3>
+          <p>Different datasets and statistical models produce minor variations. Compare values to understand the range.</p>
+        </section>
+
+        <h2 class="text-2xl font-semibold mt-10">Why this calculator is different</h2>
+        <ul class="list">
+          <li>Multiple peer-reviewed formulas side-by-side for transparent comparison.</li>
+          <li>Mobile-first, keyboard-navigable layout that meets WCAG 2.1 AA.</li>
+          <li>Live URL sharing so you can bookmark precise inputs.</li>
+          <li>Clear validation, contextual help, and double-precision rounding controls.</li>
+          <li>No tracking, no external assets beyond MathJax for formulas — optimized for Core Web Vitals.</li>
+        </ul>
+
+        <div class="note mt-6" role="note">Always consult official clinical guidelines and your institution’s policies before applying BSA-derived dosing.</div>
+      </section>
+
+      <section class="card meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
+        <details id="formulaDetails">
+          <summary class="cursor-pointer font-bold text-gray-800">Formulas</summary>
+          <div class="mt-3 p-3 bg-white border border-gray-200 rounded-lg text-sm space-y-2">
+            <p>Most formulas operate on Height in centimeters (H_cm) and Weight in kilograms (W_kg). The calculator normalizes imperial units before applying the exponents below.</p>
+            <div class="formula-box">
+              <strong>Mosteller</strong>
+              <p class="latex">$$\mathrm{BSA} = \sqrt{\frac{H_{\mathrm{cm}} \times W_{\mathrm{kg}}}{3600}}$$</p>
+              <strong>Du Bois &amp; Du Bois</strong>
+              <p class="latex">$$\mathrm{BSA} = 0.007184 \times H_{\mathrm{cm}}^{0.725} \times W_{\mathrm{kg}}^{0.425}$$</p>
+              <strong>Haycock</strong>
+              <p class="latex">$$\mathrm{BSA} = 0.024265 \times H_{\mathrm{cm}}^{0.3964} \times W_{\mathrm{kg}}^{0.5378}$$</p>
+              <strong>Gehan &amp; George</strong>
+              <p class="latex">$$\mathrm{BSA} = 0.0235 \times H_{\mathrm{cm}}^{0.42246} \times W_{\mathrm{kg}}^{0.51456}$$</p>
+              <strong>Boyd</strong>
+              <p class="latex">$$\mathrm{BSA} = 0.0003207 \times H_{\mathrm{cm}}^{0.3} \times W_{\mathrm{kg}}^{0.7285 - 0.0188\log_{10}(W_{\mathrm{kg}})}$$</p>
+            </div>
+          </div>
+        </details>
+        <details class="mt-3" id="citationDetails">
+          <summary class="cursor-pointer font-bold text-gray-800">Citations</summary>
+          <div class="mt-3 p-3 bg-white border border-gray-200 rounded-lg text-sm">
+            <ul class="list-disc list-inside">
+              <li><strong>NIST — Weights and measures</strong> — nist.gov · Accessed 2026-01-19<br><a href="https://www.nist.gov/pml/weights-and-measures" target="_blank" rel="noopener">https://www.nist.gov/pml/weights-and-measures</a></li>
+              <li><strong>FTC — Consumer advice</strong> — consumer.ftc.gov · Accessed 2026-01-19<br><a href="https://consumer.ftc.gov/" target="_blank" rel="noopener">https://consumer.ftc.gov/</a></li>
+            </ul>
+          </div>
+        </details>
+        <details class="mt-3" id="changelogDetails">
+          <summary class="cursor-pointer font-bold text-gray-800">Changelog</summary>
+          <div class="mt-3 p-3 bg-white border border-gray-200 rounded-lg text-sm">
+            <p><strong>Version:</strong> 0.1.0-draft · Last code update: 2026-01-19</p>
+            <ul class="list-disc list-inside mt-2">
+              <li>Initial audit spec draft generated from HTML extraction (review required).</li>
+              <li>Verify formulas match the calculator engine and convert any text-only formulas to LaTeX.</li>
+              <li>Confirm sources are authoritative and relevant to the calculator methodology.</li>
+            </ul>
+          </div>
+        </details>
+        <div class="flex flex-wrap gap-2 mt-4">
+          <span class="inline-flex items-center gap-1 border border-gray-200 px-3 py-1 rounded-full bg-white text-sm"><span class="text-green-600 font-bold">✓</span> Verified by Ugo Candido</span>
+          <span class="inline-flex items-center border border-gray-200 px-3 py-1 rounded-full bg-white text-sm">Last Updated: 2026-01-19</span>
+          <span class="inline-flex items-center border border-gray-200 px-3 py-1 rounded-full bg-white text-sm">Version 0.1.0-draft</span>
+        </div>
+      
+          <div class="badge" id="versionBadge">Version 1.5.0</div></section>
+    </main>
+
+    <footer id="siteFooter" class="bg-gray-900 text-white py-12">
+      <div class="container mx-auto px-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div>
+            <h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
+            <p class="text-gray-300 mb-4">Your trusted source for reliable calculators. Accurate, fast, and transparent tools for every need.</p>
+          </div>
+          <div>
+            <h4 class="text-lg font-semibold mb-4">Categories</h4>
+            <ul class="space-y-2 text-gray-300 text-sm">
+              <li><a href="https://calcdomain.com/categories/health-fitness">Health &amp; Fitness</a></li>
+              <li><a href="https://calcdomain.com/categories/finance">Finance</a></li>
+              <li><a href="https://calcdomain.com/categories/lifestyle-everyday">Lifestyle &amp; Everyday</a></li>
+              <li><a href="https://calcdomain.com/categories/math-conversions">Math &amp; Conversions</a></li>
+              <li><a href="https://calcdomain.com/categories/science">Science</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
+            <ul class="space-y-2 text-gray-300 text-sm">
+              <li><a href="https://calcdomain.com/bmi-calculator">BMI Calculator</a></li>
+              <li><a href="https://calcdomain.com/mortgage-payment">Mortgage Calculator</a></li>
+              <li><a href="https://calcdomain.com/percentage-calculator">Percentage Calculator</a></li>
+              <li><a href="https://calcdomain.com/auto-loan-calculator">Auto Loan Calculator</a></li>
+              <li><a href="https://calcdomain.com/house-affordability">House Affordability</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="text-lg font-semibold mb-4">Support</h4>
+            <ul class="space-y-2 text-gray-300 text-sm">
+              <li><a href="https://calcdomain.com/about">About Us</a></li>
+              <li><a href="https://calcdomain.com/contact">Contact</a></li>
+              <li><a href="https://calcdomain.com/privacy">Privacy Policy</a></li>
+              <li><a href="https://calcdomain.com/terms">Terms of Service</a></li>
+              <li><a href="https://calcdomain.com/sitemap.xml">Site Map</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-500 text-sm">
+          <p>© 2026 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
+        </div>
+      </div>
+    </footer>
+
+    <script src="/assets/js/mobile-menu.js"></script>
+    <script src="/search.js"></script>
+    <script>
+      window.MathJax = {
+        tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['$', '$'], ['\\[', '\\]']] },
+        svg: { fontCache: 'global' }
+      };
+    </script>
+    <script>
+      (function () {
+        var loadMathJax = function () {
+          if (window.__mathjaxLoading) return;
+          window.__mathjaxLoading = true;
+          var script = document.createElement('script');
+          script.id = 'MathJax-script';
+          script.async = true;
+          script.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js';
+          document.head.appendChild(script);
+        };
+        var target = document.querySelector('.formula-box, .latex');
+        if (!target) return;
+        if ('IntersectionObserver' in window) {
+          var observer = new IntersectionObserver(function (entries) {
+            if (entries.some(function (entry) { return entry.isIntersecting; })) {
+              observer.disconnect();
+              loadMathJax();
+            }
+          }, { rootMargin: '200px' });
+          observer.observe(target);
+        } else {
+          window.addEventListener('load', function () { setTimeout(loadMathJax, 1000); }, { once: true });
         }
-      ]
-    }
-  ],
-  "reviewedBy": {
-    "@type": "Person",
-    "name": "Ugo Candido"
-  }
-}</script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="search.js" defer=""></script>
-<!-- MathJax for LaTeX formulas -->
-<script>
-  (function() {
-
-    'use strict';
-
-  window.MathJax = { tex: { inlineMath: [['\\(','\\)'], [',
-    svg: { fontCache: 'global' }
-  };
-
-
-  })();</script>
-<script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<link rel="preload" href="/assets/js/mobile-menu.js" as="script">
-<link rel="preload" href="/assets/js/page-enhancements.js" as="script">
-
-
-<style>
-/* AUDIT_SPINE_CSS */
-.auditspine-note{
-  border:1px solid #e5e7eb;
-  background:#fff;
-  border-radius:12px;
-  padding:12px;
-  color:#475569;
-  font-size:13px;
-  line-height:1.5;
-}
-.auditspine-mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
-.auditspine-changelog{
-  border:1px solid #e5e7eb;
-  background:#fff;
-  border-left:5px solid #334155;
-  border-radius:12px;
-  padding:12px;
-  font-size:13px;
-  color:#475569;
-}
-.auditspine-formula{
-  margin:10px 0;
-  background:#0b1220;
-  color:#e5e7eb;
-  border-radius:12px;
-  padding:12px;
-  border:1px solid rgba(255,255,255,.12);
-  overflow-x:auto;
-}
-.auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
-.auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-.auditspine-badge{
-  display:inline-block;
-  padding:4px 10px;
-  border-radius:999px;
-  font-size:12px;
-  font-weight:600;
-  border:1px solid #e5e7eb;
-  background:#f8fafc;
-  color:#0f172a;
-}
-.auditspine-badge-warn{
-  background:#fff7ed;
-  border-color:#fed7aa;
-  color:#9a3412;
-}
-</style>
-<script type="application/ld+json">{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "Health & Fitness",
-      "item": "https://calcdomain.com/categories/health-fitness"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Health Metrics",
-      "item": "https://calcdomain.com/subcategories/health-metrics"
-    }
-  ]
-}</script>
-</head>
-<body><header id="siteHeader">
-  <div class="nav container">
-    <a class="brand" href="https://calcdomain.com">CalcDomain</a>
-    <div class="navRight">
-      <a class="pill" href="https://calcdomain.com/search">Advanced Search</a>
-      <span class="pill">Categories</span>
-    </div>
-  </div>
-</header><div class="container">
-  <main style="margin:24px 0 40px;" id="mainContent">
-    <h1 id="pageTitle">Body Surface Area (BSA) Calculator</h1>
-    <p class="sub" id="pageSub">Professional, mobile-first BSA calculator with metric and imperial units. Supports Mosteller, Du Bois &amp; Du Bois, Haycock, Gehan &amp; George, and Boyd formulas. WCAG 2.1 AA accessible.</p>
-    <div id="errorBox" class="alert" role="alert" aria-live="polite"></div>
-
-    <div class="calc-hero" id="calcHero">
-      <section class="card" id="inputsCard" aria-label="Calculator inputs"><input type="search" id="search-input" placeholder="Search for a calculator..." class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
-<div data-canon-btnrow="1" style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
-<button id="calcBtn" type="button" class="btn">Calculate</button>
-</div>
-</section>
-      <section class="card sticky-box" id="resultsCard" aria-label="Calculator results"></section>
-    </div>
-
-    <section class="card content-card" id="howToUse" aria-label="How to use and methodology">
-      <h2>Full original guide (expanded)</h2>
-    <header class="bg-white shadow-sm sticky top-0 z-50">
-  <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
-    <div class="flex justify-between items-center">
-      <a href="https://calcdomain.com" class="text-2xl font-bold text-blue-600">CalcDomain</a>
-
-      <div class="w-full max-w-md hidden md:block mx-8">
-        <div class="relative">
-          
-          <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-          </svg>
-          <div id="search-results" class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200"></div>
-        </div>
-      </div>
-
-      <div class="hidden md:flex items-center space-x-6">
-        <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600 transition-colors">Advanced Search</a>
-        <a href="https://calcdomain.com/#categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
-      </div>
-
-      <button id="mobile-menu-toggle" class="md:hidden p-2" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" type="button">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-        </svg>
-      </button>
-    </div>
-
-    <nav id="mobile-menu" class="md:hidden mt-4 hidden" aria-label="Mobile menu" role="navigation">
-      <div class="mb-4">
-        <div class="relative">
-          <input type="search" id="mobile-search-input" placeholder="Search calculators..." class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-          </svg>
-        </div>
-      </div>
-      <div class="space-y-2">
-        <a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
-        <a href="https://calcdomain.com#categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
-      </div>
-    </nav>
-  </nav>
-</header><a class="skip-link" href="#main-content">Skip to main content</a><main class="main w-full lg:w-2/3" id="main-content" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="text-blue-600 hover:underline">Home</a> » <a href="https://calcdomain.com/categories/health-fitness" class="text-blue-600 hover:underline">Health &amp; Fitness</a> » <a href="https://calcdomain.com/subcategories/health-metrics" class="text-blue-600 hover:underline">Health Metrics</a></nav>
-<div class="container">
-<h1>Body Surface Area (BSA) Calculator</h1>
-<p>Estimate body surface area (BSA) using standard clinical formulas for dosing and assessment.</p>
-<div class="calculator-layout" id="calculatorLayout">
-<aside aria-labelledby="calcHeading" class="card w-full lg:w-1/3">
-<section aria-describedby="calcIntro" id="bsa-calculator">
-<h2 class="sr-only" id="calcHeading">Interactive BSA Calculator</h2>
-<p class="subtle" id="calcIntro">Enter your measurements and choose a formula. Results update instantly.</p>
-<div class="form-group">
-<fieldset>
-<legend>Unit system</legend>
-<div aria-label="Unit system" class="radio-group" role="radiogroup">
-<div>
-<input checked="" id="unitMetric" name="unitSystem" type="radio" value="metric">
-<label class="radio-pill" for="unitMetric">Metric (cm, kg)</label>
-</div>
-<div>
-<input id="unitImperial" name="unitSystem" type="radio" value="imperial">
-<label class="radio-pill" for="unitImperial">Imperial (in, lb)</label>
-</div>
-</div>
-</fieldset>
-</div>
-<div class="form-group">
-<label for="heightInput">
-                Height <span aria-hidden="true" class="req">*</span>
-<button aria-controls="heightHelp" aria-expanded="false" aria-label="Height field help" class="help-btn" id="heightHelpBtn" type="button">?</button>
-</label>
-<div class="input-row">
-<input aria-describedby="heightHelp heightError" aria-required="true" autocomplete="off" class="form-control" id="heightInput" inputmode="decimal" placeholder="e.g., 170" step="any" type="number">
-<span aria-hidden="true" class="input-suffix" id="heightUnitLabel">cm</span>
-</div>
-<div aria-hidden="true" class="tooltip" id="heightHelp" role="tooltip">
-                Enter standing height. Typical ranges: 30–272 cm (12–107 in). Decimals are allowed.
-              </div>
-<div aria-live="polite" class="error-message" id="heightError" role="alert"></div>
-</div>
-<div class="form-group">
-<label for="weightInput">
-                Weight <span aria-hidden="true" class="req">*</span>
-<button aria-controls="weightHelp" aria-expanded="false" aria-label="Weight field help" class="help-btn" id="weightHelpBtn" type="button">?</button>
-</label>
-<div class="input-row">
-<input aria-describedby="weightHelp weightError" aria-required="true" autocomplete="off" class="form-control" id="weightInput" inputmode="decimal" placeholder="e.g., 70" step="any" type="number">
-<span aria-hidden="true" class="input-suffix" id="weightUnitLabel">kg</span>
-</div>
-<div aria-hidden="true" class="tooltip" id="weightHelp" role="tooltip">
-                Body weight on a calibrated scale. Typical ranges: 1–500 kg (2.2–1100 lb).
-              </div>
-<div aria-live="polite" class="error-message" id="weightError" role="alert"></div>
-</div>
-<div class="form-group">
-<fieldset>
-<legend>Formula</legend>
-<div aria-label="BSA formula" class="radio-group" role="radiogroup">
-<div>
-<input checked="" id="fMosteller" name="formula" type="radio" value="mosteller">
-<label class="radio-pill" for="fMosteller">Mosteller</label>
-</div>
-<div>
-<input id="fDuBois" name="formula" type="radio" value="dubois">
-<label class="radio-pill" for="fDuBois">Du Bois &amp; Du Bois</label>
-</div>
-<div>
-<input id="fHaycock" name="formula" type="radio" value="haycock">
-<label class="radio-pill" for="fHaycock">Haycock</label>
-</div>
-<div>
-<input id="fGehan" name="formula" type="radio" value="gehan">
-<label class="radio-pill" for="fGehan">Gehan &amp; George</label>
-</div>
-<div>
-<input id="fBoyd" name="formula" type="radio" value="boyd">
-<label class="radio-pill" for="fBoyd">Boyd</label>
-</div>
-</div>
-</fieldset>
-</div>
-<div class="form-group">
-<label for="precisionSelect">Rounding</label>
-<select aria-label="Decimal places for BSA result" class="form-control" id="precisionSelect">
-<option selected="" value="2">2 decimals (recommended)</option>
-<option value="3">3 decimals</option>
-</select>
-</div>
-<div aria-label="Actions" class="actions" role="group">
-<button class="btn btn-primary" id="calculateBtn" type="button">Calculate</button>
-<button class="btn btn-ghost btnSecondary" id="resetBtn" type="button">Reset</button>
-<button aria-describedby="copyStatus" class="btn btn-secondary" id="copyBtn" type="button">Copy result</button>
-<button class="btn btn-ghost" id="shareBtn" type="button">Share</button>
-<button class="btn btn-ghost" id="printBtn" type="button">Print</button>
-</div>
-<div aria-live="polite" class="sr-only" id="copyStatus" role="status"></div>
-<p aria-live="polite" class="note">
-              Educational use only. Not a substitute for professional medical advice, diagnosis, or treatment.
-            </p>
-</section>
-</aside>
-<section aria-labelledby="resultsHeading" class="results">
-<h2 id="resultsHeading">Results</h2>
-<div aria-live="polite" class="result-box" id="resultsBox">
-<div class="result-row">
-<span class="result-label">Selected formula</span>
-<span class="result-value" id="selectedFormulaLabel">Mosteller</span>
-</div>
-<div class="result-row">
-<span class="result-label">Body Surface Area (BSA)</span>
-<span class="result-value" id="bsaValue">—</span>
-</div>
-<div class="result-row">
-<span class="result-label">Inputs (normalized)</span>
-<span class="subtle" id="normalizedInputs">H: — cm • W: — kg</span>
-</div>
-<div class="compare" id="compareBlock">
-<div class="help-row" style="justify-content: space-between; align-items:center;">
-<strong>Other formulas (for comparison)</strong>
-<button aria-controls="compareList" aria-expanded="true" class="btn btn-ghost" id="toggleCompareBtn" type="button">Hide</button>
-</div>
-<div aria-live="polite" class="compare-list" id="compareList">
-<!-- populated by JS -->
-</div>
-</div>
-</div>
-</section>
-</div>
-<article aria-labelledby="contentHeading" class="content">
-<h2 id="contentHeading">Authoritative Data Sources and Methodology</h2>
-<p>
-          This calculator implements widely cited, peer‑reviewed BSA equations. Primary references:
-        </p>
-<ul class="list">
-<li>Mosteller RD. Simplified calculation of body-surface area. N Engl J Med. 1987;317(17):1098. DOI: 10.1056/NEJM198710223171717.</li>
-<li>Du Bois D, Du Bois EF. A formula to estimate the approximate surface area if height and weight be known. Arch Intern Med. 1916;17(6):863–871.</li>
-<li>Haycock GB, Schwartz GJ, Wisotsky DH. Geometric method for measuring body surface area: A height-weight formula validated in infants, children, and adults. J Pediatr. 1978;93(1):62–66.</li>
-<li>Gehan EA, George SL. Estimation of human body surface area from height and weight. Cancer Chemother Rep. 1970;54(4):225–235.</li>
-<li>Boyd E. The growth of the surface area of the human body. University of Minnesota Press; 1935.</li>
-</ul>
-<p><em>Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.</em></p>
-<h2>The Formulas Explained</h2>
-<div aria-label="Mathematical formulas" class="formula-box">
-<p><strong>Mosteller</strong></p>
-<p class="latex">$$ \mathrm{BSA} = \sqrt{\frac{H_{\mathrm{cm}} \times W_{\mathrm{kg}}}{3600}} $$</p>
-<p><strong>Du Bois &amp; Du Bois</strong></p>
-<p class="latex">$$ \mathrm{BSA} = 0.007184 \times H_{\mathrm{cm}}^{0.725} \times W_{\mathrm{kg}}^{0.425} $$</p>
-<p><strong>Haycock</strong></p>
-<p class="latex">$$ \mathrm{BSA} = 0.024265 \times H_{\mathrm{cm}}^{0.3964} \times W_{\mathrm{kg}}^{0.5378} $$</p>
-<p><strong>Gehan \&amp; George</strong></p>
-<p class="latex">$$ \mathrm{BSA} = 0.0235 \times H_{\mathrm{cm}}^{0.42246} \times W_{\mathrm{kg}}^{0.51456} $$</p>
-<p><strong>Boyd</strong></p>
-<p class="latex">$$ \mathrm{BSA} = 0.0003207 \times H_{\mathrm{cm}}^{0.3} \times W_{\mathrm{kg}}^{\,0.7285 - 0.0188\,\log_{10}\!\left(W_{\mathrm{kg}}\right)} $$</p>
-</div>
-<h2>Glossary of Variables</h2>
-<ul aria-label="Glossary" class="list">
-<li><strong>H_cm (Height):</strong> Stature in centimeters. The calculator internally converts inches to centimeters when using imperial units.</li>
-<li><strong>W_kg (Weight):</strong> Body mass in kilograms. Pounds are converted to kilograms internally.</li>
-<li><strong>BSA:</strong> Body Surface Area expressed in square meters (m²).</li>
-<li><strong>Formula:</strong> The specific peer‑reviewed equation used to calculate BSA.</li>
-<li><strong>Rounding:</strong> Number of decimals shown; calculations use double precision before rounding for display.</li>
-</ul>
-<h2>How It Works: A Step-by-Step Example</h2>
-<p><strong>Inputs:</strong> Height = 170 cm, Weight = 70 kg, Formula = Mosteller.</p>
-<p>Using the Mosteller equation:</p>
-<p class="latex">$$ \mathrm{BSA} = \sqrt{\frac{170 \times 70}{3600}} = \sqrt{ \frac{11900}{3600} } = \sqrt{3.3056} \approx 1.818\,\mathrm{m}^2 $$</p>
-<p>Rounded to two decimals: <strong>1.82 m²</strong>.</p>
-<h2>Frequently Asked Questions (FAQ)</h2>
-<section aria-label="FAQ">
-<h3>What is Body Surface Area (BSA)?</h3>
-<p>BSA is a measure of the total surface area of the human body. It is used to normalize physiological metrics and to determine certain medication dosages.</p>
-<h3>Which BSA formula is “best”?</h3>
-<p>There is no universal best formula. Mosteller is popular for its simplicity and close agreement with more complex equations. Follow your institution’s policy.</p>
-<h3>Do I need to switch to metric?</h3>
-<p>No. Enter values in inches and pounds if preferred; the tool converts to centimeters and kilograms internally.</p>
-<h3>Is this calculator suitable for pediatrics?</h3>
-<p>Yes; Haycock and Mosteller are commonly cited for children. Always apply pediatric dosing protocols and clinical judgment.</p>
-<h3>Can I use BSA for chemotherapy dosing?</h3>
-<p>Many protocols are BSA-based, but dosing must be individualized. Use this tool as a reference only and always confirm dosing using official guidelines.</p>
-<h3>How accurate is BSA?</h3>
-<p>All equations are estimates derived from populations. Individual variability means that BSA should be one of several clinical considerations.</p>
-<h3>Why do different formulas yield slightly different results?</h3>
-<p>Each equation was derived from different datasets and modeling approaches; differences of a few percent are expected.</p>
-</section>
-<h2>Why this BSA calculator is different</h2>
-<ul class="list">
-          - Multiple peer‑reviewed formulas with instant side‑by‑side comparison
-          - Mobile‑first design, fully keyboard navigable, WCAG 2.1 AA compliant
-          - Live URL sharing of inputs for reproducible results
-          - Clear validation, tooltips, and clinical‑grade rounding controls
-          - No tracking, no external assets — optimized for Core Web Vitals
-        </ul>
-<div class="note" role="note">
-          Always consult official clinical references and your institution’s policies before using BSA in decision‑making.
-        </div>
-
-
-<!-- AUDIT_SPINE_START -->
-<hr class="auditspine-hr">
-<section aria-label="Formulas, sources, changelog, verification">
-  <span class="auditspine-badge">Audit: Complete</span>
-
-  <details style="margin-top:10px">
-    <summary><strong>Formula (LaTeX) + variables + units</strong></summary>
-    <div class="auditspine-note" style="margin-top:10px">
-      This section shows the formulas used by the calculator engine, plus variable definitions and units.
-      
-    </div>
-    <div class="auditspine-formula">
-      <div style="margin:10px 0">
-  <div><strong>Formula (extracted LaTeX)</strong></div>
-  <div style="margin-top:6px">\[','\]</div>
-  <pre class="auditspine-mono">','</pre>
-</div>
-<div style="margin:10px 0">
-  <div><strong>Formula (extracted LaTeX)</strong></div>
-  <div style="margin-top:6px">\[\mathrm{BSA} = \sqrt{\frac{H_{\mathrm{cm}} \times W_{\mathrm{kg}}}{3600}}\]</div>
-  <pre class="auditspine-mono">\mathrm{BSA} = \sqrt{\frac{H_{\mathrm{cm}} \times W_{\mathrm{kg}}}{3600}}</pre>
-</div>
-<div style="margin:10px 0">
-  <div><strong>Formula (extracted LaTeX)</strong></div>
-  <div style="margin-top:6px">\[\mathrm{BSA} = 0.007184 \times H_{\mathrm{cm}}^{0.725} \times W_{\mathrm{kg}}^{0.425}\]</div>
-  <pre class="auditspine-mono">\mathrm{BSA} = 0.007184 \times H_{\mathrm{cm}}^{0.725} \times W_{\mathrm{kg}}^{0.425}</pre>
-</div>
-<div style="margin:10px 0">
-  <div><strong>Formula (extracted LaTeX)</strong></div>
-  <div style="margin-top:6px">\[\mathrm{BSA} = 0.024265 \times H_{\mathrm{cm}}^{0.3964} \times W_{\mathrm{kg}}^{0.5378}\]</div>
-  <pre class="auditspine-mono">\mathrm{BSA} = 0.024265 \times H_{\mathrm{cm}}^{0.3964} \times W_{\mathrm{kg}}^{0.5378}</pre>
-</div>
-<div style="margin:10px 0">
-  <div><strong>Formula (extracted LaTeX)</strong></div>
-  <div style="margin-top:6px">\[\mathrm{BSA} = 0.0235 \times H_{\mathrm{cm}}^{0.42246} \times W_{\mathrm{kg}}^{0.51456}\]</div>
-  <pre class="auditspine-mono">\mathrm{BSA} = 0.0235 \times H_{\mathrm{cm}}^{0.42246} \times W_{\mathrm{kg}}^{0.51456}</pre>
-</div>
-<div style="margin:10px 0">
-  <div><strong>Formula (extracted LaTeX)</strong></div>
-  <div style="margin-top:6px">\[\mathrm{BSA} = 0.0003207 \times H_{\mathrm{cm}}^{0.3} \times W_{\mathrm{kg}}^{\,0.7285 - 0.0188\,\log_{10}\!\left(W_{\mathrm{kg}}\right)}\]</div>
-  <pre class="auditspine-mono">\mathrm{BSA} = 0.0003207 \times H_{\mathrm{cm}}^{0.3} \times W_{\mathrm{kg}}^{\,0.7285 - 0.0188\,\log_{10}\!\left(W_{\mathrm{kg}}\right)}</pre>
-</div>
-<div style="margin:10px 0">
-  <div><strong>Formula (extracted text)</strong></div>
-  
-  <pre class="auditspine-mono">Mosteller $ \mathrm{BSA} = \sqrt{\frac{H_{\mathrm{cm}} \times W_{\mathrm{kg}}}{3600}} $ Du Bois &amp; Du Bois $ \mathrm{BSA} = 0.007184 \times H_{\mathrm{cm}}^{0.725} \times W_{\mathrm{kg}}^{0.425} $ Haycock $ \mathrm{BSA} = 0.024265 \times H_{\mathrm{cm}}^{0.3964} \times W_{\mathrm{kg}}^{0.5378} $ Gehan \&amp; George $ \mathrm{BSA} = 0.0235 \times H_{\mathrm{cm}}^{0.42246} \times W_{\mathrm{kg}}^{0.51456} $ Boyd $ \mathrm{BSA} = 0.0003207 \times H_{\mathrm{cm}}^{0.3} \times W_{\mathrm{kg}}^{\,0.7285 - 0.0188\,\log_{10}\!\left(W_{\mathrm{kg}}\right)} $</pre>
-</div>
-      <div style="margin-top:12px"><strong>Variables and units</strong></div>
-      <ul style="margin:8px 0 0 18px">
-        <li><em>No variables provided in audit spec.</em></li>
-      </ul>
-    </div>
-  </details>
-
-  <div class="auditspine-note" style="margin-top:12px">
-    <strong>Sources (authoritative):</strong>
-    <ul style="margin:8px 0 0 18px">
-      <li><strong>NIST — Weights and measures</strong> — nist.gov · Accessed 2026-01-19<br><a href="https://www.nist.gov/pml/weights-and-measures" target="_blank" rel="nofollow noopener">https://www.nist.gov/pml/weights-and-measures</a></li>
-<li><strong>FTC — Consumer advice</strong> — consumer.ftc.gov · Accessed 2026-01-19<br><a href="https://consumer.ftc.gov/" target="_blank" rel="nofollow noopener">https://consumer.ftc.gov/</a></li>
-    </ul>
-  </div>
-
-  <div class="auditspine-changelog" style="margin-top:12px">
-    <strong>Changelog</strong><br>
-    <div style="margin-top:6px">
-      <strong>Version:</strong> 0.1.0-draft<br>
-      <strong>Last code update:</strong> 2026-01-19
-    </div>
-    <div style="margin-top:10px">
-  <strong>0.1.0-draft</strong> · 2026-01-19
-  <ul style="margin:6px 0 0 18px">
-    <li>Initial audit spec draft generated from HTML extraction (review required).</li>
-<li>Verify formulas match the calculator engine and convert any text-only formulas to LaTeX.</li>
-<li>Confirm sources are authoritative and relevant to the calculator methodology.</li>
-  </ul>
-</div>
-  </div>
-
-  <div class="auditspine-note" style="margin-top:12px">
-    <strong>Verified by Ugo Candido on 2026-01-19</strong><br>
-    <a href="https://calcdomain.com/ugocandido" target="_blank" rel="noopener">Profile</a> ·
-    <a href="https://www.linkedin.com/in/ugocandido92821/" target="_blank" rel="noopener">LinkedIn</a>
-  </div>
-</section>
-<!-- AUDIT_SPINE_END -->
-
-
-</article>
-</div>
-
-
-</main><footer class="bg-gray-900 text-white py-12">
-  <div class="container mx-auto px-4">
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-      <div>
-        <h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
-        <p class="text-gray-400 mb-4">
-          Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.
-        </p>
-        </div>
-
-      <div>
-        <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                                                                        <ul class="space-y-2">
-          <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
-          <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction &amp; DIY</a></li>
-          <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
-          <li><a href="https://calcdomain.com/categories/finance" class="text-gray-400 hover:text-white">Finance</a></li>
-          <li><a href="https://calcdomain.com/categories/general" class="text-gray-400 hover:text-white">General</a></li>
-          <li><a href="https://calcdomain.com/categories/health-fitness" class="text-gray-400 hover:text-white">Health &amp; Fitness</a></li>
-          <li><a href="https://calcdomain.com/categories/lifestyle-everyday" class="text-gray-400 hover:text-white">Lifestyle &amp; Everyday</a></li>
-          <li><a href="https://calcdomain.com/categories/math" class="text-gray-400 hover:text-white">Math</a></li>
-          <li><a href="https://calcdomain.com/categories/math-conversions" class="text-gray-400 hover:text-white">Math &amp; Conversions</a></li>
-          <li><a href="https://calcdomain.com/categories/science" class="text-gray-400 hover:text-white">Science</a></li>
-        </ul>
-      </div>
-
-      <div>
-        <h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
-        <ul class="space-y-2">
-          <li><a href="https://calcdomain.com/mortgage-payment" class="text-gray-400 hover:text-white">Mortgage Calculator</a></li>
-          <li><a href="https://calcdomain.com/percentage-calculator" class="text-gray-400 hover:text-white">Percentage Calculator</a></li>
-          <li><a href="https://calcdomain.com/bmi-calculator" class="text-gray-400 hover:text-white">BMI Calculator</a></li>
-          <li><a href="https://calcdomain.com/auto-loan-calculator" class="text-gray-400 hover:text-white">Auto Loan Calculator</a></li>
-          <li><a href="https://calcdomain.com/house-affordability" class="text-gray-400 hover:text-white">House Affordability</a></li>
-        </ul>
-      </div>
-
-      <div>
-        <h4 class="text-lg font-semibold mb-4">Support</h4>
-        <ul class="space-y-2">
-          <li><a href="https://calcdomain.com/about" class="text-gray-400 hover:text-white">About Us</a></li>
-          <li><a href="https://calcdomain.com/contact" class="text-gray-400 hover:text-white">Contact</a></li>
-          <li><a href="https://calcdomain.com/privacy" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
-          <li><a href="https://calcdomain.com/terms" class="text-gray-400 hover:text-white">Terms of Service</a></li>
-          <li><a href="https://calcdomain.com/sitemap.xml" class="text-gray-400 hover:text-white">Site Map</a></li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
-    </div>
-  </div>
-</footer><link rel="preload" href="/assets/js/mobile-menu.js" as="script"><link rel="preload" href="/assets/js/page-enhancements.js" as="script"><style>
-/* AUDIT_SPINE_CSS */
-.auditspine-note{
-  border:1px solid #e5e7eb;
-  background:#fff;
-  border-radius:12px;
-  padding:12px;
-  color:#475569;
-  font-size:13px;
-  line-height:1.5;
-}
-.auditspine-mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
-.auditspine-changelog{
-  border:1px solid #e5e7eb;
-  background:#fff;
-  border-left:5px solid #334155;
-  border-radius:12px;
-  padding:12px;
-  font-size:13px;
-  color:#475569;
-}
-.auditspine-formula{
-  margin:10px 0;
-  background:#0b1220;
-  color:#e5e7eb;
-  border-radius:12px;
-  padding:12px;
-  border:1px solid rgba(255,255,255,.12);
-  overflow-x:auto;
-}
-.auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
-.auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-.auditspine-badge{
-  display:inline-block;
-  padding:4px 10px;
-  border-radius:999px;
-  font-size:12px;
-  font-weight:600;
-  border:1px solid #e5e7eb;
-  background:#f8fafc;
-  color:#0f172a;
-}
-.auditspine-badge-warn{
-  background:#fff7ed;
-  border-color:#fed7aa;
-  color:#9a3412;
-}
-</style><header class="bg-white shadow-sm sticky top-0 z-50">
-  <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
-    <div class="flex justify-between items-center">
-      <a href="https://calcdomain.com" class="text-2xl font-bold text-blue-600">CalcDomain</a>
-
-      <div class="w-full max-w-md hidden md:block mx-8">
-        <div class="relative">
-          <input type="search" id="search-input" placeholder="Search for a calculator..." class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
-          <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-          </svg>
-          <div id="search-results" class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200"></div>
-        </div>
-      </div>
-
-      <div class="hidden md:flex items-center space-x-6">
-        <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600 transition-colors">Advanced Search</a>
-        <a href="https://calcdomain.com/#categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
-      </div>
-
-      <button id="mobile-menu-toggle" class="md:hidden p-2" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" type="button">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-        </svg>
-      </button>
-    </div>
-
-    <nav id="mobile-menu" class="md:hidden mt-4 hidden" aria-label="Mobile menu" role="navigation">
-      <div class="mb-4">
-        <div class="relative">
-          <input type="search" id="mobile-search-input" placeholder="Search calculators..." class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-          </svg>
-        </div>
-      </div>
-      <div class="space-y-2">
-        <a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
-        <a href="https://calcdomain.com#categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
-      </div>
-    </nav>
-  </nav>
-</header><a class="skip-link" href="#main-content">Skip to main content</a><main class="main" id="main-content" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="text-blue-600 hover:underline">Home</a> » <a href="https://calcdomain.com/categories/health-fitness" class="text-blue-600 hover:underline">Health &amp; Fitness</a> » <a href="https://calcdomain.com/subcategories/health-metrics" class="text-blue-600 hover:underline">Health Metrics</a></nav>
-<div class="container">
-<h1>Body Surface Area (BSA) Calculator</h1>
-<p>Estimate body surface area (BSA) using standard clinical formulas for dosing and assessment.</p>
-<div class="calculator-layout" id="calculatorLayout">
-<aside aria-labelledby="calcHeading" class="card">
-<section aria-describedby="calcIntro" id="bsa-calculator">
-<h2 class="sr-only" id="calcHeading">Interactive BSA Calculator</h2>
-<p class="subtle" id="calcIntro">Enter your measurements and choose a formula. Results update instantly.</p>
-<div class="form-group">
-<fieldset>
-<legend>Unit system</legend>
-<div aria-label="Unit system" class="radio-group" role="radiogroup">
-<div>
-<input checked="" id="unitMetric" name="unitSystem" type="radio" value="metric">
-<label class="radio-pill" for="unitMetric">Metric (cm, kg)</label>
-</div>
-<div>
-<input id="unitImperial" name="unitSystem" type="radio" value="imperial">
-<label class="radio-pill" for="unitImperial">Imperial (in, lb)</label>
-</div>
-</div>
-</fieldset>
-</div>
-<div class="form-group">
-<label for="heightInput">
-                Height <span aria-hidden="true" class="req">*</span>
-<button aria-controls="heightHelp" aria-expanded="false" aria-label="Height field help" class="help-btn" id="heightHelpBtn" type="button">?</button>
-</label>
-<div class="input-row">
-<input aria-describedby="heightHelp heightError" aria-required="true" autocomplete="off" class="form-control" id="heightInput" inputmode="decimal" placeholder="e.g., 170" step="any" type="number">
-<span aria-hidden="true" class="input-suffix" id="heightUnitLabel">cm</span>
-</div>
-<div aria-hidden="true" class="tooltip" id="heightHelp" role="tooltip">
-                Enter standing height. Typical ranges: 30–272 cm (12–107 in). Decimals are allowed.
-              </div>
-<div aria-live="polite" class="error-message" id="heightError" role="alert"></div>
-</div>
-<div class="form-group">
-<label for="weightInput">
-                Weight <span aria-hidden="true" class="req">*</span>
-<button aria-controls="weightHelp" aria-expanded="false" aria-label="Weight field help" class="help-btn" id="weightHelpBtn" type="button">?</button>
-</label>
-<div class="input-row">
-<input aria-describedby="weightHelp weightError" aria-required="true" autocomplete="off" class="form-control" id="weightInput" inputmode="decimal" placeholder="e.g., 70" step="any" type="number">
-<span aria-hidden="true" class="input-suffix" id="weightUnitLabel">kg</span>
-</div>
-<div aria-hidden="true" class="tooltip" id="weightHelp" role="tooltip">
-                Body weight on a calibrated scale. Typical ranges: 1–500 kg (2.2–1100 lb).
-              </div>
-<div aria-live="polite" class="error-message" id="weightError" role="alert"></div>
-</div>
-<div class="form-group">
-<fieldset>
-<legend>Formula</legend>
-<div aria-label="BSA formula" class="radio-group" role="radiogroup">
-<div>
-<input checked="" id="fMosteller" name="formula" type="radio" value="mosteller">
-<label class="radio-pill" for="fMosteller">Mosteller</label>
-</div>
-<div>
-<input id="fDuBois" name="formula" type="radio" value="dubois">
-<label class="radio-pill" for="fDuBois">Du Bois &amp; Du Bois</label>
-</div>
-<div>
-<input id="fHaycock" name="formula" type="radio" value="haycock">
-<label class="radio-pill" for="fHaycock">Haycock</label>
-</div>
-<div>
-<input id="fGehan" name="formula" type="radio" value="gehan">
-<label class="radio-pill" for="fGehan">Gehan &amp; George</label>
-</div>
-<div>
-<input id="fBoyd" name="formula" type="radio" value="boyd">
-<label class="radio-pill" for="fBoyd">Boyd</label>
-</div>
-</div>
-</fieldset>
-</div>
-<div class="form-group">
-<label for="precisionSelect">Rounding</label>
-<select aria-label="Decimal places for BSA result" class="form-control" id="precisionSelect">
-<option selected="" value="2">2 decimals (recommended)</option>
-<option value="3">3 decimals</option>
-</select>
-</div>
-<div aria-label="Actions" class="actions" role="group">
-<button class="btn btn-primary" id="calculateBtn" type="button">Calculate</button>
-<button class="btn btn-ghost" id="resetBtn__dup2" type="button">Reset</button>
-<button aria-describedby="copyStatus" class="btn btn-secondary" id="copyBtn" type="button">Copy result</button>
-<button class="btn btn-ghost" id="shareBtn" type="button">Share</button>
-<button class="btn btn-ghost" id="printBtn" type="button">Print</button>
-</div>
-<div aria-live="polite" class="sr-only" id="copyStatus" role="status"></div>
-<p aria-live="polite" class="note">
-              Educational use only. Not a substitute for professional medical advice, diagnosis, or treatment.
-            </p>
-</section>
-</aside>
-<section aria-labelledby="resultsHeading" class="results">
-<h2 id="resultsHeading">Results</h2>
-<div aria-live="polite" class="result-box" id="resultsBox">
-<div class="result-row">
-<span class="result-label">Selected formula</span>
-<span class="result-value" id="selectedFormulaLabel">Mosteller</span>
-</div>
-<div class="result-row">
-<span class="result-label">Body Surface Area (BSA)</span>
-<span class="result-value" id="bsaValue">—</span>
-</div>
-<div class="result-row">
-<span class="result-label">Inputs (normalized)</span>
-<span class="subtle" id="normalizedInputs">H: — cm • W: — kg</span>
-</div>
-<div class="compare" id="compareBlock">
-<div class="help-row" style="justify-content: space-between; align-items:center;">
-<strong>Other formulas (for comparison)</strong>
-<button aria-controls="compareList" aria-expanded="true" class="btn btn-ghost" id="toggleCompareBtn" type="button">Hide</button>
-</div>
-<div aria-live="polite" class="compare-list" id="compareList">
-<!-- populated by JS -->
-</div>
-</div>
-</div>
-</section>
-</div>
-<article aria-labelledby="contentHeading" class="content">
-<h2 id="contentHeading">Authoritative Data Sources and Methodology</h2>
-<p>
-          This calculator implements widely cited, peer‑reviewed BSA equations. Primary references:
-        </p>
-<ul class="list">
-<li>Mosteller RD. Simplified calculation of body-surface area. N Engl J Med. 1987;317(17):1098. DOI: 10.1056/NEJM198710223171717.</li>
-<li>Du Bois D, Du Bois EF. A formula to estimate the approximate surface area if height and weight be known. Arch Intern Med. 1916;17(6):863–871.</li>
-<li>Haycock GB, Schwartz GJ, Wisotsky DH. Geometric method for measuring body surface area: A height-weight formula validated in infants, children, and adults. J Pediatr. 1978;93(1):62–66.</li>
-<li>Gehan EA, George SL. Estimation of human body surface area from height and weight. Cancer Chemother Rep. 1970;54(4):225–235.</li>
-<li>Boyd E. The growth of the surface area of the human body. University of Minnesota Press; 1935.</li>
-</ul>
-<p><em>Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.</em></p>
-<h2>The Formulas Explained</h2>
-<div aria-label="Mathematical formulas" class="formula-box">
-<p><strong>Mosteller</strong></p>
-<p class="latex">$$ \mathrm{BSA} = \sqrt{\frac{H_{\mathrm{cm}} \times W_{\mathrm{kg}}}{3600}} $$</p>
-<p><strong>Du Bois &amp; Du Bois</strong></p>
-<p class="latex">$$ \mathrm{BSA} = 0.007184 \times H_{\mathrm{cm}}^{0.725} \times W_{\mathrm{kg}}^{0.425} $$</p>
-<p><strong>Haycock</strong></p>
-<p class="latex">$$ \mathrm{BSA} = 0.024265 \times H_{\mathrm{cm}}^{0.3964} \times W_{\mathrm{kg}}^{0.5378} $$</p>
-<p><strong>Gehan \&amp; George</strong></p>
-<p class="latex">$$ \mathrm{BSA} = 0.0235 \times H_{\mathrm{cm}}^{0.42246} \times W_{\mathrm{kg}}^{0.51456} $$</p>
-<p><strong>Boyd</strong></p>
-<p class="latex">$$ \mathrm{BSA} = 0.0003207 \times H_{\mathrm{cm}}^{0.3} \times W_{\mathrm{kg}}^{\,0.7285 - 0.0188\,\log_{10}\!\left(W_{\mathrm{kg}}\right)} $$</p>
-</div>
-<h2>Glossary of Variables</h2>
-<ul aria-label="Glossary" class="list">
-<li><strong>H_cm (Height):</strong> Stature in centimeters. The calculator internally converts inches to centimeters when using imperial units.</li>
-<li><strong>W_kg (Weight):</strong> Body mass in kilograms. Pounds are converted to kilograms internally.</li>
-<li><strong>BSA:</strong> Body Surface Area expressed in square meters (m²).</li>
-<li><strong>Formula:</strong> The specific peer‑reviewed equation used to calculate BSA.</li>
-<li><strong>Rounding:</strong> Number of decimals shown; calculations use double precision before rounding for display.</li>
-</ul>
-<h2>How It Works: A Step-by-Step Example</h2>
-<p><strong>Inputs:</strong> Height = 170 cm, Weight = 70 kg, Formula = Mosteller.</p>
-<p>Using the Mosteller equation:</p>
-<p class="latex">$$ \mathrm{BSA} = \sqrt{\frac{170 \times 70}{3600}} = \sqrt{ \frac{11900}{3600} } = \sqrt{3.3056} \approx 1.818\,\mathrm{m}^2 $$</p>
-<p>Rounded to two decimals: <strong>1.82 m²</strong>.</p>
-<h2>Frequently Asked Questions (FAQ)</h2>
-<section aria-label="FAQ">
-<h3>What is Body Surface Area (BSA)?</h3>
-<p>BSA is a measure of the total surface area of the human body. It is used to normalize physiological metrics and to determine certain medication dosages.</p>
-<h3>Which BSA formula is “best”?</h3>
-<p>There is no universal best formula. Mosteller is popular for its simplicity and close agreement with more complex equations. Follow your institution’s policy.</p>
-<h3>Do I need to switch to metric?</h3>
-<p>No. Enter values in inches and pounds if preferred; the tool converts to centimeters and kilograms internally.</p>
-<h3>Is this calculator suitable for pediatrics?</h3>
-<p>Yes; Haycock and Mosteller are commonly cited for children. Always apply pediatric dosing protocols and clinical judgment.</p>
-<h3>Can I use BSA for chemotherapy dosing?</h3>
-<p>Many protocols are BSA-based, but dosing must be individualized. Use this tool as a reference only and always confirm dosing using official guidelines.</p>
-<h3>How accurate is BSA?</h3>
-<p>All equations are estimates derived from populations. Individual variability means that BSA should be one of several clinical considerations.</p>
-<h3>Why do different formulas yield slightly different results?</h3>
-<p>Each equation was derived from different datasets and modeling approaches; differences of a few percent are expected.</p>
-</section>
-<h2>Why this BSA calculator is different</h2>
-<ul class="list">
-          - Multiple peer‑reviewed formulas with instant side‑by‑side comparison
-          - Mobile‑first design, fully keyboard navigable, WCAG 2.1 AA compliant
-          - Live URL sharing of inputs for reproducible results
-          - Clear validation, tooltips, and clinical‑grade rounding controls
-          - No tracking, no external assets — optimized for Core Web Vitals
-        </ul>
-<div class="note" role="note">
-          Always consult official clinical references and your institution’s policies before using BSA in decision‑making.
-        </div>
-
-
-<!-- AUDIT_SPINE_START -->
-<hr class="auditspine-hr">
-<section aria-label="Formulas, sources, changelog, verification">
-  <span class="auditspine-badge">Audit: Complete</span>
-
-  <details style="margin-top:10px">
-    <summary><strong>Formula (LaTeX) + variables + units</strong></summary>
-    <div class="auditspine-note" style="margin-top:10px">
-      This section shows the formulas used by the calculator engine, plus variable definitions and units.
-      
-    </div>
-    <div class="auditspine-formula">
-      <div style="margin:10px 0">
-  <div><strong>Formula (extracted LaTeX)</strong></div>
-  <div style="margin-top:6px">\[','\]</div>
-  <pre class="auditspine-mono">','</pre>
-</div>
-<div style="margin:10px 0">
-  <div><strong>Formula (extracted LaTeX)</strong></div>
-  <div style="margin-top:6px">\[\mathrm{BSA} = \sqrt{\frac{H_{\mathrm{cm}} \times W_{\mathrm{kg}}}{3600}}\]</div>
-  <pre class="auditspine-mono">\mathrm{BSA} = \sqrt{\frac{H_{\mathrm{cm}} \times W_{\mathrm{kg}}}{3600}}</pre>
-</div>
-<div style="margin:10px 0">
-  <div><strong>Formula (extracted LaTeX)</strong></div>
-  <div style="margin-top:6px">\[\mathrm{BSA} = 0.007184 \times H_{\mathrm{cm}}^{0.725} \times W_{\mathrm{kg}}^{0.425}\]</div>
-  <pre class="auditspine-mono">\mathrm{BSA} = 0.007184 \times H_{\mathrm{cm}}^{0.725} \times W_{\mathrm{kg}}^{0.425}</pre>
-</div>
-<div style="margin:10px 0">
-  <div><strong>Formula (extracted LaTeX)</strong></div>
-  <div style="margin-top:6px">\[\mathrm{BSA} = 0.024265 \times H_{\mathrm{cm}}^{0.3964} \times W_{\mathrm{kg}}^{0.5378}\]</div>
-  <pre class="auditspine-mono">\mathrm{BSA} = 0.024265 \times H_{\mathrm{cm}}^{0.3964} \times W_{\mathrm{kg}}^{0.5378}</pre>
-</div>
-<div style="margin:10px 0">
-  <div><strong>Formula (extracted LaTeX)</strong></div>
-  <div style="margin-top:6px">\[\mathrm{BSA} = 0.0235 \times H_{\mathrm{cm}}^{0.42246} \times W_{\mathrm{kg}}^{0.51456}\]</div>
-  <pre class="auditspine-mono">\mathrm{BSA} = 0.0235 \times H_{\mathrm{cm}}^{0.42246} \times W_{\mathrm{kg}}^{0.51456}</pre>
-</div>
-<div style="margin:10px 0">
-  <div><strong>Formula (extracted LaTeX)</strong></div>
-  <div style="margin-top:6px">\[\mathrm{BSA} = 0.0003207 \times H_{\mathrm{cm}}^{0.3} \times W_{\mathrm{kg}}^{\,0.7285 - 0.0188\,\log_{10}\!\left(W_{\mathrm{kg}}\right)}\]</div>
-  <pre class="auditspine-mono">\mathrm{BSA} = 0.0003207 \times H_{\mathrm{cm}}^{0.3} \times W_{\mathrm{kg}}^{\,0.7285 - 0.0188\,\log_{10}\!\left(W_{\mathrm{kg}}\right)}</pre>
-</div>
-<div style="margin:10px 0">
-  <div><strong>Formula (extracted text)</strong></div>
-  
-  <pre class="auditspine-mono">Mosteller $ \mathrm{BSA} = \sqrt{\frac{H_{\mathrm{cm}} \times W_{\mathrm{kg}}}{3600}} $ Du Bois &amp; Du Bois $ \mathrm{BSA} = 0.007184 \times H_{\mathrm{cm}}^{0.725} \times W_{\mathrm{kg}}^{0.425} $ Haycock $ \mathrm{BSA} = 0.024265 \times H_{\mathrm{cm}}^{0.3964} \times W_{\mathrm{kg}}^{0.5378} $ Gehan \&amp; George $ \mathrm{BSA} = 0.0235 \times H_{\mathrm{cm}}^{0.42246} \times W_{\mathrm{kg}}^{0.51456} $ Boyd $ \mathrm{BSA} = 0.0003207 \times H_{\mathrm{cm}}^{0.3} \times W_{\mathrm{kg}}^{\,0.7285 - 0.0188\,\log_{10}\!\left(W_{\mathrm{kg}}\right)} $</pre>
-</div>
-      <div style="margin-top:12px"><strong>Variables and units</strong></div>
-      <ul style="margin:8px 0 0 18px">
-        <li><em>No variables provided in audit spec.</em></li>
-      </ul>
-    </div>
-  </details>
-
-  <div class="auditspine-note" style="margin-top:12px">
-    <strong>Sources (authoritative):</strong>
-    <ul style="margin:8px 0 0 18px">
-      <li><strong>NIST — Weights and measures</strong> — nist.gov · Accessed 2026-01-19<br><a href="https://www.nist.gov/pml/weights-and-measures" target="_blank" rel="nofollow noopener">https://www.nist.gov/pml/weights-and-measures</a></li>
-<li><strong>FTC — Consumer advice</strong> — consumer.ftc.gov · Accessed 2026-01-19<br><a href="https://consumer.ftc.gov/" target="_blank" rel="nofollow noopener">https://consumer.ftc.gov/</a></li>
-    </ul>
-  </div>
-
-  <div class="auditspine-changelog" style="margin-top:12px">
-    <strong>Changelog</strong><br>
-    <div style="margin-top:6px">
-      <strong>Version:</strong> 0.1.0-draft<br>
-      <strong>Last code update:</strong> 2026-01-19
-    </div>
-    <div style="margin-top:10px">
-  <strong>0.1.0-draft</strong> · 2026-01-19
-  <ul style="margin:6px 0 0 18px">
-    <li>Initial audit spec draft generated from HTML extraction (review required).</li>
-<li>Verify formulas match the calculator engine and convert any text-only formulas to LaTeX.</li>
-<li>Confirm sources are authoritative and relevant to the calculator methodology.</li>
-  </ul>
-</div>
-  </div>
-
-  <div class="auditspine-note" style="margin-top:12px">
-    <strong>Verified by Ugo Candido on 2026-01-19</strong><br>
-    <a href="https://calcdomain.com/ugocandido" target="_blank" rel="noopener">Profile</a> ·
-    <a href="https://www.linkedin.com/in/ugocandido92821/" target="_blank" rel="noopener">LinkedIn</a>
-  </div>
-</section>
-<!-- AUDIT_SPINE_END -->
-
-
-</article>
-</div>
-</main><footer class="bg-gray-900 text-white py-12">
-  <div class="container mx-auto px-4">
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-      <div>
-        <h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
-        <p class="text-gray-400 mb-4">
-          Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.
-        </p>
-        </div>
-
-      <div>
-        <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
-          <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
-          <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction &amp; DIY</a></li>
-          <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
-          <li><a href="https://calcdomain.com/categories/finance" class="text-gray-400 hover:text-white">Finance</a></li>
-          <li><a href="https://calcdomain.com/categories/general" class="text-gray-400 hover:text-white">General</a></li>
-          <li><a href="https://calcdomain.com/categories/health-fitness" class="text-gray-400 hover:text-white">Health &amp; Fitness</a></li>
-          <li><a href="https://calcdomain.com/categories/lifestyle-everyday" class="text-gray-400 hover:text-white">Lifestyle &amp; Everyday</a></li>
-          <li><a href="https://calcdomain.com/categories/math" class="text-gray-400 hover:text-white">Math</a></li>
-          <li><a href="https://calcdomain.com/categories/math-conversions" class="text-gray-400 hover:text-white">Math &amp; Conversions</a></li>
-          <li><a href="https://calcdomain.com/categories/science" class="text-gray-400 hover:text-white">Science</a></li>
-        </ul>
-      </div>
-
-      <div>
-        <h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
-        <ul class="space-y-2">
-          <li><a href="https://calcdomain.com/mortgage-payment" class="text-gray-400 hover:text-white">Mortgage Calculator</a></li>
-          <li><a href="https://calcdomain.com/percentage-calculator" class="text-gray-400 hover:text-white">Percentage Calculator</a></li>
-          <li><a href="https://calcdomain.com/bmi-calculator" class="text-gray-400 hover:text-white">BMI Calculator</a></li>
-          <li><a href="https://calcdomain.com/auto-loan-calculator" class="text-gray-400 hover:text-white">Auto Loan Calculator</a></li>
-          <li><a href="https://calcdomain.com/house-affordability" class="text-gray-400 hover:text-white">House Affordability</a></li>
-        </ul>
-      </div>
-
-      <div>
-        <h4 class="text-lg font-semibold mb-4">Support</h4>
-        <ul class="space-y-2">
-          <li><a href="https://calcdomain.com/about" class="text-gray-400 hover:text-white">About Us</a></li>
-          <li><a href="https://calcdomain.com/contact" class="text-gray-400 hover:text-white">Contact</a></li>
-          <li><a href="https://calcdomain.com/privacy" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
-          <li><a href="https://calcdomain.com/terms" class="text-gray-400 hover:text-white">Terms of Service</a></li>
-          <li><a href="https://calcdomain.com/sitemap.xml" class="text-gray-400 hover:text-white">Site Map</a></li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
-    </div>
-  </div>
-</footer><link rel="preload" href="/assets/js/mobile-menu.js" as="script"><link rel="preload" href="/assets/js/page-enhancements.js" as="script"><style>
-/* AUDIT_SPINE_CSS */
-.auditspine-note{
-  border:1px solid #e5e7eb;
-  background:#fff;
-  border-radius:12px;
-  padding:12px;
-  color:#475569;
-  font-size:13px;
-  line-height:1.5;
-}
-.auditspine-mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
-.auditspine-changelog{
-  border:1px solid #e5e7eb;
-  background:#fff;
-  border-left:5px solid #334155;
-  border-radius:12px;
-  padding:12px;
-  font-size:13px;
-  color:#475569;
-}
-.auditspine-formula{
-  margin:10px 0;
-  background:#0b1220;
-  color:#e5e7eb;
-  border-radius:12px;
-  padding:12px;
-  border:1px solid rgba(255,255,255,.12);
-  overflow-x:auto;
-}
-.auditspine-formula pre{margin:8px 0 0; white-space:pre-wrap;}
-.auditspine-hr{border:none; border-top:1px solid #e5e7eb; margin:18px 0;}
-.auditspine-badge{
-  display:inline-block;
-  padding:4px 10px;
-  border-radius:999px;
-  font-size:12px;
-  font-weight:600;
-  border:1px solid #e5e7eb;
-  background:#f8fafc;
-  color:#0f172a;
-}
-.auditspine-badge-warn{
-  background:#fff7ed;
-  border-color:#fed7aa;
-  color:#9a3412;
-}
-</style><header class="bg-white shadow-sm sticky top-0 z-50">
-  <nav class="container mx-auto px-4 lg:px-6 py-4" aria-label="Primary">
-    <div class="flex justify-between items-center">
-      <a href="https://calcdomain.com" class="text-2xl font-bold text-blue-600">CalcDomain</a>
-
-      <div class="w-full max-w-md hidden md:block mx-8">
-        <div class="relative">
-          <input type="search" id="search-input" placeholder="Search for a calculator..." class="w-full py-2 px-4 pr-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" autocomplete="off">
-          <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-          </svg>
-          <div id="search-results" class="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-2 max-h-96 overflow-y-auto z-50 hidden border border-gray-200"></div>
-        </div>
-      </div>
-
-      <div class="hidden md:flex items-center space-x-6">
-        <a href="https://calcdomain.com/search" class="text-gray-700 hover:text-blue-600 transition-colors">Advanced Search</a>
-        <a href="https://calcdomain.com/#categories" class="text-gray-700 hover:text-blue-600 transition-colors">Categories</a>
-      </div>
-
-      <button id="mobile-menu-toggle" class="md:hidden p-2" aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" type="button">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-        </svg>
-      </button>
-    </div>
-
-    <nav id="mobile-menu" class="md:hidden mt-4 hidden" aria-label="Mobile menu" role="navigation">
-      <div class="mb-4">
-        <div class="relative">
-          <input type="search" id="mobile-search-input" placeholder="Search calculators..." class="w-full py-3 px-4 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <svg class="w-5 h-5 absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-          </svg>
-        </div>
-      </div>
-      <div class="space-y-2">
-        <a href="https://calcdomain.com/search" class="block py-2 text-gray-700 hover:text-blue-600">Advanced Search</a>
-        <a href="https://calcdomain.com#categories" class="block py-2 text-gray-700 hover:text-blue-600">Categories</a>
-      </div>
-    </nav>
-  </nav>
-</header><a class="skip-link" href="#main-content">Skip to main content</a><main class="main" id="main-content" role="main">
-<nav class="text-sm mb-4 text-gray-600" aria-label="Breadcrumbs"><a href="https://calcdomain.com" class="text-blue-600 hover:underline">Home</a> » <a href="https://calcdomain.com/categories/health-fitness" class="text-blue-600 hover:underline">Health &amp; Fitness</a> » <a href="https://calcdomain.com/subcategories/health-metrics" class="text-blue-600 hover:underline">Health Metrics</a></nav>
-<div class="container">
-<h1>Body Surface Area (BSA) Calculator</h1>
-<p>Estimate body surface area (BSA) using standard clinical formulas for dosing and assessment.</p>
-<div class="calculator-layout" id="calculatorLayout">
-<aside aria-labelledby="calcHeading" class="card">
-<section aria-describedby="calcIntro" id="bsa-calculator">
-<h2 class="sr-only" id="calcHeading">Interactive BSA Calculator</h2>
-<p class="subtle" id="calcIntro">Enter your measurements and choose a formula. Results update instantly.</p>
-<div class="form-group">
-<fieldset>
-<legend>Unit system</legend>
-<div aria-label="Unit system" class="radio-group" role="radiogroup">
-<div>
-<input checked="" id="unitMetric" name="unitSystem" type="radio" value="metric">
-<label class="radio-pill" for="unitMetric">Metric (cm, kg)</label>
-</div>
-<div>
-<input id="unitImperial" name="unitSystem" type="radio" value="imperial">
-<label class="radio-pill" for="unitImperial">Imperial (in, lb)</label>
-</div>
-</div>
-</fieldset>
-</div>
-<div class="form-group">
-<label for="heightInput">
-                Height <span aria-hidden="true" class="req">*</span>
-<button aria-controls="heightHelp" aria-expanded="false" aria-label="Height field help" class="help-btn" id="heightHelpBtn" type="button">?</button>
-</label>
-<div class="input-row">
-<input aria-describedby="heightHelp heightError" aria-required="true" autocomplete="off" class="form-control" id="heightInput" inputmode="decimal" placeholder="e.g., 170" step="any" type="number">
-<span aria-hidden="true" class="input-suffix" id="heightUnitLabel">cm</span>
-</div>
-<div aria-hidden="true" class="tooltip" id="heightHelp" role="tooltip">
-                Enter standing height. Typical ranges: 30–272 cm (12–107 in). Decimals are allowed.
-              </div>
-<div aria-live="polite" class="error-message" id="heightError" role="alert"></div>
-</div>
-<div class="form-group">
-<label for="weightInput">
-                Weight <span aria-hidden="true" class="req">*</span>
-<button aria-controls="weightHelp" aria-expanded="false" aria-label="Weight field help" class="help-btn" id="weightHelpBtn" type="button">?</button>
-</label>
-<div class="input-row">
-<input aria-describedby="weightHelp weightError" aria-required="true" autocomplete="off" class="form-control" id="weightInput" inputmode="decimal" placeholder="e.g., 70" step="any" type="number">
-<span aria-hidden="true" class="input-suffix" id="weightUnitLabel">kg</span>
-</div>
-<div aria-hidden="true" class="tooltip" id="weightHelp" role="tooltip">
-                Body weight on a calibrated scale. Typical ranges: 1–500 kg (2.2–1100 lb).
-              </div>
-<div aria-live="polite" class="error-message" id="weightError" role="alert"></div>
-</div>
-<div class="form-group">
-<fieldset>
-<legend>Formula</legend>
-<div aria-label="BSA formula" class="radio-group" role="radiogroup">
-<div>
-<input checked="" id="fMosteller" name="formula" type="radio" value="mosteller">
-<label class="radio-pill" for="fMosteller">Mosteller</label>
-</div>
-<div>
-<input id="fDuBois" name="formula" type="radio" value="dubois">
-<label class="radio-pill" for="fDuBois">Du Bois &amp; Du Bois</label>
-</div>
-<div>
-<input id="fHaycock" name="formula" type="radio" value="haycock">
-<label class="radio-pill" for="fHaycock">Haycock</label>
-</div>
-<div>
-<input id="fGehan" name="formula" type="radio" value="gehan">
-<label class="radio-pill" for="fGehan">Gehan &amp; George</label>
-</div>
-<div>
-<input id="fBoyd" name="formula" type="radio" value="boyd">
-<label class="radio-pill" for="fBoyd">Boyd</label>
-</div>
-</div>
-</fieldset>
-</div>
-<div class="form-group">
-<label for="precisionSelect">Rounding</label>
-<select aria-label="Decimal places for BSA result" class="form-control" id="precisionSelect">
-<option selected="" value="2">2 decimals (recommended)</option>
-<option value="3">3 decimals</option>
-</select>
-</div>
-<div aria-label="Actions" class="actions" role="group">
-<button class="btn btn-primary" id="calculateBtn" type="button">Calculate</button>
-<button class="btn btn-ghost" id="resetBtn__dup3" type="button">Reset</button>
-<button aria-describedby="copyStatus" class="btn btn-secondary" id="copyBtn" type="button">Copy result</button>
-<button class="btn btn-ghost" id="shareBtn" type="button">Share</button>
-<button class="btn btn-ghost" id="printBtn" type="button">Print</button>
-</div>
-<div aria-live="polite" class="sr-only" id="copyStatus" role="status"></div>
-<p aria-live="polite" class="note">
-              Educational use only. Not a substitute for professional medical advice, diagnosis, or treatment.
-            </p>
-</section>
-</aside>
-<section aria-labelledby="resultsHeading" class="results">
-<h2 id="resultsHeading">Results</h2>
-<div aria-live="polite" class="result-box" id="resultsBox">
-<div class="result-row">
-<span class="result-label">Selected formula</span>
-<span class="result-value" id="selectedFormulaLabel">Mosteller</span>
-</div>
-<div class="result-row">
-<span class="result-label">Body Surface Area (BSA)</span>
-<span class="result-value" id="bsaValue">—</span>
-</div>
-<div class="result-row">
-<span class="result-label">Inputs (normalized)</span>
-<span class="subtle" id="normalizedInputs">H: — cm • W: — kg</span>
-</div>
-<div class="compare" id="compareBlock">
-<div class="help-row" style="justify-content: space-between; align-items:center;">
-<strong>Other formulas (for comparison)</strong>
-<button aria-controls="compareList" aria-expanded="true" class="btn btn-ghost" id="toggleCompareBtn" type="button">Hide</button>
-</div>
-<div aria-live="polite" class="compare-list" id="compareList">
-<!-- populated by JS -->
-</div>
-</div>
-</div>
-</section>
-</div>
-<article aria-labelledby="contentHeading" class="content">
-<h2 id="contentHeading">Authoritative Data Sources and Methodology</h2>
-<p>
-          This calculator implements widely cited, peer‑reviewed BSA equations. Primary references:
-        </p>
-<ul class="list">
-<li>Mosteller RD. Simplified calculation of body-surface area. N Engl J Med. 1987;317(17):1098. DOI: 10.1056/NEJM198710223171717.</li>
-<li>Du Bois D, Du Bois EF. A formula to estimate the approximate surface area if height and weight be known. Arch Intern Med. 1916;17(6):863–871.</li>
-<li>Haycock GB, Schwartz GJ, Wisotsky DH. Geometric method for measuring body surface area: A height-weight formula validated in infants, children, and adults. J Pediatr. 1978;93(1):62–66.</li>
-<li>Gehan EA, George SL. Estimation of human body surface area from height and weight. Cancer Chemother Rep. 1970;54(4):225–235.</li>
-<li>Boyd E. The growth of the surface area of the human body. University of Minnesota Press; 1935.</li>
-</ul>
-<p><em>Tutti i calcoli si basano rigorosamente sulle formule e sui dati forniti da questa fonte.</em></p>
-<h2>The Formulas Explained</h2>
-<div aria-label="Mathematical formulas" class="formula-box">
-<p><strong>Mosteller</strong></p>
-<p class="latex">$$ \mathrm{BSA} = \sqrt{\frac{H_{\mathrm{cm}} \times W_{\mathrm{kg}}}{3600}} $$</p>
-<p><strong>Du Bois &amp; Du Bois</strong></p>
-<p class="latex">$$ \mathrm{BSA} = 0.007184 \times H_{\mathrm{cm}}^{0.725} \times W_{\mathrm{kg}}^{0.425} $$</p>
-<p><strong>Haycock</strong></p>
-<p class="latex">$$ \mathrm{BSA} = 0.024265 \times H_{\mathrm{cm}}^{0.3964} \times W_{\mathrm{kg}}^{0.5378} $$</p>
-<p><strong>Gehan \&amp; George</strong></p>
-<p class="latex">$$ \mathrm{BSA} = 0.0235 \times H_{\mathrm{cm}}^{0.42246} \times W_{\mathrm{kg}}^{0.51456} $$</p>
-<p><strong>Boyd</strong></p>
-<p class="latex">$$ \mathrm{BSA} = 0.0003207 \times H_{\mathrm{cm}}^{0.3} \times W_{\mathrm{kg}}^{\,0.7285 - 0.0188\,\log_{10}\!\left(W_{\mathrm{kg}}\right)} $$</p>
-</div>
-<h2>Glossary of Variables</h2>
-<ul aria-label="Glossary" class="list">
-<li><strong>H_cm (Height):</strong> Stature in centimeters. The calculator internally converts inches to centimeters when using imperial units.</li>
-<li><strong>W_kg (Weight):</strong> Body mass in kilograms. Pounds are converted to kilograms internally.</li>
-<li><strong>BSA:</strong> Body Surface Area expressed in square meters (m²).</li>
-<li><strong>Formula:</strong> The specific peer‑reviewed equation used to calculate BSA.</li>
-<li><strong>Rounding:</strong> Number of decimals shown; calculations use double precision before rounding for display.</li>
-</ul>
-<h2>How It Works: A Step-by-Step Example</h2>
-<p><strong>Inputs:</strong> Height = 170 cm, Weight = 70 kg, Formula = Mosteller.</p>
-<p>Using the Mosteller equation:</p>
-<p class="latex">$$ \mathrm{BSA} = \sqrt{\frac{170 \times 70}{3600}} = \sqrt{ \frac{11900}{3600} } = \sqrt{3.3056} \approx 1.818\,\mathrm{m}^2 $$</p>
-<p>Rounded to two decimals: <strong>1.82 m²</strong>.</p>
-<h2>Frequently Asked Questions (FAQ)</h2>
-<section aria-label="FAQ">
-<h3>What is Body Surface Area (BSA)?</h3>
-<p>BSA is a measure of the total surface area of the human body. It is used to normalize physiological metrics and to determine certain medication dosages.</p>
-<h3>Which BSA formula is “best”?</h3>
-<p>There is no universal best formula. Mosteller is popular for its simplicity and close agreement with more complex equations. Follow your institution’s policy.</p>
-<h3>Do I need to switch to metric?</h3>
-<p>No. Enter values in inches and pounds if preferred; the tool converts to centimeters and kilograms internally.</p>
-<h3>Is this calculator suitable for pediatrics?</h3>
-<p>Yes; Haycock and Mosteller are commonly cited for children. Always apply pediatric dosing protocols and clinical judgment.</p>
-<h3>Can I use BSA for chemotherapy dosing?</h3>
-<p>Many protocols are BSA-based, but dosing must be individualized. Use this tool as a reference only and always confirm dosing using official guidelines.</p>
-<h3>How accurate is BSA?</h3>
-<p>All equations are estimates derived from populations. Individual variability means that BSA should be one of several clinical considerations.</p>
-<h3>Why do different formulas yield slightly different results?</h3>
-<p>Each equation was derived from different datasets and modeling approaches; differences of a few percent are expected.</p>
-</section>
-<h2>Why this BSA calculator is different</h2>
-<ul class="list">
-          - Multiple peer‑reviewed formulas with instant side‑by‑side comparison
-          - Mobile‑first design, fully keyboard navigable, WCAG 2.1 AA compliant
-          - Live URL sharing of inputs for reproducible results
-          - Clear validation, tooltips, and clinical‑grade rounding controls
-          - No tracking, no external assets — optimized for Core Web Vitals
-        </ul>
-<div class="note" role="note">
-          Always consult official clinical references and your institution’s policies before using BSA in decision‑making.
-        </div>
-
-
-<!-- AUDIT_SPINE_START -->
-<hr class="auditspine-hr">
-<section aria-label="Formulas, sources, changelog, verification">
-  <span class="auditspine-badge">Audit: Complete</span>
-
-  <details style="margin-top:10px">
-    <summary><strong>Formula (LaTeX) + variables + units</strong></summary>
-    <div class="auditspine-note" style="margin-top:10px">
-      This section shows the formulas used by the calculator engine, plus variable definitions and units.
-      
-    </div>
-    <div class="auditspine-formula">
-      <div style="margin:10px 0">
-  <div><strong>Formula (extracted LaTeX)</strong></div>
-  <div style="margin-top:6px">\[','\]</div>
-  <pre class="auditspine-mono">','</pre>
-</div>
-<div style="margin:10px 0">
-  <div><strong>Formula (extracted LaTeX)</strong></div>
-  <div style="margin-top:6px">\[\mathrm{BSA} = \sqrt{\frac{H_{\mathrm{cm}} \times W_{\mathrm{kg}}}{3600}}\]</div>
-  <pre class="auditspine-mono">\mathrm{BSA} = \sqrt{\frac{H_{\mathrm{cm}} \times W_{\mathrm{kg}}}{3600}}</pre>
-</div>
-<div style="margin:10px 0">
-  <div><strong>Formula (extracted LaTeX)</strong></div>
-  <div style="margin-top:6px">\[\mathrm{BSA} = 0.007184 \times H_{\mathrm{cm}}^{0.725} \times W_{\mathrm{kg}}^{0.425}\]</div>
-  <pre class="auditspine-mono">\mathrm{BSA} = 0.007184 \times H_{\mathrm{cm}}^{0.725} \times W_{\mathrm{kg}}^{0.425}</pre>
-</div>
-<div style="margin:10px 0">
-  <div><strong>Formula (extracted LaTeX)</strong></div>
-  <div style="margin-top:6px">\[\mathrm{BSA} = 0.024265 \times H_{\mathrm{cm}}^{0.3964} \times W_{\mathrm{kg}}^{0.5378}\]</div>
-  <pre class="auditspine-mono">\mathrm{BSA} = 0.024265 \times H_{\mathrm{cm}}^{0.3964} \times W_{\mathrm{kg}}^{0.5378}</pre>
-</div>
-<div style="margin:10px 0">
-  <div><strong>Formula (extracted LaTeX)</strong></div>
-  <div style="margin-top:6px">\[\mathrm{BSA} = 0.0235 \times H_{\mathrm{cm}}^{0.42246} \times W_{\mathrm{kg}}^{0.51456}\]</div>
-  <pre class="auditspine-mono">\mathrm{BSA} = 0.0235 \times H_{\mathrm{cm}}^{0.42246} \times W_{\mathrm{kg}}^{0.51456}</pre>
-</div>
-<div style="margin:10px 0">
-  <div><strong>Formula (extracted LaTeX)</strong></div>
-  <div style="margin-top:6px">\[\mathrm{BSA} = 0.0003207 \times H_{\mathrm{cm}}^{0.3} \times W_{\mathrm{kg}}^{\,0.7285 - 0.0188\,\log_{10}\!\left(W_{\mathrm{kg}}\right)}\]</div>
-  <pre class="auditspine-mono">\mathrm{BSA} = 0.0003207 \times H_{\mathrm{cm}}^{0.3} \times W_{\mathrm{kg}}^{\,0.7285 - 0.0188\,\log_{10}\!\left(W_{\mathrm{kg}}\right)}</pre>
-</div>
-<div style="margin:10px 0">
-  <div><strong>Formula (extracted text)</strong></div>
-  
-  <pre class="auditspine-mono">Mosteller $ \mathrm{BSA} = \sqrt{\frac{H_{\mathrm{cm}} \times W_{\mathrm{kg}}}{3600}} $ Du Bois &amp; Du Bois $ \mathrm{BSA} = 0.007184 \times H_{\mathrm{cm}}^{0.725} \times W_{\mathrm{kg}}^{0.425} $ Haycock $ \mathrm{BSA} = 0.024265 \times H_{\mathrm{cm}}^{0.3964} \times W_{\mathrm{kg}}^{0.5378} $ Gehan \&amp; George $ \mathrm{BSA} = 0.0235 \times H_{\mathrm{cm}}^{0.42246} \times W_{\mathrm{kg}}^{0.51456} $ Boyd $ \mathrm{BSA} = 0.0003207 \times H_{\mathrm{cm}}^{0.3} \times W_{\mathrm{kg}}^{\,0.7285 - 0.0188\,\log_{10}\!\left(W_{\mathrm{kg}}\right)} $</pre>
-</div>
-      <div style="margin-top:12px"><strong>Variables and units</strong></div>
-      <ul style="margin:8px 0 0 18px">
-        <li><em>No variables provided in audit spec.</em></li>
-      </ul>
-    </div>
-  </details>
-
-  <div class="auditspine-note" style="margin-top:12px">
-    <strong>Sources (authoritative):</strong>
-    <ul style="margin:8px 0 0 18px">
-      <li><strong>NIST — Weights and measures</strong> — nist.gov · Accessed 2026-01-19<br><a href="https://www.nist.gov/pml/weights-and-measures" target="_blank" rel="nofollow noopener">https://www.nist.gov/pml/weights-and-measures</a></li>
-<li><strong>FTC — Consumer advice</strong> — consumer.ftc.gov · Accessed 2026-01-19<br><a href="https://consumer.ftc.gov/" target="_blank" rel="nofollow noopener">https://consumer.ftc.gov/</a></li>
-    </ul>
-  </div>
-
-  <div class="auditspine-changelog" style="margin-top:12px">
-    <strong>Changelog</strong><br>
-    <div style="margin-top:6px">
-      <strong>Version:</strong> 0.1.0-draft<br>
-      <strong>Last code update:</strong> 2026-01-19
-    </div>
-    <div style="margin-top:10px">
-  <strong>0.1.0-draft</strong> · 2026-01-19
-  <ul style="margin:6px 0 0 18px">
-    <li>Initial audit spec draft generated from HTML extraction (review required).</li>
-<li>Verify formulas match the calculator engine and convert any text-only formulas to LaTeX.</li>
-<li>Confirm sources are authoritative and relevant to the calculator methodology.</li>
-  </ul>
-</div>
-  </div>
-
-  <div class="auditspine-note" style="margin-top:12px">
-    <strong>Verified by Ugo Candido on 2026-01-19</strong><br>
-    <a href="https://calcdomain.com/ugocandido" target="_blank" rel="noopener">Profile</a> ·
-    <a href="https://www.linkedin.com/in/ugocandido92821/" target="_blank" rel="noopener">LinkedIn</a>
-  </div>
-</section>
-<!-- AUDIT_SPINE_END -->
-
-
-</article>
-</div>
-</main><footer class="bg-gray-900 text-white py-12">
-  <div class="container mx-auto px-4">
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-      <div>
-        <h3 class="text-2xl font-bold mb-4">CalcDomain</h3>
-        <p class="text-gray-400 mb-4">
-          Your trusted source for free online calculators. Accurate, fast, and reliable calculations for every need.
-        </p>
-        </div>
-
-      <div>
-        <h4 class="text-lg font-semibold mb-4">Categories</h4>
-                                                                                                                                                                                                <ul class="space-y-2">
-          <li><a href="https://calcdomain.com/categories/construction" class="text-gray-400 hover:text-white">Construction</a></li>
-          <li><a href="https://calcdomain.com/categories/construction-diy" class="text-gray-400 hover:text-white">Construction &amp; DIY</a></li>
-          <li><a href="https://calcdomain.com/categories/engineering" class="text-gray-400 hover:text-white">Engineering</a></li>
-          <li><a href="https://calcdomain.com/categories/finance" class="text-gray-400 hover:text-white">Finance</a></li>
-          <li><a href="https://calcdomain.com/categories/general" class="text-gray-400 hover:text-white">General</a></li>
-          <li><a href="https://calcdomain.com/categories/health-fitness" class="text-gray-400 hover:text-white">Health &amp; Fitness</a></li>
-          <li><a href="https://calcdomain.com/categories/lifestyle-everyday" class="text-gray-400 hover:text-white">Lifestyle &amp; Everyday</a></li>
-          <li><a href="https://calcdomain.com/categories/math" class="text-gray-400 hover:text-white">Math</a></li>
-          <li><a href="https://calcdomain.com/categories/math-conversions" class="text-gray-400 hover:text-white">Math &amp; Conversions</a></li>
-          <li><a href="https://calcdomain.com/categories/science" class="text-gray-400 hover:text-white">Science</a></li>
-        </ul>
-      </div>
-
-      <div>
-        <h4 class="text-lg font-semibold mb-4">Popular Tools</h4>
-        <ul class="space-y-2">
-          <li><a href="https://calcdomain.com/mortgage-payment" class="text-gray-400 hover:text-white">Mortgage Calculator</a></li>
-          <li><a href="https://calcdomain.com/percentage-calculator" class="text-gray-400 hover:text-white">Percentage Calculator</a></li>
-          <li><a href="https://calcdomain.com/bmi-calculator" class="text-gray-400 hover:text-white">BMI Calculator</a></li>
-          <li><a href="https://calcdomain.com/auto-loan-calculator" class="text-gray-400 hover:text-white">Auto Loan Calculator</a></li>
-          <li><a href="https://calcdomain.com/house-affordability" class="text-gray-400 hover:text-white">House Affordability</a></li>
-        </ul>
-      </div>
-
-      <div>
-        <h4 class="text-lg font-semibold mb-4">Support</h4>
-        <ul class="space-y-2">
-          <li><a href="https://calcdomain.com/about" class="text-gray-400 hover:text-white">About Us</a></li>
-          <li><a href="https://calcdomain.com/contact" class="text-gray-400 hover:text-white">Contact</a></li>
-          <li><a href="https://calcdomain.com/privacy" class="text-gray-400 hover:text-white">Privacy Policy</a></li>
-          <li><a href="https://calcdomain.com/terms" class="text-gray-400 hover:text-white">Terms of Service</a></li>
-          <li><a href="https://calcdomain.com/sitemap.xml" class="text-gray-400 hover:text-white">Site Map</a></li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
-    </div>
-  </div>
-</footer></section>
-
-    <section class="meta-section" id="pageMeta" aria-label="Verification, changelog, formulas, citations">
-  <details id="formulaDetails">
-    <summary style="cursor:pointer; font-weight:700; color:var(--text)">Formulas</summary>
-    <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
-      <p style="margin:0;">(Formulas preserved from original page content, if present.)</p>
-    </div>
-  </details>
-
-  
-
-  
-
-  <div class="badge-row" id="badgeRow">
-    <div class="badge" id="versionBadge">Version 0.1.0-draft</div>
-  </div>
-
-<details id="citationDetails" style="margin-top:10px;">
-  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Citations</summary>
-  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
-    <p style="margin:0;">Add authoritative sources relevant to this calculator (standards bodies, manuals, official docs).</p>
-  </div>
-</details>
-
-<details id="changelogDetails" style="margin-top:10px;">
-  <summary style="cursor:pointer; font-weight:700; color:var(--text)">Changelog</summary>
-  <div style="margin-top:12px; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px;">
-    <ul style="padding-left:18px; margin:0;">
-      <li>0.1.0-draft — 2026-01-19: Initial draft (review required).</li>
-    </ul>
-  </div>
-</details>
-</section>
-  </main>
-</div><footer id="siteFooter" class="bg-gray-900 text-white py-12">
-  <div class="container mx-auto px-4">
-    <div class="border-t border-gray-800 pt-8 text-center text-gray-400">
-      <p>© 2025 CalcDomain. All Rights Reserved. | Free Online Calculators for Everyone</p>
-    </div>
-  </div>
-</footer><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script type="application/ld+json">{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "Health & Fitness",
-      "item": "https://calcdomain.com/categories/health-fitness"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Health Metrics",
-      "item": "https://calcdomain.com/subcategories/health-metrics"
-    }
-  ]
-}</script><script id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script><script type="application/ld+json">{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://calcdomain.com"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "Health & Fitness",
-      "item": "https://calcdomain.com/categories/health-fitness"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "Health Metrics",
-      "item": "https://calcdomain.com/subcategories/health-metrics"
-    }
-  ]
-}</script></body></html>
+      })();
+    </script>
+    <script>
+      (function () {
+        'use strict';
+
+    const debounce = (fn, delay = 100) => {
+      let t;
+      return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), delay);
+      };
+    };
+
+
+        var debounce = function (fn, delay) {
+          var timer;
+          delay = delay || 100;
+          return function () {
+            var args = arguments;
+            clearTimeout(timer);
+            timer = setTimeout(function () { fn.apply(null, args); }, delay);
+          };
+        };
+
+        var roundTo = function (value, decimals) {
+          if (!Number.isFinite(value)) return null;
+          var power = Math.pow(10, decimals);
+          return Math.round((value + Number.EPSILON) * power) / power;
+        };
+
+        var els = {
+          unitRadios: document.querySelectorAll('input[name="unitSystem"]'),
+          height: document.getElementById('heightInput'),
+          weight: document.getElementById('weightInput'),
+          formulaRadios: document.querySelectorAll('input[name="formula"]'),
+          precision: document.getElementById('precisionSelect'),
+          calcBtn: document.getElementById('calcBtn'),
+          resetBtn: document.getElementById('resetBtn'),
+          copyBtn: document.getElementById('copyBtn'),
+          shareBtn: document.getElementById('shareBtn'),
+          printBtn: document.getElementById('printBtn'),
+          errorBox: document.getElementById('errorBox'),
+          bsaValue: document.getElementById('bsaValue'),
+          selectedFormulaLabel: document.getElementById('selectedFormulaLabel'),
+          normalizedHeight: document.getElementById('normalizedHeight'),
+          normalizedWeight: document.getElementById('normalizedWeight'),
+          compareList: document.getElementById('compareList'),
+          toggleCompare: document.getElementById('toggleCompare'),
+          heightUnit: document.getElementById('heightUnitLabel'),
+          weightUnit: document.getElementById('weightUnitLabel'),
+          copyStatus: document.getElementById('copyStatus')
+        };
+
+        var formulaMap = {
+          mosteller: { name: 'Mosteller', fn: function (h, w) { return Math.sqrt((h * w) / 3600); } },
+          dubois: { name: 'Du Bois & Du Bois', fn: function (h, w) { return 0.007184 * Math.pow(h, 0.725) * Math.pow(w, 0.425); } },
+          haycock: { name: 'Haycock', fn: function (h, w) { return 0.024265 * Math.pow(h, 0.3964) * Math.pow(w, 0.5378); } },
+          gehan: { name: 'Gehan & George', fn: function (h, w) { return 0.0235 * Math.pow(h, 0.42246) * Math.pow(w, 0.51456); } },
+          boyd: { name: 'Boyd', fn: function (h, w) {
+            var grams = w * 1000;
+            return 0.0003207 * Math.pow(h, 0.3) * Math.pow(grams, 0.7285 - 0.0188 * Math.log10(grams));
+          } }
+        };
+
+        var latestResult = null;
+        var latestOptions = null;
+
+        function toNumber(value) {
+          var parsed = parseFloat(value);
+          return Number.isFinite(parsed) ? parsed : null;
+        }
+
+        function getSelectedValue(nodeList) {
+          for (var i = 0; i < nodeList.length; i += 1) {
+            if (nodeList[i].checked) return nodeList[i].value;
+          }
+          return nodeList[0] && nodeList[0].value;
+        }
+
+        function parseInputs() {
+          var unit = getSelectedValue(els.unitRadios);
+          var height = toNumber(els.height.value);
+          var weight = toNumber(els.weight.value);
+          var formula = getSelectedValue(els.formulaRadios);
+          var precision = parseInt(els.precision.value, 10);
+          return { unit: unit, height: height, weight: weight, formula: formula, precision: isNaN(precision) ? 2 : precision };
+        }
+
+        function validate(inputs) {
+          var errors = [];
+          if (!Number.isFinite(inputs.height) || inputs.height <= 0) errors.push('Height must be greater than 0.');
+          if (!Number.isFinite(inputs.weight) || inputs.weight <= 0) errors.push('Weight must be greater than 0.');
+          if (inputs.precision < 2 || inputs.precision > 3) errors.push('Precision must be 2 or 3 decimals.');
+          return { ok: errors.length === 0, errors: errors };
+        }
+
+        function compute(inputs) {
+          var heightCm = inputs.unit === 'imperial' ? inputs.height * 2.54 : inputs.height;
+          var weightKg = inputs.unit === 'imperial' ? inputs.weight * 0.45359237 : inputs.weight;
+          if (!Number.isFinite(heightCm) || !Number.isFinite(weightKg)) return null;
+          var data = { normalized: { height: heightCm, weight: weightKg }, values: {} };
+          Object.keys(formulaMap).forEach(function (key) {
+            var fn = formulaMap[key].fn;
+            var val = fn(heightCm, weightKg);
+            data.values[key] = Number.isFinite(val) && val > 0 ? val : null;
+          });
+          return data;
+        }
+
+        function format(outputs, inputs) {
+          if (!outputs) return null;
+          var decimals = inputs.precision;
+          var selectedValue = outputs.values[inputs.formula];
+          var formatted = {
+            bsa: selectedValue === null ? '—' : roundTo(selectedValue, decimals).toFixed(decimals),
+            selectedFormula: formulaMap[inputs.formula].name,
+            normalizedHeight: roundTo(outputs.normalized.height, 1),
+            normalizedWeight: roundTo(outputs.normalized.weight, 1),
+            compare: []
+          };
+          Object.keys(outputs.values).forEach(function (key) {
+            var value = outputs.values[key];
+            if (value === null) return;
+            formatted.compare.push({
+              name: formulaMap[key].name,
+              value: roundTo(value, decimals).toFixed(decimals)
+            });
+          });
+          formatted.compare.sort(function (a, b) { return a.name.localeCompare(b.name); });
+          return formatted;
+        }
+
+        function renderError(errors) {
+          if (!errors || errors.length === 0) {
+            els.errorBox.style.display = 'none';
+            els.errorBox.textContent = '';
+            return;
+          }
+          els.errorBox.style.display = 'block';
+          els.errorBox.textContent = errors.join(' ');
+        }
+
+        function render(formatted, inputs) {
+          if (!formatted) return;
+          els.bsaValue.textContent = formatted.bsa + ' m²';
+          els.selectedFormulaLabel.textContent = 'Selected formula: ' + formatted.selectedFormula;
+          els.normalizedHeight.textContent = (formatted.normalizedHeight === null ? '—' : formatted.normalizedHeight + ' cm');
+          els.normalizedWeight.textContent = (formatted.normalizedWeight === null ? '—' : formatted.normalizedWeight + ' kg');
+          els.compareList.innerHTML = '';
+          var fragment = document.createDocumentFragment();
+          formatted.compare.forEach(function (entry) {
+            var item = document.createElement('div');
+            item.className = 'compare-item';
+            var label = document.createElement('span');
+            label.className = 'compare-label';
+            label.textContent = entry.name;
+            var value = document.createElement('span');
+            value.className = 'compare-value';
+            value.textContent = entry.value + ' m²';
+            item.appendChild(label);
+            item.appendChild(value);
+            fragment.appendChild(item);
+          });
+          els.compareList.appendChild(fragment);
+          latestResult = formatted;
+          latestOptions = inputs;
+          els.copyBtn.disabled = false;
+          els.shareBtn.disabled = false;
+        }
+
+        function updateURL(inputs) {
+          if (!window.history || !window.history.replaceState) return;
+          var params = new URLSearchParams();
+          params.set('unit', inputs.unit);
+          params.set('height', inputs.height);
+          params.set('weight', inputs.weight);
+          params.set('formula', inputs.formula);
+          params.set('precision', inputs.precision);
+          var newUrl = window.location.pathname + '?' + params.toString();
+          window.history.replaceState(null, '', newUrl);
+        }
+
+        function update() {
+          var inputs = parseInputs();
+          renderError([]);
+          els.copyBtn.disabled = true;
+          els.shareBtn.disabled = true;
+          els.printBtn.disabled = false;
+          var validation = validate(inputs);
+          if (!validation.ok) {
+            renderError(validation.errors);
+            return;
+          }
+          var outputs = compute(inputs);
+          if (!outputs) {
+            renderError(['Unable to compute with the provided values.']);
+            return;
+          }
+          var formatted = format(outputs, inputs);
+          render(formatted, inputs);
+          updateURL(inputs);
+        }
+
+        function resetDefaults() {
+          els.height.value = '170';
+          els.weight.value = '70';
+          els.precision.value = '2';
+          els.unitRadios.forEach(function (radio) { radio.checked = radio.value === 'metric'; });
+          els.formulaRadios.forEach(function (radio) { radio.checked = radio.value === 'mosteller'; });
+          els.heightUnit.textContent = 'cm';
+          els.weightUnit.textContent = 'kg';
+        }
+
+        els.calcBtn.addEventListener('click', update);
+        els.resetBtn.addEventListener('click', function () {
+          resetDefaults();
+    const debouncedUpdate = debounce(update, 100);
+
+    document.querySelectorAll('#inputsCard input, #inputsCard select, #inputsCard textarea')
+      .forEach((el) => {
+        el.addEventListener('input', debouncedUpdate);
+        el.addEventListener('change', debouncedUpdate);
+      });
+
+          update();
+        });
+        els.printBtn.addEventListener('click', function () { window.print(); });
+        els.copyBtn.addEventListener('click', function () {
+          if (!latestResult) return;
+          var text = latestResult.selectedFormula + ': ' + latestResult.bsa + ' m²';
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(function () {
+              els.copyStatus.textContent = 'Copied to clipboard.';
+            });
+          } else {
+            var textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            textarea.remove();
+            els.copyStatus.textContent = 'Copied to clipboard.';
+          }
+        });
+        els.shareBtn.addEventListener('click', function () {
+          if (!latestResult) return;
+          var shareText = latestResult.selectedFormula + ' BSA: ' + latestResult.bsa + ' m²';
+          if (navigator.share) {
+            navigator.share({ title: 'BSA Result', text: shareText, url: window.location.href }).catch(function () {});
+          } else {
+            window.prompt('Copy your result', shareText + '\n' + window.location.href);
+          }
+        });
+
+        els.toggleCompare.addEventListener('click', function () {
+          var list = els.compareList;
+          var isHidden = list.hasAttribute('hidden');
+          if (isHidden) {
+            list.removeAttribute('hidden');
+            els.toggleCompare.textContent = 'Hide';
+          } else {
+            list.setAttribute('hidden', '');
+            els.toggleCompare.textContent = 'Show';
+          }
+        });
+
+        document.querySelectorAll('#inputsCard input, #inputsCard select').forEach(function (el) {
+          el.addEventListener('input', debounce(update));
+          el.addEventListener('change', debounce(update));
+        });
+
+        els.unitRadios.forEach(function (radio) {
+          radio.addEventListener('change', function () {
+            var isImperial = radio.value === 'imperial';
+            els.heightUnit.textContent = isImperial ? 'in' : 'cm';
+            els.weightUnit.textContent = isImperial ? 'lb' : 'kg';
+          });
+        });
+
+        resetDefaults();
+        update();
+      })();
+    </script>
+  </body></html>
